@@ -18,9 +18,10 @@ var sdeCmd = &cobra.Command{
 }
 
 var (
-	flagSDEOnly     []string
-	flagSDECacheDir string
-	flagSDEForce    bool
+	flagSDEOnly         []string
+	flagSDECacheDir     string
+	flagSDEForce        bool
+	flagSDESkipExternal bool
 )
 
 // cacheDir resolves where archives are kept. Defaults under .data/ so it shares
@@ -141,7 +142,9 @@ iterating on one mapping:
 
 		// Resolve which tables to run before downloading, so a typo in --only
 		// fails immediately rather than after a 99 MB transfer.
-		tables := sde.Tables
+		// Simple mappings first, then the nested ones — blueprint activities
+		// reference types, so types must already be present.
+		tables := append(append([]sde.Table{}, sde.Tables...), sde.NestedTables...)
 		if len(flagSDEOnly) > 0 {
 			tables = nil
 			for _, name := range flagSDEOnly {
@@ -183,6 +186,30 @@ iterating on one mapping:
 		}
 		fmt.Println(table.Render())
 
+		// Celestials draw on regions, constellations, systems, types,
+		// corporations and operations, so they run once those are all in place.
+		if len(flagSDEOnly) == 0 {
+			cel, err := sde.ImportCelestials(cmd.Context(), pool, src)
+			if err != nil {
+				return fmt.Errorf("import celestials: %w", err)
+			}
+			jumps, err := sde.ImportSystemJumps(cmd.Context(), pool, src)
+			if err != nil {
+				return fmt.Errorf("import system jumps: %w", err)
+			}
+			flagCount, flagTime, err := sde.SeedInvFlags(cmd.Context(), pool)
+			if err != nil {
+				return fmt.Errorf("seed inv_flags: %w", err)
+			}
+
+			ui.Section("Derived from the map")
+			ct := ui.NewTable("TABLE", "SOURCE", "ROWS", "TIME")
+			ct.Row(ui.Command("celestials"), "9 members", fmtCount(cel.Written), cel.Elapsed)
+			ct.Row(ui.Command("solar_system_jumps"), "mapStargates", fmtCount(jumps.Written), jumps.Elapsed)
+			ct.Row(ui.Command("inv_flags"), ui.Dim("bundled"), fmtCount(flagCount), flagTime)
+			fmt.Println(ct.Render())
+		}
+
 		// Seeded before the derivations, so Dust groups get their category_id
 		// denormalised along with everything else.
 		if len(flagSDEOnly) == 0 {
@@ -197,11 +224,58 @@ iterating on one mapping:
 			fmt.Println(st.Render())
 		}
 
+		// EVE Ref feeds and the bundled price lists. Network-dependent, so
+		// --skip-external exists for working offline or iterating on the archive.
+		if len(flagSDEOnly) == 0 && !flagSDESkipExternal {
+			ui.Section("External sources")
+			et := ui.NewTable("SOURCE", "ROWS", "TIME")
+			ins, err := sde.ImportInsurancePrices(cmd.Context(), pool, userAgent())
+			if err != nil {
+				return err
+			}
+			et.Row(ui.Command(ins.Name), fmtCount(ins.Rows), ins.Elapsed)
+
+			str, err := sde.ImportStructures(cmd.Context(), pool, userAgent())
+			if err != nil {
+				return err
+			}
+			et.Row(ui.Command(str.Name), fmtCount(str.Rows), str.Elapsed)
+
+			// Generated first so the hand-set list below can override it: a few
+			// hulls are both supercapitals and manually priced, and the manual
+			// value is the deliberate one. Matches the TypeScript ordering.
+			//
+			// Needs the prices table, which a different importer fills; writes
+			// nothing rather than failing when it is empty.
+			sup, err := sde.GenerateSupercapPrices(cmd.Context(), pool)
+			if err != nil {
+				return err
+			}
+			rows := fmtCount(sup.Rows)
+			if sup.Rows == 0 {
+				rows = ui.Dim("0 (no market prices loaded)")
+			}
+			et.Row(ui.Command(sup.Name), rows, sup.Elapsed)
+
+			man, err := sde.SeedManualCustomPrices(cmd.Context(), pool)
+			if err != nil {
+				return err
+			}
+			et.Row(ui.Command(man.Name), fmtCount(man.Rows), man.Elapsed)
+			fmt.Println(et.Render())
+		}
+
 		ui.Section("Derived")
 		dt := ui.NewTable("DERIVATION", "ROWS", "TIME")
 		derived, err := sde.Derive(cmd.Context(), pool)
 		for _, d := range derived {
 			dt.Row(d.Name, fmtCount(d.Rows), d.Elapsed)
+		}
+		// Depends on celestials, so it cannot live in the ordered list above.
+		if err == nil && len(flagSDEOnly) == 0 {
+			var sn sde.DeriveResult
+			sn, err = sde.DeriveOne(cmd.Context(), pool, sde.StationNameDerivation)
+			dt.Row(sn.Name, fmtCount(sn.Rows), sn.Elapsed)
 		}
 		fmt.Println(dt.Render())
 		if err != nil {
@@ -298,6 +372,8 @@ func fmtCount(n int64) string {
 func init() {
 	sdeImportCmd.Flags().StringArrayVar(&flagSDEOnly, "only", nil,
 		"Restrict to named tables or archive members (repeatable)")
+	sdeImportCmd.Flags().BoolVar(&flagSDESkipExternal, "skip-external", false,
+		"Skip the EVE Ref feeds (insurance prices, structures)")
 	sdeImportCmd.Flags().BoolVar(&flagSDEForce, "force", false,
 		"Re-import even when the published build is already loaded")
 	for _, c := range []*cobra.Command{sdeImportCmd, sdeStatusCmd} {

@@ -338,11 +338,27 @@ func int32Slice(list []any) []int32 {
 	return out
 }
 
-// TableByName finds a declaration, for --only.
+// AllTables is every declarative import, simple and nested.
+func AllTables() []Table {
+	out := make([]Table, 0, len(Tables)+len(NestedTables))
+	out = append(out, Tables...)
+	out = append(out, NestedTables...)
+	return out
+}
+
+// TableByName finds a declaration, for --only. Matching on member name is
+// ambiguous for nested members (typeDogma feeds two tables, blueprints five),
+// so table name wins and a member match returns the first declaration using it.
 func TableByName(name string) *Table {
-	for i := range Tables {
-		if Tables[i].Name == name || Tables[i].Member == name {
-			return &Tables[i]
+	all := AllTables()
+	for i := range all {
+		if all[i].Name == name {
+			return &all[i]
+		}
+	}
+	for i := range all {
+		if all[i].Member == name {
+			return &all[i]
 		}
 	}
 	return nil

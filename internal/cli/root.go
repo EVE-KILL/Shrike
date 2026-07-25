@@ -111,6 +111,7 @@ func init() {
 		queueCmd,
 		cronCmd,
 		sdeCmd,
+		pricesCmd,
 		completionCmd,
 	)
 }

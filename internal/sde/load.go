@@ -30,7 +30,16 @@ type Table struct {
 
 	// Values converts a row to column values. Returning false skips the row —
 	// used for records with no usable "_key".
+	//
+	// Exactly one of Values or Expand must be set.
 	Values func(Row) ([]any, bool)
+
+	// Expand is the one-to-many form: a single archive record yields any number
+	// of destination rows. Several members nest their real payload in an array
+	// or object — one typeDogma record carries every attribute for a type, one
+	// blueprint carries every activity — so the row count in the archive bears
+	// no relation to the row count in the table.
+	Expand func(Row) [][]any
 
 	// Optional marks members that may legitimately be absent from an archive.
 	// CCP adds and drops members between builds.
@@ -183,6 +192,23 @@ func (c *copySource) Next() bool {
 		c.loaded = true
 		c.err = c.src.Stream(c.ctx, c.table.Member, func(r Row) error {
 			c.result.Read++
+
+			if c.table.Expand != nil {
+				rows := c.table.Expand(r)
+				if len(rows) == 0 {
+					c.result.Skipped++
+					return nil
+				}
+				for _, vals := range rows {
+					if len(vals) != len(c.table.Columns) {
+						return fmt.Errorf("table %s: Expand returned %d items for %d columns",
+							c.table.Name, len(vals), len(c.table.Columns))
+					}
+					c.buf = append(c.buf, vals)
+				}
+				return nil
+			}
+
 			vals, ok := c.table.Values(r)
 			if !ok {
 				c.result.Skipped++

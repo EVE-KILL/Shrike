@@ -80,6 +80,35 @@ var Derivations = []Derivation{
 	},
 }
 
+// StationNameDerivation is separate from Derivations because it depends on
+// celestials, which are imported after the declarative tables. Verified against
+// production: stations.station_name is identical to the station's celestial name
+// for all 5,210 rows.
+var StationNameDerivation = Derivation{
+	Name:        "stations.station_name",
+	Description: "Copy the composed name from the station's celestial row",
+	SQL: `
+        UPDATE stations s
+        SET station_name = (
+            SELECT c.item_name FROM celestials c WHERE c.item_id = s.station_id
+        )
+        WHERE s.station_name IS DISTINCT FROM (
+            SELECT c.item_name FROM celestials c WHERE c.item_id = s.station_id
+        )
+    `,
+}
+
+// DeriveOne runs a single derivation.
+func DeriveOne(ctx context.Context, pool *pgxpool.Pool, d Derivation) (DeriveResult, error) {
+	start := time.Now()
+	tag, err := pool.Exec(ctx, d.SQL)
+	return DeriveResult{
+		Name:    d.Name,
+		Rows:    tag.RowsAffected(),
+		Elapsed: time.Since(start).Round(time.Millisecond).String(),
+	}, err
+}
+
 // Derive runs every derivation in order.
 func Derive(ctx context.Context, pool *pgxpool.Pool) ([]DeriveResult, error) {
 	out := make([]DeriveResult, 0, len(Derivations))
