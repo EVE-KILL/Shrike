@@ -1,0 +1,83 @@
+# Git hooks for Shrike. Install with `make hooks` (or `lefthook install`).
+#
+# pre-commit is scoped to staged files and stays fast, so it is not tempting to
+# skip. pre-push runs the whole suite, because that is the last point where a
+# mistake is still cheap to fix.
+#
+# Tests that need Postgres create throwaway databases on the local docker stack
+# and skip themselves when it is unreachable, so hooks work with docker down.
+
+pre-commit:
+  parallel: true
+  jobs:
+    # Runs first and is deliberately not parallel-safe to skip: this is the one
+    # check whose failure is unrecoverable once pushed.
+    - name: secrets
+      run: ./scripts/check-secrets.sh
+
+    - name: gofmt
+      glob: "*.go"
+      # stage_fixed re-stages what gofmt rewrites, so formatting never fails a
+      # commit — it fixes it and carries on.
+      run: gofmt -w {staged_files}
+      stage_fixed: true
+
+    - name: go vet
+      glob: "*.go"
+      run: go vet ./...
+
+    - name: build
+      glob:
+        - "*.go"
+        - "go.mod"
+        - "go.sum"
+      run: go build ./...
+
+    - name: tests
+      glob:
+        - "*.go"
+        - "migrations/*.sql"
+      run: go test ./...
+
+    # sqlc generates internal/dbgen from migrations/. If a migration lands
+    # without regenerating, the structs silently describe a schema that no
+    # longer exists — the failure then shows up as a scan error at runtime.
+    - name: sqlc up to date
+      glob:
+        - "migrations/*.sql"
+        - "queries/*.sql"
+        - "sqlc.yaml"
+      run: |
+        sqlc generate
+        if ! git diff --quiet -- internal/dbgen; then
+          echo "internal/dbgen is stale — sqlc generate produced changes."
+          echo "Stage them:  git add internal/dbgen"
+          exit 1
+        fi
+
+pre-push:
+  parallel: false
+  jobs:
+    - name: secrets
+      run: ./scripts/check-secrets.sh
+
+    - name: formatting
+      # A hard failure here rather than a rewrite: by push time, unformatted
+      # code means something bypassed the pre-commit hook.
+      run: |
+        unformatted=$(gofmt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "Not gofmt'd:"; echo "$unformatted" | sed 's/^/    /'
+          exit 1
+        fi
+
+    - name: go vet
+      run: go vet ./...
+
+    - name: tests
+      run: go test ./...
+
+    # Production runs linux; catching a build failure here beats catching it in
+    # CI after the push.
+    - name: cross-compile
+      run: GOOS=linux GOARCH=amd64 go build -o /dev/null ./cmd/shrike

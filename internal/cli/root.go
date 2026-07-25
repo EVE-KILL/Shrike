@@ -110,6 +110,7 @@ func init() {
 		dbCmd,
 		queueCmd,
 		cronCmd,
+		sdeCmd,
 		completionCmd,
 	)
 }

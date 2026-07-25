@@ -43,6 +43,17 @@ type Config struct {
 	// Memgraph, over Bolt.
 	MemgraphURL string
 
+	// EVE SSO / ESI. The client credentials are the production application's
+	// even locally: refresh tokens in user_esi_tokens are bound to the issuing
+	// client_id and cannot be exchanged by a different application.
+	EVEClientID     string
+	EVEClientSecret string
+	EVECallbackURL  string
+
+	// ESIUserAgent identifies us to CCP. Required by their acceptable-use
+	// policy, and the static-data endpoints may throttle requests without it.
+	ESIUserAgent string
+
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
 
@@ -103,6 +114,11 @@ func Load(explicitPath string) (*Config, error) {
 	c.RedisCachePort = getInt("RedisCachePort", "REDIS_CACHE_PORT", c.RedisPort)
 
 	c.MemgraphURL = get("MemgraphURL", "MEMGRAPH_URL", "bolt://memgraph:7687")
+
+	c.EVEClientID = get("EVEClientID", "EVE_CLIENT_ID", "")
+	c.EVEClientSecret = get("EVEClientSecret", "EVE_CLIENT_SECRET", "")
+	c.EVECallbackURL = get("EVECallbackURL", "EVE_CALLBACK_URL", "")
+	c.ESIUserAgent = get("ESIUserAgent", "ESI_USER_AGENT", "")
 	c.Port = getInt("Port", "PORT", 4000)
 	c.NodeEnv = get("NodeEnv", "NODE_ENV", "development")
 	c.GitSHA = get("GitSHA", "GIT_SHA", "unknown")

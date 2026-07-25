@@ -42,6 +42,14 @@ dist:
 	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY)-linux-amd64 $(PKG)
 	GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY)-linux-arm64 $(PKG)
 
+.PHONY: hooks
+hooks:
+	lefthook install
+
+.PHONY: generate
+generate:
+	sqlc generate
+
 .PHONY: tidy
 tidy:
 	go mod tidy
