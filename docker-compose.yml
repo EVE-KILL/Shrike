@@ -1,0 +1,109 @@
+# Local development stack for the Go port.
+#
+# Deliberately mirrors production topology rather than being minimal: Postgres
+# pinned to the same patch release, pg_trgm preinstalled (search depends on it),
+# and two separate Valkey instances because the ESI client genuinely opens two
+# connections — coordination/rate-limit on one, L2 response cache on the other.
+# A single instance would hide a mis-wiring that only shows up in the cluster.
+#
+#   docker compose up -d && ./bin/shrike doctor
+#
+# The cache Valkey is expected to be deleted eventually, once caching moves
+# in-process. It is here so the port can be validated against current
+# behaviour first.
+
+name: shrike-go
+
+services:
+  postgres:
+    # Pinned to prod's exact version (18.3, Debian build) rather than :18, so a
+    # planner or catalog difference cannot show up only after deploying.
+    image: postgres:18.3
+    environment:
+      POSTGRES_USER: evekill
+      POSTGRES_PASSWORD: evekill
+      POSTGRES_DB: evekill
+      # Match prod: UTF8 / en_US.utf8. Collation affects index ordering and
+      # text comparison, so a mismatch would make local results diverge subtly.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      # Postgres 18+ images store data in a major-version-specific subdirectory
+      # so that `pg_upgrade --link` works without crossing a mount boundary.
+      # The mount therefore goes at /var/lib/postgresql, NOT .../data — the
+      # older path makes the entrypoint abort with "unused mount/volume".
+      - ./.data/postgres:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evekill -d evekill"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # The SDE importer bulk-loads 31 tables; the defaults are tuned for a tiny
+    # container and make that needlessly slow. These are unsafe-for-production
+    # settings that are fine for a disposable local database.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - work_mem=32MB
+      - -c
+      - maintenance_work_mem=512MB
+      - -c
+      - max_connections=200
+      # fsync=off trades crash safety for import speed. Acceptable only because
+      # this volume is reproducible from the SDE importer at any time.
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+
+  valkey:
+    # Queue + pub/sub instance. Prod runs 8.1.x.
+    image: valkey/valkey:8.1-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./.data/valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  valkey-cache:
+    # Cache instance. 6381 on the host because 6380 is already in use locally.
+    image: valkey/valkey:8.1-alpine
+    ports:
+      - "6381:6379"
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  memgraph:
+    image: memgraph/memgraph:3.12.0
+    ports:
+      - "7687:7687"
+    volumes:
+      - ./.data/memgraph:/var/lib/memgraph
+    command: ["--also-log-to-stderr", "--log-level=WARNING"]
+    healthcheck:
+      # Memgraph ships no HTTP endpoint; a Bolt-port TCP probe is the cheapest
+      # liveness signal available inside the container.
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/7687' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+# No named volumes: all state lives under ./.data/ so it is visible, easy to
+# inspect, and removable with `rm -rf .data`.
+#
+# On macOS this is a bind mount through the Docker VM, which has meaningfully
+# lower I/O throughput than a named volume. That mostly shows up when the SDE
+# importer bulk-loads its 31 tables; the fsync=off and synchronous_commit=off
+# settings above are what keep it tolerable.

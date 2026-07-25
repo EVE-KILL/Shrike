@@ -1,0 +1,14 @@
+# Secrets. These carry the production database password and the EVE SSO client
+# secret, so the rule is deny-by-default with a single explicit exception for
+# the committed template. The parent monorepo has an equivalent rule, but this
+# is a separate repository and cannot rely on it.
+.env
+.env.*
+!.env.example
+
+# Compiled binaries (plus the `ek` symlink).
+bin/
+
+# Local docker-compose state (postgres, valkey, memgraph). Reproducible from
+# `docker compose up` plus the SDE importer, so it is never committed.
+.data/
