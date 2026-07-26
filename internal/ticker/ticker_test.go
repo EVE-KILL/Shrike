@@ -2,6 +2,7 @@ package ticker
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -293,6 +294,21 @@ func TestNilEmitterIsInert(t *testing.T) {
 	e.Expire(ctx, 1)
 	e.EvaluateKillmail(ctx, kill(671, GroupTitan, 1))
 	e.BattleExpired(ctx, 1)
+}
+
+func TestAnnouncementWireShapesMatchTypeScript(t *testing.T) {
+	ts := time.Date(2026, 7, 26, 4, 56, 7, 0, time.FixedZone("CEST", 2*60*60))
+	if got := isoMillis(ts); got != "2026-07-26T02:56:07.000Z" {
+		t.Errorf("timestamp = %q, want JavaScript toISOString shape", got)
+	}
+
+	body, err := json.Marshal(expiredAnnouncement(123))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(body); got != `{"id":123}` {
+		t.Errorf("expired announcement = %s, want the id-only payload", got)
+	}
 }
 
 // An emitter with no relay and no Redis is the other degraded case.

@@ -145,9 +145,9 @@ func (e *Emitter) Emit(ctx context.Context, s Spec) {
 		BodyHTML:  s.Body,
 		Color:     s.Color,
 		Icon:      s.Icon,
-		StartsAt:  now.Format(time.RFC3339),
-		ExpiresAt: now.Add(s.Expires).Format(time.RFC3339),
-		CreatedAt: now.Format(time.RFC3339),
+		StartsAt:  isoMillis(now),
+		ExpiresAt: isoMillis(now.Add(s.Expires)),
+		CreatedAt: isoMillis(now),
 	}
 	if s.LinkURL != "" {
 		link, label := s.LinkURL, "View"
@@ -170,20 +170,31 @@ func (e *Emitter) Expire(ctx context.Context, id int64) {
 	if e == nil {
 		return
 	}
-	e.publish(ctx, "expired", Announcement{ID: id})
+	e.publish(ctx, "expired", expiredAnnouncement(id))
 	if e.Redis != nil {
 		_ = e.Redis.Del(ctx, fmt.Sprintf("%s:%d", redisKey, id)).Err()
 	}
 }
 
-func (e *Emitter) publish(ctx context.Context, eventType string, a Announcement) {
+func (e *Emitter) publish(ctx context.Context, eventType string, announcement any) {
 	if e.Relay == nil {
 		return
 	}
 	e.Relay.Publish(ctx, relay.ChannelAnnouncements, []string{"all"}, map[string]any{
 		"event_type":   eventType,
-		"announcement": a,
+		"announcement": announcement,
 	})
+}
+
+func expiredAnnouncement(id int64) map[string]int64 {
+	return map[string]int64{"id": id}
+}
+
+// JavaScript Date.toISOString(), used by the TypeScript emitter, always
+// includes a three-digit millisecond field. Keep the wire shape stable even
+// when the Go timestamp lands exactly on a whole second.
+func isoMillis(t time.Time) string {
+	return t.UTC().Format("2006-01-02T15:04:05.000Z")
 }
 
 // EvaluateKillmail emits at most one announcement for a killmail.
