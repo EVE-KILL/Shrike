@@ -13,5 +13,6 @@ bin/
 # `docker compose up` plus the SDE importer, so it is never committed.
 .data/
 
-# Local architecture notes.
-/UNIXSOCKETS.md
+# Local notes and handoff logs kept at the repository root. Tracked Markdown,
+# such as README.md, remains tracked; Markdown in subdirectories is unaffected.
+/*.md
