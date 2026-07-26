@@ -8,6 +8,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/campaign"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/eve-kill/shrike/internal/sso"
 	"github.com/eve-kill/shrike/internal/wallet"
 	"github.com/riverqueue/river"
 )
@@ -17,6 +18,14 @@ type CorporationWalletWorker struct {
 	river.WorkerDefaults[queue.CorporationWalletArgs]
 	Deps *Deps
 }
+
+const walletTokenRefreshMargin = 2 * time.Minute
+
+type walletSyncBlockedError struct {
+	message string
+}
+
+func (e *walletSyncBlockedError) Error() string { return e.message }
 
 func (w *CorporationWalletWorker) Work(ctx context.Context, job *river.Job[queue.CorporationWalletArgs]) error {
 	corpID := job.Args.CorporationID
@@ -41,22 +50,10 @@ func (w *CorporationWalletWorker) Work(ctx context.Context, job *river.Job[queue
 	// The access token has to be current. Wallet tokens live in their own table
 	// rather than user_esi_tokens, so the ordinary refresh job does not cover
 	// them — the refresh happens here, inline, when the stored one has expired.
-	access := token.AccessToken
-	if access == "" || time.Now().UTC().After(token.Expiry) {
-		refreshed, err := w.Deps.SSO.Refresh(ctx, token.RefreshToken)
-		if err != nil {
-			// A dead grant means the authorisation is gone for good.
-			return w.disableIfPermanent(ctx, corpID, err)
-		}
-		access = refreshed.AccessToken
-
-		if _, err := w.Deps.Pool.Exec(ctx, `
-            UPDATE corporation_wallet_tokens SET
-                access_token = $2, refresh_token = $3, token_expiry = $4, updated_at = now()
-            WHERE corporation_id = $1`,
-			corpID, refreshed.AccessToken, refreshed.RefreshToken,
-			time.Now().UTC().Add(time.Duration(refreshed.ExpiresIn)*time.Second)); err != nil {
-			return err
+	if token.AccessToken == "" ||
+		!token.Expiry.After(time.Now().UTC().Add(walletTokenRefreshMargin)) {
+		if err := w.refreshWalletAccess(ctx, token); err != nil {
+			return w.finishWalletError(ctx, corpID, err)
 		}
 	}
 
@@ -67,15 +64,19 @@ func (w *CorporationWalletWorker) Work(ctx context.Context, job *river.Job[queue
 	// seven paginated walks, so there is no reason to redo the expensive one
 	// just because the cheap one came due.
 	if job.Args.Force || wallet.Due(token.LastBalanceSync, now) {
-		balances, err = wallet.SyncBalances(ctx, w.Deps.Pool, w.Deps.ESI, corpID, access)
+		balances, err = w.withWalletRefreshRetry(ctx, token, func(access string) (int64, error) {
+			return wallet.SyncBalances(ctx, w.Deps.Pool, w.Deps.ESI, corpID, access)
+		})
 		if err != nil {
-			return w.disableIfPermanent(ctx, corpID, err)
+			return w.finishWalletError(ctx, corpID, err)
 		}
 	}
 	if job.Args.Force || wallet.Due(token.LastJournalSync, now) {
-		journal, err = wallet.SyncJournal(ctx, w.Deps.Pool, w.Deps.ESI, corpID, access)
+		journal, err = w.withWalletRefreshRetry(ctx, token, func(access string) (int64, error) {
+			return wallet.SyncJournal(ctx, w.Deps.Pool, w.Deps.ESI, corpID, access)
+		})
 		if err != nil {
-			return w.disableIfPermanent(ctx, corpID, err)
+			return w.finishWalletError(ctx, corpID, err)
 		}
 	}
 
@@ -85,14 +86,26 @@ func (w *CorporationWalletWorker) Work(ctx context.Context, job *river.Job[queue
 	// when the sync ran, because this also catches up entries imported before
 	// the funding feature existed.
 	var funded int
+	var deposits wallet.DepositResult
 	if corpID == campaign.EveKillCorporationID {
 		pending, err := campaign.PendingJournalEntries(ctx, w.Deps.Pool, corpID, campaign.PendingJournalLimit)
 		if err != nil {
-			return err
+			return w.finishWalletError(ctx, corpID, err)
 		}
 		if funded, err = campaign.ProcessJournalEntries(ctx, w.Deps.Pool, pending); err != nil {
-			return err
+			return w.finishWalletError(ctx, corpID, err)
 		}
+		deposits, err = wallet.ProcessPendingDeposits(ctx, w.Deps.Pool, corpID)
+		if err != nil {
+			return w.finishWalletError(ctx, corpID, err)
+		}
+	}
+
+	if _, err := w.Deps.Pool.Exec(ctx, `
+        UPDATE corporation_wallet_tokens
+        SET last_error = NULL, updated_at = now()
+        WHERE corporation_id = $1`, corpID); err != nil {
+		return err
 	}
 
 	w.Deps.Log.Debug().
@@ -100,20 +113,135 @@ func (w *CorporationWalletWorker) Work(ctx context.Context, job *river.Job[queue
 		Int64("balances", balances).
 		Int64("journal_entries", journal).
 		Int("campaign_donations", funded).
+		Int("wallet_deposits", deposits.Credited).
+		Float64("wallet_deposit_isk", deposits.CreditedAmount).
 		Msg("wallet synced")
 	return nil
 }
 
-// disableIfPermanent turns an authorisation failure into a disabled token.
-//
-// A 401 or 403 means the authorising character lost the Accountant role or left
-// the corporation. Retrying that spends the shared ESI error budget on an
-// answer that will not change until a human re-authorises.
-func (w *CorporationWalletWorker) disableIfPermanent(ctx context.Context, corpID int32, cause error) error {
-	if errors.Is(cause, wallet.ErrUnauthorized) {
-		return wallet.DisableToken(ctx, w.Deps.Pool, corpID, cause.Error())
+func (w *CorporationWalletWorker) withWalletRefreshRetry(
+	ctx context.Context,
+	token *wallet.Token,
+	sync func(access string) (int64, error),
+) (int64, error) {
+	n, err := sync(token.AccessToken)
+	if wallet.IsStatus(err, 401) {
+		if refreshErr := w.refreshWalletAccess(ctx, token); refreshErr != nil {
+			return n, refreshErr
+		}
+		n, err = sync(token.AccessToken)
+	}
+	if wallet.IsStatus(err, 401) || wallet.IsStatus(err, 403) {
+		return n, &walletSyncBlockedError{message: err.Error()}
+	}
+	return n, err
+}
+
+func (w *CorporationWalletWorker) refreshWalletAccess(
+	ctx context.Context,
+	token *wallet.Token,
+) error {
+	refreshed, err := w.Deps.SSO.Refresh(ctx, token.RefreshToken)
+	if errors.Is(err, sso.ErrPermanentlyDead) {
+		const message = "Wallet authorization was revoked or expired"
+		if disableErr := wallet.DisableToken(ctx, w.Deps.Pool, token.CorporationID, message); disableErr != nil {
+			return errors.Join(err, disableErr)
+		}
+		return &walletSyncBlockedError{message: message}
+	}
+	if err != nil {
+		return err
+	}
+
+	characterID, err := sso.CharacterIDFromAccessToken(refreshed.AccessToken)
+	if err != nil {
+		return err
+	}
+	if characterID != token.CharacterID {
+		return &walletSyncBlockedError{
+			message: "Refreshed wallet token belongs to a different character",
+		}
+	}
+
+	scopes, err := sso.ScopesFromAccessToken(refreshed.AccessToken)
+	if err != nil {
+		return err
+	}
+	if !hasString(scopes, sso.ScopeCorporationWallet) {
+		message := "Missing " + sso.ScopeCorporationWallet
+		if _, updateErr := w.Deps.Pool.Exec(ctx, `
+            UPDATE corporation_wallet_tokens
+            SET disabled = true, scopes = $2, last_error = $3, updated_at = now()
+            WHERE corporation_id = $1`,
+			token.CorporationID, scopes, message); updateErr != nil {
+			return updateErr
+		}
+		return &walletSyncBlockedError{
+			message: "Wallet authorization no longer includes the corporation wallet scope",
+		}
+	}
+
+	refreshToken := refreshed.RefreshToken
+	if refreshToken == "" {
+		refreshToken = token.RefreshToken
+	}
+	expiry := time.Now().UTC().Add(time.Duration(refreshed.ExpiresIn) * time.Second)
+	if _, err := w.Deps.Pool.Exec(ctx, `
+        UPDATE corporation_wallet_tokens SET
+            access_token = $2,
+            refresh_token = $3,
+            token_expiry = $4,
+            token_type = $5,
+            scopes = $6,
+            disabled = false,
+            updated_at = now()
+        WHERE corporation_id = $1`,
+		token.CorporationID,
+		refreshed.AccessToken,
+		refreshToken,
+		expiry,
+		refreshed.TokenType,
+		scopes,
+	); err != nil {
+		return err
+	}
+
+	token.AccessToken = refreshed.AccessToken
+	token.RefreshToken = refreshToken
+	token.Expiry = expiry
+	return nil
+}
+
+func (w *CorporationWalletWorker) finishWalletError(
+	ctx context.Context,
+	corporationID int32,
+	cause error,
+) error {
+	message := cause.Error()
+	if len(message) > 1000 {
+		message = message[:1000]
+	}
+	if _, err := w.Deps.Pool.Exec(ctx, `
+        UPDATE corporation_wallet_tokens
+        SET last_error = $2, updated_at = now()
+        WHERE corporation_id = $1`, corporationID, message); err != nil {
+		return errors.Join(cause, err)
+	}
+
+	var blocked *walletSyncBlockedError
+	if errors.As(cause, &blocked) {
+		return nil
 	}
 	return cause
+}
+
+func hasString(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
 }
 
 // cronCorporationWalletSync queues the wallets that have gone stale.
@@ -127,12 +255,13 @@ func (d *Deps) cronCorporationWalletSync(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	now := time.Now().UTC()
 	var args []river.JobArgs
 	for _, t := range tokens {
-		if wallet.Due(t.LastBalanceSync, now) || wallet.Due(t.LastJournalSync, now) {
-			args = append(args, queue.CorporationWalletArgs{CorporationID: t.CorporationID})
-		}
+		// The worker gates balances and journals independently. Dispatching
+		// every enabled token also gives the reference processors their hourly
+		// catch-up even when a sync timestamp was written slightly in the
+		// future by clock skew.
+		args = append(args, queue.CorporationWalletArgs{CorporationID: t.CorporationID})
 	}
 	if len(args) == 0 {
 		return "", nil

@@ -73,6 +73,31 @@ func TestMalformedAccessTokenIsAnError(t *testing.T) {
 	}
 }
 
+func TestCharacterIDIsReadFromAccessTokenSubject(t *testing.T) {
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256"}`))
+	payload := base64.RawURLEncoding.EncodeToString(
+		[]byte(`{"sub":"CHARACTER:EVE:90000001"}`),
+	)
+	got, err := CharacterIDFromAccessToken(header + "." + payload + ".signature")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 90000001 {
+		t.Fatalf("character id = %d, want 90000001", got)
+	}
+}
+
+func TestInvalidAccessTokenSubjectIsRejected(t *testing.T) {
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"RS256"}`))
+	for _, subject := range []string{"", "CHARACTER:EVE:0", "USER:EVE:90000001", "CHARACTER:EVE:nope"} {
+		payload, _ := json.Marshal(map[string]string{"sub": subject})
+		token := header + "." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
+		if _, err := CharacterIDFromAccessToken(token); err == nil {
+			t.Errorf("subject %q was accepted", subject)
+		}
+	}
+}
+
 // Usable subtracts locally revoked scopes from what SSO granted. This is the
 // whole mechanism that stops the 403 loop.
 func TestUsableSubtractsRevokedScopes(t *testing.T) {

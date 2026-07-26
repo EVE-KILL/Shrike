@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -183,6 +184,43 @@ func (c *Client) Refresh(ctx context.Context, refreshToken string) (*refreshResp
 // at the first ESI call instead, which is a cheaper and more honest place to
 // find out.
 func ScopesFromAccessToken(accessToken string) ([]string, error) {
+	payload, err := accessTokenPayload(accessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return scopesFromPayload(payload)
+}
+
+// CharacterIDFromAccessToken reads the EVE character id from the JWT subject.
+//
+// Like ScopesFromAccessToken, this decodes a token received directly from SSO
+// over TLS. The wallet worker uses it to ensure a rotated refresh token did not
+// unexpectedly change owners.
+func CharacterIDFromAccessToken(accessToken string) (int32, error) {
+	payload, err := accessTokenPayload(accessToken)
+	if err != nil {
+		return 0, err
+	}
+
+	var claims struct {
+		Subject string `json:"sub"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return 0, fmt.Errorf("sso: decode JWT claims: %w", err)
+	}
+	const prefix = "CHARACTER:EVE:"
+	if !strings.HasPrefix(claims.Subject, prefix) {
+		return 0, fmt.Errorf("sso: unexpected JWT subject %q", claims.Subject)
+	}
+	id, err := strconv.ParseInt(strings.TrimPrefix(claims.Subject, prefix), 10, 32)
+	if err != nil || id <= 0 {
+		return 0, fmt.Errorf("sso: invalid character JWT subject %q", claims.Subject)
+	}
+	return int32(id), nil
+}
+
+func accessTokenPayload(accessToken string) ([]byte, error) {
 	parts := strings.Split(accessToken, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("sso: access token is not a JWT")
@@ -192,7 +230,10 @@ func ScopesFromAccessToken(accessToken string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sso: decode JWT payload: %w", err)
 	}
+	return payload, nil
+}
 
+func scopesFromPayload(payload []byte) ([]string, error) {
 	// `scp` is a space-separated string for a single scope and an array for
 	// several, so both have to be accepted.
 	var claims struct {

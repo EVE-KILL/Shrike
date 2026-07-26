@@ -13,6 +13,7 @@ package wallet
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -70,19 +71,19 @@ type Balance struct {
 
 // JournalEntry is one wallet journal line.
 type JournalEntry struct {
-	ID            int64   `json:"id"`
-	Date          string  `json:"date"`
-	RefType       string  `json:"ref_type"`
-	Description   string  `json:"description"`
-	Amount        float64 `json:"amount"`
-	BalanceAfter  float64 `json:"balance"`
-	FirstPartyID  int64   `json:"first_party_id"`
-	SecondPartyID int64   `json:"second_party_id"`
-	ContextID     int64   `json:"context_id"`
-	ContextIDType string  `json:"context_id_type"`
-	Reason        string  `json:"reason"`
-	Tax           float64 `json:"tax"`
-	TaxReceiverID int64   `json:"tax_receiver_id"`
+	ID            int64    `json:"id"`
+	Date          string   `json:"date"`
+	RefType       string   `json:"ref_type"`
+	Description   string   `json:"description"`
+	Amount        *float64 `json:"amount"`
+	BalanceAfter  *float64 `json:"balance"`
+	FirstPartyID  *int64   `json:"first_party_id"`
+	SecondPartyID *int64   `json:"second_party_id"`
+	ContextID     *int64   `json:"context_id"`
+	ContextIDType *string  `json:"context_id_type"`
+	Reason        *string  `json:"reason"`
+	Tax           *float64 `json:"tax"`
+	TaxReceiverID *int64   `json:"tax_receiver_id"`
 }
 
 // LoadTokens returns the corporation wallet authorisations worth syncing.
@@ -132,6 +133,9 @@ func SyncBalances(ctx context.Context, pool *pgxpool.Pool, client *esi.Client, c
 	now := time.Now().UTC()
 	var written int64
 	for _, b := range *res.Data {
+		if b.Division < Divisions[0] || b.Division > Divisions[len(Divisions)-1] {
+			continue
+		}
 		tag, err := pool.Exec(ctx, `
             INSERT INTO corporation_wallet_balances (corporation_id, division, balance, updated_at)
             VALUES ($1, $2, $3, $4)
@@ -186,12 +190,7 @@ func SyncJournal(ctx context.Context, pool *pgxpool.Pool, client *esi.Client, co
 				pages = res.Pages
 			}
 
-			entries := *res.Data
-			if len(entries) == 0 {
-				break
-			}
-
-			for _, e := range entries {
+			for _, e := range *res.Data {
 				tag, err := pool.Exec(ctx, `
                     INSERT INTO corporation_wallet_journal (
                         corporation_id, division, journal_id, date, ref_type, description,
@@ -199,11 +198,11 @@ func SyncJournal(ctx context.Context, pool *pgxpool.Pool, client *esi.Client, co
                         context_id, context_id_type, reason, tax, tax_receiver_id, created_at
                     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,now())
                     ON CONFLICT DO NOTHING`,
-					corporationID, division, e.ID, parseTime(e.Date), nullText(e.RefType),
-					nullText(e.Description), e.Amount, e.BalanceAfter,
-					nullID64(e.FirstPartyID), nullID64(e.SecondPartyID),
-					nullID64(e.ContextID), nullText(e.ContextIDType), nullText(e.Reason),
-					e.Tax, nullID64(e.TaxReceiverID))
+					corporationID, division, e.ID, parseTime(e.Date), e.RefType,
+					e.Description, e.Amount, e.BalanceAfter,
+					e.FirstPartyID, e.SecondPartyID,
+					e.ContextID, e.ContextIDType, e.Reason,
+					e.Tax, e.TaxReceiverID)
 				if err != nil {
 					return written, fmt.Errorf("store journal entry %d: %w", e.ID, err)
 				}
@@ -227,9 +226,34 @@ func SyncJournal(ctx context.Context, pool *pgxpool.Pool, client *esi.Client, co
 // retrying will restore it. The caller disables the token.
 var ErrUnauthorized = fmt.Errorf("wallet authorization rejected")
 
+// ResponseError preserves the ESI status so the worker can refresh-and-retry a
+// 401 without treating a 403 role failure as a dead SSO grant.
+type ResponseError struct {
+	Status int
+	What   string
+}
+
+func (e *ResponseError) Error() string {
+	if e.Status == 403 {
+		return fmt.Sprintf(
+			"ESI denied %s; the character must still belong to the corporation and have Accountant or Junior Accountant",
+			e.What,
+		)
+	}
+	return fmt.Sprintf("ESI rejected the wallet authorization while fetching %s", e.What)
+}
+
+func (e *ResponseError) Unwrap() error { return ErrUnauthorized }
+
+// IsStatus reports whether an error came from one ESI status.
+func IsStatus(err error, status int) bool {
+	var response *ResponseError
+	return errors.As(err, &response) && response.Status == status
+}
+
 func checkAuth(status int, what string) error {
 	if status == 401 || status == 403 {
-		return fmt.Errorf("%w while fetching %s (%d)", ErrUnauthorized, what, status)
+		return &ResponseError{Status: status, What: what}
 	}
 	return nil
 }
@@ -253,18 +277,4 @@ func parseTime(s string) any {
 		}
 	}
 	return nil
-}
-
-func nullText(s string) any {
-	if s == "" {
-		return nil
-	}
-	return s
-}
-
-func nullID64(v int64) any {
-	if v == 0 {
-		return nil
-	}
-	return v
 }
