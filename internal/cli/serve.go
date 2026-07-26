@@ -7,7 +7,9 @@ import (
 
 	"github.com/eve-kill/shrike/internal/api"
 	"github.com/eve-kill/shrike/internal/ingress"
+	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/ui"
+	shrikewebsocket "github.com/eve-kill/shrike/internal/websocket"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -32,19 +34,19 @@ Requests are routed by hostname and path to one of Shrike's surfaces:
 
   /health                                liveness, on any hostname
   api.eve-kill.com     api.localhost     the public API
-  ws.eve-kill.com      ws.localhost      the live killmail stream
   images.eve-kill.com  images.localhost  the image server
+  /ws, /ws/*                             live event streams
   /api, /auth                            the frontend's own endpoints
   everything else                        the Nuxt renderer, over NUXT_SOCKET
 
-Each surface answers to its production hostname and a .localhost alias, so
-http://api.localhost:PORT reaches the same place as api.eve-kill.com without
-touching /etc/hosts. Run with --port 80 to drop the port from those URLs.
+The public API and image surfaces answer to production hostnames and .localhost
+aliases, so http://api.localhost:PORT reaches the same place as
+api.eve-kill.com without touching /etc/hosts. WebSockets share whichever
+frontend origin is in use. Run with --port 80 to drop the port from those URLs.
 
-Hostnames come from PUBLIC_API_HOST, WS_HOST and IMAGES_HOST as comma-
-separated lists; an empty one is not routed. With NUXT_SOCKET unset, unmatched
-requests get a 404 rather than being proxied to a renderer that is not
-running.
+Hostnames come from PUBLIC_API_HOST and IMAGES_HOST as comma-separated lists;
+an empty one is not routed. With NUXT_SOCKET unset, unmatched requests get a
+404 rather than being proxied to a renderer that is not running.
 
 SIGINT (Ctrl+C) and SIGTERM both trigger a graceful shutdown: the listener
 stops accepting, in-flight requests are given time to finish, then the process
@@ -59,23 +61,32 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			port = flagServePort
 		}
 
+		coordinationRedis := redisx.Coordination(cfg)
+		wsServer := shrikewebsocket.New(
+			coordinationRedis,
+			log.With().Str("subsystem", "websocket").Logger(),
+		)
+
 		opts := api.Options{Version: ui.Version, Commit: ui.Commit}
 		surfaces := map[string]http.Handler{
 			ingress.SurfacePrivate: api.Private(opts),
 			ingress.SurfacePublic:  api.Public(opts),
-			ingress.SurfaceWS:      api.WS(opts),
+			ingress.SurfaceWS:      wsServer,
 			ingress.SurfaceImages:  api.Images(opts),
 		}
 
 		manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 
 		return RunService(cmd, "serve", func(ctx context.Context) error {
+			defer coordinationRedis.Close() //nolint:errcheck
+			wsServer.Start(ctx)
+			defer wsServer.Close()
+
 			if err := manager.Start(ctx, ingress.Config{
 				Address:     fmt.Sprintf(":%d", port),
 				DataDir:     cfg.DataDir,
 				LogLevel:    cfg.LogLevel,
 				PublicHosts: cfg.PublicAPIHosts,
-				WSHosts:     cfg.WSHosts,
 				ImagesHosts: cfg.ImagesHosts,
 				NuxtSocket:  cfg.NuxtSocket,
 			}); err != nil {

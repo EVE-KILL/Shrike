@@ -280,8 +280,8 @@ func (m *Manager) Status() Status {
 //  2. /health on every other host goes through the private Huma surface.
 //     Kubernetes probes by pod IP with no useful Host header, so this route
 //     matches on path alone rather than relying on DNS.
-//  3. The three dedicated hostnames, each to its own surface.
-//  4. /api and /auth, for the frontend. After the hostnames so that a request
+//  3. The two dedicated hostnames, each to its own surface.
+//  4. /ws, /api and /auth on the frontend origin. After the hostnames so that a request
 //     to api.eve-kill.com/api/... resolves as the public surface rather than
 //     being captured by the private path prefix.
 //  5. Everything else to the Nuxt renderer. Unmatched is the frontend by
@@ -326,7 +326,6 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		surface string
 	}{
 		{cfg.PublicHosts, SurfacePublic},
-		{cfg.WSHosts, SurfaceWS},
 		{cfg.ImagesHosts, SurfaceImages},
 	}
 	for i := range hostRoutes {
@@ -374,6 +373,16 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		); err != nil {
 			return nil, nil, nil, err
 		}
+	}
+
+	// WebSockets share the frontend origin but bypass the Nuxt process. A
+	// dedicated prefix avoids stealing the real /comments and /status pages,
+	// while still letting custom domains use their own origin for live data.
+	if err := surfaceRoute(
+		map[string]any{"path": []string{"/ws", "/ws/*"}},
+		"path /ws, /ws/*", SurfaceWS,
+	); err != nil {
+		return nil, nil, nil, err
 	}
 
 	if err := surfaceRoute(

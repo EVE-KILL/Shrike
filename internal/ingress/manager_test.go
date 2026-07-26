@@ -40,7 +40,6 @@ func testConfig() Config {
 	return Config{
 		Address:     "127.0.0.1:0",
 		PublicHosts: []string{"api.example.com", "api.localhost"},
-		WSHosts:     []string{"ws.example.com"},
 		ImagesHosts: []string{"images.example.com"},
 	}
 }
@@ -66,8 +65,8 @@ func TestRouteOrder(t *testing.T) {
 		{Match: "host api.example.com, api.localhost and path /health", Surface: SurfacePublic},
 		{Match: "path /health", Surface: SurfacePrivate},
 		{Match: "host api.example.com, api.localhost", Surface: SurfacePublic},
-		{Match: "host ws.example.com", Surface: SurfaceWS},
 		{Match: "host images.example.com", Surface: SurfaceImages},
+		{Match: "path /ws, /ws/*", Surface: SurfaceWS},
 		{Match: "path /api, /api/*, /auth, /auth/*", Surface: SurfacePrivate},
 		{Match: "(default)", Surface: "404 — no renderer configured"},
 	}
@@ -133,9 +132,9 @@ func TestHostRoutesPrecedeThePrivatePathPrefix(t *testing.T) {
 	}
 }
 
-func TestUnsetHostIsNotRouted(t *testing.T) {
+func TestUnsetImageHostIsNotRouted(t *testing.T) {
 	cfg := testConfig()
-	cfg.WSHosts = nil
+	cfg.ImagesHosts = nil
 
 	m := newTestManager(t, cfg)
 	_, _, routes, err := m.buildConfig()
@@ -143,8 +142,8 @@ func TestUnsetHostIsNotRouted(t *testing.T) {
 		t.Fatalf("buildConfig: %v", err)
 	}
 	for _, r := range routes {
-		if r.Surface == SurfaceWS {
-			t.Fatalf("ws surface is routed despite an empty WSHost: %+v", r)
+		if strings.HasPrefix(r.Match, "host images.") {
+			t.Fatalf("images surface is host-routed despite an empty ImagesHosts: %+v", r)
 		}
 	}
 }
@@ -177,7 +176,7 @@ func TestHostsAreLowercasedAndDeduplicated(t *testing.T) {
 // silently shadowed surface is far harder to notice than a refused startup.
 func TestHostClaimedByTwoSurfacesIsAnError(t *testing.T) {
 	cfg := testConfig()
-	cfg.WSHosts = []string{"api.localhost"} // already claimed by public
+	cfg.ImagesHosts = []string{"api.localhost"} // already claimed by public
 
 	m := newTestManager(t, cfg)
 	if _, _, _, err := m.buildConfig(); err == nil {
@@ -350,11 +349,12 @@ func TestServesEachSurface(t *testing.T) {
 	}{
 		{"health has no host requirement", "", "/health", SurfacePrivate, 200},
 		{"public health uses public surface", "api.example.com", "/health", SurfacePublic, 200},
-		{"stub hostname health uses fallback", "ws.example.com", "/health", SurfacePrivate, 200},
+		{"websocket path health is not special", "eve-kill.test", "/health", SurfacePrivate, 200},
 		{"public hostname", "api.example.com", "/anything", SurfacePublic, 200},
 		{"public .localhost alias", "api.localhost", "/anything", SurfacePublic, 200},
 		{"alias is case-insensitive", "API.LOCALHOST", "/anything", SurfacePublic, 200},
-		{"websocket hostname", "ws.example.com", "/", SurfaceWS, 200},
+		{"websocket root path", "eve-kill.test", "/ws", SurfaceWS, 200},
+		{"websocket endpoint path", "eve-kill.test", "/ws/killlist", SurfaceWS, 200},
 		{"images hostname", "images.example.com", "/x.png", SurfaceImages, 200},
 		{"frontend api root", "eve-kill.test", "/api", SurfacePrivate, 200},
 		{"frontend api prefix", "eve-kill.test", "/api/killlist", SurfacePrivate, 200},
