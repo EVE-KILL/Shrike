@@ -2,20 +2,24 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
+	"github.com/eve-kill/shrike/internal/api"
+	"github.com/eve-kill/shrike/internal/ingress"
 	"github.com/eve-kill/shrike/internal/ui"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-// serve currently exposes only /health. It exists at this stage to prove the
-// process lifecycle — bind, serve, drain on signal — that every real service
-// will inherit. The Huma API mounts onto this same handler next.
+// serve runs the HTTP front door: an embedded Caddy listener in front of
+// Shrike's surfaces, with everything it does not recognise handed to the Nuxt
+// renderer over a Unix socket.
+//
+// The surfaces are built here rather than inside the ingress package so the
+// two stay independent — ingress routes to names and knows nothing about Huma,
+// api builds handlers and knows nothing about Caddy. This function is the only
+// place that has to know both.
 
 var flagServePort int
 
@@ -24,11 +28,22 @@ var serveCmd = &cobra.Command{
 	Short: "Run the HTTP server",
 	Long: `Starts the HTTP listener in the foreground and runs until interrupted.
 
+Requests are routed by hostname and path to one of Shrike's surfaces:
+
+  /health              liveness, on any hostname
+  api.eve-kill.com     the public API
+  ws.eve-kill.com      the live killmail stream
+  images.eve-kill.com  the image server
+  /api, /auth          the frontend's own endpoints
+  everything else      the Nuxt renderer, over NUXT_SOCKET
+
+Hostnames come from PUBLIC_API_HOST, WS_HOST and IMAGES_HOST; an unset one is
+not routed. With NUXT_SOCKET unset, unmatched requests get a 404 rather than
+being proxied to a renderer that is not running.
+
 SIGINT (Ctrl+C) and SIGTERM both trigger a graceful shutdown: the listener
 stops accepting, in-flight requests are given time to finish, then the process
-exits. Kubernetes needs no special handling beyond its default SIGTERM.
-
-Only /health is served so far; the OpenAPI surface lands on top of it.`,
+exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := requireConfig(); err != nil {
 			return err
@@ -39,46 +54,40 @@ Only /health is served so far; the OpenAPI surface lands on top of it.`,
 			port = flagServePort
 		}
 
-		mux := http.NewServeMux()
-		mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"status":  "ok",
-				"version": ui.Version,
-				"commit":  ui.Commit,
-			})
-		})
-
-		srv := &http.Server{
-			Addr:              fmt.Sprintf(":%d", port),
-			Handler:           mux,
-			ReadHeaderTimeout: 10 * time.Second, // slowloris guard
+		opts := api.Options{Version: ui.Version, Commit: ui.Commit}
+		surfaces := map[string]http.Handler{
+			ingress.SurfacePrivate: api.Private(opts),
+			ingress.SurfacePublic:  api.Public(opts),
+			ingress.SurfaceWS:      api.WS(opts),
+			ingress.SurfaceImages:  api.Images(opts),
 		}
 
-		return RunService(cmd, "serve", func(ctx context.Context) error {
-			errc := make(chan error, 1)
-			go func() {
-				log.Info().Int("port", port).Msg("http listening")
-				// ErrServerClosed is the expected result of our own Shutdown
-				// call, so it is not propagated as a failure.
-				if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-					errc <- err
-					return
-				}
-				errc <- nil
-			}()
+		manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 
-			select {
-			case err := <-errc:
-				// Failed on its own — almost always a bind error.
-				return err
-			case <-ctx.Done():
-				// Shutdown gets its own timeout: ctx is already cancelled, and
-				// passing it through would abort the drain immediately.
-				drainCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace-time.Second)
-				defer cancel()
-				return srv.Shutdown(drainCtx)
+		return RunService(cmd, "serve", func(ctx context.Context) error {
+			if err := manager.Start(ctx, ingress.Config{
+				Address:    fmt.Sprintf(":%d", port),
+				DataDir:    cfg.DataDir,
+				LogLevel:   cfg.LogLevel,
+				PublicHost: cfg.PublicAPIHost,
+				WSHost:     cfg.WSHost,
+				ImagesHost: cfg.ImagesHost,
+				NuxtSocket: cfg.NuxtSocket,
+			}); err != nil {
+				return fmt.Errorf("starting embedded Caddy ingress: %w", err)
 			}
+			defer func() { _ = manager.Close() }()
+
+			for _, r := range manager.Status().Routes {
+				log.Info().Str("match", r.Match).Str("surface", r.Surface).Msg("route")
+			}
+			log.Info().Int("port", port).Msg("http listening")
+
+			// Caddy owns its own accept loops and shutdown, so this only has to
+			// stay alive until RunService cancels and then let the deferred
+			// Close drain. RunService bounds how long that is allowed to take.
+			<-ctx.Done()
+			return nil
 		})
 	},
 }

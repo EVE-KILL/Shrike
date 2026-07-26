@@ -57,6 +57,22 @@ type Config struct {
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
 
+	// Hostnames the embedded ingress routes to dedicated surfaces. Empty means
+	// the deployment does not serve that surface, and the route is omitted
+	// rather than claiming a hostname nobody configured.
+	PublicAPIHost string
+	WSHost        string
+	ImagesHost    string
+
+	// NuxtSocket is where the Nitro renderer listens. Every request matching no
+	// surface is proxied there. Empty disables the fallback, which is how an
+	// API-only deployment avoids proxying to a renderer that is not running.
+	NuxtSocket string
+
+	// DataDir is where the ingress keeps its own state — certificates, once
+	// Shrike terminates TLS.
+	DataDir string
+
 	// Observability / environment.
 	NodeEnv  string
 	GitSHA   string
@@ -120,6 +136,19 @@ func Load(explicitPath string) (*Config, error) {
 	c.EVECallbackURL = get("EVECallbackURL", "EVE_CALLBACK_URL", "")
 	c.ESIUserAgent = get("ESIUserAgent", "ESI_USER_AGENT", "")
 	c.Port = getInt("Port", "PORT", 4000)
+
+	// Defaulted to the production hostnames because that is where this binary
+	// spends its life; a laptop overrides them, or leaves them and reaches the
+	// surfaces with an explicit Host header.
+	c.PublicAPIHost = get("PublicAPIHost", "PUBLIC_API_HOST", "api.eve-kill.com")
+	c.WSHost = get("WSHost", "WS_HOST", "ws.eve-kill.com")
+	c.ImagesHost = get("ImagesHost", "IMAGES_HOST", "images.eve-kill.com")
+
+	// Defaulted empty: until the renderer is actually wired up, proxying to a
+	// socket that will never exist would turn every frontend request into a
+	// 502 that looks like a bug rather than an unfinished port.
+	c.NuxtSocket = get("NuxtSocket", "NUXT_SOCKET", "")
+	c.DataDir = get("DataDir", "DATA_DIR", "./data")
 	c.NodeEnv = get("NodeEnv", "NODE_ENV", "development")
 	c.GitSHA = get("GitSHA", "GIT_SHA", "unknown")
 	c.LogLevel = get("LogLevel", "LOG_LEVEL", "info")
