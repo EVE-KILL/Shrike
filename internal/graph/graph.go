@@ -28,6 +28,10 @@ var EdgeTypes = []string{"FLEW_WITH", "KILLED", "OPERATED_IN", "MEMBER_OF", "ALL
 // and an edge from a year ago describes a fleet that no longer exists.
 const RetentionDays = 90
 
+// The TypeScript maintenance job deliberately uses a smaller orphan batch
+// than its edge batch.
+const orphanPurgeBatch = 5_000
+
 // Client wraps a Memgraph connection.
 type Client struct {
 	driver neo4j.DriverWithContext
@@ -127,7 +131,7 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx) //nolint:errcheck // best-effort close
 
-	at := km.KillmailTime.UTC().Format(time.RFC3339)
+	at := isoTimestamp(km.KillmailTime)
 
 	// Nodes before edges: a MATCH on a node that does not exist silently
 	// matches nothing, so the edge would be dropped without an error.
@@ -347,7 +351,7 @@ func (c *Client) Purge(ctx context.Context, batchSize int) (PurgeResult, error) 
 	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx) //nolint:errcheck // best-effort close
 
-	cutoff := time.Now().UTC().AddDate(0, 0, -RetentionDays).Format(time.RFC3339)
+	cutoff := isoTimestamp(time.Now().UTC().AddDate(0, 0, -RetentionDays))
 
 	for _, edgeType := range EdgeTypes {
 		// The edge type comes from the fixed list above.
@@ -375,7 +379,7 @@ func (c *Client) Purge(ctx context.Context, batchSize int) (PurgeResult, error) 
         WHERE NOT (n)-[]-()
         WITH n LIMIT $limit
         DELETE n
-        RETURN count(n) AS cnt`, map[string]any{"limit": batchSize})
+        RETURN count(n) AS cnt`, map[string]any{"limit": orphanPurgeBatch})
 	if err != nil {
 		return out, fmt.Errorf("purge orphaned characters: %w", err)
 	}
@@ -407,5 +411,13 @@ func nullableTime(v time.Time) any {
 	if v.IsZero() {
 		return nil
 	}
-	return v.UTC().Format(time.RFC3339)
+	return isoTimestamp(v)
+}
+
+// JavaScript Date.toISOString(), used by the TypeScript graph worker, always
+// includes milliseconds. Memgraph stores these timestamps as strings and
+// compares them lexicographically, so mixing second-precision and
+// millisecond-precision forms can produce the wrong max-wins result.
+func isoTimestamp(v time.Time) string {
+	return v.UTC().Format("2006-01-02T15:04:05.000Z")
 }
