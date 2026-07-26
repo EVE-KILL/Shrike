@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/wars"
 	"github.com/jackc/pgx/v5"
@@ -50,12 +51,15 @@ type interactionRow struct {
 	TargetID   int32
 	Count      int32
 	ISK        float64
+	LastID     int32
+	LastTime   time.Time
 }
 
 func snapshot(t *testing.T, ctx context.Context, q pgx.Tx) map[interactionRow]bool {
 	t.Helper()
 	rows, err := q.Query(ctx, `
-        SELECT war_id, side, category, target_type, target_id, count, isk_value
+        SELECT war_id, side, category, target_type, target_id, count, isk_value,
+               last_killmail_id, last_killmail_time
         FROM war_interactions`)
 	if err != nil {
 		t.Fatalf("snapshot: %v", err)
@@ -66,7 +70,8 @@ func snapshot(t *testing.T, ctx context.Context, q pgx.Tx) map[interactionRow]bo
 	for rows.Next() {
 		var r interactionRow
 		if err := rows.Scan(&r.WarID, &r.Side, &r.Category,
-			&r.TargetType, &r.TargetID, &r.Count, &r.ISK); err != nil {
+			&r.TargetType, &r.TargetID, &r.Count, &r.ISK,
+			&r.LastID, &r.LastTime); err != nil {
 			t.Fatalf("scan: %v", err)
 		}
 		out[r] = true
@@ -165,13 +170,15 @@ func TestIncrementalAgreesWithRebuild(t *testing.T) {
 			}
 			continue
 		}
-		if got.Count != want.Count || !iskEqual(got.ISK, want.ISK) {
+		if got.Count != want.Count || !iskEqual(got.ISK, want.ISK) ||
+			got.LastID != want.LastID || !got.LastTime.Equal(want.LastTime) {
 			differing++
 			if differing <= 8 {
-				t.Errorf("war %d side %d cat %d target %d/%d: rebuild says %d kills / %v ISK, "+
-					"incremental says %d / %v",
+				t.Errorf("war %d side %d cat %d target %d/%d: rebuild says %d kills / %v ISK "+
+					"(last %d at %v), incremental says %d / %v (last %d at %v)",
 					k.WarID, k.Side, k.Category, k.TargetType, k.TargetID,
-					want.Count, want.ISK, got.Count, got.ISK)
+					want.Count, want.ISK, want.LastID, want.LastTime,
+					got.Count, got.ISK, got.LastID, got.LastTime)
 			}
 		}
 	}
@@ -192,6 +199,90 @@ func TestIncrementalAgreesWithRebuild(t *testing.T) {
 	}
 
 	t.Logf("both paths agree exactly: %d rows across %d war killmails", len(setBased), len(ids))
+}
+
+func TestRebuildLatestMarkerBreaksTimestampTiesByKillmailID(t *testing.T) {
+	ctx := context.Background()
+	pool := agreementPool(t)
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // temporary fixtures must never persist
+
+	// Shadow every source and destination used by the rebuild. This gives the
+	// real SQL a small, deterministic data set without mutating the shared test
+	// database or depending on how much production-shaped history it contains.
+	for _, table := range []string{
+		"wars", "war_allies", "killmails", "killmail_attackers", "war_interactions",
+	} {
+		if _, err := tx.Exec(ctx, `CREATE TEMP TABLE `+table+
+			` (LIKE public.`+table+` INCLUDING DEFAULTS) ON COMMIT DROP`); err != nil {
+			t.Fatalf("shadow %s: %v", table, err)
+		}
+	}
+
+	const (
+		warID          = int32(2_000_000_001)
+		olderID        = int32(2_000_000_010)
+		newerID        = int32(2_000_000_011)
+		victimCorpID   = int32(2_000_000_020)
+		aggressorCorp  = int32(2_000_000_021)
+		attackerCharID = int32(2_000_000_022)
+	)
+	killTime := time.Date(2026, time.July, 26, 4, 0, 0, 0, time.UTC)
+
+	if _, err := tx.Exec(ctx, `
+        INSERT INTO wars (war_id, aggressor_corporation_id, defender_corporation_id)
+        VALUES ($1, $2, $3)`, warID, aggressorCorp, victimCorpID); err != nil {
+		t.Fatalf("insert war: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+        INSERT INTO killmails (
+            killmail_id, killmail_time, killmail_hash, solar_system_id,
+            victim_corporation_id, total_value, war_id)
+        VALUES
+            ($1, $3, 'marker-old', 30000142, $4, 100, $5),
+            ($2, $3, 'marker-new', 30000142, $4, 250, $5)`,
+		olderID, newerID, killTime, victimCorpID, warID); err != nil {
+		t.Fatalf("insert killmails: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+        INSERT INTO killmail_attackers (
+            killmail_id, attacker_index, character_id, corporation_id,
+            final_blow, killmail_time)
+        VALUES
+            ($1, 0, $3, $4, true, $5),
+            ($2, 0, $3, $4, true, $5)`,
+		olderID, newerID, attackerCharID, aggressorCorp, killTime); err != nil {
+		t.Fatalf("insert attackers: %v", err)
+	}
+
+	if err := wars.AggregateAllInTx(ctx, tx); err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+
+	var count int32
+	var isk float64
+	var lastID int32
+	var lastTime time.Time
+	if err := tx.QueryRow(ctx, `
+        SELECT count, isk_value, last_killmail_id, last_killmail_time
+        FROM war_interactions
+        WHERE war_id = $1
+          AND side = $2
+          AND category = $3
+          AND target_type = $4
+          AND target_id = $5`,
+		warID, wars.SideCombined, wars.CategoryKilled,
+		wars.TargetCorporation, victimCorpID).
+		Scan(&count, &isk, &lastID, &lastTime); err != nil {
+		t.Fatalf("read aggregate: %v", err)
+	}
+	if count != 2 || isk != 350 || lastID != newerID || !lastTime.Equal(killTime) {
+		t.Fatalf("aggregate = count %d, ISK %v, last %d at %v; want 2, 350, %d at %v",
+			count, isk, lastID, lastTime, newerID, killTime)
+	}
 }
 
 // iskEqual compares two ISK totals for practical equality.

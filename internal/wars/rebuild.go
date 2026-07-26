@@ -260,23 +260,37 @@ func killedSQL(scope string) string {
             SELECT killmail_id, 0::smallint AS side FROM scoped_kills
             UNION
             SELECT killmail_id, side FROM attacker_sides WHERE side IS NOT NULL
+        ), contributions AS (
+            SELECT k.war_id, s.side,
+                   target.target_type, target.target_id,
+                   coalesce(k.total_value, 0) AS isk_value,
+                   k.killmail_id, k.killmail_time
+            FROM scoped_kills k
+            JOIN sides s USING (killmail_id)
+            CROSS JOIN LATERAL (VALUES
+                (0::smallint, k.victim_character_id),
+                (1::smallint, k.victim_corporation_id),
+                (2::smallint, k.victim_alliance_id)
+            ) AS target(target_type, target_id)
+            WHERE target.target_id IS NOT NULL
+        ), ranked AS (
+            SELECT *,
+                   count(*) OVER (
+                       PARTITION BY war_id, side, target_type, target_id
+                   )::integer AS interaction_count,
+                   sum(isk_value) OVER (
+                       PARTITION BY war_id, side, target_type, target_id
+                   ) AS total_isk_value,
+                   row_number() OVER (
+                       PARTITION BY war_id, side, target_type, target_id
+                       ORDER BY killmail_time DESC, killmail_id DESC
+                   ) AS latest_rank
+            FROM contributions
         )
-        SELECT k.war_id, s.side, 0::smallint, target.target_type, target.target_id,
-               count(*)::integer, sum(coalesce(k.total_value, 0)),
-               (array_agg(
-                   k.killmail_id
-                   ORDER BY k.killmail_time DESC, k.killmail_id DESC
-               ))[1],
-               max(k.killmail_time)
-        FROM scoped_kills k
-        JOIN sides s USING (killmail_id)
-        CROSS JOIN LATERAL (VALUES
-            (0::smallint, k.victim_character_id),
-            (1::smallint, k.victim_corporation_id),
-            (2::smallint, k.victim_alliance_id)
-        ) AS target(target_type, target_id)
-        WHERE target.target_id IS NOT NULL
-        GROUP BY k.war_id, s.side, target.target_type, target.target_id`,
+        SELECT war_id, side, 0::smallint, target_type, target_id,
+               interaction_count, total_isk_value, killmail_id, killmail_time
+        FROM ranked
+        WHERE latest_rank = 1`,
 		scope, sideExpr("a.alliance_id", "a.corporation_id"))
 }
 
@@ -307,24 +321,38 @@ func killedBySQL(scope string) string {
             SELECT k.killmail_id, %s AS side
             FROM scoped_kills k
             JOIN wars w ON w.war_id = k.war_id
+        ), contributions AS (
+            SELECT k.war_id, s.side,
+                   target.target_type, target.target_id,
+                   coalesce(k.total_value, 0) AS isk_value,
+                   k.killmail_id, k.killmail_time
+            FROM scoped_kills k
+            JOIN final_blows fb USING (killmail_id)
+            JOIN victim_sides s USING (killmail_id)
+            CROSS JOIN LATERAL (VALUES
+                (0::smallint, fb.character_id),
+                (1::smallint, fb.corporation_id),
+                (2::smallint, fb.alliance_id)
+            ) AS target(target_type, target_id)
+            WHERE s.side IS NOT NULL AND target.target_id IS NOT NULL
+        ), ranked AS (
+            SELECT *,
+                   count(*) OVER (
+                       PARTITION BY war_id, side, target_type, target_id
+                   )::integer AS interaction_count,
+                   sum(isk_value) OVER (
+                       PARTITION BY war_id, side, target_type, target_id
+                   ) AS total_isk_value,
+                   row_number() OVER (
+                       PARTITION BY war_id, side, target_type, target_id
+                       ORDER BY killmail_time DESC, killmail_id DESC
+                   ) AS latest_rank
+            FROM contributions
         )
-        SELECT k.war_id, s.side, 1::smallint, target.target_type, target.target_id,
-               count(*)::integer, sum(coalesce(k.total_value, 0)),
-               (array_agg(
-                   k.killmail_id
-                   ORDER BY k.killmail_time DESC, k.killmail_id DESC
-               ))[1],
-               max(k.killmail_time)
-        FROM scoped_kills k
-        JOIN final_blows fb USING (killmail_id)
-        JOIN victim_sides s USING (killmail_id)
-        CROSS JOIN LATERAL (VALUES
-            (0::smallint, fb.character_id),
-            (1::smallint, fb.corporation_id),
-            (2::smallint, fb.alliance_id)
-        ) AS target(target_type, target_id)
-        WHERE s.side IS NOT NULL AND target.target_id IS NOT NULL
-        GROUP BY k.war_id, s.side, target.target_type, target.target_id`,
+        SELECT war_id, side, 1::smallint, target_type, target_id,
+               interaction_count, total_isk_value, killmail_id, killmail_time
+        FROM ranked
+        WHERE latest_rank = 1`,
 		scope, sideExpr("k.victim_alliance_id", "k.victim_corporation_id"))
 }
 

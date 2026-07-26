@@ -29,6 +29,7 @@ import (
 // How often each tier is refreshed. The tick is one second; everything else is
 // served from the last value gathered.
 const (
+	QueueInterval            = 5 * time.Second
 	SlowInterval             = 60 * time.Second
 	CoverageInterval         = 15 * time.Minute
 	KillmailCoverageInterval = 10 * time.Minute
@@ -184,6 +185,8 @@ type Collector struct {
 	startedAt time.Time
 
 	mu           sync.Mutex
+	queues       map[string]QueueInfo
+	lastQueues   time.Time
 	database     *DatabaseInfo
 	tokens       *ESITokenInfo
 	wallet       *WalletInfo
@@ -222,7 +225,6 @@ func (c *Collector) Collect(ctx context.Context) Status {
 		System:    systemInfo(),
 	}
 
-	s.Queues = c.queueInfo(ctx)
 	s.ESI = c.esiInfo(ctx)
 	s.Redis = redisInfo(ctx, c.Redis)
 	s.Cache = redisInfo(ctx, c.Cache)
@@ -233,6 +235,12 @@ func (c *Collector) Collect(ctx context.Context) Status {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	if now.Sub(c.lastQueues) >= QueueInterval {
+		if queues := c.queueInfo(ctx); queues != nil {
+			c.queues = queues
+		}
+		c.lastQueues = now
+	}
 	if now.Sub(c.lastKillmailCoverage) >= KillmailCoverageInterval {
 		if n, ok := c.killmailsCovered24h(ctx); ok {
 			c.killmailsCovered = n
@@ -257,6 +265,7 @@ func (c *Collector) Collect(ctx context.Context) Status {
 		}
 		c.lastCoverage = now
 	}
+	s.Queues = c.queues
 	s.Database = c.database
 	s.ESITokens = c.tokens
 	s.Wallet = c.wallet
@@ -334,7 +343,7 @@ func hostLoadAverage() []float64 {
 }
 
 func (c *Collector) queueInfo(ctx context.Context) map[string]QueueInfo {
-	depths, err := queue.Depths(ctx, c.Pool)
+	depths, err := queue.StatusDepths(ctx, c.Pool)
 	if err != nil {
 		return nil
 	}

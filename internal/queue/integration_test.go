@@ -386,6 +386,70 @@ func TestBatchDuplicateDispatchPromotesAvailableJobs(t *testing.T) {
 	}
 }
 
+func TestStatusDepthsExcludeFinalizedHistory(t *testing.T) {
+	pool := testPool(t)
+	clearTestJobs(t, pool)
+	ctx := context.Background()
+
+	c, err := New(Options{Pool: pool})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM river_job WHERE kind = 'esi_alliance'`)
+	}()
+
+	var ids []int64
+	for i := range 3 {
+		res, err := Dispatch(ctx, c, AllianceArgs{AllianceID: int32(2_100_000_030 + i)}, Live)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, res.Job.ID)
+	}
+	if _, err := pool.Exec(ctx, `
+		UPDATE river_job
+		SET state = 'completed', finalized_at = now()
+		WHERE id = $1`, ids[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		UPDATE river_job
+		SET state = 'cancelled', finalized_at = now()
+		WHERE id = $1`, ids[1]); err != nil {
+		t.Fatal(err)
+	}
+
+	all, err := Depths(ctx, pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status, err := StatusDepths(ctx, pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allianceAll := depthForQueue(t, all, "esi_alliance")
+	allianceStatus := depthForQueue(t, status, "esi_alliance")
+	if allianceAll.Completed != 1 || allianceAll.Cancelled != 1 || allianceAll.Available != 1 {
+		t.Fatalf("full depths = %+v, want one available, completed, and cancelled", allianceAll)
+	}
+	if allianceStatus.Completed != 0 || allianceStatus.Cancelled != 0 ||
+		allianceStatus.Available != 1 {
+		t.Fatalf("status depths = %+v, want only the available job", allianceStatus)
+	}
+}
+
+func depthForQueue(t *testing.T, depths []Depth, name string) Depth {
+	t.Helper()
+	for _, depth := range depths {
+		if depth.Queue == name {
+			return depth
+		}
+	}
+	t.Fatalf("queue %s missing from depths", name)
+	return Depth{}
+}
+
 func queuePriorityForTest() Priority { return DormantBackfill }
 
 // The gate has to actually pause the queue rows River reads, not merely record

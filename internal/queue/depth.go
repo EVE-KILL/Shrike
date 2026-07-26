@@ -52,10 +52,32 @@ func (d Depth) Pending() int64 {
 func Depths(ctx context.Context, pool *pgxpool.Pool) ([]Depth, error) {
 	// One grouped scan rather than a count per state per queue, which at seven
 	// states and twenty queues would be 140 round trips.
-	rows, err := pool.Query(ctx, `
-        SELECT queue, state, count(*)
-        FROM river_job
-        GROUP BY queue, state`)
+	return queryDepths(ctx, pool, false)
+}
+
+// StatusDepths reads only states that contribute to the published backlog.
+//
+// Completed and cancelled jobs are retained as diagnostics, but neither is in
+// the BullMQ-shaped status contract. Excluding them is significant at live
+// throughput because completed jobs remain in River for a day.
+func StatusDepths(ctx context.Context, pool *pgxpool.Pool) ([]Depth, error) {
+	return queryDepths(ctx, pool, true)
+}
+
+func queryDepths(ctx context.Context, pool *pgxpool.Pool, statusOnly bool) ([]Depth, error) {
+	query := `
+		SELECT queue, state, count(*)
+		FROM river_job`
+	if statusOnly {
+		query += `
+		WHERE state IN (
+			'available', 'running', 'scheduled', 'retryable', 'pending', 'discarded'
+		)`
+	}
+	query += `
+		GROUP BY queue, state`
+
+	rows, err := pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
