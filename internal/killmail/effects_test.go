@@ -278,6 +278,42 @@ func TestWarAttachmentBackfillsAnUntrackedKillmail(t *testing.T) {
 	}
 }
 
+// War archives assign war_id while deliberately leaving historical kills out
+// of the effects ledger. Replaying that same war must adopt the row instead of
+// returning early forever with the war interaction still missing.
+func TestWarReplayBackfillsAnUntrackedAlreadyAssignedKillmail(t *testing.T) {
+	ctx := context.Background()
+	pool := storePool(t)
+	id := effectsTestID + 8
+	effectsCleanup(t, ctx, id)
+
+	const warID int32 = 999_999_003
+	if _, err := pool.Exec(ctx,
+		`DELETE FROM killmail_processing WHERE killmail_id = $1`, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+        INSERT INTO killmails (
+            killmail_id, killmail_time, killmail_hash, solar_system_id, war_id
+        ) VALUES ($1, now(), 'archive', 30000142, $2)
+        ON CONFLICT (killmail_id) DO UPDATE SET war_id = EXCLUDED.war_id`,
+		id, warID); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	got, err := Prepare(ctx, pool, id, warID)
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if !got.Tracked || got.Completed != AllEffectsExceptWar {
+		t.Errorf("tracked/completed = %v/%d, want true/%d",
+			got.Tracked, got.Completed, AllEffectsExceptWar)
+	}
+	if stored := ledgerState(t, ctx, id); stored != AllEffectsExceptWar {
+		t.Errorf("stored ledger = %d, want %d", stored, AllEffectsExceptWar)
+	}
+}
+
 // Two wars cannot both own a killmail.
 func TestConflictingWarIsRefused(t *testing.T) {
 	ctx := context.Background()

@@ -33,7 +33,7 @@ func Refresh(ctx context.Context, pool *pgxpool.Pool, client *esi.Client, warID 
 	// A war id ESI does not recognise is a fact, not a failure. Historical
 	// killmails reference ids CCP has since removed, and retrying them forever
 	// spends the request budget on a permanent answer.
-	if res.Status == 404 || res.Status == 422 {
+	if res.Status == 400 || res.Status == 404 || res.Status == 422 {
 		return nil, nil
 	}
 	if !res.OK() || res.Data == nil {
@@ -51,18 +51,12 @@ func Refresh(ctx context.Context, pool *pgxpool.Pool, client *esi.Client, warID 
             created_at, updated_at
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,now(),now())
         ON CONFLICT (war_id) DO UPDATE SET
-            declared = EXCLUDED.declared,
-            started = EXCLUDED.started,
             finished = EXCLUDED.finished,
             retracted = EXCLUDED.retracted,
             mutual = EXCLUDED.mutual,
             open_for_allies = EXCLUDED.open_for_allies,
-            aggressor_alliance_id = EXCLUDED.aggressor_alliance_id,
-            aggressor_corporation_id = EXCLUDED.aggressor_corporation_id,
             aggressor_isk_destroyed = EXCLUDED.aggressor_isk_destroyed,
             aggressor_ships_killed = EXCLUDED.aggressor_ships_killed,
-            defender_alliance_id = EXCLUDED.defender_alliance_id,
-            defender_corporation_id = EXCLUDED.defender_corporation_id,
             defender_isk_destroyed = EXCLUDED.defender_isk_destroyed,
             defender_ships_killed = EXCLUDED.defender_ships_killed,
             updated_at = now()`,

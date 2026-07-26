@@ -13,8 +13,9 @@ import (
 
 // StoreAllies records the third parties who joined a war.
 //
-// Insert-only: allies are appended to a war and never removed, so a conflict
-// means we already had this one.
+// Insert-only: allies are appended to a war and never removed. war_allies has
+// only a serial primary key, so ON CONFLICT cannot deduplicate the logical
+// (war, alliance, corporation) identity; guard it explicitly instead.
 func StoreAllies(ctx context.Context, pool *pgxpool.Pool, warID int32, w esi.War) (int64, error) {
 	if len(w.Allies) == 0 {
 		return 0, nil
@@ -27,8 +28,13 @@ func StoreAllies(ctx context.Context, pool *pgxpool.Pool, warID int32, w esi.War
 		}
 		tag, err := pool.Exec(ctx, `
             INSERT INTO war_allies (war_id, alliance_id, corporation_id)
-            VALUES ($1, $2, $3)
-            ON CONFLICT DO NOTHING`,
+            SELECT $1, $2, $3
+            WHERE NOT EXISTS (
+                SELECT 1 FROM war_allies
+                WHERE war_id = $1
+                  AND alliance_id IS NOT DISTINCT FROM $2::integer
+                  AND corporation_id IS NOT DISTINCT FROM $3::integer
+            )`,
 			warID, nullID(a.AllianceID), nullID(a.CorporationID))
 		if err != nil {
 			return written, fmt.Errorf("store ally for war %d: %w", warID, err)
@@ -38,7 +44,8 @@ func StoreAllies(ctx context.Context, pool *pgxpool.Pool, warID int32, w esi.War
 	return written, nil
 }
 
-// MissingKillmails walks a war's killmail list and returns the ones not stored.
+// MissingKillmails walks a war's killmail list and returns the ones that still
+// need war processing.
 //
 // ESI pages these, and a long war has thousands. The page loop stops on the
 // first empty page rather than trusting a total, because ESI does not report
@@ -53,7 +60,7 @@ func MissingKillmails(ctx context.Context, pool *pgxpool.Pool, client *esi.Clien
 		}
 		// A war with no killmail list at all answers 404 on the first page,
 		// which is not an error — plenty of declared wars see no fighting.
-		if res.Status == 404 || res.Status == 422 {
+		if res.Status == 400 || res.Status == 404 || res.Status == 422 {
 			return out, nil
 		}
 		if !res.OK() || res.Data == nil {
@@ -69,33 +76,48 @@ func MissingKillmails(ctx context.Context, pool *pgxpool.Pool, client *esi.Clien
 			ids = append(ids, r.KillmailID)
 		}
 
-		stored, err := storedIDs(ctx, pool, ids)
+		stored, err := storedWarStates(ctx, pool, ids)
 		if err != nil {
 			return out, err
 		}
 		for _, r := range refs {
-			if !stored[r.KillmailID] {
+			if needsWarReplay(warID, stored[r.KillmailID]) {
 				out = append(out, killmail.Ref{KillmailID: r.KillmailID, KillmailHash: r.KillmailHash})
 			}
 		}
 	}
 }
 
-func storedIDs(ctx context.Context, pool *pgxpool.Pool, ids []int64) (map[int64]bool, error) {
-	rows, err := pool.Query(ctx,
-		`SELECT killmail_id FROM killmails WHERE killmail_id = ANY($1::bigint[])`, ids)
+type storedWarState struct {
+	warID     int32
+	completed killmail.Effect
+}
+
+func needsWarReplay(warID int32, state storedWarState) bool {
+	return state.warID != warID ||
+		!killmail.IsComplete(state.completed, killmail.EffectWarInteractions)
+}
+
+func storedWarStates(ctx context.Context, pool *pgxpool.Pool, ids []int64) (map[int64]storedWarState, error) {
+	rows, err := pool.Query(ctx, `
+        SELECT k.killmail_id, coalesce(k.war_id, 0),
+               coalesce(p.effects_completed, 0)
+        FROM killmails k
+        LEFT JOIN killmail_processing p USING (killmail_id)
+        WHERE k.killmail_id = ANY($1::bigint[])`, ids)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	out := make(map[int64]bool, len(ids))
+	out := make(map[int64]storedWarState, len(ids))
 	for rows.Next() {
 		var id int64
-		if err := rows.Scan(&id); err != nil {
+		var state storedWarState
+		if err := rows.Scan(&id, &state.warID, &state.completed); err != nil {
 			return nil, err
 		}
-		out[id] = true
+		out[id] = state
 	}
 	return out, rows.Err()
 }

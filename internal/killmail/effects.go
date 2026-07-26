@@ -277,18 +277,23 @@ func Prepare(ctx context.Context, pool *pgxpool.Pool, killmailID int64, requeste
 					return out, err
 				}
 				out.Completed &^= EffectWarInteractions
-			} else {
-				// No ledger row at all means a killmail stored before the ledger
-				// existed. Everything but the war aggregation genuinely did run,
-				// so recording that is accurate rather than optimistic.
-				if _, err := tx.Exec(ctx, `
-                    INSERT INTO killmail_processing (killmail_id, effects_completed)
-                    VALUES ($1, $2)`, killmailID, int32(AllEffectsExceptWar)); err != nil {
-					return out, err
-				}
-				out.Tracked = true
-				out.Completed = AllEffectsExceptWar
 			}
+		}
+
+		// Archive importers deliberately do not create ledger rows. A war
+		// archive can nevertheless have assigned this exact war_id already, so
+		// the adoption cannot live only inside the "war was NULL" branch above.
+		// The war queue's replay predicate selected this row precisely because
+		// its interaction is missing; mark every unrelated historical effect
+		// complete and leave only that one pending.
+		if !out.Tracked {
+			if _, err := tx.Exec(ctx, `
+                INSERT INTO killmail_processing (killmail_id, effects_completed)
+                VALUES ($1, $2)`, killmailID, int32(AllEffectsExceptWar)); err != nil {
+				return out, err
+			}
+			out.Tracked = true
+			out.Completed = AllEffectsExceptWar
 		}
 	}
 
