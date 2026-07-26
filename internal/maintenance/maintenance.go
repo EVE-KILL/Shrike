@@ -147,6 +147,7 @@ func CompactPrices(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
 // last run of the day is the one worth keeping.
 func SnapshotEntities(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
 	var total int64
+	today := time.Now().UTC().Format("2006-01-02")
 
 	// The two statements are identical apart from the grouping column, so the
 	// shape is written once and the column substituted. The values are from
@@ -160,7 +161,7 @@ func SnapshotEntities(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
                 entity_type, entity_id, date, member_count, avg_sec_status,
                 pirate_members, carebear_members, neutral_members
             )
-            SELECT $1, c.%[1]s, current_date,
+            SELECT $1, c.%[1]s, $2::date,
                    count(*)::int,
                    avg(c.security_status)::real,
                    count(*) FILTER (WHERE c.security_status < -1.5)::int,
@@ -174,11 +175,53 @@ func SnapshotEntities(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
                 avg_sec_status = EXCLUDED.avg_sec_status,
                 pirate_members = EXCLUDED.pirate_members,
                 carebear_members = EXCLUDED.carebear_members,
-                neutral_members = EXCLUDED.neutral_members`, e.column), e.kind)
+                neutral_members = EXCLUDED.neutral_members`, e.column), e.kind, today)
 		if err != nil {
 			return total, fmt.Errorf("snapshot %ss: %w", e.kind, err)
 		}
 		total += tag.RowsAffected()
+
+		// Achievement totals are character-scoped, then rolled up through the
+		// character's current corporation/alliance. This is a second pass
+		// because entity_snapshots has to exist before it can be updated.
+		if _, err := pool.Exec(ctx, fmt.Sprintf(`
+            WITH character_points AS (
+                SELECT entity_id AS character_id, sum(points)::int AS total_points
+                FROM entity_achievements
+                GROUP BY entity_id
+                HAVING sum(points) > 0
+            ),
+            entity_totals AS (
+                SELECT c.%[1]s AS entity_id,
+                       sum(cp.total_points)::int AS total_points,
+                       avg(cp.total_points)::real AS avg_points
+                FROM character_points cp
+                JOIN characters c ON c.character_id = cp.character_id
+                WHERE c.%[1]s IS NOT NULL AND c.deleted IS NOT TRUE
+                GROUP BY c.%[1]s
+            ),
+            entity_top AS (
+                SELECT DISTINCT ON (c.%[1]s)
+                       c.%[1]s AS entity_id,
+                       cp.character_id AS top_id,
+                       cp.total_points AS top_points
+                FROM character_points cp
+                JOIN characters c ON c.character_id = cp.character_id
+                WHERE c.%[1]s IS NOT NULL AND c.deleted IS NOT TRUE
+                ORDER BY c.%[1]s, cp.total_points DESC, cp.character_id
+            )
+            UPDATE entity_snapshots snapshot SET
+                total_achievement_points = aggregate.total_points,
+                avg_achievement_points = aggregate.avg_points,
+                top_achiever_id = top.top_id,
+                top_achiever_points = top.top_points
+            FROM entity_totals aggregate
+            LEFT JOIN entity_top top ON top.entity_id = aggregate.entity_id
+            WHERE snapshot.entity_type = $1
+              AND snapshot.entity_id = aggregate.entity_id
+              AND snapshot.date = $2::date`, e.column), e.kind, today); err != nil {
+			return total, fmt.Errorf("snapshot %s achievements: %w", e.kind, err)
+		}
 	}
 	return total, nil
 }

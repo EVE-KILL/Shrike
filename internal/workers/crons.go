@@ -117,6 +117,21 @@ func (d *Deps) cronTQStatus(ctx context.Context) (string, error) {
 			if err := d.Redis.Set(ctx, tqPlayersKey, players, 0).Err(); err != nil {
 				return "", err
 			}
+			// The in-process ESI client uses the same pause key as the
+			// TypeScript gateway. Clearing it here lets direct requests resume
+			// immediately instead of waiting for an old TTL.
+			if err := d.Redis.Del(ctx, esiPausedKey).Err(); err != nil {
+				return "", err
+			}
+		} else {
+			if err := d.Redis.Del(ctx, tqPlayersKey).Err(); err != nil {
+				return "", err
+			}
+			// Refreshed on every offline tick. The TTL is a failsafe: if the
+			// status job dies, a stale pause cannot wedge ESI forever.
+			if err := d.Redis.Set(ctx, esiPausedKey, "tq_offline", tqPauseTTL).Err(); err != nil {
+				return "", err
+			}
 		}
 	}
 
@@ -135,6 +150,11 @@ func (d *Deps) cronTQStatus(ctx context.Context) (string, error) {
 }
 
 const tqPlayersKey = "esi:tq:players"
+
+const (
+	esiPausedKey = "esi:paused"
+	tqPauseTTL   = 2 * time.Minute
+)
 
 // cronSovereignty imports the latest sovereignty snapshot.
 func (d *Deps) cronSovereignty(ctx context.Context) (string, error) {
@@ -200,6 +220,7 @@ func (d *Deps) cronAnalyze(ctx context.Context) (string, error) {
 	tables := []string{
 		"killmails", "killmail_attackers", "killmail_items",
 		"characters", "corporations", "alliances",
+		"stats", "stats_breakdowns", "entity_achievements", "prices",
 	}
 
 	analysed := 0

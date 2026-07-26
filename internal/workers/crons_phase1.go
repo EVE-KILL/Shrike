@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/eve-kill/shrike/internal/entities"
-	"github.com/eve-kill/shrike/internal/esi"
 	"github.com/eve-kill/shrike/internal/fw"
 	"github.com/eve-kill/shrike/internal/killmail"
 	"github.com/eve-kill/shrike/internal/killtype"
@@ -135,6 +134,12 @@ func (d *Deps) cronEntityHistoryBackfill(ctx context.Context) (string, error) {
 	if _, err := queue.DispatchMany(ctx, d.Queue, args, queue.DormantBackfill); err != nil {
 		return "", err
 	}
+	if err := d.markHistoryBatchQueued(ctx, historyBatch{
+		table: "characters", idColumn: "character_id",
+		queuedColumn: "corporation_history_queued_at",
+	}, characters); err != nil {
+		return "", err
+	}
 
 	corporations, err := d.claimHistoryBatch(ctx, historyBatch{
 		table: "corporations", idColumn: "corporation_id",
@@ -156,6 +161,12 @@ func (d *Deps) cronEntityHistoryBackfill(ctx context.Context) (string, error) {
 	if _, err := queue.DispatchMany(ctx, d.Queue, args, queue.DormantBackfill); err != nil {
 		return "", err
 	}
+	if err := d.markHistoryBatchQueued(ctx, historyBatch{
+		table: "corporations", idColumn: "corporation_id",
+		queuedColumn: "alliance_history_queued_at",
+	}, corporations); err != nil {
+		return "", err
+	}
 
 	if len(characters) == 0 && len(corporations) == 0 {
 		return "nothing left to backfill", nil
@@ -175,11 +186,10 @@ type historyBatch struct {
 	playerOnly    bool
 }
 
-// claimHistoryBatch selects entities with no history and marks them queued.
+// claimHistoryBatch selects entities with no history.
 //
-// The queued marker is what stops the same twenty entities being re-dispatched
-// every minute while their fetches are still in flight; it expires after six
-// hours so a dispatch that was lost does not park an entity forever.
+// The marker is written only after the River dispatch succeeds. Marking first
+// would park a batch for six hours if insertion failed.
 func (d *Deps) claimHistoryBatch(ctx context.Context, b historyBatch) ([]int32, error) {
 	playerFilter := ""
 	if b.playerOnly {
@@ -217,16 +227,17 @@ func (d *Deps) claimHistoryBatch(ctx context.Context, b historyBatch) ([]int32, 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	if len(ids) == 0 {
-		return nil, nil
-	}
-
-	if _, err := d.Pool.Exec(ctx, fmt.Sprintf(
-		`UPDATE %s SET %s = now() WHERE %s = ANY($1::int[])`,
-		b.table, b.queuedColumn, b.idColumn), ids); err != nil {
-		return nil, err
-	}
 	return ids, nil
+}
+
+func (d *Deps) markHistoryBatchQueued(ctx context.Context, b historyBatch, ids []int32) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := d.Pool.Exec(ctx, fmt.Sprintf(
+		`UPDATE %s SET %s = now() WHERE %s = ANY($1::int[])`,
+		b.table, b.queuedColumn, b.idColumn), ids)
+	return err
 }
 
 // cronKillmailDelayed dispatches killmails whose delay has expired.
@@ -287,10 +298,6 @@ func (d *Deps) cronSystemActivity(ctx context.Context) (string, error) {
 }
 
 // cronFindNewCharacters probes ids above the highest one known.
-//
-// Character ids are allocated sequentially, so the few above our maximum are
-// the ones created since the last probe. Walking a short way past the end and
-// stopping after consecutive misses finds them without scanning anything.
 func (d *Deps) cronFindNewCharacters(ctx context.Context) (string, error) {
 	if d.Queue == nil {
 		return "", errNeedsQueue("find_new_characters")
@@ -299,49 +306,30 @@ func (d *Deps) cronFindNewCharacters(ctx context.Context) (string, error) {
 	const ahead = 10
 	const maxMisses = 2
 
-	var highest int32
-	if err := d.Pool.QueryRow(ctx,
-		`SELECT max(character_id) FROM characters`).Scan(&highest); err != nil {
+	highest, err := entities.HighestCharacterID(ctx, d.Pool)
+	if err != nil {
 		return "", err
 	}
 	if highest == 0 {
 		return "no characters stored yet", nil
 	}
 
-	var found []int32
-	misses := 0
-	for i := int32(1); i <= ahead && misses < maxMisses; i++ {
-		id := highest + i
-
-		res, err := esi.FetchCharacter(ctx, d.ESI, id)
-		if err != nil {
-			return "", err
-		}
-		if res.Status == 404 || res.Status == 400 {
-			misses++
-			continue
-		}
-		if !res.OK() {
-			// ESI being unwell is not evidence about the id; stop rather than
-			// counting it as a miss and giving up early.
-			break
-		}
-		misses = 0
-		found = append(found, id)
+	prober := &entities.Prober{
+		Pool: d.Pool,
+		ESI:  d.ESI,
+		OnCascade: func(cascadeCtx context.Context, cascade entities.Cascade) error {
+			_, err := d.dispatchCascade(cascadeCtx, cascade, queue.RecentBackfill)
+			return err
+		},
 	}
-
-	if len(found) == 0 {
-		return "", nil
-	}
-
-	args := make([]river.JobArgs, 0, len(found))
-	for _, id := range found {
-		args = append(args, queue.CharacterArgs{CharacterID: id})
-	}
-	if _, err := queue.DispatchMany(ctx, d.Queue, args, queue.RecentBackfill); err != nil {
+	result, err := prober.ScanTrailing(ctx, highest, ahead, maxMisses, false)
+	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%d new characters above %d", len(found), highest), nil
+	if result.Hits == 0 {
+		return "", nil
+	}
+	return fmt.Sprintf("%d new characters above %d", result.Hits, highest), nil
 }
 
 // --- Maintenance ---
