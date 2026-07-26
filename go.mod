@@ -5,6 +5,7 @@ go 1.26.5
 require (
 	charm.land/lipgloss/v2 v2.0.5
 	github.com/caddyserver/caddy/v2 v2.11.4
+	github.com/coder/websocket v1.8.15
 	github.com/danielgtaylor/huma/v2 v2.39.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
