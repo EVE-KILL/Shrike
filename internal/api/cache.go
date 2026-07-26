@@ -1,0 +1,378 @@
+package api
+
+import (
+	"bytes"
+	"context"
+	"hash/fnv"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+type publicCachePolicy struct {
+	TTL          time.Duration
+	CacheControl string
+}
+
+var (
+	numericPath = regexp.MustCompile(`/[0-9]+(?:/|$)`)
+	entityBase  = regexp.MustCompile(`^/(characters|corporations|alliances)(?:/|$)`)
+)
+
+func publicCache(
+	client *redis.Client,
+	schemas *publicSchemaResolver,
+	build string,
+	next http.Handler,
+) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		schemaPath, routeMatched := schemas.lookup(r.Method, r.URL.Path)
+		if !routeMatched {
+			next.ServeHTTP(w, r)
+			return
+		}
+		policy, ok := cachePolicy(r)
+		if !ok || r.Method != http.MethodGet {
+			if schemaPath == "" || r.URL.Path == "/feed/stream" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			writeUncachedResponse(w, r, next, schemaPath)
+			return
+		}
+		key := cacheKey(build, r)
+		if entry, ok := cacheLoad(r.Context(), client, key); ok {
+			writeCacheHit(w, r, entry, policy, schemaPath)
+			return
+		}
+
+		recorder := newCacheRecorder()
+		next.ServeHTTP(recorder, r)
+		cachedBody := recorder.body.Bytes()
+		copyResponseHeaders(w.Header(), recorder.header)
+		w.Header().Set("X-Cache", "MISS")
+		body := cachedBody
+		if recorder.status >= 200 && recorder.status < 300 {
+			body = addPublicSchema(r, w.Header(), body, schemaPath)
+		}
+		if recorder.status == http.StatusOK {
+			etag := responseETag(body)
+			w.Header().Set("ETag", etag)
+			if policy.CacheControl != "" {
+				w.Header().Set("Cache-Control", policy.CacheControl)
+			}
+			cacheStore(context.WithoutCancel(r.Context()), client, key, cachedResponse{
+				ContentType: recorder.header.Get("Content-Type"),
+				Body:        cachedBody,
+			}, policy.TTL)
+			if ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			}
+		}
+		w.WriteHeader(recorder.status)
+		_, _ = w.Write(body)
+	})
+}
+
+// cachedResponse is what gets stored: the bytes plus the content type that
+// described them.
+//
+// The content type has to be stored, not assumed. It used to be assumed —
+// the hit path set application/json unconditionally — and /killmails/{id}/eft
+// returns an EFT fitting block as text/plain, so the same bytes came back as
+// text while the entry was cold and as JSON once it was warm. The header
+// flipped on cache state alone, which is worse than either answer.
+type cachedResponse struct {
+	ContentType string
+	Body        []byte
+}
+
+// cacheKey namespaces entries to Shrike and to this build.
+//
+// The TypeScript API caches the same routes under `api:{path}{query}` on the
+// same Valkey. Sharing that keyspace meant whichever process answered first
+// populated the entry and the other served it verbatim — so during a
+// side-by-side cutover each implementation would hand back the other's bodies,
+// and any behavioural difference between them would surface at random. Worse
+// for us, it made the two look identical under test for exactly that reason.
+//
+// The build is in the key because a response shape is a property of the code
+// that produced it. A deploy that changes a payload must not inherit the old
+// one, and a rolling deploy must not have two versions fighting over one entry.
+func cacheKey(build string, r *http.Request) string {
+	if build == "" {
+		build = "dev"
+	}
+	key := "shrike:api:" + build + ":" + r.URL.Path
+	if r.URL.RawQuery != "" {
+		key += "?" + r.URL.RawQuery
+	}
+	return key
+}
+
+func cacheLoad(ctx context.Context, client *redis.Client, key string) (cachedResponse, bool) {
+	if client == nil {
+		return cachedResponse{}, false
+	}
+	values, err := client.HMGet(ctx, key, "content_type", "body").Result()
+	if err != nil || len(values) != 2 {
+		return cachedResponse{}, false
+	}
+	body, ok := values[1].(string)
+	if !ok {
+		return cachedResponse{}, false
+	}
+	contentType, _ := values[0].(string)
+	if contentType == "" {
+		contentType = "application/json"
+	}
+	return cachedResponse{ContentType: contentType, Body: []byte(body)}, true
+}
+
+// cacheStore writes the entry and its expiry together.
+//
+// A transaction, so an entry can never end up stored without its TTL — that
+// would be a body pinned in Valkey until eviction, serving a stale response for
+// as long as it survived.
+func cacheStore(
+	ctx context.Context,
+	client *redis.Client,
+	key string,
+	entry cachedResponse,
+	ttl time.Duration,
+) {
+	if client == nil {
+		return
+	}
+	contentType := entry.ContentType
+	if contentType == "" {
+		contentType = "application/json"
+	}
+	pipe := client.TxPipeline()
+	pipe.HSet(ctx, key, "content_type", contentType, "body", entry.Body)
+	pipe.Expire(ctx, key, ttl)
+	// Cache failures must never fail the request; the handler already produced
+	// a correct response and the only cost is recomputing it next time.
+	_, _ = pipe.Exec(ctx)
+}
+
+func writeUncachedResponse(
+	w http.ResponseWriter,
+	r *http.Request,
+	next http.Handler,
+	schemaPath string,
+) {
+	recorder := newCacheRecorder()
+	next.ServeHTTP(recorder, r)
+	copyResponseHeaders(w.Header(), recorder.header)
+	body := recorder.body.Bytes()
+	if recorder.status >= 200 && recorder.status < 300 {
+		body = addPublicSchema(r, w.Header(), body, schemaPath)
+	}
+	w.WriteHeader(recorder.status)
+	_, _ = w.Write(body)
+}
+
+func cachePolicy(r *http.Request) (publicCachePolicy, bool) {
+	path := r.URL.Path
+	switch path {
+	case "/characters/analyze", "/characters/stats", "/corporations/stats",
+		"/alliances/stats", "/coalitions/stats", "/killmails/search":
+		return publicCachePolicy{}, false
+	}
+	immutable := "public, max-age=3600, s-maxage=31536000"
+	sde := "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=86400"
+	switch {
+	case path == "/killmails/count":
+		return publicCachePolicy{TTL: 10 * time.Minute}, true
+	case strings.HasPrefix(path, "/killmails/") &&
+		(pathHasSuffix(path, "/esi", "/fitting", "/eft") ||
+			numericPath.MatchString(strings.TrimPrefix(path, "/killmails"))):
+		return publicCachePolicy{TTL: time.Hour, CacheControl: immutable}, true
+	case path == "/killmails":
+		return publicCachePolicy{TTL: 30 * time.Second}, true
+	case path == "/history/latest":
+		return publicCachePolicy{TTL: time.Minute}, true
+	case path == "/history":
+		return publicCachePolicy{TTL: 5 * time.Minute}, true
+	case strings.HasPrefix(path, "/history/"):
+		return publicCachePolicy{TTL: time.Hour}, true
+	case entityBase.MatchString(path):
+		switch {
+		case strings.HasSuffix(path, "/count"):
+			return publicCachePolicy{TTL: 10 * time.Minute}, true
+		case strings.HasSuffix(path, "/intel"):
+			return publicCachePolicy{TTL: time.Hour}, true
+		case strings.Contains(path, "/stats"):
+			return publicCachePolicy{TTL: 10 * time.Minute}, true
+		case pathHasSuffix(path, "/kills", "/losses"):
+			return publicCachePolicy{TTL: 30 * time.Second}, true
+		case pathHasSuffix(path, "/members", "/corporations"):
+			return publicCachePolicy{TTL: 5 * time.Minute}, true
+		default:
+			segments := strings.Count(strings.Trim(path, "/"), "/")
+			if segments == 0 {
+				return publicCachePolicy{TTL: 30 * time.Second}, true
+			}
+			if segments == 1 {
+				return publicCachePolicy{TTL: 5 * time.Minute}, true
+			}
+		}
+	case strings.HasPrefix(path, "/ships/"):
+		return publicCachePolicy{TTL: 10 * time.Minute}, true
+	case path == "/stats":
+		return publicCachePolicy{TTL: 5 * time.Minute}, true
+	case path == "/search":
+		return publicCachePolicy{TTL: time.Minute}, true
+	case strings.HasPrefix(path, "/battles"):
+		policy := publicCachePolicy{TTL: 5 * time.Minute}
+		if strings.Count(strings.Trim(path, "/"), "/") == 1 {
+			if _, err := strconv.ParseInt(
+				strings.TrimPrefix(path, "/battles/"), 10, 64,
+			); err == nil {
+				policy.CacheControl = immutable
+			}
+		}
+		return policy, true
+	case strings.HasPrefix(path, "/wars"):
+		return publicCachePolicy{TTL: 5 * time.Minute}, true
+	case strings.HasSuffix(path, "/kills") &&
+		(strings.HasPrefix(path, "/sde/systems/") ||
+			strings.HasPrefix(path, "/sde/regions/")):
+		return publicCachePolicy{TTL: 30 * time.Second}, true
+	case isSDEPath(path):
+		return publicCachePolicy{TTL: 24 * time.Hour, CacheControl: sde}, true
+	default:
+		return publicCachePolicy{}, false
+	}
+	return publicCachePolicy{}, false
+}
+
+func isSDEPath(path string) bool {
+	if !strings.HasPrefix(path, "/sde/") {
+		return false
+	}
+	path = strings.TrimPrefix(path, "/sde")
+	for _, prefix := range []string{
+		"/systems", "/regions", "/constellations", "/factions", "/races",
+		"/bloodlines", "/types", "/groups", "/categories", "/market-groups",
+		"/meta-groups", "/flags", "/celestials", "/npc-corporations",
+		"/stations", "/station-operations", "/structures", "/sovereignty",
+		"/prices", "/custom-prices",
+	} {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func pathHasSuffix(path string, suffixes ...string) bool {
+	for _, suffix := range suffixes {
+		if strings.HasSuffix(path, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func writeCacheHit(
+	w http.ResponseWriter,
+	r *http.Request,
+	entry cachedResponse,
+	policy publicCachePolicy,
+	schemaPath string,
+) {
+	w.Header().Set("Content-Type", entry.ContentType)
+	// addPublicSchema is a no-op for anything that is not JSON, so a text/plain
+	// body passes through untouched.
+	body := addPublicSchema(r, w.Header(), entry.Body, schemaPath)
+	etag := responseETag(body)
+	w.Header().Set("X-Cache", "HIT")
+	if ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
+		w.Header().Set("ETag", etag)
+		if policy.CacheControl != "" {
+			w.Header().Set("Cache-Control", policy.CacheControl)
+		}
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.Header().Set("ETag", etag)
+	if policy.CacheControl != "" {
+		w.Header().Set("Cache-Control", policy.CacheControl)
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
+}
+
+// responseETag derives a weak validator from the body.
+//
+// The algorithm is ours to choose. An ETag is opaque to clients — they store
+// whatever arrives and echo it back — so it only has to be stable for identical
+// bytes and different for different ones. This previously reimplemented Bun's
+// wyhash so validators would survive the cutover unchanged; that is ninety
+// lines of bit-twiddling to save every client exactly one full-body
+// revalidation, once, on the day we deploy.
+func responseETag(body []byte) string {
+	sum := fnv.New64a()
+	_, _ = sum.Write(body)
+	return `W/"` + strconv.FormatUint(sum.Sum64(), 36) + `"`
+}
+
+// ifNoneMatch implements weak comparison for the validators Shrike emits.
+// Browsers and shared caches may combine several validators into one header,
+// and `*` means any current representation.
+func ifNoneMatch(header, current string) bool {
+	if header == "" {
+		return false
+	}
+	current = strings.TrimPrefix(strings.TrimSpace(current), "W/")
+	for candidate := range strings.SplitSeq(header, ",") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "*" {
+			return true
+		}
+		candidate = strings.TrimPrefix(candidate, "W/")
+		if candidate == current {
+			return true
+		}
+	}
+	return false
+}
+
+type cacheRecorder struct {
+	header http.Header
+	body   bytes.Buffer
+	status int
+}
+
+func newCacheRecorder() *cacheRecorder {
+	return &cacheRecorder{header: http.Header{}, status: http.StatusOK}
+}
+
+func (r *cacheRecorder) Header() http.Header {
+	return r.header
+}
+
+func (r *cacheRecorder) WriteHeader(status int) {
+	if r.status == http.StatusOK {
+		r.status = status
+	}
+}
+
+func (r *cacheRecorder) Write(body []byte) (int, error) {
+	return r.body.Write(body)
+}
+
+func copyResponseHeaders(destination, source http.Header) {
+	for name, values := range source {
+		for _, value := range values {
+			destination.Add(name, value)
+		}
+	}
+}

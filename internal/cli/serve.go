@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/api"
+	"github.com/eve-kill/shrike/internal/db"
+	"github.com/eve-kill/shrike/internal/graph"
 	"github.com/eve-kill/shrike/internal/ingress"
 	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/ui"
@@ -61,26 +64,51 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			port = flagServePort
 		}
 
-		coordinationRedis := redisx.Coordination(cfg)
-		wsServer := shrikewebsocket.New(
-			coordinationRedis,
-			log.With().Str("subsystem", "websocket").Logger(),
-		)
-
-		opts := api.Options{Version: ui.Version, Commit: ui.Commit}
-		surfaces := map[string]http.Handler{
-			ingress.SurfacePrivate: api.Private(opts),
-			ingress.SurfacePublic:  api.Public(opts),
-			ingress.SurfaceWS:      wsServer,
-			ingress.SurfaceImages:  api.Images(opts),
-		}
-
-		manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
-
 		return RunService(cmd, "serve", func(ctx context.Context) error {
-			defer coordinationRedis.Close() //nolint:errcheck
+			pool, err := db.New(ctx, cfg)
+			if err != nil {
+				return fmt.Errorf("connect public API database: %w", err)
+			}
+			defer pool.Close()
+
+			var graphClient *graph.Client
+			graphCtx, cancelGraph := context.WithTimeout(ctx, 3*time.Second)
+			graphClient, graphErr := graph.Connect(graphCtx, cfg.MemgraphURL)
+			cancelGraph()
+			if graphErr != nil {
+				log.Warn().Err(graphErr).Msg(
+					"memgraph unavailable; character graph intelligence disabled",
+				)
+			} else {
+				defer func() { _ = graphClient.Close(context.Background()) }()
+			}
+
+			queueRedis := redisx.Coordination(cfg)
+			defer queueRedis.Close() //nolint:errcheck
+			cacheRedis := redisx.Cache(cfg)
+			defer cacheRedis.Close() //nolint:errcheck
+
+			wsServer := shrikewebsocket.New(
+				queueRedis,
+				log.With().Str("subsystem", "websocket").Logger(),
+			)
 			wsServer.Start(ctx)
 			defer wsServer.Close()
+
+			feed := api.NewFeedManager(pool, queueRedis)
+			feed.Start(ctx)
+
+			opts := api.Options{
+				Version: ui.Version, Commit: ui.Commit,
+				DB: pool, Graph: graphClient, Feed: feed, Cache: cacheRedis,
+			}
+			surfaces := map[string]http.Handler{
+				ingress.SurfacePrivate: api.Private(opts),
+				ingress.SurfacePublic:  api.Public(opts),
+				ingress.SurfaceWS:      wsServer,
+				ingress.SurfaceImages:  api.Images(opts),
+			}
+			manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 
 			if err := manager.Start(ctx, ingress.Config{
 				Address:     fmt.Sprintf(":%d", port),

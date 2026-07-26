@@ -29,16 +29,18 @@ type Config struct {
 	DatabaseURL string
 
 	// Queue Redis — REDIS_* is the canonical set (backend/src/database/redis.ts).
-	RedisHost     string
-	RedisPort     int
-	RedisPassword string
-	RedisDB       int
+	RedisHost      string
+	RedisPort      int
+	RedisPassword  string
+	RedisDB        int
+	ValkeyQueueURL string
 
 	// Cache Redis. Separate host/port with fallback to the queue instance,
 	// mirroring getCacheRedis(). Password and DB are deliberately shared:
 	// the TS implementation does not override them either.
 	RedisCacheHost string
 	RedisCachePort int
+	ValkeyCacheURL string
 
 	// Memgraph, over Bolt.
 	MemgraphURL string
@@ -153,11 +155,13 @@ func Load(explicitPath string) (*Config, error) {
 	c.RedisPort = getInt("RedisPort", "REDIS_PORT", 6379)
 	c.RedisPassword = get("RedisPassword", "REDIS_PASSWORD", "")
 	c.RedisDB = getInt("RedisDB", "REDIS_DB", 0)
+	c.ValkeyQueueURL = get("ValkeyQueueURL", "VALKEY_QUEUE", "")
 
 	// Fall back to the queue instance when the cache-specific vars are unset,
 	// exactly as getCacheRedis() does.
 	c.RedisCacheHost = get("RedisCacheHost", "REDIS_CACHE_HOST", c.RedisHost)
 	c.RedisCachePort = getInt("RedisCachePort", "REDIS_CACHE_PORT", c.RedisPort)
+	c.ValkeyCacheURL = get("ValkeyCacheURL", "VALKEY_CACHE", "")
 
 	c.MemgraphURL = get("MemgraphURL", "MEMGRAPH_URL", "bolt://memgraph:7687")
 

@@ -14,6 +14,11 @@ import (
 
 // Coordination opens the queue/coordination instance (REDIS_*).
 func Coordination(cfg *config.Config) *redis.Client {
+	if cfg.ValkeyQueueURL != "" {
+		if options, err := redis.ParseURL(cfg.ValkeyQueueURL); err == nil {
+			return redis.NewClient(options)
+		}
+	}
 	return redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisAddr(),
 		Password: cfg.RedisPassword,
@@ -28,6 +33,11 @@ func Coordination(cfg *config.Config) *redis.Client {
 // does not override them either, and diverging would silently point the two
 // clients at different databases.
 func Cache(cfg *config.Config) *redis.Client {
+	if cfg.ValkeyCacheURL != "" {
+		if options, err := redis.ParseURL(cfg.ValkeyCacheURL); err == nil {
+			return redis.NewClient(options)
+		}
+	}
 	return redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisCacheAddr(),
 		Password: cfg.RedisPassword,

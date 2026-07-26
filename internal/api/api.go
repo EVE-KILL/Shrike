@@ -20,10 +20,15 @@
 package api
 
 import (
+	"context"
+	_ "embed"
+	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
+	"github.com/redis/go-redis/v9"
 )
 
 // Options carries what the surfaces need from the process.
@@ -34,6 +39,14 @@ import (
 type Options struct {
 	Version string
 	Commit  string
+	DB      Database
+	Graph   GraphDatabase
+	Feed    *FeedManager
+	Cache   *redis.Client
+}
+
+type GraphDatabase interface {
+	Read(context.Context, string, map[string]any) ([]map[string]any, error)
 }
 
 // Private is the frontend's API.
@@ -78,12 +91,80 @@ func Public(opts Options) http.Handler {
 	mux := http.NewServeMux()
 
 	cfg := huma.DefaultConfig("EVE-KILL API", opts.Version)
-	cfg.Info.Description = "The public EVE-KILL API."
+	cfg.Info.Description = "Public read-only API powering eve-kill.com. " +
+		"All compatibility endpoints preserve the responses served by the " +
+		"legacy TypeScript API."
 
 	a := humago.New(mux, cfg)
-	registerHealth(a, opts)
+	registerPublicAPI(a, opts)
+	registerLegacyMethodGuards(mux)
+	mux.HandleFunc("/", legacyFallback)
 
-	return mux
+	schemas := newPublicSchemaResolver(a.OpenAPI())
+	return publicCORS(publicCache(opts.Cache, schemas, opts.Commit, mux))
+}
+
+func registerLegacyMethodGuards(mux *http.ServeMux) {
+	for path, message := range map[string]string{
+		"/characters/analyze": "Method not allowed",
+		"/characters/stats":   "POST only",
+		"/corporations/stats": "POST only",
+		"/alliances/stats":    "POST only",
+		"/coalitions/stats":   "POST only",
+		"/killmails/search":   "POST only",
+	} {
+		mux.HandleFunc(http.MethodGet+" "+path, func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			body, _ := json.Marshal(map[string]string{"error": message})
+			_, _ = w.Write(body)
+		})
+	}
+}
+
+//go:embed api_index.json
+var apiIndexJSON []byte
+
+func legacyFallback(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Path != "/" {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"Not found"}`))
+		return
+	}
+	var body map[string]any
+	if err := json.Unmarshal(apiIndexJSON, &body); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"Internal server error"}`))
+		return
+	}
+	protocol := firstForwarded(r.Header.Get("X-Forwarded-Proto"))
+	if protocol == "" {
+		if r.TLS != nil {
+			protocol = "https"
+		} else {
+			protocol = "http"
+		}
+	}
+	host := firstForwarded(r.Header.Get("X-Forwarded-Host"))
+	if host == "" {
+		host = strings.TrimSpace(r.Host)
+	}
+	body["baseUrl"] = protocol + "://" + host
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"Internal server error"}`))
+		return
+	}
+	_, _ = w.Write(encoded)
+}
+
+func firstForwarded(value string) string {
+	if before, _, found := strings.Cut(value, ","); found {
+		value = before
+	}
+	return strings.TrimSpace(value)
 }
 
 // WS is ws.eve-kill.com.
