@@ -108,7 +108,8 @@ func entityExports() []entityExport {
                     'character_id', c.character_id,
                     'name', c.name,
                     'description', c.description,
-                    'birthday', c.birthday,
+                    'birthday', CASE WHEN c.birthday IS NULL THEN NULL ELSE
+                        (c.birthday AT TIME ZONE 'UTC')::text || '+00' END,
                     'gender', c.gender,
                     'race_id', c.race_id,
                     'security_status', c.security_status,
@@ -117,14 +118,20 @@ func entityExports() []entityExport {
                     'alliance_id', c.alliance_id,
                     'faction_id', c.faction_id,
                     'deleted', c.deleted,
-                    'last_active', c.last_active,
-                    'createdAt', c.created_at,
-                    'updatedAt', c.updated_at,
+                    'last_active', CASE WHEN c.last_active IS NULL THEN NULL ELSE
+                        (c.last_active AT TIME ZONE 'UTC')::text || '+00' END,
+                    'createdAt', CASE WHEN c.created_at IS NULL THEN NULL ELSE
+                        (c.created_at AT TIME ZONE 'UTC')::text || '+00' END,
+                    'updatedAt', CASE WHEN c.updated_at IS NULL THEN NULL ELSE
+                        (c.updated_at AT TIME ZONE 'UTC')::text || '+00' END,
                     'history', coalesce((
                         SELECT jsonb_agg(jsonb_build_object(
                             'record_id', h.record_id,
                             'corporation_id', h.corporation_id,
-                            'start_date', h.start_date
+                            'start_date', to_char(
+                                h.start_date AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                            )
                         ) ORDER BY h.record_id)
                         FROM character_corporation_history h
                         WHERE h.character_id = c.character_id
@@ -144,7 +151,8 @@ func entityExports() []entityExport {
                     'name', c.name,
                     'ticker', c.ticker,
                     'description', c.description,
-                    'date_founded', c.date_founded,
+                    'date_founded', CASE WHEN c.date_founded IS NULL THEN NULL ELSE
+                        (c.date_founded AT TIME ZONE 'UTC')::text || '+00' END,
                     'alliance_id', c.alliance_id,
                     'faction_id', c.faction_id,
                     'ceo_id', c.ceo_id,
@@ -156,13 +164,18 @@ func entityExports() []entityExport {
                     'url', c.url,
                     'war_eligible', c.war_eligible,
                     'deleted', c.deleted,
-                    'createdAt', c.created_at,
-                    'updatedAt', c.updated_at,
+                    'createdAt', CASE WHEN c.created_at IS NULL THEN NULL ELSE
+                        (c.created_at AT TIME ZONE 'UTC')::text || '+00' END,
+                    'updatedAt', CASE WHEN c.updated_at IS NULL THEN NULL ELSE
+                        (c.updated_at AT TIME ZONE 'UTC')::text || '+00' END,
                     'history', coalesce((
                         SELECT jsonb_agg(jsonb_build_object(
                             'record_id', h.record_id,
                             'alliance_id', h.alliance_id,
-                            'start_date', h.start_date
+                            'start_date', to_char(
+                                h.start_date AT TIME ZONE 'UTC',
+                                'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                            )
                         ) ORDER BY h.record_id)
                         FROM corporation_alliance_history h
                         WHERE h.corporation_id = c.corporation_id
@@ -184,13 +197,16 @@ func entityExports() []entityExport {
                     'creator_id', a.creator_id,
                     'creator_corporation_id', a.creator_corporation_id,
                     'executor_corporation_id', a.executor_corporation_id,
-                    'date_founded', a.date_founded,
+                    'date_founded', CASE WHEN a.date_founded IS NULL THEN NULL ELSE
+                        (a.date_founded AT TIME ZONE 'UTC')::text || '+00' END,
                     'faction_id', a.faction_id,
                     'corporation_count', a.corporation_count,
                     'member_count', a.member_count,
                     'deleted', a.deleted,
-                    'createdAt', a.created_at,
-                    'updatedAt', a.updated_at
+                    'createdAt', CASE WHEN a.created_at IS NULL THEN NULL ELSE
+                        (a.created_at AT TIME ZONE 'UTC')::text || '+00' END,
+                    'updatedAt', CASE WHEN a.updated_at IS NULL THEN NULL ELSE
+                        (a.updated_at AT TIME ZONE 'UTC')::text || '+00' END
                 )
                 FROM alliances a
                 WHERE a.alliance_id > $1
