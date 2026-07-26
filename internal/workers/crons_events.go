@@ -15,7 +15,9 @@ import (
 // A Redis set rather than a database column, because it is transient
 // coordination rather than state worth keeping: if it is lost the next tick
 // re-emits every active announcement, which the frontend deduplicates by id.
-const announcementActiveSet = "announcements:emitted"
+const announcementActiveSet = "announcements:emitted:active"
+
+const relayTimeLayout = "2006-01-02T15:04:05.000Z"
 
 // cronAnnouncementSchedule emits events as announcements start and expire.
 //
@@ -39,27 +41,30 @@ func (d *Deps) cronAnnouncementSchedule(ctx context.Context) (string, error) {
 	}
 
 	type announcement struct {
-		ID        int64     `json:"id"`
-		Tier      int32     `json:"tier"`
-		Title     string    `json:"title"`
-		BodyMD    string    `json:"body_md"`
-		BodyHTML  string    `json:"body_html"`
-		Color     string    `json:"color"`
-		Icon      *string   `json:"icon"`
-		LinkURL   *string   `json:"link_url"`
-		LinkLabel *string   `json:"link_label"`
-		StartsAt  time.Time `json:"starts_at"`
-		ExpiresAt time.Time `json:"expires_at"`
+		ID        int64   `json:"id"`
+		Tier      int32   `json:"tier"`
+		Title     string  `json:"title"`
+		BodyMD    string  `json:"body_md"`
+		BodyHTML  string  `json:"body_html"`
+		Color     string  `json:"color"`
+		Icon      *string `json:"icon"`
+		LinkURL   *string `json:"link_url"`
+		LinkLabel *string `json:"link_label"`
+		StartsAt  string  `json:"starts_at"`
+		ExpiresAt string  `json:"expires_at"`
 	}
 
 	var active []announcement
 	for rows.Next() {
 		var a announcement
+		var startsAt, expiresAt time.Time
 		if err := rows.Scan(&a.ID, &a.Tier, &a.Title, &a.BodyMD, &a.BodyHTML,
-			&a.Color, &a.Icon, &a.LinkURL, &a.LinkLabel, &a.StartsAt, &a.ExpiresAt); err != nil {
+			&a.Color, &a.Icon, &a.LinkURL, &a.LinkLabel, &startsAt, &expiresAt); err != nil {
 			rows.Close()
 			return "", err
 		}
+		a.StartsAt = startsAt.UTC().Format(relayTimeLayout)
+		a.ExpiresAt = expiresAt.UTC().Format(relayTimeLayout)
 		active = append(active, a)
 	}
 	rows.Close()
