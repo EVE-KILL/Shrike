@@ -24,11 +24,10 @@ type healthOutput struct {
 
 // registerHealth mounts GET /health on a surface.
 //
-// Mounted on every Huma surface rather than one, because a probe that only
-// works through one hostname stops being a check of the process and becomes a
-// check of the routing table. Kubernetes reaches it by pod IP with no Host
-// header at all, which is why the ingress route for /health matches on path
-// alone and ahead of every host route.
+// Mounted on both Huma surfaces so each API documents and serves a response
+// whose generated schema link belongs to that surface. Ingress sends the
+// public hostname through the public surface, then uses the private surface as
+// a path-only fallback so Kubernetes can still probe by pod IP without DNS.
 func registerHealth(a huma.API, opts Options) {
 	huma.Register(a, huma.Operation{
 		OperationID: "health",

@@ -6,6 +6,9 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -60,11 +63,12 @@ func TestRouteOrder(t *testing.T) {
 	}
 
 	want := []RouteStatus{
+		{Match: "host api.example.com, api.localhost and path /health", Surface: SurfacePublic},
 		{Match: "path /health", Surface: SurfacePrivate},
 		{Match: "host api.example.com, api.localhost", Surface: SurfacePublic},
 		{Match: "host ws.example.com", Surface: SurfaceWS},
 		{Match: "host images.example.com", Surface: SurfaceImages},
-		{Match: "path /api/*, /auth/*", Surface: SurfacePrivate},
+		{Match: "path /api, /api/*, /auth, /auth/*", Surface: SurfacePrivate},
 		{Match: "(default)", Surface: "404 — no renderer configured"},
 	}
 	if len(routes) != len(want) {
@@ -77,29 +81,27 @@ func TestRouteOrder(t *testing.T) {
 	}
 }
 
-// The health route must precede every host route. Kubernetes probes by pod IP
-// with no Host header; a health check placed after the hostname matchers would
-// still work, but only because nothing matched — it would silently become a
-// check of the fallback rather than of the process.
-func TestHealthIsRoutedBeforeAnyHost(t *testing.T) {
+// Public health must reach the public Huma surface so its generated schema link
+// uses /schemas. The path-only fallback immediately after it keeps Kubernetes
+// probes independent of DNS and Host.
+func TestHealthRoutesPrecedeGeneralHostRoutes(t *testing.T) {
 	m := newTestManager(t, testConfig())
 
 	_, _, routes, err := m.buildConfig()
 	if err != nil {
 		t.Fatalf("buildConfig: %v", err)
 	}
-	for i, r := range routes {
-		if strings.HasPrefix(r.Match, "host ") && i < 1 {
-			t.Fatalf("a host route is evaluated before /health at position %d", i)
-		}
-		if r.Match == "path /health" {
-			if i != 0 {
-				t.Fatalf("/health is at position %d, want 0", i)
-			}
-			return
-		}
+	if len(routes) < 2 {
+		t.Fatalf("got %d routes, want at least two health routes", len(routes))
 	}
-	t.Fatal("no /health route was emitted")
+	if got := routes[0]; got.Surface != SurfacePublic ||
+		!strings.Contains(got.Match, "api.example.com") ||
+		!strings.Contains(got.Match, "path /health") {
+		t.Fatalf("first route = %+v, want public-host health", got)
+	}
+	if got, want := routes[1], (RouteStatus{Match: "path /health", Surface: SurfacePrivate}); got != want {
+		t.Fatalf("second route = %+v, want %+v", got, want)
+	}
 }
 
 // The private path prefix must come after the host routes, so that a request
@@ -160,7 +162,7 @@ func TestHostsAreLowercasedAndDeduplicated(t *testing.T) {
 		t.Fatalf("buildConfig: %v", err)
 	}
 	for _, r := range routes {
-		if r.Surface == SurfacePublic {
+		if r.Surface == SurfacePublic && !strings.Contains(r.Match, "path /health") {
 			if want := "host api.example.com, api.localhost"; r.Match != want {
 				t.Errorf("match = %q, want %q", r.Match, want)
 			}
@@ -296,6 +298,33 @@ func TestStartRejectsBadAddress(t *testing.T) {
 	}
 }
 
+// Start holds opMu while loading and checking the listener. Its error cleanup
+// must not call the public Close method, which acquires that same mutex.
+func TestCanceledStartReturnsAndReleasesRuntime(t *testing.T) {
+	port := freePort(t)
+	cfg := testConfig()
+	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	m := New(testSurfaces(), zerolog.Nop())
+	done := make(chan error, 1)
+	go func() { done <- m.Start(ctx, cfg) }()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("Start succeeded with an already-canceled context")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Start deadlocked while cleaning up a canceled readiness check")
+	}
+	if activeManager.Load() != nil {
+		t.Fatal("canceled Start left the Caddy runtime claimed")
+	}
+}
+
 // Live routing through Caddy. The JSON-shape tests above assert what we asked
 // for; this one asserts what Caddy actually does with it, which is the part
 // that would break silently on a Caddy upgrade.
@@ -320,12 +349,16 @@ func TestServesEachSurface(t *testing.T) {
 		code int
 	}{
 		{"health has no host requirement", "", "/health", SurfacePrivate, 200},
+		{"public health uses public surface", "api.example.com", "/health", SurfacePublic, 200},
+		{"stub hostname health uses fallback", "ws.example.com", "/health", SurfacePrivate, 200},
 		{"public hostname", "api.example.com", "/anything", SurfacePublic, 200},
 		{"public .localhost alias", "api.localhost", "/anything", SurfacePublic, 200},
 		{"alias is case-insensitive", "API.LOCALHOST", "/anything", SurfacePublic, 200},
 		{"websocket hostname", "ws.example.com", "/", SurfaceWS, 200},
 		{"images hostname", "images.example.com", "/x.png", SurfaceImages, 200},
+		{"frontend api root", "eve-kill.test", "/api", SurfacePrivate, 200},
 		{"frontend api prefix", "eve-kill.test", "/api/killlist", SurfacePrivate, 200},
+		{"frontend auth root", "eve-kill.test", "/auth", SurfacePrivate, 200},
 		{"frontend auth prefix", "eve-kill.test", "/auth/callback", SurfacePrivate, 200},
 		// The guarantee that ordering exists to provide.
 		{"public host wins over the api prefix", "api.example.com", "/api/x", SurfacePublic, 200},
@@ -355,6 +388,73 @@ func TestServesEachSurface(t *testing.T) {
 				t.Errorf("served by %q, want %q", body, tc.want)
 			}
 		})
+	}
+}
+
+func TestCatchAllProxiesToUnixSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix sockets are unavailable on Windows")
+	}
+
+	// Darwin's sockaddr_un path limit is short enough that t.TempDir's full
+	// nested path can exceed it. Keep the socket name directly under /tmp.
+	socket := filepath.Join(
+		"/tmp",
+		fmt.Sprintf("shrike-nuxt-%d-%d.sock", os.Getpid(), time.Now().UnixNano()),
+	)
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatalf("listen on Unix socket: %v", err)
+	}
+
+	backend := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Renderer-Host", r.Host)
+		_, _ = io.WriteString(w, "nuxt:"+r.URL.Path)
+	})}
+	backendDone := make(chan error, 1)
+	go func() { backendDone <- backend.Serve(listener) }()
+	t.Cleanup(func() {
+		_ = backend.Close()
+		if err := <-backendDone; err != nil && err != http.ErrServerClosed {
+			t.Errorf("renderer server: %v", err)
+		}
+	})
+
+	port := freePort(t)
+	cfg := testConfig()
+	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
+	cfg.NuxtSocket = socket
+
+	m := New(testSurfaces(), zerolog.Nop())
+	if err := m.Start(context.Background(), cfg); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(func() { _ = m.Close() })
+
+	req, err := http.NewRequest(
+		http.MethodGet,
+		fmt.Sprintf("http://127.0.0.1:%d/rendered", port),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = "tenant.example.com"
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("request through renderer fallback: %v", err)
+	}
+	defer res.Body.Close() //nolint:errcheck // response body of a test request
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %q)", res.StatusCode, body)
+	}
+	if got, want := string(body), "nuxt:/rendered"; got != want {
+		t.Errorf("body = %q, want %q", got, want)
+	}
+	if got, want := res.Header.Get("X-Renderer-Host"), "tenant.example.com"; got != want {
+		t.Errorf("renderer Host = %q, want %q", got, want)
 	}
 }
 

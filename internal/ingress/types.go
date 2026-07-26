@@ -1,11 +1,11 @@
 // Package ingress embeds Caddy as Shrike's HTTP front door.
 //
 // Caddy is a library here, not a sidecar. There is no Caddyfile: Manager
-// builds a JSON configuration and hands it to caddy.Load. That buys the things
-// a killboard actually needs at the edge — HTTP/2 and HTTP/3, ACME for tenant
-// custom domains, a hardened request parser — without a second process to
-// supervise, a second config file to keep in sync, or a loopback hop between
-// the two.
+// builds a JSON configuration and hands it to caddy.Load. Today the origin is
+// deliberately plain HTTP/1.1 behind Cloudflare, which owns public TLS,
+// HTTP/2 and HTTP/3. Embedding Caddy still gives Shrike its hardened HTTP
+// stack and a path to terminate TLS and ACME tenant domains later, without a
+// second process to supervise or a second config file to keep in sync.
 //
 // The part that makes it worth the dependency is that Shrike's own handlers
 // are Caddy modules rather than a proxy target. Caddy calls them directly, in

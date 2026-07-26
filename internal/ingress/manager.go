@@ -77,10 +77,15 @@ func (m *Manager) Start(ctx context.Context, cfg Config) error {
 			return fmt.Errorf("ingress data directory: %w", err)
 		}
 	}
-	if other := activeManager.Load(); other != nil && other != m {
+	// Claim the process-global runtime atomically. A Load followed by Store
+	// would let two concurrent Start calls both observe nil and both proceed to
+	// replace Caddy's global configuration.
+	if !activeManager.CompareAndSwap(nil, m) {
+		if activeManager.Load() == m {
+			return errors.New("ingress: manager is already running")
+		}
 		return errors.New("ingress: another embedded Caddy runtime is already active in this process")
 	}
-	activeManager.Store(m)
 
 	m.mu.Lock()
 	m.cfg = cfg
@@ -96,7 +101,12 @@ func (m *Manager) Start(ctx context.Context, cfg Config) error {
 		return err
 	}
 	if err := m.waitReady(ctx, cfg.Address); err != nil {
-		_ = m.Close()
+		// Start still holds opMu, so calling Close here would try to acquire the
+		// same non-reentrant mutex and deadlock. Stop through the locked helper
+		// instead, and preserve both errors if cleanup ever fails.
+		if stopErr := m.closeLocked(); stopErr != nil {
+			return errors.Join(err, stopErr)
+		}
 		return err
 	}
 	return nil
@@ -139,6 +149,11 @@ func (m *Manager) Close() error {
 	m.opMu.Lock()
 	defer m.opMu.Unlock()
 
+	return m.closeLocked()
+}
+
+// closeLocked stops Caddy and releases the runtime claim. Callers hold opMu.
+func (m *Manager) closeLocked() error {
 	if activeManager.Load() != m {
 		return nil
 	}
@@ -260,14 +275,16 @@ func (m *Manager) Status() Status {
 //
 // The route table is ordered, and the order carries the routing policy:
 //
-//  1. /health on any host. Kubernetes probes by pod IP with no Host header, so
-//     a health route behind a hostname match would be a check of DNS rather
-//     than of the process. First, and path-only, for that reason.
-//  2. The three dedicated hostnames, each to its own surface.
-//  3. /api and /auth, for the frontend. After the hostnames so that a request
+//  1. /health on the public API host goes through the public Huma surface. That
+//     keeps the response's generated schema link on the public /schemas path.
+//  2. /health on every other host goes through the private Huma surface.
+//     Kubernetes probes by pod IP with no useful Host header, so this route
+//     matches on path alone rather than relying on DNS.
+//  3. The three dedicated hostnames, each to its own surface.
+//  4. /api and /auth, for the frontend. After the hostnames so that a request
 //     to api.eve-kill.com/api/... resolves as the public surface rather than
 //     being captured by the private path prefix.
-//  4. Everything else to the Nuxt renderer. Unmatched is the frontend by
+//  5. Everything else to the Nuxt renderer. Unmatched is the frontend by
 //     definition, which is what lets tenant custom domains work without ever
 //     being enumerated here.
 //
@@ -298,6 +315,44 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil
 	}
 
+	// claimed guards against one hostname being listed under two surfaces.
+	// Caddy would not object — the matchers are separate, so the earlier route
+	// would simply win — and a silently shadowed surface is a much harder
+	// thing to notice than a refused startup.
+	claimed := map[string]string{}
+
+	hostRoutes := []struct {
+		hosts   []string
+		surface string
+	}{
+		{cfg.PublicHosts, SurfacePublic},
+		{cfg.WSHosts, SurfaceWS},
+		{cfg.ImagesHosts, SurfaceImages},
+	}
+	for i := range hostRoutes {
+		hosts, err := normalizeHosts(hostRoutes[i].hosts, hostRoutes[i].surface, claimed)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		hostRoutes[i].hosts = hosts
+	}
+
+	// Huma generates response schema links from the surface's SchemasPath.
+	// Public health must therefore reach the public surface; sending every
+	// /health request to private would emit /api/schemas links which the public
+	// hostname does not serve.
+	if publicHosts := hostRoutes[0].hosts; len(publicHosts) > 0 {
+		if err := surfaceRoute(
+			map[string]any{"host": publicHosts, "path": []string{"/health"}},
+			"host "+strings.Join(publicHosts, ", ")+" and path /health", SurfacePublic,
+		); err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	// The path-only fallback keeps liveness independent of DNS and Host. It
+	// also gives the WS and images hostnames the same process health endpoint
+	// while those surfaces remain non-Huma handlers.
 	if err := surfaceRoute(
 		map[string]any{"path": []string{"/health"}},
 		"path /health", SurfacePrivate,
@@ -305,24 +360,8 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil, nil, nil, err
 	}
 
-	// claimed guards against one hostname being listed under two surfaces.
-	// Caddy would not object — the matchers are separate, so the earlier route
-	// would simply win — and a silently shadowed surface is a much harder
-	// thing to notice than a refused startup.
-	claimed := map[string]string{}
-
-	for _, h := range []struct {
-		hosts   []string
-		surface string
-	}{
-		{cfg.PublicHosts, SurfacePublic},
-		{cfg.WSHosts, SurfaceWS},
-		{cfg.ImagesHosts, SurfaceImages},
-	} {
-		hosts, err := normalizeHosts(h.hosts, h.surface, claimed)
-		if err != nil {
-			return nil, nil, nil, err
-		}
+	for _, h := range hostRoutes {
+		hosts := h.hosts
 		if len(hosts) == 0 {
 			// No configured hostname means a deployment that does not serve
 			// that surface. Omitting the route is what keeps it from
@@ -338,8 +377,8 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	}
 
 	if err := surfaceRoute(
-		map[string]any{"path": []string{"/api/*", "/auth/*"}},
-		"path /api/*, /auth/*", SurfacePrivate,
+		map[string]any{"path": []string{"/api", "/api/*", "/auth", "/auth/*"}},
+		"path /api, /api/*, /auth, /auth/*", SurfacePrivate,
 	); err != nil {
 		return nil, nil, nil, err
 	}
