@@ -65,8 +65,17 @@ func (w *TokenRefreshWorker) Work(ctx context.Context, job *river.Job[queue.Toke
 		return sso.Disable(ctx, w.Deps.Pool, id, false)
 	}
 
-	if err := sso.StoreRefreshed(ctx, w.Deps.Pool, id, refreshed, usable); err != nil {
+	stored, err := sso.StoreRefreshed(
+		ctx, w.Deps.Pool, id, token.RefreshToken, refreshed, usable,
+	)
+	if err != nil {
 		return err
+	}
+	if !stored {
+		// A login or another refresh replaced this token while the EVE request
+		// was in flight. That writer owns both the new credentials and the jobs
+		// their scopes should dispatch.
+		return nil
 	}
 	if w.Deps.Queue == nil {
 		return nil

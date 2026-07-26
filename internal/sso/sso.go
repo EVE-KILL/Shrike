@@ -290,20 +290,36 @@ func LoadToken(ctx context.Context, pool *pgxpool.Pool, characterID int32) (*Tok
 	return &t, nil
 }
 
-// StoreRefreshed writes a successful refresh.
-func StoreRefreshed(ctx context.Context, pool *pgxpool.Pool, characterID int32, r *refreshResponse, usable []string) error {
-	_, err := pool.Exec(ctx, `
+// StoreRefreshed writes a successful refresh if the row still contains the
+// refresh token we exchanged.
+//
+// EVE rotates refresh tokens. A user can re-authorize while a refresh worker
+// is in flight; without the compare-and-swap predicate, the older worker can
+// overwrite the brand-new authorization with its stale token lineage. False
+// means another writer won and its newer credentials must be left untouched.
+func StoreRefreshed(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	characterID int32,
+	previousRefreshToken string,
+	r *refreshResponse,
+	usable []string,
+) (bool, error) {
+	tag, err := pool.Exec(ctx, `
         UPDATE user_esi_tokens SET
-            access_token = $2,
-            refresh_token = COALESCE(NULLIF($3, ''), refresh_token),
-            token_expiry = $4,
-            scopes = $5,
+            access_token = $3,
+            refresh_token = COALESCE(NULLIF($4, ''), refresh_token),
+            token_expiry = $5,
+            scopes = $6,
             last_fetched = now(),
             updated_at = now()
-        WHERE character_id = $1`,
-		characterID, r.AccessToken, r.RefreshToken,
+        WHERE character_id = $1 AND refresh_token = $2`,
+		characterID, previousRefreshToken, r.AccessToken, r.RefreshToken,
 		time.Now().UTC().Add(time.Duration(r.ExpiresIn)*time.Second), usable)
-	return err
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // Disable stops a token being refreshed again.
