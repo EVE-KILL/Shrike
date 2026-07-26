@@ -66,6 +66,22 @@ func (w *CorporationWorker) Work(ctx context.Context, job *river.Job[queue.Corpo
 	if err != nil {
 		return err
 	}
+
+	// Corporation history gets the same spread as character history in the TS
+	// worker. A fleet-sized entity cascade otherwise releases every history
+	// request at once after the single-threaded corporation queue catches up.
+	if len(res.Cascade.CorporationHistories) > 0 && w.Deps.Queue != nil {
+		delay := time.Duration(100+rand.IntN(1400)) * time.Millisecond //nolint:gosec // jitter
+		for _, id := range res.Cascade.CorporationHistories {
+			if _, err := queue.DispatchAt(ctx, w.Deps.Queue,
+				queue.CorporationHistoryArgs{CorporationID: id},
+				cascadeTier(job.Priority), delay); err != nil {
+				return err
+			}
+		}
+		res.Cascade.CorporationHistories = nil
+	}
+
 	_, err = w.Deps.dispatchCascade(ctx, res.Cascade, cascadeTier(job.Priority))
 	return err
 }

@@ -613,6 +613,81 @@ func TestCorporationHistoryKeepsAllianceGaps(t *testing.T) {
 	}
 }
 
+// A malformed ESI row must not be skipped while the parent is marked fully
+// synchronized. That would make the missing history permanent because the
+// sync marker suppresses every later fetch.
+func TestInvalidHistoryDateDoesNotAdvanceSyncMarker(t *testing.T) {
+	t.Run("character", func(t *testing.T) {
+		pool := testPool(t)
+		id := reserve(t, pool, 11)
+		ctx := context.Background()
+
+		if _, err := pool.Exec(ctx, `
+            INSERT INTO characters (
+                character_id, name, corporation_id, updated_at,
+                corporation_history_queued_at
+            ) VALUES ($1, 'Invalid History Pilot', 98000010, now(), now())`, id); err != nil {
+			t.Fatal(err)
+		}
+
+		client := fakeESIClient(t, map[string]func(http.ResponseWriter, *http.Request){
+			"/latest/characters/": jsonHandler(`[
+                {"record_id": 1, "corporation_id": 98000010, "start_date": "not-a-date"}
+            ]`),
+		})
+		r := &Refresher{Pool: pool, ESI: client}
+		if _, err := r.CharacterHistory(ctx, id, false); err == nil {
+			t.Fatal("invalid start_date was accepted")
+		}
+
+		var fetchedAt, queuedAt *time.Time
+		if err := pool.QueryRow(ctx, `
+            SELECT corporation_history_fetched_at, corporation_history_queued_at
+            FROM characters WHERE character_id = $1`, id).Scan(&fetchedAt, &queuedAt); err != nil {
+			t.Fatal(err)
+		}
+		if fetchedAt != nil || queuedAt == nil {
+			t.Errorf("fetched_at=%v queued_at=%v, want unsynced and still queued",
+				fetchedAt, queuedAt)
+		}
+	})
+
+	t.Run("corporation", func(t *testing.T) {
+		pool := testPool(t)
+		id := reserve(t, pool, 12)
+		ctx := context.Background()
+
+		if _, err := pool.Exec(ctx, `
+            INSERT INTO corporations (
+                corporation_id, name, ticker, alliance_id, updated_at,
+                alliance_history_queued_at
+            ) VALUES ($1, 'Invalid History Corp', 'BAD', 99000001, now(), now())`, id); err != nil {
+			t.Fatal(err)
+		}
+
+		client := fakeESIClient(t, map[string]func(http.ResponseWriter, *http.Request){
+			"/latest/corporations/": jsonHandler(`[
+                {"record_id": 1, "alliance_id": 99000001, "start_date": "not-a-date"}
+            ]`),
+		})
+		r := &Refresher{Pool: pool, ESI: client}
+		if _, err := r.CorporationHistory(ctx, id, false); err == nil {
+			t.Fatal("invalid start_date was accepted")
+		}
+
+		var fetchedAt, queuedAt *time.Time
+		if err := pool.QueryRow(ctx, `
+            SELECT alliance_history_fetched_at, alliance_history_queued_at
+            FROM corporations WHERE corporation_id = $1`, id).Scan(&fetchedAt, &queuedAt); err != nil {
+			t.Fatal(err)
+		}
+		if fetchedAt != nil || queuedAt == nil {
+			t.Errorf("fetched_at=%v queued_at=%v, want unsynced and still queued",
+				fetchedAt, queuedAt)
+		}
+	})
+}
+
 // --- Staleness ---
 
 func TestStaleDetection(t *testing.T) {

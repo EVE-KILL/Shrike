@@ -355,7 +355,11 @@ func (r *Refresher) CharacterHistory(ctx context.Context, id int32, force bool) 
 	var newest time.Time
 	for _, e := range entries {
 		t, ok := parseESITime(e.StartDate)
-		if ok && t.After(newest) {
+		if !ok {
+			return out, fmt.Errorf("character history %d has invalid start date %q",
+				id, e.StartDate)
+		}
+		if t.After(newest) {
 			newest = t
 			synced = e.CorporationID
 		}
@@ -368,10 +372,7 @@ func (r *Refresher) CharacterHistory(ctx context.Context, id int32, force bool) 
 	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
 
 	for _, e := range entries {
-		start, ok := parseESITime(e.StartDate)
-		if !ok {
-			continue
-		}
+		start, _ := parseESITime(e.StartDate) // validated above
 		if _, err := tx.Exec(ctx, `
             INSERT INTO character_corporation_history (character_id, record_id, corporation_id, start_date)
             VALUES ($1,$2,$3,$4)
@@ -445,7 +446,11 @@ func (r *Refresher) CorporationHistory(ctx context.Context, id int32, force bool
 	var newest time.Time
 	for _, e := range entries {
 		t, ok := parseESITime(e.StartDate)
-		if ok && t.After(newest) {
+		if !ok {
+			return out, fmt.Errorf("corporation history %d has invalid start date %q",
+				id, e.StartDate)
+		}
+		if t.After(newest) {
 			newest = t
 			synced = e.AllianceID
 		}
@@ -458,10 +463,7 @@ func (r *Refresher) CorporationHistory(ctx context.Context, id int32, force bool
 	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
 
 	for _, e := range entries {
-		start, ok := parseESITime(e.StartDate)
-		if !ok {
-			continue
-		}
+		start, _ := parseESITime(e.StartDate) // validated above
 		// alliance_id stays nullable here: the stretches a corporation spent
 		// in no alliance are real history, not missing data.
 		if _, err := tx.Exec(ctx, `
