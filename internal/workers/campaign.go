@@ -9,6 +9,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/campaign"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/riverqueue/river"
 )
@@ -21,6 +22,19 @@ type CampaignProcessingWorker struct {
 
 func (w *CampaignProcessingWorker) Work(ctx context.Context, job *river.Job[queue.CampaignProcessingArgs]) error {
 	id := job.Args.CampaignID
+	var paused bool
+	err := w.Deps.Pool.QueryRow(ctx, `
+        SELECT coalesce(processing_paused, false)
+        FROM campaigns WHERE campaign_id = $1`, id).Scan(&paused)
+	if errors.Is(err, pgx.ErrNoRows) || paused {
+		// A stale queued job must not alter the processing diagnostics of a
+		// deleted or deliberately paused campaign.
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
 	started := time.Now().UTC()
 	if _, err := w.Deps.Pool.Exec(ctx, `
         UPDATE campaigns

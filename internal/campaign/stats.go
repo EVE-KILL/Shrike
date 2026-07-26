@@ -75,16 +75,16 @@ type campaignTopSystem struct {
 }
 
 type campaignMostValuable struct {
-	KillmailID            int64     `json:"killmailId"`
-	Value                 float64   `json:"value"`
-	ShipTypeID            *int32    `json:"shipTypeId"`
-	ShipName              *string   `json:"shipName"`
-	VictimCharacterID     *int32    `json:"victimCharacterId"`
-	VictimCharacterName   *string   `json:"victimCharacterName"`
-	VictimCorporationID   *int32    `json:"victimCorporationId"`
-	VictimCorporationName *string   `json:"victimCorporationName"`
-	VictimSide            *int16    `json:"victimSide"`
-	KillmailTime          time.Time `json:"killmailTime"`
+	KillmailID            int64   `json:"killmailId"`
+	Value                 float64 `json:"value"`
+	ShipTypeID            *int32  `json:"shipTypeId"`
+	ShipName              *string `json:"shipName"`
+	VictimCharacterID     *int32  `json:"victimCharacterId"`
+	VictimCharacterName   *string `json:"victimCharacterName"`
+	VictimCorporationID   *int32  `json:"victimCorporationId"`
+	VictimCorporationName *string `json:"victimCorporationName"`
+	VictimSide            *int16  `json:"victimSide"`
+	KillmailTime          string  `json:"killmailTime"`
 }
 
 type campaignIntelPilot struct {
@@ -670,6 +670,7 @@ func loadMostValuable(ctx context.Context, tx pgx.Tx, campaignID string, blob *c
 		var item campaignMostValuable
 		var shipID, characterID, corporationID, side sql.NullInt64
 		var shipName, characterName, corporationName sql.NullString
+		var killmailTime time.Time
 		if err := rows.Scan(
 			&item.KillmailID,
 			&item.Value,
@@ -680,7 +681,7 @@ func loadMostValuable(ctx context.Context, tx pgx.Tx, campaignID string, blob *c
 			&corporationID,
 			&corporationName,
 			&side,
-			&item.KillmailTime,
+			&killmailTime,
 		); err != nil {
 			return err
 		}
@@ -691,6 +692,7 @@ func loadMostValuable(ctx context.Context, tx pgx.Tx, campaignID string, blob *c
 		item.VictimCorporationID = nullInt32(corporationID)
 		item.VictimCorporationName = nullString(corporationName)
 		item.VictimSide = nullInt16(side)
+		item.KillmailTime = killmailTime.UTC().Format("2006-01-02T15:04:05.000Z")
 		blob.MostValuable = append(blob.MostValuable, item)
 	}
 	return rows.Err()

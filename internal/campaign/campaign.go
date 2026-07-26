@@ -51,6 +51,10 @@ const (
 	// matching kill. Area campaigns are exempt — a quiet region is still a
 	// region, and its campaign is a standing watch rather than a dead one.
 	InactivityArchiveDays = 30
+
+	maxLocationSystems        = 10
+	maxLocationConstellations = 5
+	maxLocationRegions        = 5
 )
 
 // IDBoundSlack widens the killmail-id range derived from a time bound.
@@ -157,6 +161,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, id string) (*Campaign, []Enti
 		// the whole compute — the campaign is still valid, just unfiltered.
 		_ = json.Unmarshal(rawLocation, &c.Location)
 	}
+	c.Location = normalizeLocation(c.Location)
 
 	rows, err := pool.Query(ctx, `
         SELECT id, side_index, entity_type, entity_id
@@ -176,6 +181,33 @@ func Load(ctx context.Context, pool *pgxpool.Pool, id string) (*Campaign, []Enti
 		entities = append(entities, e)
 	}
 	return &c, entities, rows.Err()
+}
+
+// normalizeLocation mirrors the creator-side campaign validation. Stored
+// campaigns normally already satisfy these rules, but legacy/admin-written
+// rows still need to produce the same bounded query as the TypeScript engine.
+func normalizeLocation(location Location) Location {
+	clean := func(values []int32, limit int) []int32 {
+		out := make([]int32, 0, min(len(values), limit))
+		seen := make(map[int32]bool, len(values))
+		for _, value := range values {
+			if value <= 0 || seen[value] {
+				continue
+			}
+			seen[value] = true
+			out = append(out, value)
+			if len(out) == limit {
+				break
+			}
+		}
+		return out
+	}
+
+	return Location{
+		SystemIDs:        clean(location.SystemIDs, maxLocationSystems),
+		ConstellationIDs: clean(location.ConstellationIDs, maxLocationConstellations),
+		RegionIDs:        clean(location.RegionIDs, maxLocationRegions),
+	}
 }
 
 // HasNewKills reports whether anything matching the campaign has happened since
