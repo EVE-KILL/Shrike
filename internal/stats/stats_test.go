@@ -464,6 +464,31 @@ func TestWriteBreakdowns(t *testing.T) {
 	}
 }
 
+func TestRollupKeepsLatestKillmailIDPairedWithTimestamp(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+
+	var id int64
+	var at time.Time
+	err := pool.QueryRow(ctx, `
+		SELECT `+latestKillmailIDRollupSQL+`, max(last_killmail_time)
+		FROM (VALUES
+			(200::int, '2026-01-01T00:00:00Z'::timestamptz),
+			(100::int, '2026-02-01T00:00:00Z'::timestamptz)
+		) rows(last_killmail_id, last_killmail_time)`).
+		Scan(&id, &at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id != 100 {
+		t.Errorf("rolled-up id = %d, want 100 from the newer timestamp", id)
+	}
+	want := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
+	if !at.Equal(want) {
+		t.Errorf("rolled-up timestamp = %v, want %v", at, want)
+	}
+}
+
 // --- Derived metrics ---
 
 func TestDerivedMetrics(t *testing.T) {

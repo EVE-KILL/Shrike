@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -120,15 +121,24 @@ func catchupDay(
 		}
 	}
 
-	deleted, err := deleteDaily(ctx, pool, day, wantStats, wantBreakdowns)
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return 0, out, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	deleted, err := deleteDaily(ctx, tx, day, wantStats, wantBreakdowns)
 	if err != nil {
 		return 0, out, err
 	}
 
-	written, err := WritePeriod(
-		ctx, pool, acc, day, PeriodDaily, wantStats, wantBreakdowns,
+	written, err := WritePeriodTx(
+		ctx, tx, acc, day, PeriodDaily, wantStats, wantBreakdowns,
 	)
 	if err != nil {
+		return deleted, out, err
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return deleted, out, err
 	}
 	out.WriteResult = written
@@ -142,7 +152,7 @@ func catchupDay(
 // and rebuilding them here would duplicate what the pipeline already does.
 func deleteDaily(
 	ctx context.Context,
-	pool *pgxpool.Pool,
+	tx pgx.Tx,
 	day time.Time,
 	wantStats, wantBreakdowns bool,
 ) (int64, error) {
@@ -156,7 +166,7 @@ func deleteDaily(
 	}
 	for _, table := range tables {
 		// The table name is from this fixed list, never from input.
-		tag, err := pool.Exec(ctx, fmt.Sprintf(
+		tag, err := tx.Exec(ctx, fmt.Sprintf(
 			`DELETE FROM %s WHERE period_type = $1 AND period_start = $2::date`, table),
 			PeriodDaily, day.Format("2006-01-02"))
 		if err != nil {

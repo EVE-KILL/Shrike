@@ -45,6 +45,15 @@ const (
 	LeaderboardTopN = 100
 )
 
+// latestKillmailIDRollupSQL keeps the id paired with the newest timestamp.
+// Taking MAX(id) and MAX(time) independently can combine two different
+// killmails when old history arrives after newer data.
+const latestKillmailIDRollupSQL = `(array_agg(
+	last_killmail_id
+	ORDER BY last_killmail_time DESC NULLS LAST,
+	         last_killmail_id DESC NULLS LAST
+))[1]`
+
 // PipelineResult reports what the nightly run did.
 type PipelineResult struct {
 	PurgedDaily       int64 `json:"purged_daily"`
@@ -147,7 +156,7 @@ func rollup(ctx context.Context, pool *pgxpool.Pool, target, source PeriodType, 
                    dim_category, dim_id,
                    sum(kills) AS kills, sum(losses) AS losses,
                    sum(isk_destroyed) AS isk_destroyed, sum(isk_lost) AS isk_lost,
-                   max(last_killmail_id) AS last_killmail_id,
+                   `+latestKillmailIDRollupSQL+` AS last_killmail_id,
                    max(last_killmail_time) AS last_killmail_time
             FROM stats_breakdowns
             WHERE period_type = $2 AND period_start >= $3::date

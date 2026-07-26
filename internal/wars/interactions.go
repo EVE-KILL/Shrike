@@ -263,7 +263,14 @@ func AggregateKillmail(ctx context.Context, tx pgx.Tx, killmailID int64) (bool, 
             ON CONFLICT (war_id, side, category, target_type, target_id) DO UPDATE SET
                 count = war_interactions.count + 1,
                 isk_value = war_interactions.isk_value + $6,
-                last_killmail_id = GREATEST(war_interactions.last_killmail_id, $7),
+                last_killmail_id = CASE
+                    WHEN war_interactions.last_killmail_time IS NULL
+                         OR $8 > war_interactions.last_killmail_time THEN $7
+                    WHEN $8 = war_interactions.last_killmail_time
+                         AND (war_interactions.last_killmail_id IS NULL
+                              OR $7 > war_interactions.last_killmail_id) THEN $7
+                    ELSE war_interactions.last_killmail_id
+                END,
                 last_killmail_time = GREATEST(war_interactions.last_killmail_time, $8)`,
 			*warID, c.Side, c.Category, c.TargetType, c.TargetID,
 			isk, killmailID, killmailTime); err != nil {

@@ -354,7 +354,7 @@ func rebuildAllBreakdowns(
 			       dim_category, dim_id,
 			       sum(kills) AS kills, sum(losses) AS losses,
 			       sum(isk_destroyed) AS isk_destroyed, sum(isk_lost) AS isk_lost,
-			       max(last_killmail_id) AS last_killmail_id,
+			       `+latestKillmailIDRollupSQL+` AS last_killmail_id,
 			       max(last_killmail_time) AS last_killmail_time
 			FROM stats_breakdowns
 			WHERE period_type = $2

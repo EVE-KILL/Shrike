@@ -263,7 +263,11 @@ func killedSQL(scope string) string {
         )
         SELECT k.war_id, s.side, 0::smallint, target.target_type, target.target_id,
                count(*)::integer, sum(coalesce(k.total_value, 0)),
-               max(k.killmail_id), max(k.killmail_time)
+               (array_agg(
+                   k.killmail_id
+                   ORDER BY k.killmail_time DESC, k.killmail_id DESC
+               ))[1],
+               max(k.killmail_time)
         FROM scoped_kills k
         JOIN sides s USING (killmail_id)
         CROSS JOIN LATERAL (VALUES
@@ -306,7 +310,11 @@ func killedBySQL(scope string) string {
         )
         SELECT k.war_id, s.side, 1::smallint, target.target_type, target.target_id,
                count(*)::integer, sum(coalesce(k.total_value, 0)),
-               max(k.killmail_id), max(k.killmail_time)
+               (array_agg(
+                   k.killmail_id
+                   ORDER BY k.killmail_time DESC, k.killmail_id DESC
+               ))[1],
+               max(k.killmail_time)
         FROM scoped_kills k
         JOIN final_blows fb USING (killmail_id)
         JOIN victim_sides s USING (killmail_id)
