@@ -31,29 +31,38 @@ func (d *Deps) cronWars(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	// New and active wars are worth a full refresh including their killmails.
-	var live []river.JobArgs
-	for _, id := range found.New {
-		live = append(live, queue.WarArgs{WarID: id})
-	}
-	for _, id := range found.Active {
-		live = append(live, queue.WarArgs{WarID: id})
-	}
+	live, repair := warDiscoveryJobs(found)
 	if _, err := queue.DispatchMany(ctx, d.Queue, live, queue.Live); err != nil {
 		return "", err
 	}
 
-	// Repairs are metadata-only: their killmails are already stored.
-	var repair []river.JobArgs
-	for _, id := range found.Missing {
-		repair = append(repair, queue.WarArgs{WarID: id, MetadataOnly: true})
-	}
 	if _, err := queue.DispatchMany(ctx, d.Queue, repair, queue.DormantBackfill); err != nil {
 		return "", err
 	}
 
 	return fmt.Sprintf("%d new, %d active, %d missing metadata repaired",
 		len(found.New), len(found.Active), len(found.Missing)), nil
+}
+
+func warDiscoveryJobs(found wars.Discover) (live, repair []river.JobArgs) {
+	// New and active wars need their killmail lists walked.
+	for _, id := range found.New {
+		live = append(live, queue.WarArgs{WarID: id})
+	}
+	for _, id := range found.Active {
+		live = append(live, queue.WarArgs{WarID: id})
+	}
+
+	// A stored killmail referencing a missing war proves only that we have one
+	// of the war's kills, not all of them. The TypeScript hourly repair walks
+	// ESI's authoritative list after restoring the metadata, and the Go repair
+	// must do the same or a partially imported historical war can stay partial
+	// forever. The explicit bulk backfill command remains metadata-only because
+	// that operator-selected path intentionally trades completeness for cost.
+	for _, id := range found.Missing {
+		repair = append(repair, queue.WarArgs{WarID: id})
+	}
+	return live, repair
 }
 
 // cronCorporationUpdate queues corporations that have gone stale.
