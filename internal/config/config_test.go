@@ -207,7 +207,7 @@ func clearEnv(t *testing.T) {
 		"DATABASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_DB",
 		"REDIS_CACHE_HOST", "REDIS_CACHE_PORT", "MEMGRAPH_URL", "PORT",
 		"NODE_ENV", "GIT_SHA", "LOG_LEVEL", "LOG_FORMAT",
-		"PUBLIC_API_HOST", "WS_HOST", "IMAGES_HOST", "NUXT_SOCKET", "DATA_DIR",
+		"PUBLIC_API_HOST", "IMAGES_HOST", "NUXT_SOCKET", "DATA_DIR",
 	} {
 		t.Setenv(k, "")
 		os.Unsetenv(k)
@@ -234,7 +234,7 @@ func writeDotenv(t *testing.T, content string) string {
 func TestEmptyListVariableMeansNoEntries(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("PUBLIC_API_HOST", "")
-	t.Setenv("WS_HOST", "ws.example.com, ,ws.localhost")
+	t.Setenv("IMAGES_HOST", "images.example.com, ,images.localhost")
 
 	c, err := Load("")
 	if err != nil {
@@ -243,11 +243,7 @@ func TestEmptyListVariableMeansNoEntries(t *testing.T) {
 	if len(c.PublicAPIHosts) != 0 {
 		t.Errorf("PublicAPIHosts = %q, want none", c.PublicAPIHosts)
 	}
-	if got, want := c.WSHosts, []string{"ws.example.com", "ws.localhost"}; !slices.Equal(got, want) {
-		t.Errorf("WSHosts = %q, want %q", got, want)
-	}
-	// Unset entirely still takes the production default.
-	if got, want := c.ImagesHosts, []string{"images.eve-kill.com"}; !slices.Equal(got, want) {
+	if got, want := c.ImagesHosts, []string{"images.example.com", "images.localhost"}; !slices.Equal(got, want) {
 		t.Errorf("ImagesHosts = %q, want %q", got, want)
 	}
 }
@@ -261,7 +257,7 @@ func TestDefaultHostsAreProductionOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	for _, hosts := range [][]string{c.PublicAPIHosts, c.WSHosts, c.ImagesHosts} {
+	for _, hosts := range [][]string{c.PublicAPIHosts, c.ImagesHosts} {
 		for _, h := range hosts {
 			if strings.HasSuffix(h, ".localhost") {
 				t.Errorf("default hosts include the development alias %q", h)

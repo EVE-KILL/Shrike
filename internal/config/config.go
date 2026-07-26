@@ -57,13 +57,11 @@ type Config struct {
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
 
-	// Hostnames the embedded ingress routes to dedicated surfaces, as
-	// comma-separated lists so a surface can answer to both its production
-	// name and a development alias. Empty means the deployment does not serve
-	// that surface, and the route is omitted rather than claiming a hostname
-	// nobody configured.
+	// Hostnames the embedded ingress routes to dedicated public API and image
+	// surfaces, as comma-separated lists so each can answer to both production
+	// and development aliases. WebSockets instead live at /ws on every
+	// frontend origin.
 	PublicAPIHosts []string
-	WSHosts        []string
 	ImagesHosts    []string
 
 	// NuxtSocket is where the Nitro renderer listens. Every request matching no
@@ -173,7 +171,6 @@ func Load(explicitPath string) (*Config, error) {
 	// .env — a default that shipped them would have production claiming names
 	// it has no business answering to, however unreachable they are.
 	c.PublicAPIHosts = getList("PublicAPIHosts", "PUBLIC_API_HOST", "api.eve-kill.com")
-	c.WSHosts = getList("WSHosts", "WS_HOST", "ws.eve-kill.com")
 	c.ImagesHosts = getList("ImagesHosts", "IMAGES_HOST", "images.eve-kill.com")
 
 	// Defaulted empty: until the renderer is actually wired up, proxying to a
