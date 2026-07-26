@@ -70,10 +70,10 @@ func TestParseBulkPriceIDs(t *testing.T) {
 
 func TestBulkPriceCacheKeyNormalizesOrderAndDuplicates(t *testing.T) {
 	req := &legacyRequest{
-		Huma:  fakeHumaContext{url: mustURL(t, "/api/prices/bulk?types=3,1,3")},
+		Huma:  fakeHumaContext{url: mustURL(t, "/prices/bulk?types=3,1,3")},
 		Query: url.Values{"types": {"3,1,3"}},
 	}
-	if got, want := bulkPriceCacheKey(req), "/api/prices/bulk?types=1,3"; got != want {
+	if got, want := bulkPriceCacheKey(req), "/prices/bulk?types=1,3"; got != want {
 		t.Fatalf("cache key = %q, want %q", got, want)
 	}
 }

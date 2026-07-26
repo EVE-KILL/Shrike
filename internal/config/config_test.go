@@ -207,6 +207,8 @@ func clearEnv(t *testing.T) {
 		"DATABASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_DB",
 		"REDIS_CACHE_HOST", "REDIS_CACHE_PORT", "VALKEY_QUEUE", "VALKEY_CACHE",
 		"MEMGRAPH_URL", "PORT",
+		"EVE_CLIENT_ID", "EVE_CLIENT_SECRET", "EVE_CALLBACK_URL", "ESI_USER_AGENT",
+		"B2_ENDPOINT", "B2_MEDIA_BUCKET", "B2_KEY_ID", "B2_APP_KEY",
 		"NODE_ENV", "GIT_SHA", "LOG_LEVEL", "LOG_FORMAT",
 		"PUBLIC_API_HOST", "IMAGES_HOST", "NUXT_SOCKET", "DATA_DIR",
 	} {
@@ -216,6 +218,40 @@ func clearEnv(t *testing.T) {
 	// Load walks upward from cwd looking for .env; run from a scratch directory
 	// so the repository's own files are never picked up.
 	t.Chdir(t.TempDir())
+}
+
+func TestB2ConfigurationRequiresTheExistingFourVariableContract(t *testing.T) {
+	clearEnv(t)
+	c, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.B2Configured() || c.B2PartiallyConfigured() {
+		t.Fatalf("empty B2 config = complete %t, partial %t",
+			c.B2Configured(), c.B2PartiallyConfigured())
+	}
+
+	t.Setenv("B2_ENDPOINT", "https://s3.example.test")
+	c, err = Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.B2Configured() || !c.B2PartiallyConfigured() {
+		t.Fatalf("partial B2 config = complete %t, partial %t",
+			c.B2Configured(), c.B2PartiallyConfigured())
+	}
+
+	t.Setenv("B2_MEDIA_BUCKET", "evekill-media")
+	t.Setenv("B2_KEY_ID", "key-id")
+	t.Setenv("B2_APP_KEY", "application-key")
+	c, err = Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.B2Configured() || c.B2PartiallyConfigured() {
+		t.Fatalf("complete B2 config = complete %t, partial %t",
+			c.B2Configured(), c.B2PartiallyConfigured())
+	}
 }
 
 func writeDotenv(t *testing.T, content string) string {

@@ -19,7 +19,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// Database is the read-only subset of pgxpool.Pool used by the public API.
+// Database is the read-only subset of pgxpool.Pool used by API handlers.
 // Keeping it as an interface makes the HTTP contract testable without a live
 // Postgres server; *pgxpool.Pool satisfies it directly in production.
 type Database interface {
@@ -69,6 +69,12 @@ func registerLegacy(a huma.API, op huma.Operation, handler legacyHandler) {
 	if op.DefaultStatus == 0 {
 		op.DefaultStatus = http.StatusOK
 	}
+	if op.Extensions == nil {
+		op.Extensions = make(map[string]any)
+	}
+	if _, exists := op.Extensions["x-audience"]; !exists {
+		op.Extensions["x-audience"] = operationAudience(op)
+	}
 	op.SkipValidateParams = true
 	op.SkipValidateBody = true
 	if op.Responses == nil {
@@ -90,6 +96,49 @@ func registerLegacy(a huma.API, op huma.Operation, handler legacyHandler) {
 		}
 		writeLegacyPayload(hctx, payload)
 	})
+}
+
+func operationAudience(op huma.Operation) string {
+	for _, tag := range op.Tags {
+		switch strings.ToLower(tag) {
+		case "admin", "administration":
+			return "admin"
+		case "auth", "account":
+			return "account"
+		}
+	}
+	for _, requirement := range op.Security {
+		if len(requirement) == 0 {
+			// An empty alternative means authentication is optional. Keep the
+			// operation in the public catalogue unless its domain tags above
+			// explicitly identify it as an account operation.
+			return "public"
+		}
+	}
+	if len(op.Security) > 0 {
+		return "account"
+	}
+	return "public"
+}
+
+func legacyRequestHost(req *legacyRequest) string {
+	if req != nil && req.Huma != nil {
+		// Host is a dedicated net/http request field rather than an ordinary
+		// header. Huma exposes it directly; Header("Host") silently returns
+		// empty with the Chi adapter. Prefer the authoritative request host so
+		// a client-supplied forwarding header cannot redefine tenant scope.
+		if host := req.Huma.Host(); host != "" {
+			return host
+		}
+		// Retain a compatibility fallback for unusual embeddings that do not
+		// populate Host.
+		host := firstForwarded(req.Huma.Header("X-Forwarded-Host"))
+		if host == "" {
+			host = req.Huma.Header("Host")
+		}
+		return host
+	}
+	return ""
 }
 
 func legacyResponses(status int) map[string]*huma.Response {
@@ -149,7 +198,7 @@ func writeLegacyError(ctx huma.Context, err error) {
 		status = apiErr.Status
 		message = apiErr.Message
 	} else {
-		log.Error().Err(err).Msg("public API request failed")
+		log.Error().Err(err).Msg("API request failed")
 	}
 	body, marshalErr := json.Marshal(map[string]string{"error": message})
 	if marshalErr != nil {
@@ -161,14 +210,17 @@ func writeLegacyError(ctx huma.Context, err error) {
 	_, _ = ctx.BodyWriter().Write(body)
 }
 
-// publicCORS applies one transport policy to every public API response,
+// crossOriginAPI applies the API-host transport policy to every response,
 // independent of whether it came from a handler, Redis, or a conditional
 // request. Payload compatibility does not require preserving the legacy
 // server's cache-dependent CORS quirks.
-func publicCORS(next http.Handler) http.Handler {
+func crossOriginAPI(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set(
+			"Access-Control-Allow-Methods",
+			"GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
+		)
 		w.Header().Set(
 			"Access-Control-Allow-Headers",
 			"Content-Type, If-None-Match, Last-Event-ID",
@@ -189,7 +241,7 @@ func jsonPayload(body any) legacyPayload {
 
 func parseID(raw string) (int64, error) {
 	// JavaScript's Number(), used by the old parseId(), accepts surrounding
-	// whitespace but rejects NaN and zero. Public IDs are integral Postgres
+	// whitespace but rejects NaN and zero. API IDs are integral Postgres
 	// values, so reject fractions before they become a database type error.
 	raw = strings.TrimSpace(raw)
 	number, err := strconv.ParseFloat(raw, 64)
@@ -251,7 +303,7 @@ func positiveInt4(raw string) *int64 {
 
 func queryMaps(ctx context.Context, db Database, query string, args ...any) ([]map[string]any, error) {
 	if db == nil {
-		return nil, fmt.Errorf("public API database is not configured")
+		return nil, fmt.Errorf("API database is not configured")
 	}
 	rows, err := db.Query(ctx, query, args...)
 	if err != nil {

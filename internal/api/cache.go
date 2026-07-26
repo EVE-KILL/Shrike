@@ -13,7 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type publicCachePolicy struct {
+type responseCachePolicy struct {
 	TTL          time.Duration
 	CacheControl string
 }
@@ -23,9 +23,9 @@ var (
 	entityBase  = regexp.MustCompile(`^/(characters|corporations|alliances)(?:/|$)`)
 )
 
-func publicCache(
+func responseCache(
 	client *redis.Client,
-	schemas *publicSchemaResolver,
+	schemas *responseSchemaResolver,
 	build string,
 	next http.Handler,
 ) http.Handler {
@@ -57,7 +57,7 @@ func publicCache(
 		w.Header().Set("X-Cache", "MISS")
 		body := cachedBody
 		if recorder.status >= 200 && recorder.status < 300 {
-			body = addPublicSchema(r, w.Header(), body, schemaPath)
+			body = addResponseSchema(r, w.Header(), body, schemaPath)
 		}
 		if recorder.status == http.StatusOK {
 			etag := responseETag(body)
@@ -172,65 +172,65 @@ func writeUncachedResponse(
 	copyResponseHeaders(w.Header(), recorder.header)
 	body := recorder.body.Bytes()
 	if recorder.status >= 200 && recorder.status < 300 {
-		body = addPublicSchema(r, w.Header(), body, schemaPath)
+		body = addResponseSchema(r, w.Header(), body, schemaPath)
 	}
 	w.WriteHeader(recorder.status)
 	_, _ = w.Write(body)
 }
 
-func cachePolicy(r *http.Request) (publicCachePolicy, bool) {
+func cachePolicy(r *http.Request) (responseCachePolicy, bool) {
 	path := r.URL.Path
 	switch path {
 	case "/characters/analyze", "/characters/stats", "/corporations/stats",
 		"/alliances/stats", "/coalitions/stats", "/killmails/search":
-		return publicCachePolicy{}, false
+		return responseCachePolicy{}, false
 	}
 	immutable := "public, max-age=3600, s-maxage=31536000"
 	sde := "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=86400"
 	switch {
 	case path == "/killmails/count":
-		return publicCachePolicy{TTL: 10 * time.Minute}, true
+		return responseCachePolicy{TTL: 10 * time.Minute}, true
 	case strings.HasPrefix(path, "/killmails/") &&
 		(pathHasSuffix(path, "/esi", "/fitting", "/eft") ||
 			numericPath.MatchString(strings.TrimPrefix(path, "/killmails"))):
-		return publicCachePolicy{TTL: time.Hour, CacheControl: immutable}, true
+		return responseCachePolicy{TTL: time.Hour, CacheControl: immutable}, true
 	case path == "/killmails":
-		return publicCachePolicy{TTL: 30 * time.Second}, true
+		return responseCachePolicy{TTL: 30 * time.Second}, true
 	case path == "/history/latest":
-		return publicCachePolicy{TTL: time.Minute}, true
+		return responseCachePolicy{TTL: time.Minute}, true
 	case path == "/history":
-		return publicCachePolicy{TTL: 5 * time.Minute}, true
+		return responseCachePolicy{TTL: 5 * time.Minute}, true
 	case strings.HasPrefix(path, "/history/"):
-		return publicCachePolicy{TTL: time.Hour}, true
+		return responseCachePolicy{TTL: time.Hour}, true
 	case entityBase.MatchString(path):
 		switch {
 		case strings.HasSuffix(path, "/count"):
-			return publicCachePolicy{TTL: 10 * time.Minute}, true
+			return responseCachePolicy{TTL: 10 * time.Minute}, true
 		case strings.HasSuffix(path, "/intel"):
-			return publicCachePolicy{TTL: time.Hour}, true
+			return responseCachePolicy{TTL: time.Hour}, true
 		case strings.Contains(path, "/stats"):
-			return publicCachePolicy{TTL: 10 * time.Minute}, true
+			return responseCachePolicy{TTL: 10 * time.Minute}, true
 		case pathHasSuffix(path, "/kills", "/losses"):
-			return publicCachePolicy{TTL: 30 * time.Second}, true
+			return responseCachePolicy{TTL: 30 * time.Second}, true
 		case pathHasSuffix(path, "/members", "/corporations"):
-			return publicCachePolicy{TTL: 5 * time.Minute}, true
+			return responseCachePolicy{TTL: 5 * time.Minute}, true
 		default:
 			segments := strings.Count(strings.Trim(path, "/"), "/")
 			if segments == 0 {
-				return publicCachePolicy{TTL: 30 * time.Second}, true
+				return responseCachePolicy{TTL: 30 * time.Second}, true
 			}
 			if segments == 1 {
-				return publicCachePolicy{TTL: 5 * time.Minute}, true
+				return responseCachePolicy{TTL: 5 * time.Minute}, true
 			}
 		}
 	case strings.HasPrefix(path, "/ships/"):
-		return publicCachePolicy{TTL: 10 * time.Minute}, true
+		return responseCachePolicy{TTL: 10 * time.Minute}, true
 	case path == "/stats":
-		return publicCachePolicy{TTL: 5 * time.Minute}, true
+		return responseCachePolicy{TTL: 5 * time.Minute}, true
 	case path == "/search":
-		return publicCachePolicy{TTL: time.Minute}, true
+		return responseCachePolicy{TTL: time.Minute}, true
 	case strings.HasPrefix(path, "/battles"):
-		policy := publicCachePolicy{TTL: 5 * time.Minute}
+		policy := responseCachePolicy{TTL: 5 * time.Minute}
 		if strings.Count(strings.Trim(path, "/"), "/") == 1 {
 			if _, err := strconv.ParseInt(
 				strings.TrimPrefix(path, "/battles/"), 10, 64,
@@ -240,17 +240,17 @@ func cachePolicy(r *http.Request) (publicCachePolicy, bool) {
 		}
 		return policy, true
 	case strings.HasPrefix(path, "/wars"):
-		return publicCachePolicy{TTL: 5 * time.Minute}, true
+		return responseCachePolicy{TTL: 5 * time.Minute}, true
 	case strings.HasSuffix(path, "/kills") &&
 		(strings.HasPrefix(path, "/sde/systems/") ||
 			strings.HasPrefix(path, "/sde/regions/")):
-		return publicCachePolicy{TTL: 30 * time.Second}, true
+		return responseCachePolicy{TTL: 30 * time.Second}, true
 	case isSDEPath(path):
-		return publicCachePolicy{TTL: 24 * time.Hour, CacheControl: sde}, true
+		return responseCachePolicy{TTL: 24 * time.Hour, CacheControl: sde}, true
 	default:
-		return publicCachePolicy{}, false
+		return responseCachePolicy{}, false
 	}
-	return publicCachePolicy{}, false
+	return responseCachePolicy{}, false
 }
 
 func isSDEPath(path string) bool {
@@ -285,13 +285,13 @@ func writeCacheHit(
 	w http.ResponseWriter,
 	r *http.Request,
 	entry cachedResponse,
-	policy publicCachePolicy,
+	policy responseCachePolicy,
 	schemaPath string,
 ) {
 	w.Header().Set("Content-Type", entry.ContentType)
-	// addPublicSchema is a no-op for anything that is not JSON, so a text/plain
+	// addResponseSchema is a no-op for anything that is not JSON, so a text/plain
 	// body passes through untouched.
-	body := addPublicSchema(r, w.Header(), entry.Body, schemaPath)
+	body := addResponseSchema(r, w.Header(), entry.Body, schemaPath)
 	etag := responseETag(body)
 	w.Header().Set("X-Cache", "HIT")
 	if ifNoneMatch(r.Header.Get("If-None-Match"), etag) {

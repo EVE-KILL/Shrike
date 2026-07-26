@@ -275,15 +275,15 @@ func (m *Manager) Status() Status {
 //
 // The route table is ordered, and the order carries the routing policy:
 //
-//  1. /health on the public API host goes through the public Huma surface. That
-//     keeps the response's generated schema link on the public /schemas path.
-//  2. /health on every other host goes through the private Huma surface.
+//  1. /health on the dedicated API host goes through the API-host adapter.
+//     That keeps the response's generated schema link on the root /schemas path.
+//  2. /health on every other host goes through the same-origin API adapter.
 //     Kubernetes probes by pod IP with no useful Host header, so this route
 //     matches on path alone rather than relying on DNS.
 //  3. The two dedicated hostnames, each to its own surface.
 //  4. /ws, /api and /auth on the frontend origin. After the hostnames so that a request
-//     to api.eve-kill.com/api/... resolves as the public surface rather than
-//     being captured by the private path prefix.
+//     to api.eve-kill.com/api/... resolves as the API-host adapter rather than
+//     being captured by the same-origin path prefix.
 //  5. Everything else to the Nuxt renderer. Unmatched is the frontend by
 //     definition, which is what lets tenant custom domains work without ever
 //     being enumerated here.
@@ -325,7 +325,7 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		hosts   []string
 		surface string
 	}{
-		{cfg.PublicHosts, SurfacePublic},
+		{cfg.APIHosts, SurfaceAPIHost},
 		{cfg.ImagesHosts, SurfaceImages},
 	}
 	for i := range hostRoutes {
@@ -337,13 +337,13 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	}
 
 	// Huma generates response schema links from the surface's SchemasPath.
-	// Public health must therefore reach the public surface; sending every
-	// /health request to private would emit /api/schemas links which the public
-	// hostname does not serve.
+	// API-host health must therefore reach the API-host adapter; sending every
+	// /health request to the same-origin adapter would emit /api/schemas links,
+	// which the dedicated hostname does not serve.
 	if publicHosts := hostRoutes[0].hosts; len(publicHosts) > 0 {
 		if err := surfaceRoute(
 			map[string]any{"host": publicHosts, "path": []string{"/health"}},
-			"host "+strings.Join(publicHosts, ", ")+" and path /health", SurfacePublic,
+			"host "+strings.Join(publicHosts, ", ")+" and path /health", SurfaceAPIHost,
 		); err != nil {
 			return nil, nil, nil, err
 		}
@@ -354,7 +354,7 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	// while those surfaces remain non-Huma handlers.
 	if err := surfaceRoute(
 		map[string]any{"path": []string{"/health"}},
-		"path /health", SurfacePrivate,
+		"path /health", SurfaceSameOrigin,
 	); err != nil {
 		return nil, nil, nil, err
 	}
@@ -387,7 +387,7 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 
 	if err := surfaceRoute(
 		map[string]any{"path": []string{"/api", "/api/*", "/auth", "/auth/*"}},
-		"path /api, /api/*, /auth, /auth/*", SurfacePrivate,
+		"path /api, /api/*, /auth, /auth/*", SurfaceSameOrigin,
 	); err != nil {
 		return nil, nil, nil, err
 	}

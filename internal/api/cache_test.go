@@ -41,7 +41,7 @@ func TestCacheHitPreservesANonJSONContentType(t *testing.T) {
 	response := httptest.NewRecorder()
 	writeCacheHit(response,
 		httptest.NewRequest(http.MethodGet, "http://api.example/killmails/1/eft", nil),
-		entry, publicCachePolicy{TTL: time.Hour}, "/schemas/killmail-eft-response.json")
+		entry, responseCachePolicy{TTL: time.Hour}, "/schemas/killmail-eft-response.json")
 
 	if got := response.Header().Get("Content-Type"); got != entry.ContentType {
 		t.Errorf("Content-Type = %q, want %q", got, entry.ContentType)
@@ -77,7 +77,7 @@ func TestCacheKeyIsQueryAndBuildScoped(t *testing.T) {
 }
 
 func TestCacheHitAndMissHaveIdenticalResponseMetadata(t *testing.T) {
-	schemas := &publicSchemaResolver{routes: []publicSchemaRoute{{
+	schemas := &responseSchemaResolver{routes: []responseSchemaRoute{{
 		method: http.MethodGet, path: "/search",
 		schemaPath: "/schemas/search-response.json",
 	}}}
@@ -88,15 +88,15 @@ func TestCacheHitAndMissHaveIdenticalResponseMetadata(t *testing.T) {
 	})
 
 	miss := httptest.NewRecorder()
-	publicCORS(publicCache(nil, schemas, "test", next)).ServeHTTP(
+	crossOriginAPI(responseCache(nil, schemas, "test", next)).ServeHTTP(
 		miss, httptest.NewRequest(http.MethodGet, "http://api.example/search", nil),
 	)
 
 	hit := httptest.NewRecorder()
-	publicCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	crossOriginAPI(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeCacheHit(w, r, cachedResponse{
 			ContentType: "application/json", Body: body,
-		}, publicCachePolicy{TTL: time.Minute}, "/schemas/search-response.json")
+		}, responseCachePolicy{TTL: time.Minute}, "/schemas/search-response.json")
 	})).ServeHTTP(
 		hit, httptest.NewRequest(http.MethodGet, "http://api.example/search", nil),
 	)
@@ -115,7 +115,7 @@ func TestCacheHitAndMissHaveIdenticalResponseMetadata(t *testing.T) {
 		}
 	}
 	if got := hit.Header().Get("Access-Control-Allow-Methods"); got !=
-		"GET, POST, OPTIONS" {
+		"GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS" {
 		t.Errorf("Access-Control-Allow-Methods = %q", got)
 	}
 	if got := hit.Header().Get("Access-Control-Allow-Headers"); got !=
@@ -138,16 +138,16 @@ func TestCacheHitAndMissHaveIdenticalResponseMetadata(t *testing.T) {
 func TestCacheNotModifiedKeepsCORSAndSchemaLink(t *testing.T) {
 	body := []byte(`{"data":[]}`)
 	request := httptest.NewRequest(http.MethodGet, "https://api.example/sde/regions", nil)
-	decorated := addPublicSchema(
+	decorated := addResponseSchema(
 		request, http.Header{"Content-Type": []string{"application/json"}},
 		body, "/schemas/sde-regions-response.json",
 	)
 	request.Header.Set("If-None-Match", responseETag(decorated))
 	response := httptest.NewRecorder()
-	publicCORS(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	crossOriginAPI(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeCacheHit(w, r, cachedResponse{
 			ContentType: "application/json", Body: body,
-		}, publicCachePolicy{
+		}, responseCachePolicy{
 			TTL: time.Hour, CacheControl: "public, max-age=60",
 		}, "/schemas/sde-regions-response.json")
 	})).ServeHTTP(response, request)
@@ -157,7 +157,7 @@ func TestCacheNotModifiedKeepsCORSAndSchemaLink(t *testing.T) {
 	}
 	for name, want := range map[string]string{
 		"Access-Control-Allow-Origin":   "*",
-		"Access-Control-Allow-Methods":  "GET, POST, OPTIONS",
+		"Access-Control-Allow-Methods":  "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
 		"Access-Control-Allow-Headers":  "Content-Type, If-None-Match, Last-Event-ID",
 		"Access-Control-Expose-Headers": "ETag, Link, X-Cache",
 		"Cache-Control":                 "public, max-age=60",
@@ -171,20 +171,20 @@ func TestCacheNotModifiedKeepsCORSAndSchemaLink(t *testing.T) {
 }
 
 func TestCacheMissHonorsIfNoneMatch(t *testing.T) {
-	schemas := &publicSchemaResolver{routes: []publicSchemaRoute{{
+	schemas := &responseSchemaResolver{routes: []responseSchemaRoute{{
 		method: http.MethodGet, path: "/search",
 		schemaPath: "/schemas/search-response.json",
 	}}}
 	baseBody := []byte(`{"hits":[]}`)
 	request := httptest.NewRequest(http.MethodGet, "http://api.example/search", nil)
-	decorated := addPublicSchema(
+	decorated := addResponseSchema(
 		request, http.Header{"Content-Type": []string{"application/json"}},
 		baseBody, "/schemas/search-response.json",
 	)
 	request.Header.Set("If-None-Match", `"other", `+responseETag(decorated))
 
 	response := httptest.NewRecorder()
-	publicCORS(publicCache(nil, schemas, "test", http.HandlerFunc(
+	crossOriginAPI(responseCache(nil, schemas, "test", http.HandlerFunc(
 		func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write(baseBody)
@@ -199,6 +199,37 @@ func TestCacheMissHonorsIfNoneMatch(t *testing.T) {
 	}
 	if response.Header().Get("X-Cache") != "MISS" {
 		t.Errorf("X-Cache = %q, want MISS", response.Header().Get("X-Cache"))
+	}
+}
+
+func TestResponseCacheBypassesAccountAndAdminRoutes(t *testing.T) {
+	schemas := &responseSchemaResolver{routes: []responseSchemaRoute{{
+		method: http.MethodGet, path: "/search",
+		schemaPath: "/schemas/search-response.json",
+	}}}
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "private, no-store")
+		_, _ = w.Write([]byte(`{"user":{"character_id":42}}`))
+	})
+
+	for _, path := range []string{"/me", "/admin/users"} {
+		response := httptest.NewRecorder()
+		responseCache(nil, schemas, "test", next).ServeHTTP(
+			response,
+			httptest.NewRequest(http.MethodGet, "https://eve-kill.com"+path, nil),
+		)
+		if got := response.Header().Get("Cache-Control"); got != "private, no-store" {
+			t.Errorf("%s Cache-Control = %q", path, got)
+		}
+		for _, header := range []string{"ETag", "X-Cache", "Link"} {
+			if got := response.Header().Get(header); got != "" {
+				t.Errorf("%s unexpectedly received %s %q", path, header, got)
+			}
+		}
+		if strings.Contains(response.Body.String(), `"$schema"`) {
+			t.Errorf("%s account body was rewritten: %s", path, response.Body)
+		}
 	}
 }
 

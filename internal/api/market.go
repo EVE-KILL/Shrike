@@ -24,28 +24,28 @@ type marketTreeNode struct {
 	Children []*marketTreeNode `json:"children"`
 }
 
-func registerPrivateMarketRoutes(a huma.API, opts Options) {
-	longCache := privateJSONCache(
+func registerMarketRoutes(a huma.API, opts Options) {
+	longCache := routeJSONCache(
 		opts,
 		6*time.Hour,
 		"public, max-age=3600, s-maxage=21600, stale-while-revalidate=3600",
 		marketTreeHandler(opts),
 	)
 	registerLegacy(a, huma.Operation{
-		OperationID: "frontend-market-tree",
+		OperationID: "market-tree",
 		Method:      http.MethodGet,
-		Path:        "/api/market/tree",
+		Path:        "/market/tree",
 		Summary:     "Market browser hierarchy",
 		Tags:        []string{"market"},
 	}, longCache)
 
 	registerLegacy(a, huma.Operation{
-		OperationID: "frontend-market-group-items",
+		OperationID: "market-group-items",
 		Method:      http.MethodGet,
-		Path:        "/api/market/groups/{id}/items",
+		Path:        "/market/groups/{id}/items",
 		Summary:     "Published items in a market group",
 		Tags:        []string{"market"},
-	}, privateJSONCache(
+	}, routeJSONCache(
 		opts,
 		6*time.Hour,
 		"public, max-age=3600, s-maxage=21600, stale-while-revalidate=3600",
@@ -53,12 +53,12 @@ func registerPrivateMarketRoutes(a huma.API, opts Options) {
 	))
 
 	registerLegacy(a, huma.Operation{
-		OperationID: "frontend-bulk-prices",
+		OperationID: "bulk-prices",
 		Method:      http.MethodGet,
-		Path:        "/api/prices/bulk",
+		Path:        "/prices/bulk",
 		Summary:     "Latest prices for a set of item types",
 		Tags:        []string{"market"},
-	}, privateJSONCacheBy(
+	}, routeJSONCacheBy(
 		opts,
 		5*time.Minute,
 		"public, max-age=60, s-maxage=300, stale-while-revalidate=60",
@@ -131,6 +131,44 @@ func buildMarketTree(rows []map[string]any) []*marketTreeNode {
 	return roots
 }
 
+func loadMarketPath(ctx context.Context, db Database, rawMarketGroupID any) (any, error) {
+	marketGroupID, ok := int64Value(rawMarketGroupID)
+	if !ok || marketGroupID <= 0 {
+		return nil, nil
+	}
+	rows, err := queryMaps(ctx, db, `
+		WITH RECURSIVE ancestors AS (
+			SELECT market_group_id, parent_group_id, name,
+			       ARRAY[market_group_id]::int[] AS visited, 1 AS depth
+			FROM inv_market_groups
+			WHERE market_group_id = $1
+			UNION ALL
+			SELECT parent.market_group_id, parent.parent_group_id, parent.name,
+			       child.visited || parent.market_group_id,
+			       child.depth + 1
+			FROM inv_market_groups parent
+			JOIN ancestors child
+			  ON parent.market_group_id = child.parent_group_id
+			WHERE child.depth < 16
+			  AND NOT parent.market_group_id = ANY(child.visited)
+		)
+		SELECT name
+		FROM ancestors
+		ORDER BY depth DESC`, marketGroupID)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	segments := make([]string, 0, len(rows))
+	for _, row := range rows {
+		name, _ := stringValue(row["name"])
+		segments = append(segments, eve.Slugify(name))
+	}
+	return "/market/" + strings.Join(segments, "/"), nil
+}
+
 func marketGroupItemsHandler(opts Options) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		id, err := parseID(req.Param("id"))
@@ -188,7 +226,7 @@ func bulkPriceCacheKey(req *legacyRequest) string {
 	for i, id := range ids {
 		parts[i] = strconv.FormatInt(int64(id), 10)
 	}
-	return "/api/prices/bulk?types=" + strings.Join(parts, ",")
+	return "/prices/bulk?types=" + strings.Join(parts, ",")
 }
 
 func bulkPricesHandler(opts Options) legacyHandler {

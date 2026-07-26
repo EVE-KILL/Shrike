@@ -7,20 +7,20 @@ import (
 	"time"
 )
 
-// privateJSONCache gives selected anonymous frontend reads the same shared
-// Valkey cache used by the public API. It is opt-in per handler: session,
+// routeJSONCache gives selected anonymous reads the same shared Valkey cache
+// used by the API hostname. It is opt-in per handler: session,
 // custom-domain, and authenticated responses must never accidentally become
 // shared merely because they use GET.
-func privateJSONCache(
+func routeJSONCache(
 	opts Options,
 	ttl time.Duration,
 	cacheControl string,
 	next legacyHandler,
 ) legacyHandler {
-	return privateJSONCacheBy(opts, ttl, cacheControl, nil, next)
+	return routeJSONCacheBy(opts, ttl, cacheControl, nil, next)
 }
 
-func privateJSONCacheBy(
+func routeJSONCacheBy(
 	opts Options,
 	ttl time.Duration,
 	cacheControl string,

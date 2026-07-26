@@ -56,10 +56,18 @@ type Config struct {
 	// policy, and the static-data endpoints may throttle requests without it.
 	ESIUserAgent string
 
+	// S3-compatible Backblaze B2 storage used for custom-domain images.
+	// Names match frontend/server/utils/storage.ts so the Go process can take
+	// over without changing deployment secrets.
+	B2Endpoint    string
+	B2MediaBucket string
+	B2KeyID       string
+	B2AppKey      string
+
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
 
-	// Hostnames the embedded ingress routes to dedicated public API and image
+	// Hostnames the embedded ingress routes to dedicated API and image
 	// surfaces, as comma-separated lists so each can answer to both production
 	// and development aliases. WebSockets instead live at /ws on every
 	// frontend origin.
@@ -169,6 +177,10 @@ func Load(explicitPath string) (*Config, error) {
 	c.EVEClientSecret = get("EVEClientSecret", "EVE_CLIENT_SECRET", "")
 	c.EVECallbackURL = get("EVECallbackURL", "EVE_CALLBACK_URL", "")
 	c.ESIUserAgent = get("ESIUserAgent", "ESI_USER_AGENT", "")
+	c.B2Endpoint = get("B2Endpoint", "B2_ENDPOINT", "")
+	c.B2MediaBucket = get("B2MediaBucket", "B2_MEDIA_BUCKET", "")
+	c.B2KeyID = get("B2KeyID", "B2_KEY_ID", "")
+	c.B2AppKey = get("B2AppKey", "B2_APP_KEY", "")
 	c.Port = getInt("Port", "PORT", 4000)
 
 	// Production hostnames only. Development adds its .localhost aliases in
@@ -220,6 +232,28 @@ func (c *Config) RedisCacheAddr() string {
 // deployment already keys off it.
 func (c *Config) IsProduction() bool {
 	return c.NodeEnv == "production"
+}
+
+// B2Configured reports whether the complete existing frontend storage
+// contract is available. B2PartiallyConfigured distinguishes a deliberately
+// disabled local setup from a deployment typo that should fail loudly.
+func (c *Config) B2Configured() bool {
+	return c.B2Endpoint != "" &&
+		c.B2MediaBucket != "" &&
+		c.B2KeyID != "" &&
+		c.B2AppKey != ""
+}
+
+func (c *Config) B2PartiallyConfigured() bool {
+	configured := 0
+	for _, value := range []string{
+		c.B2Endpoint, c.B2MediaBucket, c.B2KeyID, c.B2AppKey,
+	} {
+		if value != "" {
+			configured++
+		}
+	}
+	return configured > 0 && configured < 4
 }
 
 // loadDotenv finds and parses a .env file. With an explicit path, a missing

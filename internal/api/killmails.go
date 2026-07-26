@@ -606,12 +606,20 @@ func loadKillmailDetail(
 	killmail, err := queryMap(ctx, db, `
 		SELECT k.*, vc.name AS victim_character_name,
 		       vco.name AS victim_corporation_name,
+		       vco.palette AS victim_corporation_palette,
 		       va.name AS victim_alliance_name,
 		       ship.name AS victim_ship_name,
+		       ship.market_group_id AS victim_ship_market_group_id,
 		       ship_group.name AS victim_ship_group_name,
 		       system.system_name AS solar_system_name,
 		       system.security AS solar_system_security,
-		       region.name AS region_name
+		       constellation.constellation_name,
+		       region.name AS region_name,
+		       nearest.item_id AS location_item_id,
+		       nearest.item_name AS location_item_name,
+		       nearest.type_id AS location_type_id,
+		       nearest.group_id AS location_group_id,
+		       nearest.distance AS location_distance
 		FROM killmails k
 		LEFT JOIN characters vc ON vc.character_id = k.victim_character_id
 		LEFT JOIN corporations vco ON vco.corporation_id = k.victim_corporation_id
@@ -619,7 +627,27 @@ func loadKillmailDetail(
 		LEFT JOIN inv_types ship ON ship.type_id = k.victim_ship_type_id
 		LEFT JOIN inv_groups ship_group ON ship_group.group_id = k.victim_ship_group_id
 		LEFT JOIN solar_systems system ON system.solar_system_id = k.solar_system_id
+		LEFT JOIN constellations constellation
+		  ON constellation.constellation_id = COALESCE(
+		    system.constellation_id, k.constellation_id
+		  )
 		LEFT JOIN regions region ON region.region_id = k.region_id
+		LEFT JOIN LATERAL (
+			SELECT c.item_id, c.item_name, c.type_id, c.group_id,
+			       sqrt(
+			         power(c.x - k.position_x, 2) +
+			         power(c.y - k.position_y, 2) +
+			         power(c.z - k.position_z, 2)
+			       ) AS distance
+			FROM celestials c
+			WHERE c.solar_system_id = k.solar_system_id
+			  AND k.position_x IS NOT NULL
+			  AND k.position_y IS NOT NULL
+			  AND k.position_z IS NOT NULL
+			  AND c.x IS NOT NULL AND c.y IS NOT NULL AND c.z IS NOT NULL
+			ORDER BY distance ASC
+			LIMIT 1
+		) nearest ON true
 		WHERE k.killmail_id = $1
 		LIMIT 1`, id)
 	if err != nil || killmail == nil {
@@ -667,23 +695,17 @@ func loadKillmailDetail(
 		return nil, false, err
 	}
 
-	typeValues := []any{killmail["victim_ship_type_id"]}
-	typeNames := map[int64]string{}
-	addKnownType := func(typeValue, nameValue any) {
-		typeID, idOK := int64Value(typeValue)
-		name, nameOK := stringValue(nameValue)
-		if idOK && nameOK {
-			typeNames[typeID] = name
-		}
+	typeValues := make([]any, 0, 1+len(attackers)*2+len(items))
+	addKnownType := func(typeValue any) {
 		typeValues = append(typeValues, typeValue)
 	}
-	addKnownType(killmail["victim_ship_type_id"], killmail["victim_ship_name"])
+	addKnownType(killmail["victim_ship_type_id"])
 	for _, attacker := range attackers {
-		addKnownType(attacker["ship_type_id"], attacker["ship_name"])
-		addKnownType(attacker["weapon_type_id"], attacker["weapon_name"])
+		addKnownType(attacker["ship_type_id"])
+		addKnownType(attacker["weapon_type_id"])
 	}
 	for _, item := range items {
-		addKnownType(item["type_id"], item["type_name"])
+		addKnownType(item["type_id"])
 	}
 	typeIDs := int32Slice(typeValues...)
 	prices, err := loadTypePrices(ctx, db, typeIDs, killmail["killmail_time"])
@@ -729,65 +751,84 @@ func loadKillmailDetail(
 
 	siblings := []map[string]any{}
 	if killmail["victim_character_id"] != nil {
-		killTime, ok := killmail["killmail_time"].(time.Time)
-		if ok {
-			rows, queryErr := queryMaps(ctx, db, `
-				SELECT killmail_id, victim_ship_type_id AS ship_type_id
-				FROM killmails
-				WHERE victim_character_id = $1
-				  AND solar_system_id = $2
-				  AND killmail_time >= $3
-				  AND killmail_time <= $4
-				  AND killmail_id <> $5
-				LIMIT 10`,
-				killmail["victim_character_id"],
-				killmail["solar_system_id"],
-				killTime.Add(-5*time.Minute),
-				killTime.Add(5*time.Minute),
-				id,
-			)
-			if queryErr != nil {
-				return nil, false, queryErr
-			}
-			for _, sibling := range rows {
-				shipTypeID, _ := int64Value(sibling["ship_type_id"])
-				var shipName any
-				if name, exists := typeNames[shipTypeID]; exists {
-					shipName = name
-				}
-				siblings = append(siblings, map[string]any{
-					"killmail_id":  sibling["killmail_id"],
-					"ship_type_id": sibling["ship_type_id"],
-					"ship_name":    shipName,
-				})
-			}
+		rows, queryErr := queryMaps(ctx, db, `
+			SELECT sibling.killmail_id,
+			       sibling.victim_ship_type_id AS ship_type_id,
+			       sibling.victim_ship_group_id AS ship_group_id,
+			       ship.name AS ship_name,
+			       COALESCE(sibling.total_value, 0) AS total_value,
+			       sibling.killmail_time
+			FROM killmails sibling
+			LEFT JOIN inv_types ship
+			  ON ship.type_id = sibling.victim_ship_type_id
+			WHERE sibling.victim_character_id = $1
+			  AND sibling.solar_system_id = $2
+			  AND sibling.killmail_time >= $3::timestamptz - interval '1 hour'
+			  AND sibling.killmail_time <= $3::timestamptz + interval '1 hour'
+			  AND sibling.killmail_id <> $4
+			  AND sibling.victim_ship_type_id <> COALESCE($5, 0)
+			ORDER BY sibling.killmail_time DESC, sibling.killmail_id DESC
+			LIMIT 10`,
+			killmail["victim_character_id"],
+			killmail["solar_system_id"],
+			killmail["killmail_time"],
+			id,
+			killmail["victim_ship_type_id"],
+		)
+		if queryErr != nil {
+			return nil, false, queryErr
 		}
+		siblings = nonNilRows(rows)
 	}
 
+	marketPath, err := loadMarketPath(
+		ctx, db, killmail["victim_ship_market_group_id"],
+	)
+	if err != nil {
+		return nil, false, err
+	}
+	var location any
+	if killmail["location_item_id"] != nil {
+		location = map[string]any{
+			"item_id":   killmail["location_item_id"],
+			"item_name": killmail["location_item_name"],
+			"type_id":   killmail["location_type_id"],
+			"group_id":  killmail["location_group_id"],
+			"distance":  killmail["location_distance"],
+		}
+	}
 	victimShipID, _ := int64Value(killmail["victim_ship_type_id"])
 	body := map[string]any{
 		"killmail_id":   killmail["killmail_id"],
 		"killmail_hash": killmail["killmail_hash"],
 		"killmail_time": killmail["killmail_time"],
 		"victim": map[string]any{
-			"character_id":     killmail["victim_character_id"],
-			"character_name":   killmail["victim_character_name"],
-			"corporation_id":   killmail["victim_corporation_id"],
-			"corporation_name": killmail["victim_corporation_name"],
-			"alliance_id":      killmail["victim_alliance_id"],
-			"alliance_name":    killmail["victim_alliance_name"],
-			"ship_type_id":     killmail["victim_ship_type_id"],
-			"ship_name":        killmail["victim_ship_name"],
-			"ship_group_id":    killmail["victim_ship_group_id"],
-			"ship_group_name":  killmail["victim_ship_group_name"],
-			"damage_taken":     zeroIfNil(killmail["victim_damage_taken"]),
-			"ship_price":       prices[victimShipID],
+			"character_id":        killmail["victim_character_id"],
+			"character_name":      killmail["victim_character_name"],
+			"corporation_id":      killmail["victim_corporation_id"],
+			"corporation_name":    killmail["victim_corporation_name"],
+			"corporation_palette": killmail["victim_corporation_palette"],
+			"alliance_id":         killmail["victim_alliance_id"],
+			"alliance_name":       killmail["victim_alliance_name"],
+			"ship_type_id":        killmail["victim_ship_type_id"],
+			"ship_name":           killmail["victim_ship_name"],
+			"ship_group_id":       killmail["victim_ship_group_id"],
+			"ship_group_name":     killmail["victim_ship_group_name"],
+			"ship_market_path":    marketPath,
+			"damage_taken":        zeroIfNil(killmail["victim_damage_taken"]),
+			"ship_price":          prices[victimShipID],
 		},
 		"solar_system_id":       killmail["solar_system_id"],
 		"solar_system_name":     killmail["solar_system_name"],
 		"solar_system_security": killmail["solar_system_security"],
+		"constellation_id":      killmail["constellation_id"],
+		"constellation_name":    killmail["constellation_name"],
 		"region_id":             killmail["region_id"],
 		"region_name":           killmail["region_name"],
+		"position_x":            killmail["position_x"],
+		"position_y":            killmail["position_y"],
+		"position_z":            killmail["position_z"],
+		"location":              location,
 		"total_value":           zeroIfNil(killmail["total_value"]),
 		"fitted_value":          zeroIfNil(killmail["fitted_value"]),
 		"dropped_value":         zeroIfNil(killmail["dropped_value"]),
@@ -823,8 +864,7 @@ func loadTypePrices(
 		FROM prices
 		WHERE type_id = ANY($1::int[])
 		  AND region_id = 10000002
-		  AND date <= $2::date
-		ORDER BY type_id, date DESC`, typeIDs, killTime)
+		ORDER BY type_id, ABS(date - $2::date), date DESC`, typeIDs, killTime)
 	if err != nil {
 		return nil, err
 	}
@@ -837,7 +877,7 @@ func loadTypePrices(
 		SELECT DISTINCT ON (type_id) type_id, price
 		FROM custom_prices
 		WHERE type_id = ANY($1::int[])
-		ORDER BY type_id, date DESC`, typeIDs)
+		ORDER BY type_id, ABS(date - $2::date), date DESC`, typeIDs, killTime)
 	if err != nil {
 		return nil, err
 	}

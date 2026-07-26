@@ -29,20 +29,21 @@ func (healthyDB) QueryRow(context.Context, string, ...any) pgx.Row {
 	panic("unexpected QueryRow")
 }
 
-// Exercise the actual Huma surfaces through Caddy. The generic live routing
-// test deliberately uses marker handlers to make route ownership observable,
-// but marker handlers cannot catch a surface-specific generated schema link.
-func TestPublicAndPrivateHealthSchemaLinksResolve(t *testing.T) {
+// Exercise the shared Huma API through both Caddy transports. The frontend
+// adapter must prefix generated schema links even though both routes execute
+// the same operation from the same registry.
+func TestSharedAPIHealthSchemaLinksResolve(t *testing.T) {
 	port := freePort(t)
 	cfg := testConfig()
 	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
 
 	opts := api.Options{Version: "test-version", Commit: "test-commit", DB: healthyDB{}}
+	apiService := api.New(opts)
 	m := New(map[string]http.Handler{
-		SurfacePrivate: api.Private(opts),
-		SurfacePublic:  api.Public(opts),
-		SurfaceWS:      api.WS(opts),
-		SurfaceImages:  api.Images(opts),
+		SurfaceSameOrigin: apiService.SameOrigin(),
+		SurfaceAPIHost:    apiService.APIHost(),
+		SurfaceWS:         api.WS(opts),
+		SurfaceImages:     api.Images(opts),
 	}, zerolog.Nop())
 	if err := m.Start(context.Background(), cfg); err != nil {
 		t.Fatalf("Start: %v", err)
@@ -54,10 +55,9 @@ func TestPublicAndPrivateHealthSchemaLinksResolve(t *testing.T) {
 		name       string
 		host       string
 		schemaPath string
-		public     bool
 	}{
-		{"public", "api.example.com", "/schemas/health-response.json", true},
-		{"private", "tenant.example.com", "/api/schemas/Health.json", false},
+		{"api-host", "api.example.com", "/schemas/health-response.json"},
+		{"same-origin", "tenant.example.com", "/api/schemas/health-response.json"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			res := requestWithHost(t, base+"/health", tc.host)
@@ -66,25 +66,20 @@ func TestPublicAndPrivateHealthSchemaLinksResolve(t *testing.T) {
 			if res.StatusCode != http.StatusOK {
 				t.Fatalf("health status = %d, want 200 (body %q)", res.StatusCode, body)
 			}
-			if tc.public {
-				if !strings.Contains(string(body), `"ok":true`) ||
-					!strings.Contains(string(body), `"timestamp":"`) {
-					t.Errorf("public health does not preserve legacy shape: %s", body)
-				}
-				var payload map[string]any
-				if err := json.Unmarshal(body, &payload); err != nil {
-					t.Fatal(err)
-				}
-				schemaURL, err := url.Parse(payload["$schema"].(string))
-				if err != nil {
-					t.Fatal(err)
-				}
-				if schemaURL.Path != tc.schemaPath {
-					t.Fatalf("$schema path = %q, want %q", schemaURL.Path, tc.schemaPath)
-				}
-			} else if !strings.Contains(string(body), `"version":"test-version"`) ||
-				!strings.Contains(string(body), `"commit":"test-commit"`) {
-				t.Errorf("private health body does not identify the build: %s", body)
+			if !strings.Contains(string(body), `"ok":true`) ||
+				!strings.Contains(string(body), `"timestamp":"`) {
+				t.Errorf("health does not preserve shared contract: %s", body)
+			}
+			var payload map[string]any
+			if err := json.Unmarshal(body, &payload); err != nil {
+				t.Fatal(err)
+			}
+			schemaURL, err := url.Parse(payload["$schema"].(string))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if schemaURL.Path != tc.schemaPath {
+				t.Fatalf("$schema path = %q, want %q", schemaURL.Path, tc.schemaPath)
 			}
 
 			if !strings.Contains(res.Header.Get("Link"), "<"+tc.schemaPath+">") {

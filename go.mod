@@ -4,9 +4,13 @@ go 1.26.5
 
 require (
 	charm.land/lipgloss/v2 v2.0.5
+	github.com/aws/aws-sdk-go-v2 v1.41.7
 	github.com/caddyserver/caddy/v2 v2.11.4
 	github.com/coder/websocket v1.8.15
+	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/danielgtaylor/huma/v2 v2.39.0
+	github.com/go-chi/chi/v5 v5.3.0
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
 	github.com/pressly/goose/v3 v3.27.3
@@ -15,10 +19,14 @@ require (
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.41.0
 	github.com/riverqueue/river/rivertype v0.41.0
 	github.com/rs/zerolog v1.35.1
+	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
+	golang.org/x/net v0.57.0
+	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
+	golang.org/x/text v0.40.0
 )
 
 require (
@@ -36,6 +44,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aryann/difflib v0.0.0-20210328193216-ff5ff6dc229b // indirect
+	github.com/aws/smithy-go v1.25.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/caddyserver/certmagic v0.25.3 // indirect
 	github.com/caddyserver/zerossl v0.1.5 // indirect
@@ -53,7 +62,6 @@ require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
-	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgraph-io/badger v1.6.2 // indirect
@@ -71,7 +79,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.28.1 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.15 // indirect
 	github.com/googleapis/gax-go/v2 v2.22.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
@@ -112,7 +119,6 @@ require (
 	github.com/riverqueue/river/rivershared v0.41.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sethvargo/go-retry v0.4.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
@@ -172,10 +178,7 @@ require (
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260213171211-a408498e5541 // indirect
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef // indirect
 	golang.org/x/mod v0.38.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
 	google.golang.org/api v0.277.0 // indirect

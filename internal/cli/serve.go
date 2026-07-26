@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/api"
+	"github.com/eve-kill/shrike/internal/config"
 	"github.com/eve-kill/shrike/internal/db"
 	"github.com/eve-kill/shrike/internal/graph"
 	"github.com/eve-kill/shrike/internal/ingress"
+	"github.com/eve-kill/shrike/internal/objectstore"
 	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/ui"
 	shrikewebsocket "github.com/eve-kill/shrike/internal/websocket"
@@ -36,13 +38,13 @@ var serveCmd = &cobra.Command{
 Requests are routed by hostname and path to one of Shrike's surfaces:
 
   /health                                liveness, on any hostname
-  api.eve-kill.com     api.localhost     the public API
+  api.eve-kill.com     api.localhost     the API at root paths
   images.eve-kill.com  images.localhost  the image server
   /ws, /ws/*                             live event streams
-  /api, /auth                            the frontend's own endpoints
+  /api, /auth                            the same API on the frontend origin
   everything else                        the Nuxt renderer, over NUXT_SOCKET
 
-The public API and image surfaces answer to production hostnames and .localhost
+The API-host and image surfaces answer to production hostnames and .localhost
 aliases, so http://api.localhost:PORT reaches the same place as
 api.eve-kill.com without touching /etc/hosts. WebSockets share whichever
 frontend origin is in use. Run with --port 80 to drop the port from those URLs.
@@ -65,9 +67,14 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 		}
 
 		return RunService(cmd, "serve", func(ctx context.Context) error {
+			domainAssets, err := newDomainAssetStorage(cfg)
+			if err != nil {
+				return err
+			}
+
 			pool, err := db.New(ctx, cfg)
 			if err != nil {
-				return fmt.Errorf("connect public API database: %w", err)
+				return fmt.Errorf("connect API database: %w", err)
 			}
 			defer pool.Close()
 
@@ -101,12 +108,19 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			opts := api.Options{
 				Version: ui.Version, Commit: ui.Commit,
 				DB: pool, Graph: graphClient, Feed: feed, Cache: cacheRedis,
+				DomainAssets: domainAssets,
+				Auth: api.AuthOptions{
+					ClientID: cfg.EVEClientID, ClientSecret: cfg.EVEClientSecret,
+					StateSecret: cfg.EVEClientSecret, CallbackURL: cfg.EVECallbackURL,
+					UserAgent: cfg.ESIUserAgent, Production: cfg.IsProduction(),
+				},
 			}
+			apiService := api.New(opts)
 			surfaces := map[string]http.Handler{
-				ingress.SurfacePrivate: api.Private(opts),
-				ingress.SurfacePublic:  api.Public(opts),
-				ingress.SurfaceWS:      wsServer,
-				ingress.SurfaceImages:  api.Images(opts),
+				ingress.SurfaceSameOrigin: apiService.SameOrigin(),
+				ingress.SurfaceAPIHost:    apiService.APIHost(),
+				ingress.SurfaceWS:         wsServer,
+				ingress.SurfaceImages:     api.Images(opts),
 			}
 			manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 
@@ -114,7 +128,7 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 				Address:     fmt.Sprintf(":%d", port),
 				DataDir:     cfg.DataDir,
 				LogLevel:    cfg.LogLevel,
-				PublicHosts: cfg.PublicAPIHosts,
+				APIHosts:    cfg.PublicAPIHosts,
 				ImagesHosts: cfg.ImagesHosts,
 				NuxtSocket:  cfg.NuxtSocket,
 			}); err != nil {
@@ -134,6 +148,30 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			return nil
 		})
 	},
+}
+
+func newDomainAssetStorage(cfg *config.Config) (api.DomainAssetStorage, error) {
+	if cfg.B2PartiallyConfigured() {
+		return nil, fmt.Errorf(
+			"configure all of B2_ENDPOINT, B2_MEDIA_BUCKET, B2_KEY_ID, and B2_APP_KEY",
+		)
+	}
+	if !cfg.B2Configured() {
+		return nil, nil
+	}
+
+	store, err := objectstore.NewS3Store(objectstore.S3Options{
+		Endpoint:        cfg.B2Endpoint,
+		Bucket:          cfg.B2MediaBucket,
+		Region:          objectstore.BackblazeRegion,
+		AccessKeyID:     cfg.B2KeyID,
+		SecretAccessKey: cfg.B2AppKey,
+		MaximumBytes:    8 << 20,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("configure custom-domain object storage: %w", err)
+	}
+	return store, nil
 }
 
 func init() {

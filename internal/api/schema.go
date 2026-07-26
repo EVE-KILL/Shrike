@@ -9,24 +9,24 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-type publicSchemaRoute struct {
+type responseSchemaRoute struct {
 	method      string
 	path        string
 	schemaPath  string
 	staticParts int
 }
 
-type publicSchemaResolver struct {
-	routes []publicSchemaRoute
+type responseSchemaResolver struct {
+	routes []responseSchemaRoute
 }
 
-// newPublicSchemaResolver gives the compatibility handlers the same useful
+// newResponseSchemaResolver gives the compatibility handlers the same useful
 // response metadata as typed Huma handlers. They intentionally use Huma's
 // low-level adapter so legacy validation errors keep their established
 // {"error":"..."} shape, which means Huma's struct-only schema transformer
 // cannot add this metadata for us.
-func newPublicSchemaResolver(document *huma.OpenAPI) *publicSchemaResolver {
-	resolver := &publicSchemaResolver{}
+func newResponseSchemaResolver(document *huma.OpenAPI) *responseSchemaResolver {
+	resolver := &responseSchemaResolver{}
 	if document == nil {
 		return resolver
 	}
@@ -37,7 +37,7 @@ func newPublicSchemaResolver(document *huma.OpenAPI) *publicSchemaResolver {
 			if op == nil || op.OperationID == "" {
 				continue
 			}
-			route := publicSchemaRoute{
+			route := responseSchemaRoute{
 				method: candidate.method, path: path,
 				staticParts: countStaticPathParts(path),
 			}
@@ -56,7 +56,7 @@ func newPublicSchemaResolver(document *huma.OpenAPI) *publicSchemaResolver {
 			bodySchema := publicOperationResponseSchema(op.OperationID)
 			if bodySchema == nil {
 				// Keep the route operable, but leave a conspicuously incomplete
-				// schema for the catalogue test to reject. A newly added public
+				// schema for the catalogue test to reject. A newly added
 				// endpoint must make an explicit response-shape decision.
 				bodySchema = responseSchema(map[string]*huma.Schema{})
 			}
@@ -129,7 +129,7 @@ func isPathParameter(part string) bool {
 	return strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}")
 }
 
-func (r *publicSchemaResolver) lookup(method, path string) (string, bool) {
+func (r *responseSchemaResolver) lookup(method, path string) (string, bool) {
 	if r == nil {
 		return "", false
 	}
@@ -164,7 +164,7 @@ func routePathMatches(pattern, path string) bool {
 	return true
 }
 
-func addPublicSchema(
+func addResponseSchema(
 	r *http.Request,
 	headers http.Header,
 	body []byte,
@@ -185,12 +185,16 @@ func addPublicSchema(
 		return body
 	}
 
-	schemaURL := publicSchemaURL(r, schemaPath)
+	externalPath := schemaPath
+	if prefix, _ := r.Context().Value(sameOriginPrefixContextKey{}).(string); prefix != "" {
+		externalPath = strings.TrimSuffix(prefix, "/") + schemaPath
+	}
+	schemaURL := responseSchemaURL(r, externalPath)
 	encodedURL, err := json.Marshal(schemaURL)
 	if err != nil {
 		return body
 	}
-	headers.Set("Link", "<"+schemaPath+">; rel=\"describedBy\"")
+	headers.Set("Link", "<"+externalPath+">; rel=\"describedBy\"")
 
 	result := make([]byte, 0, len(body)+len(encodedURL)+12)
 	result = append(result, body[:start+1]...)
@@ -215,7 +219,7 @@ func nextJSONToken(body []byte) byte {
 	return 0
 }
 
-func publicSchemaURL(r *http.Request, path string) string {
+func responseSchemaURL(r *http.Request, path string) string {
 	scheme := firstForwarded(r.Header.Get("X-Forwarded-Proto"))
 	if scheme == "" {
 		if r.TLS != nil {

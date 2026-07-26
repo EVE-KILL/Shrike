@@ -36,8 +36,18 @@ func registerGlobalStatsRoute(a huma.API, opts Options) {
 				http.StatusBadRequest, "Missing dataType parameter",
 			)
 		}
-		limit := int(math.Min(numberOr(req.Query.Get("limit"), 10), 100))
-		days := int(math.Min(numberOr(req.Query.Get("days"), 7), 365))
+		limit := globalStatsLimit(req.Query.Get("limit"))
+		daysValue := globalStatsDays(req.Query.Get("days"))
+		if query, ok := realtimeGlobalStatsQueries[dataType]; daysValue < 1 && ok {
+			entries, err := loadRealtimeGlobalStats(
+				ctx, opts.DB, query, daysValue*24, limit,
+			)
+			if err != nil {
+				return legacyPayload{}, err
+			}
+			return jsonPayload(map[string]any{"entries": entries}), nil
+		}
+		days := int(daysValue)
 		since := time.Now().AddDate(0, 0, -days)
 
 		var (
@@ -49,6 +59,9 @@ func registerGlobalStatsRoute(a huma.API, opts Options) {
 				ctx, opts.DB, dataType,
 				since.UTC().Format("2006-01-02"), limit,
 			)
+			if err == nil {
+				entries, err = attachGlobalStatsPalettes(ctx, opts.DB, entries)
+			}
 		} else if strings.HasPrefix(dataType, "most_valuable_") {
 			entries, err = loadMostValuable(
 				ctx, opts.DB, dataType, since, limit,
@@ -63,6 +76,14 @@ func registerGlobalStatsRoute(a huma.API, opts Options) {
 		}
 		return jsonPayload(map[string]any{"entries": entries}), nil
 	})
+}
+
+func globalStatsLimit(raw string) int {
+	return int(math.Min(numberOr(raw, 10), 100))
+}
+
+func globalStatsDays(raw string) float64 {
+	return math.Min(numberOr(raw, 7), 90)
 }
 
 type globalStatsQuery struct {

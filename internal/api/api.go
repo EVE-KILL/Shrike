@@ -1,33 +1,23 @@
-// Package api builds Shrike's HTTP surfaces.
+// Package api builds Shrike's HTTP API.
 //
-// A surface is one coherent audience for one set of endpoints. Shrike serves
-// four of them from a single process, and they are separate APIs rather than
-// route groups on one API for a reason: the split is what keeps the public
-// OpenAPI document from listing the frontend's private endpoints. A group is a
-// convention somebody has to remember; a separate API is a wall.
-//
-//	private  eve-kill.com/api, /auth   the Nuxt frontend, and nothing else
-//	public   api.eve-kill.com          third-party consumers, documented
-//	ws       ws.eve-kill.com           live killmail stream
-//	images   images.eve-kill.com       entity portraits and renders
-//
-// Only the first two are Huma. WebSocket upgrades hijack the connection and
-// the image server streams bytes, so neither gains anything from an operation
-// wrapper — they are plain handlers that happen to live in the same map.
-//
-// Every surface here returns an http.Handler, which is all the ingress layer
-// wants. Nothing in this package knows Caddy exists.
+// The API hostname and eve-kill.com deliberately share one Huma registry and
+// one OpenAPI document. The main site reaches the same root-path operations
+// through its same-origin /api prefix; authentication is described per
+// operation rather than by maintaining a second API catalogue.
 package api
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/danielgtaylor/huma/v2/adapters/humago"
+	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	"github.com/go-chi/chi/v5"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -44,69 +34,118 @@ type Options struct {
 	Feed    *FeedManager
 	Cache   *redis.Client
 
-	// Frontend contains dependencies used only by eve-kill.com's private API.
-	// Keeping them together prevents public handlers from accidentally growing
-	// a dependency on login credentials or mutation-only services.
-	Frontend FrontendOptions
+	Auth         AuthOptions
+	DomainAssets DomainAssetStorage
 }
 
 type GraphDatabase interface {
 	Read(context.Context, string, map[string]any) ([]map[string]any, error)
 }
 
-// Private is the frontend's API.
+// Service is one API registry exposed through two transport adapters.
 //
-// "Private" is a policy rather than a mechanism — the endpoints are reachable
-// from the internet, they are simply not promised to anyone but our own
-// frontend, so their shapes can change without a deprecation cycle. Keeping
-// them off the public document is what makes that claim credible.
-//
-// The OpenAPI document is still served, at /api/openapi.json. Endpoint shapes
-// are not secrets, the frontend's generated client is built from this spec,
-// and hiding the catalogue while leaving the endpoints open would buy nothing.
-// Authorisation belongs on the operations.
-func Private(opts Options) http.Handler {
-	mux := http.NewServeMux()
-
-	cfg := huma.DefaultConfig("EVE-KILL Frontend API", opts.Version)
-	cfg.Info.Description = "Endpoints backing the EVE-KILL frontend. " +
-		"Not a public contract: shapes change with the UI and without notice. " +
-		"Use api.eve-kill.com instead."
-	// Every meta path sits under /api because that is the only prefix the
-	// ingress routes to this surface. Huma stamps a $schema URL into each
-	// response body built from SchemasPath, so leaving it at the default
-	// would put a link to /schemas/... in every payload — a path this surface
-	// never receives, and therefore a dead link in every response.
-	cfg.OpenAPIPath = "/api/openapi"
-	cfg.DocsPath = "/api/docs"
-	cfg.SchemasPath = "/api/schemas"
-
-	a := humago.New(mux, cfg)
-	registerPrivateAPI(a, opts)
-
-	return mux
+// APIHost serves root paths on api.eve-kill.com. SameOrigin accepts
+// /api-prefixed paths on the main site and strips that transport-only prefix
+// before dispatch. Both expose the same operations and OpenAPI document.
+type Service struct {
+	apiHost    http.Handler
+	sameOrigin http.Handler
 }
 
-// Public is api.eve-kill.com.
-func Public(opts Options) http.Handler {
-	mux := http.NewServeMux()
+type sameOriginPrefixContextKey struct{}
+
+// New builds the shared API once. Callers should retain the returned Service
+// and hand its two transport adapters to ingress.
+func New(opts Options) *Service {
+	mux := chi.NewRouter()
 
 	cfg := huma.DefaultConfig("EVE-KILL API", opts.Version)
 	cfg.DocsRenderer = huma.DocsRendererScalar
-	cfg.Info.Description = "Public read-only API powering eve-kill.com. " +
-		"All compatibility endpoints preserve the responses served by the " +
-		"legacy TypeScript API."
+	cfg.Info.Description = "The API powering EVE-KILL. Public data, signed-in " +
+		"account operations, and administration share one best-effort stable " +
+		"contract; authentication requirements are documented per operation."
 
-	a := humago.New(mux, cfg)
-	registerPublicAPI(a, opts)
+	a := humachi.New(mux, cfg)
+	a.OpenAPI().Servers = []*huma.Server{
+		{URL: "/", Description: "API hostname"},
+		{URL: "/api", Description: "Same-origin frontend"},
+	}
+	schemas := registerRoutes(a, opts)
 	registerLegacyMethodGuards(mux)
 	mux.HandleFunc("/", legacyFallback)
+	mux.NotFound(legacyFallback)
 
-	schemas := newPublicSchemaResolver(a.OpenAPI())
-	return publicCORS(publicCache(opts.Cache, schemas, opts.Commit, mux))
+	cached := responseCache(opts.Cache, schemas, opts.Commit, mux)
+	return &Service{
+		apiHost:    crossOriginAPI(cached),
+		sameOrigin: sameOriginPrefix(cached),
+	}
 }
 
-func registerLegacyMethodGuards(mux *http.ServeMux) {
+// APIHost serves the shared API at root paths.
+func (s *Service) APIHost() http.Handler {
+	return s.apiHost
+}
+
+// SameOrigin serves the shared API through eve-kill.com's /api prefix while
+// leaving browser OAuth routes under /auth unchanged.
+func (s *Service) SameOrigin() http.Handler {
+	return s.sameOrigin
+}
+
+// APIHost constructs a root-path API handler. Production should normally
+// retain a Service so this and SameOrigin share the same registry instance.
+func APIHost(opts Options) http.Handler {
+	return New(opts).APIHost()
+}
+
+// SameOrigin constructs the /api-prefixed transport used by the main site.
+func SameOrigin(opts Options) http.Handler {
+	return New(opts).SameOrigin()
+}
+
+func sameOriginPrefix(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		switch {
+		case path == "/api":
+			path = "/"
+		case strings.HasPrefix(path, "/api/"):
+			path = strings.TrimPrefix(path, "/api")
+		}
+
+		clone := r.Clone(context.WithValue(
+			r.Context(), sameOriginPrefixContextKey{}, "/api",
+		))
+		requestURL := new(url.URL)
+		*requestURL = *r.URL
+		requestURL.Path = path
+		if requestURL.RawPath != "" {
+			requestURL.RawPath = strings.TrimPrefix(requestURL.RawPath, "/api")
+			if requestURL.RawPath == "" {
+				requestURL.RawPath = "/"
+			}
+		}
+		clone.URL = requestURL
+		if path == "/docs" {
+			recorder := newCacheRecorder()
+			next.ServeHTTP(recorder, clone)
+			body := bytes.ReplaceAll(
+				recorder.body.Bytes(),
+				[]byte(`data-url="/openapi.json"`),
+				[]byte(`data-url="/api/openapi.json"`),
+			)
+			copyResponseHeaders(w.Header(), recorder.header)
+			w.Header().Del("Content-Length")
+			w.WriteHeader(recorder.status)
+			_, _ = w.Write(body)
+			return
+		}
+		next.ServeHTTP(w, clone)
+	})
+}
+
+func registerLegacyMethodGuards(mux chi.Router) {
 	for path, message := range map[string]string{
 		"/characters/analyze": "Method not allowed",
 		"/characters/stats":   "POST only",
@@ -115,7 +154,7 @@ func registerLegacyMethodGuards(mux *http.ServeMux) {
 		"/coalitions/stats":   "POST only",
 		"/killmails/search":   "POST only",
 	} {
-		mux.HandleFunc(http.MethodGet+" "+path, func(w http.ResponseWriter, _ *http.Request) {
+		mux.MethodFunc(http.MethodGet, path, func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			body, _ := json.Marshal(map[string]string{"error": message})
@@ -152,7 +191,8 @@ func legacyFallback(w http.ResponseWriter, r *http.Request) {
 	if host == "" {
 		host = strings.TrimSpace(r.Host)
 	}
-	body["baseUrl"] = protocol + "://" + host
+	prefix, _ := r.Context().Value(sameOriginPrefixContextKey{}).(string)
+	body["baseUrl"] = protocol + "://" + host + strings.TrimSuffix(prefix, "/")
 	encoded, err := json.Marshal(body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -169,12 +209,8 @@ func firstForwarded(value string) string {
 	return strings.TrimSpace(value)
 }
 
-// WS is ws.eve-kill.com.
-//
-// A placeholder that answers honestly. Registered rather than omitted so the
-// host route exists and a request to it fails as "not built yet" instead of
-// falling through to the frontend and rendering a 404 page at a WebSocket
-// client.
+// WS is a lightweight placeholder used by ingress-focused tests. Production
+// supplies the real same-origin /ws handler from internal/websocket.
 func WS(Options) http.Handler {
 	return notImplemented("websocket")
 }
