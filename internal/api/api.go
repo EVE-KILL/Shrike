@@ -83,14 +83,11 @@ func Private(opts Options) http.Handler {
 }
 
 // Public is api.eve-kill.com.
-//
-// Stubbed to /health for now. It exists this early so the host routing is
-// proven end to end — a surface added later is a change to the route table,
-// which is exactly the part worth having under test before it carries traffic.
 func Public(opts Options) http.Handler {
 	mux := http.NewServeMux()
 
 	cfg := huma.DefaultConfig("EVE-KILL API", opts.Version)
+	cfg.DocsRenderer = huma.DocsRendererScalar
 	cfg.Info.Description = "Public read-only API powering eve-kill.com. " +
 		"All compatibility endpoints preserve the responses served by the " +
 		"legacy TypeScript API."

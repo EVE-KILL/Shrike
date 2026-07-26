@@ -126,6 +126,28 @@ func TestPublicRouteCatalogueMatchesEmbeddedLegacyIndex(t *testing.T) {
 	}
 }
 
+func TestPublicDocsUseScalar(t *testing.T) {
+	handler := Public(Options{
+		Version: "test-version",
+		DB:      stubDatabase{},
+	})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(
+		rec,
+		httptest.NewRequest(http.MethodGet, "http://example.com/docs", nil),
+	)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("docs status = %d, body %q", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "@scalar/api-reference") {
+		t.Errorf("public docs do not load Scalar: %s", body)
+	}
+	if strings.Contains(body, "@stoplight/elements") {
+		t.Errorf("public docs still load Stoplight Elements: %s", body)
+	}
+}
+
 func TestPublicFallbackAndLegacyPostGuards(t *testing.T) {
 	handler := Public(Options{DB: stubDatabase{}})
 	for _, test := range []struct {
