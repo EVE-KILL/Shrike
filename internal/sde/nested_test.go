@@ -14,6 +14,9 @@ func TestNestedTableDeclarationsAreConsistent(t *testing.T) {
 		if tbl.Values != nil {
 			t.Errorf("nested table %s sets both Values and Expand", tbl.Name)
 		}
+		if !tbl.PruneAbsent {
+			t.Errorf("nested table %s is not authoritative; removed child rows would remain stale", tbl.Name)
+		}
 		for _, pk := range tbl.PK {
 			found := false
 			for _, c := range tbl.Columns {

@@ -72,10 +72,11 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member:  "metaGroups",
-		Name:    "inv_meta_groups",
-		PK:      []string{"meta_group_id"},
-		Columns: []string{"meta_group_id", "name", "icon_id", "icon_suffix"},
+		Member:      "metaGroups",
+		Name:        "inv_meta_groups",
+		PK:          []string{"meta_group_id"},
+		PruneAbsent: true,
+		Columns:     []string{"meta_group_id", "name", "icon_id", "icon_suffix"},
 		Values: func(r Row) ([]any, bool) {
 			id, ok := r.Key()
 			if !ok {
@@ -101,9 +102,10 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member: "mapRegions",
-		Name:   "regions",
-		PK:     []string{"region_id"},
+		Member:      "mapRegions",
+		Name:        "regions",
+		PK:          []string{"region_id"},
+		PruneAbsent: true,
 		// faction_id, nebula_id and wormhole_class_id are present in the archive
 		// and have columns here, but the TypeScript importer never wrote them
 		// (0 of 114 rows populated in production). Filling them is a deliberate
@@ -125,10 +127,11 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member:  "mapConstellations",
-		Name:    "constellations",
-		PK:      []string{"constellation_id"},
-		Columns: []string{"constellation_id", "constellation_name", "region_id", "x", "y", "z", "faction_id", "radius"},
+		Member:      "mapConstellations",
+		Name:        "constellations",
+		PK:          []string{"constellation_id"},
+		PruneAbsent: true,
+		Columns:     []string{"constellation_id", "constellation_name", "region_id", "x", "y", "z", "faction_id", "radius"},
 		Values: func(r Row) ([]any, bool) {
 			id, ok := r.Key()
 			if !ok {
@@ -142,9 +145,10 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member: "mapSolarSystems",
-		Name:   "solar_systems",
-		PK:     []string{"solar_system_id"},
+		Member:      "mapSolarSystems",
+		Name:        "solar_systems",
+		PK:          []string{"solar_system_id"},
+		PruneAbsent: true,
 		Columns: []string{
 			"solar_system_id", "system_name", "constellation_id", "region_id",
 			"x", "y", "z", "x2d", "z2d", "security", "security_class", "faction_id",
@@ -175,9 +179,10 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member: "factions",
-		Name:   "factions",
-		PK:     []string{"faction_id"},
+		Member:      "factions",
+		Name:        "factions",
+		PK:          []string{"faction_id"},
+		PruneAbsent: true,
 		Columns: []string{
 			"faction_id", "name", "description", "corporation_id",
 			"militia_corporation_id", "solar_system_id", "icon_id", "size_factor",
@@ -200,9 +205,10 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member: "bloodlines",
-		Name:   "bloodlines",
-		PK:     []string{"bloodline_id"},
+		Member:      "bloodlines",
+		Name:        "bloodlines",
+		PK:          []string{"bloodline_id"},
+		PruneAbsent: true,
 		Columns: []string{
 			"bloodline_id", "bloodline_name", "race_id", "description",
 			"male_description", "female_description", "short_description",
@@ -226,10 +232,11 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member:  "races",
-		Name:    "races",
-		PK:      []string{"race_id"},
-		Columns: []string{"race_id", "race_name", "description", "short_description", "icon_id"},
+		Member:      "races",
+		Name:        "races",
+		PK:          []string{"race_id"},
+		PruneAbsent: true,
+		Columns:     []string{"race_id", "race_name", "description", "short_description", "icon_id"},
 		Values: func(r Row) ([]any, bool) {
 			id, ok := r.Key()
 			if !ok {
@@ -242,9 +249,10 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member: "npcCorporations",
-		Name:   "npc_corporations",
-		PK:     []string{"corporation_id"},
+		Member:      "npcCorporations",
+		Name:        "npc_corporations",
+		PK:          []string{"corporation_id"},
+		PruneAbsent: true,
 		Columns: []string{
 			"corporation_id", "name", "description", "ticker_name", "ceo_id",
 			"station_id", "size", "extent", "tax_rate", "deleted",
@@ -262,10 +270,11 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member:  "stationOperations",
-		Name:    "station_operations",
-		PK:      []string{"operation_id"},
-		Columns: []string{"operation_id", "operation_name", "description", "activity_id", "services"},
+		Member:      "stationOperations",
+		Name:        "station_operations",
+		PK:          []string{"operation_id"},
+		PruneAbsent: true,
+		Columns:     []string{"operation_id", "operation_name", "description", "activity_id", "services"},
 		Values: func(r Row) ([]any, bool) {
 			id, ok := r.Key()
 			if !ok {
@@ -278,9 +287,10 @@ var Tables = []Table{
 		},
 	},
 	{
-		Member: "npcStations",
-		Name:   "stations",
-		PK:     []string{"station_id"},
+		Member:      "npcStations",
+		Name:        "stations",
+		PK:          []string{"station_id"},
+		PruneAbsent: true,
 		// station_name is omitted: NPC station names are not in the archive.
 		// They are composed later from the owning corporation plus the operation
 		// and celestial index, which is a separate derived pass.

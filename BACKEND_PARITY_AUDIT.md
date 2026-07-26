@@ -250,9 +250,7 @@ feae75a fix(secrets): stop the guard blocking every .env.example edit
   blueprints and all four activity tables, celestials, solar-system jumps, and
   inventory flags.
 
-## Paused investigation: SDE nested-row discrepancy
-
-This is the exact point where the audit stopped.
+## Resolved investigation: SDE nested-row discrepancy
 
 Both local and production databases report SDE build `3444265`, but three
 nested tables have different counts:
@@ -265,32 +263,39 @@ nested tables have different counts:
 
 Neither side has null values in the relevant payload columns.
 
-The current archive contains exactly 47,051 material entries, so the eight
-extra production material rows are probably stale rows retained from an older
-SDE build. Both importers upsert current rows but do not delete keys removed
-from a later archive. The equivalent archive count check for the two dogma
-tables was started but the `jq` expression was malformed and must be rerun.
+The build `3444265` archive contains exactly the Go/local counts shown above:
 
-Next steps for this discrepancy:
+```text
+645,701 dogma attributes
+ 54,070 dogma effects
+ 47,051 material rows
+```
 
-1. Count current archive dogma attributes and effects correctly.
-2. Diff the primary-key sets between local and production.
-3. Check whether every production-only key is absent from build `3444265`.
-4. Decide whether snapshot-owned SDE tables should prune stale keys.
-   - Pruning is likely the correct fix for fresh/current data.
-   - It is a deliberate behavior change from TypeScript and should be tested
-     before changing production data.
-5. Add nested tables, celestials, jumps, and flags to `sde:verify`; its current
-   output checks only the 14 straightforward table declarations.
+A primary-key diff found that every mismatch was production-only; Go had no
+extra keys. The parent inventory types still exist, but CCP removed those
+specific child attributes/effects/materials from the current build. The
+TypeScript importer's upsert-only behavior retained them from an older build.
+
+The Go importer now treats fully archive-owned tables as authoritative
+snapshots. Merge and prune happen in one transaction, while the four inventory
+tables augmented with bundled Dust 514 data remain merge-only. Celestials and
+solar-system jumps are also pruned as complete derived snapshots.
+
+The behavior was integration-tested by inserting one synthetic stale row into
+each affected nested table and running a partial cached import. Each import
+reported one pruned row, and all three synthetic rows were gone afterward.
+
+`sde:verify` now includes nested tables, celestials, jumps, and inventory flags,
+not only the 14 straightforward declarations.
 
 ## Remaining audit work
 
-- Finish the SDE nested-row investigation above.
 - Complete the command-by-command notes for the remaining non-excluded command
   surfaces. Most result paths have already been covered through worker/cron
   auditing, but the final matrix has not yet been written.
-- Run an authoritative local-versus-production primary-key/value comparison for
-  the imported SDE tables, not only row counts.
+- Run an authoritative local-versus-production value comparison for shared
+  primary keys in the imported SDE tables, documenting intentional mapping
+  improvements separately.
 - Run the populated-database kill-type classifier agreement test.
 - Run the Goose schema comparison explicitly and record whether it passed or
   was skipped due to environment requirements.
@@ -322,7 +327,5 @@ Residual risks to call out in the final report:
 
 ## Resume point
 
-Start with the three SQL primary-key diffs for
-`type_dogma_attributes`, `type_dogma_effects`, and `type_materials`.
-The worktree was clean before this log was added, and no source-code change was
-left half-finished.
+Continue with the value comparison for shared SDE primary keys, then finish the
+non-excluded command matrix and final validation.

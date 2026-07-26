@@ -165,7 +165,7 @@ iterating on one mapping:
 		defer src.Close()
 
 		ui.Section("Importing")
-		table := ui.NewTable("TABLE", "MEMBER", "READ", "WRITTEN", "SKIPPED", "TIME")
+		table := ui.NewTable("TABLE", "MEMBER", "READ", "WRITTEN", "SKIPPED", "PRUNED", "TIME")
 		var results []sde.LoadResult
 		for _, t := range tables {
 			res, err := sde.Load(cmd.Context(), pool, t, src)
@@ -182,7 +182,8 @@ iterating on one mapping:
 				status = ui.Dim("absent")
 			}
 			table.Row(ui.Command(res.Table), res.Member,
-				fmtCount(res.Read), fmtCount(res.Written), fmtCount(res.Skipped), status)
+				fmtCount(res.Read), fmtCount(res.Written), fmtCount(res.Skipped),
+				fmtCount(res.Pruned), status)
 		}
 		fmt.Println(table.Render())
 
@@ -203,10 +204,13 @@ iterating on one mapping:
 			}
 
 			ui.Section("Derived from the map")
-			ct := ui.NewTable("TABLE", "SOURCE", "ROWS", "TIME")
-			ct.Row(ui.Command("celestials"), "9 members", fmtCount(cel.Written), cel.Elapsed)
-			ct.Row(ui.Command("solar_system_jumps"), "mapStargates", fmtCount(jumps.Written), jumps.Elapsed)
-			ct.Row(ui.Command("inv_flags"), ui.Dim("bundled"), fmtCount(flagCount), flagTime)
+			ct := ui.NewTable("TABLE", "SOURCE", "ROWS", "PRUNED", "TIME")
+			ct.Row(ui.Command("celestials"), "9 members",
+				fmtCount(cel.Written), fmtCount(cel.Pruned), cel.Elapsed)
+			ct.Row(ui.Command("solar_system_jumps"), "mapStargates",
+				fmtCount(jumps.Written), fmtCount(jumps.Pruned), jumps.Elapsed)
+			ct.Row(ui.Command("inv_flags"), ui.Dim("bundled"),
+				fmtCount(flagCount), "0", flagTime)
 			fmt.Println(ct.Render())
 		}
 
@@ -313,11 +317,11 @@ iterating on one mapping:
 var sdeVerifyCmd = &cobra.Command{
 	Use:   "verify",
 	Short: "Compare local SDE row counts against a reference database",
-	Long: `Counts rows in every imported table and compares against a reference,
-which is production by default.
+	Long: `Counts rows in every archive-owned and derived SDE table.
 
-This is the check that the port maps cleanly: an exact-count match across all
-tables means the Go importer produced what the TypeScript one did.`,
+Run it once locally and once with --config .env.prod. Matching counts are the
+first parity check; primary-key and value comparisons remain the stronger
+check when a count differs.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := requireConfig(); err != nil {
 			return err
@@ -331,16 +335,28 @@ tables means the Go importer produced what the TypeScript one did.`,
 		ui.Section("Row counts")
 		t := ui.NewTable("TABLE", "ROWS")
 		var total int64
-		for _, tbl := range sde.Tables {
+		tables := sde.AllTables()
+		tableNames := make([]string, 0, len(tables)+3)
+		for _, tbl := range tables {
+			tableNames = append(tableNames, tbl.Name)
+		}
+		tableNames = append(tableNames,
+			"celestials",
+			"solar_system_jumps",
+			"inv_flags",
+		)
+		for _, tableName := range tableNames {
 			var n int64
-			// count(*) is fine here: the largest of these is 52 k rows, so an
-			// exact count is cheap and reltuples would be an estimate.
+			// Exact counts are intentional. type_dogma_attributes is the
+			// largest table at roughly 646k rows, still small enough that an
+			// index-only count is preferable to hiding stale rows behind a
+			// reltuples estimate.
 			if err := pool.QueryRow(cmd.Context(),
-				"SELECT count(*) FROM "+tbl.Name).Scan(&n); err != nil {
+				"SELECT count(*) FROM "+tableName).Scan(&n); err != nil {
 				return err
 			}
 			total += n
-			t.Row(ui.Command(tbl.Name), fmtCount(n))
+			t.Row(ui.Command(tableName), fmtCount(n))
 		}
 		fmt.Println(t.Render())
 		ui.Newline()

@@ -24,6 +24,7 @@ type ImportResult struct {
 	ReleaseDate string
 	Read        int64
 	Written     int64
+	Pruned      int64
 	Duration    time.Duration
 	Elapsed     string
 
@@ -76,6 +77,7 @@ func ImportBuild(
 		res.Tables = append(res.Tables, loaded)
 		res.Read += loaded.Read
 		res.Written += loaded.Written
+		res.Pruned += loaded.Pruned
 	}
 
 	progress("importing celestials")
@@ -83,12 +85,14 @@ func ImportBuild(
 	if err != nil {
 		return res, fmt.Errorf("import celestials: %w", err)
 	}
+	res.Pruned += res.Celestials.Pruned
 
 	progress("importing solar system jumps")
 	res.SystemJumps, err = ImportSystemJumps(ctx, pool, src)
 	if err != nil {
 		return res, fmt.Errorf("import system jumps: %w", err)
 	}
+	res.Pruned += res.SystemJumps.Pruned
 
 	progress("seeding inventory flags")
 	res.InvFlags, _, err = SeedInvFlags(ctx, pool)

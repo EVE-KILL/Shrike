@@ -176,6 +176,35 @@ func TestTableDeclarationsAreConsistent(t *testing.T) {
 	}
 }
 
+func TestSnapshotOwnershipDoesNotPruneDustAugmentedTables(t *testing.T) {
+	augmented := map[string]bool{
+		"inv_types":         true,
+		"inv_groups":        true,
+		"inv_categories":    true,
+		"inv_market_groups": true,
+	}
+	snapshotOwned := map[string]bool{
+		"inv_meta_groups":    true,
+		"regions":            true,
+		"constellations":     true,
+		"solar_systems":      true,
+		"factions":           true,
+		"bloodlines":         true,
+		"races":              true,
+		"npc_corporations":   true,
+		"station_operations": true,
+		"stations":           true,
+	}
+	for _, tbl := range Tables {
+		if augmented[tbl.Name] && tbl.PruneAbsent {
+			t.Errorf("%s prunes rows absent from CCP's archive, including bundled Dust 514 data", tbl.Name)
+		}
+		if snapshotOwned[tbl.Name] && !tbl.PruneAbsent {
+			t.Errorf("%s is archive-owned but does not prune rows removed from a later build", tbl.Name)
+		}
+	}
+}
+
 func TestMergeSQLExcludesPrimaryKeyFromUpdate(t *testing.T) {
 	tbl := Table{
 		Name:    "inv_types",
@@ -192,6 +221,25 @@ func TestMergeSQLExcludesPrimaryKeyFromUpdate(t *testing.T) {
 	// Duplicate keys within one archive member would otherwise abort the merge.
 	if !contains(got, "DISTINCT ON (type_id)") {
 		t.Errorf("merge lacks the duplicate-key guard:\n%s", got)
+	}
+}
+
+func TestPruneSQLUsesEveryPrimaryKeyColumn(t *testing.T) {
+	tbl := Table{
+		Name:    "type_dogma_attributes",
+		PK:      []string{"type_id", "attribute_id"},
+		Columns: []string{"type_id", "attribute_id", "value"},
+	}
+	got := pruneSQL(tbl, "staging")
+	for _, want := range []string{
+		"DELETE FROM public.type_dogma_attributes AS dst",
+		"FROM staging AS src",
+		"src.type_id = dst.type_id",
+		"src.attribute_id = dst.attribute_id",
+	} {
+		if !contains(got, want) {
+			t.Errorf("prune SQL lacks %q:\n%s", want, got)
+		}
 	}
 }
 

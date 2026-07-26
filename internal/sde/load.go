@@ -44,6 +44,20 @@ type Table struct {
 	// Optional marks members that may legitimately be absent from an archive.
 	// CCP adds and drops members between builds.
 	Optional bool
+
+	// PruneAbsent makes the archive member authoritative for this table.
+	//
+	// An upsert alone leaves rows behind when CCP removes a nested dogma
+	// attribute, material, blueprint activity, or other record from a later
+	// build. Those rows are no longer static data; they are stale data. Tables
+	// set to true are merged and pruned in one transaction so readers never see
+	// a half-updated snapshot.
+	//
+	// Leave this false for tables augmented from another source. In particular,
+	// inv_types, inv_groups, inv_categories, and inv_market_groups also contain
+	// bundled Dust 514 records which are intentionally absent from CCP's
+	// current archive.
+	PruneAbsent bool
 }
 
 // LoadResult reports what a single table import did.
@@ -53,6 +67,7 @@ type LoadResult struct {
 	Read     int64         `json:"read"`
 	Written  int64         `json:"written"`
 	Skipped  int64         `json:"skipped"`
+	Pruned   int64         `json:"pruned"`
 	Duration time.Duration `json:"-"`
 	Elapsed  string        `json:"elapsed"`
 	Missing  bool          `json:"missing,omitempty"`
@@ -122,8 +137,32 @@ func Load(ctx context.Context, pool *pgxpool.Pool, t Table, src *Source) (LoadRe
 	}
 	res.Written = written
 
-	if _, err := conn.Exec(ctx, mergeSQL(t, staging)); err != nil {
-		return res, fmt.Errorf("merge into %s: %w", t.Name, err)
+	if !t.PruneAbsent {
+		if _, err := conn.Exec(ctx, mergeSQL(t, staging)); err != nil {
+			return res, fmt.Errorf("merge into %s: %w", t.Name, err)
+		}
+	} else {
+		// Both statements must become visible together. Pruning before the merge
+		// would briefly remove newly reintroduced rows; pruning after a committed
+		// merge would briefly expose old and new snapshots at once.
+		tx, err := conn.Begin(ctx)
+		if err != nil {
+			return res, fmt.Errorf("begin snapshot merge for %s: %w", t.Name, err)
+		}
+		defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+		if _, err := tx.Exec(ctx, mergeSQL(t, staging)); err != nil {
+			return res, fmt.Errorf("merge into %s: %w", t.Name, err)
+		}
+		pruned, err := tx.Exec(ctx, pruneSQL(t, staging))
+		if err != nil {
+			return res, fmt.Errorf("prune %s: %w", t.Name, err)
+		}
+		res.Pruned = pruned.RowsAffected()
+
+		if err := tx.Commit(ctx); err != nil {
+			return res, fmt.Errorf("commit snapshot merge for %s: %w", t.Name, err)
+		}
 	}
 
 	res.Duration = time.Since(start)
@@ -166,6 +205,24 @@ func mergeSQL(t Table, staging string) string {
 
 	return fmt.Sprintf("INSERT INTO public.%s (%s) %s ON CONFLICT (%s) DO UPDATE SET %s",
 		t.Name, cols, sel, strings.Join(t.PK, ", "), strings.Join(sets, ", "))
+}
+
+// pruneSQL removes destination rows whose primary key is absent from staging.
+//
+// The primary-key comparison is generated from the declaration rather than
+// repeated in every importer, which keeps composite-key tables such as dogma
+// attributes and blueprint activities subject to the same rule.
+func pruneSQL(t Table, staging string) string {
+	joins := make([]string, 0, len(t.PK))
+	for _, c := range t.PK {
+		joins = append(joins, fmt.Sprintf("src.%s = dst.%s", c, c))
+	}
+	return fmt.Sprintf(`
+DELETE FROM public.%s AS dst
+WHERE NOT EXISTS (
+    SELECT 1 FROM %s AS src
+    WHERE %s
+)`, t.Name, staging, strings.Join(joins, " AND "))
 }
 
 // copySource adapts streaming JSONL to pgx.CopyFromSource.

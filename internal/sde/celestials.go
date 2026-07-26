@@ -224,9 +224,32 @@ func ImportCelestials(ctx context.Context, pool *pgxpool.Pool, src *Source) (Loa
 	res.Read = w.written
 	res.Written = w.written
 
-	tbl := Table{Name: "celestials", PK: []string{"item_id"}, Columns: celestialColumns}
-	if _, err := conn.Exec(ctx, mergeSQL(tbl, staging)); err != nil {
+	tbl := Table{
+		Name:        "celestials",
+		PK:          []string{"item_id"},
+		Columns:     celestialColumns,
+		PruneAbsent: true,
+	}
+
+	// Celestials are a complete projection of the current map archive plus the
+	// region/constellation/system tables loaded from that same build. A removed
+	// moon, belt, gate, or station must not survive as a phantom map object.
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return res, fmt.Errorf("begin celestial snapshot merge: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	if _, err := tx.Exec(ctx, mergeSQL(tbl, staging)); err != nil {
 		return res, fmt.Errorf("merge celestials: %w", err)
+	}
+	pruned, err := tx.Exec(ctx, pruneSQL(tbl, staging))
+	if err != nil {
+		return res, fmt.Errorf("prune celestials: %w", err)
+	}
+	res.Pruned = pruned.RowsAffected()
+	if err := tx.Commit(ctx); err != nil {
+		return res, fmt.Errorf("commit celestial snapshot merge: %w", err)
 	}
 
 	res.Duration = time.Since(start)

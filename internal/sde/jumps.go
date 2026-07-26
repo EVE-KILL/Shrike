@@ -152,9 +152,10 @@ func ImportSystemJumps(ctx context.Context, pool *pgxpool.Pool, src *Source) (Lo
 	res.Written = w.written
 
 	tbl := Table{
-		Name:    "solar_system_jumps",
-		PK:      []string{"from_solar_system_id", "to_solar_system_id"},
-		Columns: columns,
+		Name:        "solar_system_jumps",
+		PK:          []string{"from_solar_system_id", "to_solar_system_id"},
+		Columns:     columns,
+		PruneAbsent: true,
 	}
 
 	// This table is a pure function of the archive: every run computes the
@@ -182,7 +183,7 @@ func ImportSystemJumps(ctx context.Context, pool *pgxpool.Pool, src *Source) (Lo
 	if err != nil {
 		return res, fmt.Errorf("prune jumps: %w", err)
 	}
-	res.Skipped = pruned.RowsAffected()
+	res.Pruned = pruned.RowsAffected()
 
 	if err := tx.Commit(ctx); err != nil {
 		return res, err

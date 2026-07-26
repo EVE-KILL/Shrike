@@ -435,7 +435,7 @@ func (d *Deps) cronSDEUpdate(ctx context.Context) (string, error) {
 	}
 
 	return fmt.Sprintf(
-		"SDE build %d imported (%d rows read, %d written in %s; previous build %d)",
-		result.BuildNumber, result.Read, result.Written, result.Elapsed, loaded,
+		"SDE build %d imported (%d rows read, %d written, %d stale rows pruned in %s; previous build %d)",
+		result.BuildNumber, result.Read, result.Written, result.Pruned, result.Elapsed, loaded,
 	), nil
 }

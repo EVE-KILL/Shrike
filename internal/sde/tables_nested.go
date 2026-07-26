@@ -13,10 +13,11 @@ package sde
 var NestedTables = []Table{
 	{
 		// {"_key": 18, "dogmaAttributes": [{"attributeID": 182, "value": 3386.0}, ...]}
-		Member:  "typeDogma",
-		Name:    "type_dogma_attributes",
-		PK:      []string{"type_id", "attribute_id"},
-		Columns: []string{"type_id", "attribute_id", "value"},
+		Member:      "typeDogma",
+		Name:        "type_dogma_attributes",
+		PK:          []string{"type_id", "attribute_id"},
+		PruneAbsent: true,
+		Columns:     []string{"type_id", "attribute_id", "value"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
@@ -41,10 +42,11 @@ var NestedTables = []Table{
 	},
 	{
 		// Same member, different nested array.
-		Member:  "typeDogma",
-		Name:    "type_dogma_effects",
-		PK:      []string{"type_id", "effect_id"},
-		Columns: []string{"type_id", "effect_id", "is_default"},
+		Member:      "typeDogma",
+		Name:        "type_dogma_effects",
+		PK:          []string{"type_id", "effect_id"},
+		PruneAbsent: true,
+		Columns:     []string{"type_id", "effect_id", "is_default"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
@@ -69,10 +71,11 @@ var NestedTables = []Table{
 	},
 	{
 		// {"_key": 18, "materials": [{"materialTypeID": 34, "quantity": 175}, ...]}
-		Member:  "typeMaterials",
-		Name:    "type_materials",
-		PK:      []string{"type_id", "material_type_id"},
-		Columns: []string{"type_id", "material_type_id", "quantity"},
+		Member:      "typeMaterials",
+		Name:        "type_materials",
+		PK:          []string{"type_id", "material_type_id"},
+		PruneAbsent: true,
+		Columns:     []string{"type_id", "material_type_id", "quantity"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
@@ -96,10 +99,11 @@ var NestedTables = []Table{
 		},
 	},
 	{
-		Member:  "blueprints",
-		Name:    "blueprints",
-		PK:      []string{"blueprint_type_id"},
-		Columns: []string{"blueprint_type_id", "max_production_limit"},
+		Member:      "blueprints",
+		Name:        "blueprints",
+		PK:          []string{"blueprint_type_id"},
+		PruneAbsent: true,
+		Columns:     []string{"blueprint_type_id", "max_production_limit"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
@@ -111,10 +115,11 @@ var NestedTables = []Table{
 	{
 		// "activities" is an object keyed by activity name, not an array:
 		// {"copying": {"time": 480}, "manufacturing": {"time": 600, "materials": [...]}}
-		Member:  "blueprints",
-		Name:    "blueprint_activities",
-		PK:      []string{"blueprint_type_id", "activity"},
-		Columns: []string{"blueprint_type_id", "activity", "time"},
+		Member:      "blueprints",
+		Name:        "blueprint_activities",
+		PK:          []string{"blueprint_type_id", "activity"},
+		PruneAbsent: true,
+		Columns:     []string{"blueprint_type_id", "activity", "time"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
@@ -128,10 +133,11 @@ var NestedTables = []Table{
 		},
 	},
 	{
-		Member:  "blueprints",
-		Name:    "blueprint_activity_materials",
-		PK:      []string{"blueprint_type_id", "activity", "material_type_id"},
-		Columns: []string{"blueprint_type_id", "activity", "material_type_id", "quantity"},
+		Member:      "blueprints",
+		Name:        "blueprint_activity_materials",
+		PK:          []string{"blueprint_type_id", "activity", "material_type_id"},
+		PruneAbsent: true,
+		Columns:     []string{"blueprint_type_id", "activity", "material_type_id", "quantity"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
@@ -158,10 +164,11 @@ var NestedTables = []Table{
 		},
 	},
 	{
-		Member:  "blueprints",
-		Name:    "blueprint_activity_products",
-		PK:      []string{"blueprint_type_id", "activity", "product_type_id"},
-		Columns: []string{"blueprint_type_id", "activity", "product_type_id", "quantity", "probability"},
+		Member:      "blueprints",
+		Name:        "blueprint_activity_products",
+		PK:          []string{"blueprint_type_id", "activity", "product_type_id"},
+		PruneAbsent: true,
+		Columns:     []string{"blueprint_type_id", "activity", "product_type_id", "quantity", "probability"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
@@ -188,10 +195,11 @@ var NestedTables = []Table{
 		},
 	},
 	{
-		Member:  "blueprints",
-		Name:    "blueprint_activity_skills",
-		PK:      []string{"blueprint_type_id", "activity", "skill_type_id"},
-		Columns: []string{"blueprint_type_id", "activity", "skill_type_id", "level"},
+		Member:      "blueprints",
+		Name:        "blueprint_activity_skills",
+		PK:          []string{"blueprint_type_id", "activity", "skill_type_id"},
+		PruneAbsent: true,
+		Columns:     []string{"blueprint_type_id", "activity", "skill_type_id", "level"},
 		Expand: func(r Row) [][]any {
 			id, ok := r.Key()
 			if !ok {
