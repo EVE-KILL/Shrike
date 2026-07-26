@@ -199,28 +199,22 @@ func TestDistinctHullsAreCountedOnce(t *testing.T) {
 		t.Errorf("the hull flown by two attackers counted %v kills, want 1", rifter)
 	}
 
-	// The corporation's ship-flown breakdown does NOT collapse the same way,
-	// and that is deliberate fidelity rather than a bug here.
-	//
-	// The TypeScript pushes one breakdown row per matching member and its merge
-	// sums them (`existing.kills += r.kills`), so a hull flown by two members
-	// records 2 kills — while the corporation's headline row records 1. The two
-	// numbers disagree about what "a kill" means: the headline counts killmails,
-	// the ship-flown breakdown counts pilot-kills.
-	//
-	// It is reproduced exactly because the stats port is verified against the
-	// TypeScript as the oracle, and changing it would silently alter every
-	// stored corporation and alliance ship breakdown. Worth revisiting once the
-	// numbers have been compared end to end — but as a decision, not as a
-	// side effect of a rewrite.
+	// The corporation's ship-flown breakdown also counts the Rifter once. This
+	// follows the authoritative TS catchup/backfill SQL, which deduplicates by
+	// (organisation, killmail, ship type); otherwise a catchup would rewrite
+	// the live writer's pilot-count into a killmail-count.
 	b := a.Breakdowns[BreakdownKey{EntityCorporation, testIDBase + 10, DimShipFlown, 587}]
 	if b == nil {
 		t.Fatal("the corporation has no ship-flown breakdown")
 	}
-	if b.Kills != 2 {
+	if b.Kills != 1 {
 		t.Errorf("the corporation's ship-flown breakdown counted %d kills for a hull "+
-			"two of its members flew, want 2 — matching the TypeScript, which sums "+
-			"per-member rows here even though the headline row counts 1", b.Kills)
+			"two of its members flew, want 1", b.Kills)
+	}
+
+	ab := a.Breakdowns[BreakdownKey{EntityAlliance, testIDBase + 20, DimShipFlown, 587}]
+	if ab == nil || ab.Kills != 1 {
+		t.Errorf("the alliance's ship-flown breakdown counted %v, want one Rifter contribution", ab)
 	}
 }
 

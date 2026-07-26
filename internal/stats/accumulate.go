@@ -296,18 +296,22 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		killDim(EntityCharacter, charID, DimKilledAlliance, km.VictimAllianceID)
 	}
 
-	// The organisation-level breakdowns mirror the character ones, but ship
-	// flown is per distinct hull the org brought rather than per member — five
-	// members in the same hull is one row, which the accumulator map collapses
-	// automatically.
+	// The organisation-level breakdowns mirror the character ones. SHIP_FLOWN
+	// is one contribution per distinct hull the organisation brought to this
+	// killmail, matching the authoritative TS catchup/backfill SQL. The TS live
+	// writer accidentally emits one contribution per member and relies on its
+	// merge to sum them, which means a catchup later changes the same daily row.
+	// Deduplicating here keeps live ingest and rebuilds convergent.
 	for corpID := range corps {
 		killDim(EntityCorporation, corpID, DimSystem, km.SolarSystemID)
 		killDim(EntityCorporation, corpID, DimConstellation, km.ConstellationID)
 		killDim(EntityCorporation, corpID, DimRegion, km.RegionID)
 		killDim(EntityCorporation, corpID, DimKilledCorporation, km.VictimCorporationID)
 		killDim(EntityCorporation, corpID, DimKilledAlliance, km.VictimAllianceID)
+		seenShips := map[int32]bool{}
 		for charID, shipID := range charShip {
-			if charCorp[charID] == corpID {
+			if charCorp[charID] == corpID && !seenShips[shipID] {
+				seenShips[shipID] = true
 				killDim(EntityCorporation, corpID, DimShipFlown, shipID)
 			}
 		}
@@ -319,8 +323,10 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		killDim(EntityAlliance, allyID, DimRegion, km.RegionID)
 		killDim(EntityAlliance, allyID, DimKilledCorporation, km.VictimCorporationID)
 		killDim(EntityAlliance, allyID, DimKilledAlliance, km.VictimAllianceID)
+		seenShips := map[int32]bool{}
 		for charID, shipID := range charShip {
-			if charAlliance[charID] == allyID {
+			if charAlliance[charID] == allyID && !seenShips[shipID] {
+				seenShips[shipID] = true
 				killDim(EntityAlliance, allyID, DimShipFlown, shipID)
 			}
 		}
