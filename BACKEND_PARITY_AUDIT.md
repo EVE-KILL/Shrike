@@ -1,6 +1,6 @@
 # Backend parity audit log
 
-Last updated: 2026-07-26 06:15 Europe/Copenhagen
+Last updated: 2026-07-26 14:39 Europe/Copenhagen
 
 This is the handoff point for the TypeScript backend to Go audit. The working
 comparison is:
@@ -31,6 +31,21 @@ known.
 - `discord_events` remains consumed by the Discord service rather than Shrike.
 - Do not change the application schema merely to make the Go implementation
   easier.
+
+### Comparison methodology
+
+Production has accumulated more application data than the local test database,
+so ordinary row counts are not treated as parity evidence. Killmail, entity,
+stats, campaign, and other derived-data comparisons use one of:
+
+- the same bounded input corpus against both implementations;
+- both implementations reading the same database;
+- algorithm-agreement tests over the same stored rows; or
+- primary-key/value comparison on rows shared by both databases.
+
+Whole-table counts are only compared for versioned authoritative snapshots,
+such as the same EVE SDE build. Production-only application rows are expected
+and are not a mismatch.
 
 Commands explicitly excluded from the port:
 
@@ -144,6 +159,67 @@ The requested commands exist and their resulting data paths were compared:
   - live output from both implementations was canonicalized and compared
   - all three exports matched: characters, corporations, and alliances
 
+#### Command-by-command matrix
+
+Every TypeScript command has been classified below. “Matched” means the
+persisted result or operational effect is the same; the Go command may enqueue
+River work rather than doing the work inline.
+
+| TypeScript command | Status | Go result |
+| --- | --- | --- |
+| `backfill:achievements` | TypeScript defect fixed | Rebuilds from maintained killmail/stats sources, removes stale zero-count rows, and resyncs zero-point characters. The TS query references the removed `character_ship_stats_daily` table. |
+| `backfill:battles` | Matched | Same day range, hotspot threshold, detection path, persistence, dry-run behavior, and resume cursor. |
+| `backfill:fittings` | Matched via River | Same 90-day default and killmail-ID cursor; fit extraction is performed by the normal River worker. |
+| `backfill:graph` | Matched via River | Same recent window and optional clear; normal graph-ingest jobs produce the graph data. |
+| `backfill:kills-daily-count` | TypeScript defect fixed | Transactionally replaces each selected `(month, type)` slice, so source deletions cannot leave stale nonzero rows. |
+| `backfill:last-active` | Matched | Same maximum activity over attacker and victim appearances; one range query replaces the TS month loop. |
+| `backfill:missing-wars` | Matched | Finds every referenced missing war and queues metadata repair after the same explicit confirmation gate. |
+| `backfill:points` | Matched | Scores only unscored kills with the live scorer over the selected time range. |
+| `backfill:stats` | Matched with correctness fix | Same old-month/recent-day strategy, top-N rollups, table filters, reset, and rollup controls; latest killmail IDs remain paired with their timestamps. |
+| `backfill:recent-entity-histories` | Explicitly skipped | Not requested for the Go port. |
+| `campaign:process` | Matched with correctness fixes | Full idempotent recompute, lifecycle selection, stats, prize settlement, and wallet references. No killmail-count ceiling; the one-year campaign range is the bound. |
+| `catchup:stats` | Matched with correctness fix | Same authoritative daily recompute; each day is now atomically deleted and replaced. |
+| `cronjobs` | Intentional River implementation | Same declared cron work and run-one behavior; River periodic jobs replace process-local cron. |
+| `db:migrate` | Intentional Goose implementation | Goose replaces Drizzle while producing the same final application schema. |
+| `db:migrate:repair` | Explicitly skipped | Drizzle-ledger repair is not relevant to Goose. |
+| `db:status` | Matched | Same database health, activity, progress, and table reporting intent. |
+| `db:vacuum` | Matched | Same table/all-table vacuum behavior, optional full vacuum, and reindex pass. |
+| `debug:killmail` | Matched | Same fetch/parse/insert and optional downstream debug stages. |
+| `debug:pop` | Explicitly skipped | Not requested for the Go port. |
+| `ekimport:alliances` | Explicitly skipped | Legacy import family excluded. |
+| `ekimport:characters` | Explicitly skipped | Legacy import family excluded. |
+| `ekimport:corporations` | Explicitly skipped | Legacy import family excluded. |
+| `ekimport:killmails` | Explicitly skipped | Legacy import family excluded. |
+| `ekimport:prices` | Explicitly skipped | Legacy import family excluded. |
+| `enrich:fittings` | Explicitly skipped | Not requested for the Go port. |
+| `everef:insurance` | Matched with safety fix | Same full snapshot replacement, now atomic and protected from an empty snapshot. |
+| `everef:killmails` | Matched with correctness fixes | Same archive discovery, parser, valuation, and inserts; isolated parse failures no longer strand a day, and successful bookmarks resume at the next day. |
+| `everef:prices` | Matched | Same inclusive date selection, The Forge filter, first-write-wins history, and per-day failure continuation. |
+| `everef:sovereignty` | TypeScript defects fixed | Current state actually advances; historical replay uses historical state, is idempotent, and cannot rewind a newer live row. |
+| `everef:wars` | Matched with correctness fixes | Same metadata, allies, killmails, war-ID repair, yearly/daily cursors, and current snapshot; isolated killmail failures do not discard the archive. |
+| `export:entities` | Matched | Character, corporation, and alliance JSON were canonicalized from the same database and matched exactly. |
+| `fetch:entity-history` | Explicitly skipped | Not requested for the Go port. |
+| `generate:map-image` | Explicitly skipped | Not requested for the Go port. |
+| `hello` | Explicitly skipped | Example command excluded. |
+| `import:zkb_history` | Matched via River | Same newest-first archive walk, date checks, pacing, low priority, missing-only dispatch, and cursor. |
+| `legacy:export-killmails` | Explicitly skipped | Legacy export excluded. |
+| `queue:stale-entities` | Matched via River | Same stale-selection rules and entity refresh effects; reported counts reflect actual River inserts. |
+| `queues` | Intentional River implementation | Lists queues or runs the selected River worker set; it no longer prints a port-progress banner. |
+| `rebuild:war-interactions` | Matched with correctness fixes | Same atomic full/single-war replacement and effect-ledger repair; latest killmail ID and time remain one coherent pair. |
+| `recompute:capital-prices` | Explicitly skipped | Not requested for the Go port. |
+| `reset:entity-history-queues` | Intentional River implementation | Drains the River queues, clears queue markers, and resumes processing with the same confirmation guard. |
+| `scan:character-holes` | Matched | Same gap geometry, probes, skip stride, miss cap, dry run, and resume cursor. |
+| `scan:character-trailing` | Matched with ESI edge fix | Same forward scan, cumulative miss cap, continuation, and history cascade; ESI 422 is correctly treated as an unallocated ID. |
+| `serve` | Deferred | HTTP/API/Caddy surfaces are explicitly outside this audit pass. |
+| `storage:delete` | Explicitly skipped | Storage command family excluded. |
+| `storage:get` | Explicitly skipped | Storage command family excluded. |
+| `storage:list` | Explicitly skipped | Storage command family excluded. |
+| `storage:put` | Explicitly skipped | Storage command family excluded. |
+| `update:sde` | Matched with snapshot fix | Goose-era importer produces the same application tables and prunes rows removed from fully authoritative archive snapshots. |
+| `validate:archetypes` | Explicitly skipped | Not requested for the Go port. |
+| `work:queues` | Intentional River implementation | Runs all or selected Go-owned River workers with graceful draining. |
+| `work:zkb` | Matched | Same R2Z2 cursor, sequencing, repost handling, rate behavior, and killmail dispatch. |
+
 #### Shared infrastructure
 
 - Config-store key behavior was compared.
@@ -222,6 +298,10 @@ fcec129 Align scheduled announcement state
 855082f Keep organization ship stats rebuildable
 ae15278 Complete scheduled missing war repairs
 b87dabe Match entity export timestamp shapes
+c998b96 Prune stale SDE snapshot rows
+d4158c2 Harden historical Everef imports
+2edd7b5 Make derived backfills authoritative
+50d0220 Keep aggregate killmail markers coherent
 ```
 
 Concurrent serve/ingress and repository-support commits were preserved:
@@ -244,11 +324,19 @@ feae75a fix(secrets): stop the guard blocking every .env.example edit
 - Entity exports from TypeScript and Go were compared against the same local
   database and were exactly equal after canonical JSON key sorting.
 - Local SDE build is current at build `3444265`.
-- The 14 straightforward SDE table row counts exactly match production:
-  72,017 total rows.
-- The following additional SDE table counts also match production:
-  blueprints and all four activity tables, celestials, solar-system jumps, and
-  inventory flags.
+- The SDE archive itself and all Go-imported SDE tables were compared by
+  primary key and value. Shared-key values match; documented differences are
+  intentional mappings such as `NULL` for absent text and fields present in
+  the archive that TS omitted.
+- The populated classifier-agreement test passed on all 15,739 local
+  killmails across all 27 kill subsets.
+- `TestGooseSchemaMatchesTypeScriptMigrations` passed against a scratch
+  database.
+- The authoritative achievement-removal regression passed against Postgres.
+- `TestCollectorAgainstServices` passed against local Postgres and Redis.
+- The matrix mechanically accounts for all 52 TypeScript commands.
+- Final uncached `go test ./...`, `go vet ./...`, and the Shrike build all
+  passed.
 
 ## Resolved investigation: SDE nested-row discrepancy
 
@@ -288,44 +376,17 @@ reported one pruned row, and all three synthetic rows were gone afterward.
 `sde:verify` now includes nested tables, celestials, jumps, and inventory flags,
 not only the 14 straightforward declarations.
 
-## Remaining audit work
+## Audit conclusion
 
-- Complete the command-by-command notes for the remaining non-excluded command
-  surfaces. Most result paths have already been covered through worker/cron
-  auditing, but the final matrix has not yet been written.
-- Run an authoritative local-versus-production value comparison for shared
-  primary keys in the imported SDE tables, documenting intentional mapping
-  improvements separately.
-- Run the populated-database kill-type classifier agreement test.
-- Run the Goose schema comparison explicitly and record whether it passed or
-  was skipped due to environment requirements.
-- Re-run the status integration test at the final commit.
-- Perform the final clean validation:
-
-  ```text
-  go test ./... -count=1
-  go vet ./...
-  go build ./cmd/shrike
-  ```
-
-- Produce the final parity matrix with one of:
-  - matched
-  - intentionally different
-  - fixed TypeScript defect
-  - explicitly skipped
-  - residual risk
+No known in-scope command, queue, cron, worker, schema, killmail-processing, or
+emitted-data parity gap remains. The known differences are either explicit
+scope exclusions, River/Goose implementation substitutions, or documented
+correctness fixes.
 
 Residual risks to call out in the final report:
 
-- A full SDE archive import has run locally and its ordinary counts match
-  production, but a full value-by-value comparison is not complete.
 - Production-scale throughput has not been benchmarked.
 - Memgraph being unavailable is treated as degraded operation because graph
   data is rebuildable; this should remain visible operationally.
 - HTTP/API surfaces contain intentional placeholders and remain outside this
   audit.
-
-## Resume point
-
-Continue with the value comparison for shared SDE primary keys, then finish the
-non-excluded command matrix and final validation.
