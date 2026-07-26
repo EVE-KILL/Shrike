@@ -295,7 +295,7 @@ func StoreRefreshed(ctx context.Context, pool *pgxpool.Pool, characterID int32, 
 	_, err := pool.Exec(ctx, `
         UPDATE user_esi_tokens SET
             access_token = $2,
-            refresh_token = $3,
+            refresh_token = COALESCE(NULLIF($3, ''), refresh_token),
             token_expiry = $4,
             scopes = $5,
             last_fetched = now(),
