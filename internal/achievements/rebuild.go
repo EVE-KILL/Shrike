@@ -12,6 +12,7 @@ import (
 type RebuildResult struct {
 	Definitions int   `json:"definitions"`
 	Rows        int64 `json:"rows"`
+	Removed     int64 `json:"removed"`
 	Characters  int64 `json:"characters"`
 }
 
@@ -41,11 +42,12 @@ func Filter(id, category string) []Definition {
 func Rebuild(ctx context.Context, pool *pgxpool.Pool, definitions []Definition, syncAll bool) (RebuildResult, error) {
 	out := RebuildResult{Definitions: len(definitions)}
 	for _, def := range definitions {
-		n, err := rebuildDefinition(ctx, pool, def)
+		upserted, removed, err := rebuildDefinition(ctx, pool, def)
 		if err != nil {
 			return out, fmt.Errorf("rebuild achievement %s: %w", def.ID, err)
 		}
-		out.Rows += n
+		out.Rows += upserted
+		out.Removed += removed
 	}
 
 	// The TS command only performs the table-wide denormalized point sync for a
@@ -53,14 +55,16 @@ func Rebuild(ctx context.Context, pool *pgxpool.Pool, definitions []Definition, 
 	if syncAll {
 		tag, err := pool.Exec(ctx, `
 			UPDATE characters c
-			SET achievement_points = sums.total
-			FROM (
-				SELECT entity_id, COALESCE(SUM(points), 0)::int AS total
-				FROM entity_achievements
-				GROUP BY entity_id
-			) sums
-			WHERE c.character_id = sums.entity_id
-			  AND c.achievement_points IS DISTINCT FROM sums.total`)
+			SET achievement_points = COALESCE((
+				SELECT SUM(a.points)::int
+				FROM entity_achievements a
+				WHERE a.entity_id = c.character_id
+			), 0)
+			WHERE c.achievement_points IS DISTINCT FROM COALESCE((
+				SELECT SUM(a.points)::int
+				FROM entity_achievements a
+				WHERE a.entity_id = c.character_id
+			), 0)`)
 		if err != nil {
 			return out, fmt.Errorf("sync character achievement points: %w", err)
 		}
@@ -69,37 +73,56 @@ func Rebuild(ctx context.Context, pool *pgxpool.Pool, definitions []Definition, 
 	return out, nil
 }
 
-func rebuildDefinition(ctx context.Context, pool *pgxpool.Pool, def Definition) (int64, error) {
+func rebuildDefinition(ctx context.Context, pool *pgxpool.Pool, def Definition) (int64, int64, error) {
 	countQuery, args, err := countQuery(def)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	tag, err := pool.Exec(ctx, `
-		INSERT INTO entity_achievements (
-			entity_id, achievement_id, current_count, threshold,
-			completion_tiers, is_completed, points, completed_at, last_updated
+	var upserted, removed int64
+	err = pool.QueryRow(ctx, `
+		WITH counted AS MATERIALIZED (`+countQuery+`),
+		upserted AS (
+			INSERT INTO entity_achievements (
+				entity_id, achievement_id, current_count, threshold,
+				completion_tiers, is_completed, points, completed_at, last_updated
+			)
+			SELECT character_id, $1, cnt, $2::int,
+			       floor(cnt::numeric / $2::numeric)::int,
+			       cnt >= $2::int,
+			       $3::int * GREATEST(1, floor(cnt::numeric / $2::numeric)::int),
+			       CASE WHEN cnt >= $2::int THEN now() ELSE NULL END,
+			       now()
+			FROM counted
+			WHERE cnt > 0
+			ON CONFLICT (entity_id, achievement_id) DO UPDATE SET
+				current_count = EXCLUDED.current_count,
+				completion_tiers = EXCLUDED.completion_tiers,
+				is_completed = EXCLUDED.is_completed,
+				points = EXCLUDED.points,
+				completed_at = COALESCE(entity_achievements.completed_at, EXCLUDED.completed_at),
+				last_updated = now()
+			RETURNING 1
+		),
+		removed AS (
+			DELETE FROM entity_achievements existing
+			WHERE existing.achievement_id = $1
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM counted
+				WHERE counted.character_id = existing.entity_id
+				  AND counted.cnt > 0
+			  )
+			RETURNING 1
 		)
-		SELECT character_id, $1, cnt, $2,
-		       floor(cnt::numeric / $2)::int,
-		       cnt >= $2,
-		       $3 * GREATEST(1, floor(cnt::numeric / $2)::int),
-		       CASE WHEN cnt >= $2 THEN now() ELSE NULL END,
-		       now()
-		FROM (`+countQuery+`) counted
-		WHERE cnt > 0
-		ON CONFLICT (entity_id, achievement_id) DO UPDATE SET
-			current_count = EXCLUDED.current_count,
-			completion_tiers = EXCLUDED.completion_tiers,
-			is_completed = EXCLUDED.is_completed,
-			points = EXCLUDED.points,
-			completed_at = COALESCE(entity_achievements.completed_at, EXCLUDED.completed_at),
-			last_updated = now()`,
-		append([]any{def.ID, def.Threshold, def.SignedBasePoints()}, args...)...)
+		SELECT (SELECT count(*) FROM upserted),
+		       (SELECT count(*) FROM removed)`,
+		append([]any{def.ID, def.Threshold, def.SignedBasePoints()}, args...)...).
+		Scan(&upserted, &removed)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	return tag.RowsAffected(), nil
+	return upserted, removed, nil
 }
 
 // countQuery returns a trusted SQL fragment plus bound trigger parameters.
@@ -147,16 +170,21 @@ func countQuery(def Definition) (string, []any, error) {
 			GROUP BY a.character_id`, []any{def.MinSec, def.MaxSec}, nil
 	case TriggerShipKills:
 		return `
-			SELECT character_id, SUM(kills)::int AS cnt
-			FROM character_ship_stats_daily
-			WHERE ship_group_id = ANY($4::int[])
-			GROUP BY character_id`, []any{def.GroupIDs}, nil
+			SELECT a.character_id, count(*)::int AS cnt
+			FROM killmail_attackers a
+			JOIN killmails k
+			  ON k.killmail_id = a.killmail_id
+			 AND k.killmail_time = a.killmail_time
+			WHERE a.character_id IS NOT NULL
+			  AND k.victim_ship_group_id = ANY($4::int[])
+			GROUP BY a.character_id`, []any{def.GroupIDs}, nil
 	case TriggerShipLosses:
 		return `
-			SELECT character_id, SUM(losses)::int AS cnt
-			FROM character_ship_stats_daily
-			WHERE ship_group_id = ANY($4::int[])
-			GROUP BY character_id`, []any{def.GroupIDs}, nil
+			SELECT victim_character_id AS character_id, count(*)::int AS cnt
+			FROM killmails
+			WHERE victim_character_id IS NOT NULL
+			  AND victim_ship_group_id = ANY($4::int[])
+			GROUP BY victim_character_id`, []any{def.GroupIDs}, nil
 	default:
 		return "", nil, fmt.Errorf("unsupported trigger %q", def.Trigger)
 	}

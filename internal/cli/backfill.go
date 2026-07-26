@@ -447,6 +447,7 @@ path, because replaying additive counters would award everything twice.`,
 			return ui.JSON(res)
 		}
 		ui.KV("Rows upserted", fmtCount(res.Rows))
+		ui.KV("Stale rows removed", fmtCount(res.Removed))
 		if flagAchievementID == "" && flagAchievementCategory == "" {
 			ui.KV("Characters resynced", fmtCount(res.Characters))
 		}
@@ -518,7 +519,21 @@ rather than accumulating — so it is safe to re-run.`,
 		for _, month := range months {
 			next := month.AddDate(0, 1, 0)
 			for kind, predicate := range predicates {
-				tag, err := pool.Exec(cmd.Context(), fmt.Sprintf(`
+				tx, err := pool.Begin(cmd.Context())
+				if err != nil {
+					return fmt.Errorf("begin rebuild %s for %s: %w", kind, month.Format("2006-01"), err)
+				}
+
+				if _, err := tx.Exec(cmd.Context(), `
+					DELETE FROM kills_daily_count
+					WHERE date >= $1::date
+					  AND date < $2::date
+					  AND type = $3`, month, next, kind); err != nil {
+					_ = tx.Rollback(cmd.Context())
+					return fmt.Errorf("clear %s for %s: %w", kind, month.Format("2006-01"), err)
+				}
+
+				tag, err := tx.Exec(cmd.Context(), fmt.Sprintf(`
 					INSERT INTO kills_daily_count (date, type, count)
 					SELECT (k.killmail_time AT TIME ZONE 'UTC')::date, $1, count(*)
 					FROM killmails k
@@ -528,7 +543,11 @@ rather than accumulating — so it is safe to re-run.`,
 					ON CONFLICT (date, type) DO UPDATE SET count = EXCLUDED.count`,
 					predicate), kind, month, next)
 				if err != nil {
+					_ = tx.Rollback(cmd.Context())
 					return fmt.Errorf("rebuild %s for %s: %w", kind, month.Format("2006-01"), err)
+				}
+				if err := tx.Commit(cmd.Context()); err != nil {
+					return fmt.Errorf("commit %s for %s: %w", kind, month.Format("2006-01"), err)
 				}
 				total += tag.RowsAffected()
 			}
