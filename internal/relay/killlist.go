@@ -2,7 +2,6 @@ package relay
 
 import (
 	"context"
-	"time"
 
 	"github.com/eve-kill/shrike/internal/eve"
 	"github.com/eve-kill/shrike/internal/killmail"
@@ -130,7 +129,7 @@ func BuildKilllistRow(p *killmail.Parsed, cache *eve.Cache, paths eve.MarketPath
 	row := KilllistRow{
 		KillmailID:    km.KillmailID,
 		KillmailHash:  km.KillmailHash,
-		KillmailTime:  km.KillmailTime.UTC().Format(time.RFC3339),
+		KillmailTime:  isoMillis(km.KillmailTime),
 		TotalValue:    km.TotalValue,
 		AttackerCount: km.AttackerCount,
 		IsNPC:         km.IsNPC,

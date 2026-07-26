@@ -222,6 +222,36 @@ func TestRoutingKeysAreSorted(t *testing.T) {
 	}
 }
 
+func TestBuildKilllistRowUsesISOTimeAndCanonicalNPCFinalBlowNulls(t *testing.T) {
+	p := testKillmail()
+	p.Attackers = []killmail.Attacker{{FinalBlow: true}}
+
+	row := BuildKilllistRow(
+		p,
+		eve.NewCache(eve.CacheData{}),
+		nil,
+		EntityNames{
+			Characters:   map[int32]string{},
+			Corporations: map[int32]string{},
+			Alliances:    map[int32]string{},
+		},
+	)
+
+	if row.KillmailTime != "2026-07-20T12:00:00.000Z" {
+		t.Errorf("killmail_time = %q, want TypeScript toISOString shape", row.KillmailTime)
+	}
+	for name, id := range map[string]*int32{
+		"character":   row.FinalBlowCharacterID,
+		"corporation": row.FinalBlowCorporationID,
+		"alliance":    row.FinalBlowAllianceID,
+		"ship":        row.FinalBlowShipTypeID,
+	} {
+		if id != nil {
+			t.Errorf("NPC final-blow %s id = %v, want canonical REST null", name, *id)
+		}
+	}
+}
+
 func TestBuildKillmailEventMatchesTheHydratedWireShape(t *testing.T) {
 	p := testKillmail()
 	p.Killmail.VictimDamageTaken = 1234

@@ -31,7 +31,9 @@ type FeedNotice struct {
 //
 // The insert is what matters and its failure is returned; the notification is
 // best-effort, because a client that misses it recovers on its next poll from
-// the sequence number it already holds.
+// the sequence number it already holds. This intentionally avoids the
+// TypeScript failure mode where a Redis outage retries a successful insert and
+// appends duplicate feed rows.
 func (p *Publisher) PublishToFeed(ctx context.Context, pool *pgxpool.Pool, killmailID int64, routingKeys []string) error {
 	var seq int64
 	if err := pool.QueryRow(ctx,

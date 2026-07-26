@@ -19,6 +19,7 @@ func testCache() *eve.Cache {
 			17619: {GroupID: 380, CategoryID: 6, Name: "Impel"},          // hauler
 			22436: {GroupID: 553, CategoryID: 11, Name: "Serpentis NPC"}, // entity
 			2456:  {GroupID: 100, CategoryID: 18, Name: "Warrior I"},     // drone
+			7777:  {GroupID: 999, CategoryID: 11, Name: "Missing Group"}, // corrupt SDE edge
 			// Modules
 			5973: {GroupID: 46, CategoryID: 7, Name: "1MN Afterburner"},
 			2873: {GroupID: 645, CategoryID: 7, Name: "Small Smartbomb"},
@@ -154,6 +155,9 @@ func TestDetectNPC(t *testing.T) {
 		{"player hull, no pilot", []ESIAttacker{{ShipTypeID: 587}}, false},
 		// An unknown type cannot be classified, so it does not veto.
 		{"unknown hull", []ESIAttacker{{ShipTypeID: 999999}}, true},
+		// TypeScript treats a known type whose group row is missing as
+		// unclassifiable, which vetoes NPC classification.
+		{"known hull with missing group", []ESIAttacker{{ShipTypeID: 7777}}, false},
 		{"no attackers at all", nil, false},
 	}
 	for _, c := range cases {

@@ -1,6 +1,13 @@
 package eve
 
-import "testing"
+import (
+	"context"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
 
 func priceCache() *Cache {
 	return NewCache(CacheData{
@@ -93,4 +100,83 @@ func TestNewCacheTolerAtesMissingMaps(t *testing.T) {
 	if got := c.CountsByName()["inv_types"]; got != 0 {
 		t.Errorf("empty cache counted %d types", got)
 	}
+}
+
+// The TypeScript parser always prices against The Forge (Jita). The table can
+// hold more regions, so omitting that predicate silently values a kill from
+// whichever region happened to have the newest row.
+func TestPricesUseTheForgeAndPreserveZeroAverages(t *testing.T) {
+	pool := isolatedPricePool(t)
+	ctx := context.Background()
+
+	if _, err := pool.Exec(ctx, `
+		CREATE TEMP TABLE prices (
+			type_id integer NOT NULL,
+			region_id integer NOT NULL,
+			date date NOT NULL,
+			average double precision
+		) ON COMMIT PRESERVE ROWS;
+		INSERT INTO prices (type_id, region_id, date, average) VALUES
+			(42, 10000002, '2026-07-20', 100),
+			(42, 10000043, '2026-07-21', 999),
+			(43, 10000002, '2026-07-20', 0);
+	`); err != nil {
+		t.Fatalf("seed temporary prices: %v", err)
+	}
+
+	cache := NewCache(CacheData{})
+	prices := NewPrices(pool, cache)
+	day, err := prices.On(ctx, "2026-07-21", []int32{42, 43})
+	if err != nil {
+		t.Fatalf("On: %v", err)
+	}
+	if got := day.Of(42); got != 100 {
+		t.Errorf("type 42 price = %v, want The Forge value 100", got)
+	}
+	if got := day.Of(43); got != 0 {
+		t.Errorf("type 43 price = %v, want stored zero average", got)
+	}
+
+	snapshotPrices := NewPrices(pool, cache)
+	if _, err := snapshotPrices.Snapshot(ctx, "2026-07-21"); err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	snapshot, err := snapshotPrices.On(ctx, "2026-07-21", []int32{42, 43})
+	if err != nil {
+		t.Fatalf("On after Snapshot: %v", err)
+	}
+	if got := snapshot.Of(42); got != 100 {
+		t.Errorf("snapshot type 42 price = %v, want The Forge value 100", got)
+	}
+	if got := snapshot.Of(43); got != 0 {
+		t.Errorf("snapshot type 43 price = %v, want stored zero average", got)
+	}
+}
+
+func isolatedPricePool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = "postgresql://evekill:" + "evekill@127.0.0.1:5432/evekill"
+	}
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Skipf("no test database: %v", err)
+	}
+	// A temp table is session-local. One connection guarantees the setup and
+	// the production query use that same session without touching public data.
+	config.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		t.Skipf("no test database: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		t.Skipf("no test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
 }

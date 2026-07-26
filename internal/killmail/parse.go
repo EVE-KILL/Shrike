@@ -229,7 +229,8 @@ func detectNPC(cache *eve.Cache, attackers []ESIAttacker) bool {
 		if !ok || t.GroupID == 0 {
 			continue
 		}
-		if group, ok := cache.Group(t.GroupID); ok && group.CategoryID != categoryEntity {
+		group, ok := cache.Group(t.GroupID)
+		if !ok || group.CategoryID != categoryEntity {
 			return false
 		}
 	}

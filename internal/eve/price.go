@@ -21,6 +21,8 @@ import (
 // kill date.
 const FallbackPrice = 0.01
 
+const forgeRegionID int32 = 10000002
+
 // Per-group overrides, kept in the order the TypeScript checks them.
 const (
 	categorySKIN     int32 = 91   // cosmetic, never worth more than the floor
@@ -135,8 +137,10 @@ func (p *Prices) On(ctx context.Context, date string, typeIDs []int32) (*Day, er
 	rows, err := p.pool.Query(ctx, `
         SELECT DISTINCT ON (type_id) type_id, average
         FROM prices
-        WHERE type_id = ANY($1::int[]) AND date <= $2::date
-        ORDER BY type_id, date DESC`, missing, date)
+        WHERE type_id = ANY($1::int[])
+          AND region_id = $3
+          AND date <= $2::date
+        ORDER BY type_id, date DESC`, missing, date, forgeRegionID)
 	if err != nil {
 		return nil, err
 	}
@@ -207,8 +211,10 @@ func (p *Prices) Snapshot(ctx context.Context, date string) (int, error) {
 	rows, err := p.pool.Query(ctx, `
         SELECT DISTINCT ON (type_id) type_id, average
         FROM prices
-        WHERE date <= $1::date AND average > 0
-        ORDER BY type_id, date DESC`, date)
+        WHERE region_id = $2
+          AND date <= $1::date
+          AND average IS NOT NULL
+        ORDER BY type_id, date DESC`, date, forgeRegionID)
 	if err != nil {
 		return 0, err
 	}
