@@ -44,17 +44,15 @@ func Store(ctx context.Context, pool *pgxpool.Pool, f *Fitting, link Link) error
 		return fmt.Errorf("store fit identity: %w", err)
 	}
 
-	// Items are upserted rather than skipped, so a re-extract can fill in
-	// columns added since the fit was first seen. The ordinals are stable by
-	// construction, so this overwrites in place rather than churning rows.
+	// Items are part of the first-seen representative payload. Charges and
+	// drones deliberately do not participate in fit_hash, so updating these
+	// rows from a later kill would make one fit's rendered contents depend on
+	// whichever example happened to process last.
 	for _, it := range f.Items {
 		if _, err := tx.Exec(ctx, `
             INSERT INTO fitting_items (fit_hash, slot_group, ordinal, type_id, charge_type_id, quantity)
             VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (fit_hash, slot_group, ordinal) DO UPDATE SET
-                type_id = EXCLUDED.type_id,
-                charge_type_id = EXCLUDED.charge_type_id,
-                quantity = EXCLUDED.quantity`,
+            ON CONFLICT (fit_hash, slot_group, ordinal) DO NOTHING`,
 			f.FitHash, it.SlotGroup, it.Ordinal, it.TypeID,
 			nullID(it.ChargeTypeID), it.Quantity); err != nil {
 			return fmt.Errorf("store fit item: %w", err)
@@ -66,7 +64,12 @@ func Store(ctx context.Context, pool *pgxpool.Pool, f *Fitting, link Link) error
             killmail_id, fit_hash, ship_type_id, kill_time,
             victim_alliance_id, victim_corporation_id
         ) VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT DO NOTHING`,
+        ON CONFLICT (killmail_id) DO UPDATE SET
+            fit_hash = EXCLUDED.fit_hash,
+            ship_type_id = EXCLUDED.ship_type_id,
+            kill_time = EXCLUDED.kill_time,
+            victim_alliance_id = EXCLUDED.victim_alliance_id,
+            victim_corporation_id = EXCLUDED.victim_corporation_id`,
 		link.KillmailID, f.FitHash, link.ShipTypeID, link.KillTime,
 		nullID(link.VictimAllianceID), nullID(link.VictimCorporationID)); err != nil {
 		return fmt.Errorf("link fit to killmail: %w", err)
