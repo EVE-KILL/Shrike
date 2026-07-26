@@ -13,7 +13,8 @@ import (
 )
 
 var searchTypeRanks = map[string]int{
-	"ship": 1, "item": 1, "region": 2, "constellation": 2,
+	"ship": 1, "shipgroup": 1, "item": 1, "group": 1,
+	"region": 2, "constellation": 2,
 	"system": 3, "faction": 4, "alliance": 5,
 	"corporation": 6, "character": 7,
 }
@@ -25,19 +26,31 @@ func registerSearchRoute(a huma.API, opts Options) {
 		Path:        "/search",
 		Summary:     "Search entities and universe data",
 		Tags:        []string{"search"},
-	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+	}, searchHandler(opts))
+}
+
+func searchHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		query := strings.TrimSpace(req.Query.Get("q"))
 		if query == "" {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Missing ?q= parameter")
 		}
-		typeFilter := req.Query.Get("type")
+		typeSet := map[string]bool{}
+		for value := range strings.SplitSeq(req.Query.Get("type"), ",") {
+			if value = strings.TrimSpace(value); value != "" {
+				typeSet[value] = true
+			}
+		}
+		wants := func(entityType string) bool {
+			return len(typeSet) == 0 || typeSet[entityType]
+		}
 		limit := boundedQueryInt(req, "limit", 25, math.MinInt, 50)
 		start := time.Now()
 		useTrigram := len(query) >= 3
 		prefix := query + "%"
 
 		parts := []string{}
-		if typeFilter == "" || typeFilter == "character" {
+		if wants("character") {
 			parts = append(parts, `
 				SELECT character_id AS entity_id, name, NULL::text AS ticker,
 				       'character' AS type, corporation_id, alliance_id,
@@ -46,7 +59,7 @@ func registerSearchRoute(a huma.API, opts Options) {
 				FROM characters
 				WHERE deleted IS NOT TRUE AND name ILIKE $2`)
 		}
-		if typeFilter == "" || typeFilter == "corporation" {
+		if wants("corporation") {
 			parts = append(parts, `
 				SELECT corporation_id AS entity_id, name, ticker,
 				       'corporation' AS type, NULL::integer AS corporation_id,
@@ -59,7 +72,7 @@ func registerSearchRoute(a huma.API, opts Options) {
 				  AND (($3 AND (name % $1 OR ticker % $1))
 				       OR name ILIKE $2 OR ticker ILIKE $2)`)
 		}
-		if typeFilter == "" || typeFilter == "alliance" {
+		if wants("alliance") {
 			parts = append(parts, `
 				SELECT alliance_id AS entity_id, name, ticker,
 				       'alliance' AS type, NULL::integer AS corporation_id,
@@ -73,11 +86,11 @@ func registerSearchRoute(a huma.API, opts Options) {
 				  AND (($3 AND (name % $1 OR ticker % $1))
 				       OR name ILIKE $2 OR ticker ILIKE $2)`)
 		}
-		if typeFilter == "" || typeFilter == "item" || typeFilter == "ship" {
+		if wants("item") || wants("ship") {
 			extra := ""
-			if typeFilter == "ship" {
+			if typeSet["ship"] && !typeSet["item"] {
 				extra = " AND g.category_id = 6"
-			} else if typeFilter == "item" {
+			} else if typeSet["item"] && !typeSet["ship"] {
 				extra = " AND g.category_id != 6"
 			}
 			parts = append(parts, `
@@ -93,22 +106,46 @@ func registerSearchRoute(a huma.API, opts Options) {
 				WHERE t.published IS TRUE
 				  AND (($3 AND t.name % $1) OR t.name ILIKE $2)`+extra)
 		}
-		if typeFilter == "" || typeFilter == "system" {
+		// Module groups are opt-in. They are useful in the advanced filter
+		// picker, but noisy in a general search.
+		if typeSet["group"] {
+			parts = append(parts, `
+				SELECT g.group_id AS entity_id, g.name, NULL::text AS ticker,
+				       'group' AS type, NULL::integer AS corporation_id,
+				       NULL::integer AS alliance_id, 0 AS weight,
+				       CASE WHEN $3 THEN similarity(g.name, $1) ELSE 0.5 END AS score
+				FROM inv_groups g
+				WHERE g.published IS TRUE AND g.category_id = 7
+				  AND g.name IS NOT NULL
+				  AND (($3 AND g.name % $1) OR g.name ILIKE $2)`)
+		}
+		if wants("shipgroup") {
+			parts = append(parts, `
+				SELECT g.group_id AS entity_id, g.name, NULL::text AS ticker,
+				       'shipgroup' AS type, NULL::integer AS corporation_id,
+				       NULL::integer AS alliance_id, 0 AS weight,
+				       CASE WHEN $3 THEN similarity(g.name, $1) ELSE 0.5 END AS score
+				FROM inv_groups g
+				WHERE g.published IS TRUE AND g.category_id = 6
+				  AND g.name IS NOT NULL
+				  AND (($3 AND g.name % $1) OR g.name ILIKE $2)`)
+		}
+		if wants("system") {
 			parts = append(parts, searchUniversePart(
 				"solar_system_id", "system_name", "solar_systems", "system",
 			))
 		}
-		if typeFilter == "" || typeFilter == "region" {
+		if wants("region") {
 			parts = append(parts, searchUniversePart(
 				"region_id", "name", "regions", "region",
 			))
 		}
-		if typeFilter == "" || typeFilter == "constellation" {
+		if wants("constellation") {
 			parts = append(parts, searchUniversePart(
 				"constellation_id", "constellation_name", "constellations", "constellation",
 			))
 		}
-		if typeFilter == "" || typeFilter == "faction" {
+		if wants("faction") {
 			parts = append(parts, searchUniversePart(
 				"faction_id", "name", "factions", "faction",
 			))
@@ -213,7 +250,7 @@ func registerSearchRoute(a huma.API, opts Options) {
 			"total":            len(hits),
 			"entityCounts":     counts,
 		}), nil
-	})
+	}
 }
 
 func searchUniversePart(idColumn, nameColumn, table, entityType string) string {

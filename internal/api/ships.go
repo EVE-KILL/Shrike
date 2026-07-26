@@ -400,24 +400,29 @@ func loadFittingPrices(
 	db Database,
 	ids []int32,
 ) (map[int64]float64, error) {
-	jita, err := queryMaps(ctx, db, `
-		SELECT DISTINCT ON (type_id) type_id, average AS price
-		FROM prices
-		WHERE type_id = ANY($1::int[]) AND region_id = 10000002
-		ORDER BY type_id, date DESC`, ids)
-	if err != nil {
-		return nil, err
-	}
-	custom, err := queryMaps(ctx, db, `
-		SELECT DISTINCT ON (type_id) type_id, price
-		FROM custom_prices
-		WHERE type_id = ANY($1::int[])
-		ORDER BY type_id, date DESC`, ids)
+	rows, err := queryMaps(ctx, db, `
+		WITH jita AS (
+			SELECT DISTINCT ON (type_id) type_id, average AS price
+			FROM prices
+			WHERE type_id = ANY($1::int[]) AND region_id = 10000002
+			ORDER BY type_id, date DESC
+		),
+		custom AS (
+			SELECT DISTINCT ON (type_id) type_id, price
+			FROM custom_prices
+			WHERE type_id = ANY($1::int[])
+			ORDER BY type_id, date DESC
+		)
+		SELECT COALESCE(custom.type_id, jita.type_id) AS type_id,
+		       CASE WHEN custom.type_id IS NOT NULL
+		            THEN custom.price ELSE jita.price END AS price
+		FROM jita
+		FULL JOIN custom USING (type_id)`, ids)
 	if err != nil {
 		return nil, err
 	}
 	result := map[int64]float64{}
-	for _, row := range append(jita, custom...) {
+	for _, row := range rows {
 		id, _ := int64Value(row["type_id"])
 		price, _ := float64Value(row["price"])
 		result[id] = price

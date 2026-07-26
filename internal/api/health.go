@@ -29,10 +29,14 @@ type healthOutput struct {
 // public hostname through the public surface, then uses the private surface as
 // a path-only fallback so Kubernetes can still probe by pod IP without DNS.
 func registerHealth(a huma.API, opts Options) {
+	registerHealthAt(a, opts, "health", "/health")
+}
+
+func registerHealthAt(a huma.API, opts Options, operationID, path string) {
 	huma.Register(a, huma.Operation{
-		OperationID: "health",
+		OperationID: operationID,
 		Method:      http.MethodGet,
-		Path:        "/health",
+		Path:        path,
 		Summary:     "Liveness check",
 		Description: "Reports the running build. Does not touch the database or Redis.",
 		Tags:        []string{"meta"},

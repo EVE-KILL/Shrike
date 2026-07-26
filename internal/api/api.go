@@ -43,6 +43,11 @@ type Options struct {
 	Graph   GraphDatabase
 	Feed    *FeedManager
 	Cache   *redis.Client
+
+	// Frontend contains dependencies used only by eve-kill.com's private API.
+	// Keeping them together prevents public handlers from accidentally growing
+	// a dependency on login credentials or mutation-only services.
+	Frontend FrontendOptions
 }
 
 type GraphDatabase interface {
@@ -77,7 +82,7 @@ func Private(opts Options) http.Handler {
 	cfg.SchemasPath = "/api/schemas"
 
 	a := humago.New(mux, cfg)
-	registerHealth(a, opts)
+	registerPrivateAPI(a, opts)
 
 	return mux
 }
