@@ -35,10 +35,10 @@ func testSurfaces() map[string]http.Handler {
 
 func testConfig() Config {
 	return Config{
-		Address:    "127.0.0.1:0",
-		PublicHost: "api.example.com",
-		WSHost:     "ws.example.com",
-		ImagesHost: "images.example.com",
+		Address:     "127.0.0.1:0",
+		PublicHosts: []string{"api.example.com", "api.localhost"},
+		WSHosts:     []string{"ws.example.com"},
+		ImagesHosts: []string{"images.example.com"},
 	}
 }
 
@@ -61,7 +61,7 @@ func TestRouteOrder(t *testing.T) {
 
 	want := []RouteStatus{
 		{Match: "path /health", Surface: SurfacePrivate},
-		{Match: "host api.example.com", Surface: SurfacePublic},
+		{Match: "host api.example.com, api.localhost", Surface: SurfacePublic},
 		{Match: "host ws.example.com", Surface: SurfaceWS},
 		{Match: "host images.example.com", Surface: SurfaceImages},
 		{Match: "path /api/*, /auth/*", Surface: SurfacePrivate},
@@ -133,7 +133,7 @@ func TestHostRoutesPrecedeThePrivatePathPrefix(t *testing.T) {
 
 func TestUnsetHostIsNotRouted(t *testing.T) {
 	cfg := testConfig()
-	cfg.WSHost = ""
+	cfg.WSHosts = nil
 
 	m := newTestManager(t, cfg)
 	_, _, routes, err := m.buildConfig()
@@ -144,6 +144,44 @@ func TestUnsetHostIsNotRouted(t *testing.T) {
 		if r.Surface == SurfaceWS {
 			t.Fatalf("ws surface is routed despite an empty WSHost: %+v", r)
 		}
+	}
+}
+
+// Hostnames are normalised before they reach Caddy, whose host matcher rejects
+// a repeated name outright rather than ignoring it. Without this, a stray
+// duplicate in a comma-separated env var would fail the whole config load.
+func TestHostsAreLowercasedAndDeduplicated(t *testing.T) {
+	cfg := testConfig()
+	cfg.PublicHosts = []string{"API.example.com", " api.localhost ", "api.example.com", ""}
+
+	m := newTestManager(t, cfg)
+	_, _, routes, err := m.buildConfig()
+	if err != nil {
+		t.Fatalf("buildConfig: %v", err)
+	}
+	for _, r := range routes {
+		if r.Surface == SurfacePublic {
+			if want := "host api.example.com, api.localhost"; r.Match != want {
+				t.Errorf("match = %q, want %q", r.Match, want)
+			}
+			return
+		}
+	}
+	t.Fatal("no public route was emitted")
+}
+
+// The same hostname under two surfaces must fail the build. Caddy would not
+// object — the matchers are separate, so the earlier route simply wins — and a
+// silently shadowed surface is far harder to notice than a refused startup.
+func TestHostClaimedByTwoSurfacesIsAnError(t *testing.T) {
+	cfg := testConfig()
+	cfg.WSHosts = []string{"api.localhost"} // already claimed by public
+
+	m := newTestManager(t, cfg)
+	if _, _, _, err := m.buildConfig(); err == nil {
+		t.Fatal("buildConfig accepted a hostname claimed by two surfaces")
+	} else if !strings.Contains(err.Error(), "api.localhost") {
+		t.Errorf("error does not name the contested hostname: %v", err)
 	}
 }
 
@@ -283,6 +321,8 @@ func TestServesEachSurface(t *testing.T) {
 	}{
 		{"health has no host requirement", "", "/health", SurfacePrivate, 200},
 		{"public hostname", "api.example.com", "/anything", SurfacePublic, 200},
+		{"public .localhost alias", "api.localhost", "/anything", SurfacePublic, 200},
+		{"alias is case-insensitive", "API.LOCALHOST", "/anything", SurfacePublic, 200},
 		{"websocket hostname", "ws.example.com", "/", SurfaceWS, 200},
 		{"images hostname", "images.example.com", "/x.png", SurfaceImages, 200},
 		{"frontend api prefix", "eve-kill.test", "/api/killlist", SurfacePrivate, 200},

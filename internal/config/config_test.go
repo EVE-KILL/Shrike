@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -206,6 +207,7 @@ func clearEnv(t *testing.T) {
 		"DATABASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_DB",
 		"REDIS_CACHE_HOST", "REDIS_CACHE_PORT", "MEMGRAPH_URL", "PORT",
 		"NODE_ENV", "GIT_SHA", "LOG_LEVEL", "LOG_FORMAT",
+		"PUBLIC_API_HOST", "WS_HOST", "IMAGES_HOST", "NUXT_SOCKET", "DATA_DIR",
 	} {
 		t.Setenv(k, "")
 		os.Unsetenv(k)
@@ -222,4 +224,48 @@ func writeDotenv(t *testing.T, content string) string {
 		t.Fatalf("write .env: %v", err)
 	}
 	return path
+}
+
+// A list variable and a scalar variable must disagree about what an empty value
+// means. For a scalar, empty is a mistake and the default is the safer answer;
+// for a list, the empty list is a real value — PUBLIC_API_HOST= is how an
+// operator says "do not serve that surface", and quietly restoring the default
+// would have the process claim a hostname that was just taken away from it.
+func TestEmptyListVariableMeansNoEntries(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("PUBLIC_API_HOST", "")
+	t.Setenv("WS_HOST", "ws.example.com, ,ws.localhost")
+
+	c, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(c.PublicAPIHosts) != 0 {
+		t.Errorf("PublicAPIHosts = %q, want none", c.PublicAPIHosts)
+	}
+	if got, want := c.WSHosts, []string{"ws.example.com", "ws.localhost"}; !slices.Equal(got, want) {
+		t.Errorf("WSHosts = %q, want %q", got, want)
+	}
+	// Unset entirely still takes the production default.
+	if got, want := c.ImagesHosts, []string{"images.eve-kill.com"}; !slices.Equal(got, want) {
+		t.Errorf("ImagesHosts = %q, want %q", got, want)
+	}
+}
+
+// The production defaults must not carry development aliases: a pod would then
+// answer to hostnames nobody deployed it under.
+func TestDefaultHostsAreProductionOnly(t *testing.T) {
+	clearEnv(t)
+
+	c, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	for _, hosts := range [][]string{c.PublicAPIHosts, c.WSHosts, c.ImagesHosts} {
+		for _, h := range hosts {
+			if strings.HasSuffix(h, ".localhost") {
+				t.Errorf("default hosts include the development alias %q", h)
+			}
+		}
+	}
 }

@@ -305,24 +305,33 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil, nil, nil, err
 	}
 
+	// claimed guards against one hostname being listed under two surfaces.
+	// Caddy would not object — the matchers are separate, so the earlier route
+	// would simply win — and a silently shadowed surface is a much harder
+	// thing to notice than a refused startup.
+	claimed := map[string]string{}
+
 	for _, h := range []struct {
-		host    string
+		hosts   []string
 		surface string
 	}{
-		{cfg.PublicHost, SurfacePublic},
-		{cfg.WSHost, SurfaceWS},
-		{cfg.ImagesHost, SurfaceImages},
+		{cfg.PublicHosts, SurfacePublic},
+		{cfg.WSHosts, SurfaceWS},
+		{cfg.ImagesHosts, SurfaceImages},
 	} {
-		host := strings.TrimSpace(h.host)
-		if host == "" {
-			// An unset hostname is a deployment that does not serve that
-			// surface. Omitting the route is what keeps it from answering on
-			// a hostname nobody configured.
+		hosts, err := normalizeHosts(h.hosts, h.surface, claimed)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if len(hosts) == 0 {
+			// No configured hostname means a deployment that does not serve
+			// that surface. Omitting the route is what keeps it from
+			// answering on a name nobody asked it to answer on.
 			continue
 		}
 		if err := surfaceRoute(
-			map[string]any{"host": []string{host}},
-			"host "+host, h.surface,
+			map[string]any{"host": hosts},
+			"host "+strings.Join(hosts, ", "), h.surface,
 		); err != nil {
 			return nil, nil, nil, err
 		}
@@ -415,6 +424,35 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		Description: "Embedded Caddy listener serving every Shrike surface",
 	}}
 	return config, listeners, status, nil
+}
+
+// normalizeHosts cleans one surface's hostname list and records each name in
+// claimed, so a second surface asking for the same one is an error.
+//
+// Lowercased because hostnames are case-insensitive and Caddy compares them
+// that way; without it, "API.localhost" and "api.localhost" would reach Caddy
+// as two distinct names, and Caddy would reject the pair as a duplicate after
+// normalising them itself.
+func normalizeHosts(hosts []string, surface string, claimed map[string]string) ([]string, error) {
+	out := make([]string, 0, len(hosts))
+	for _, raw := range hosts {
+		host := strings.ToLower(strings.TrimSpace(raw))
+		if host == "" {
+			continue
+		}
+		if owner, ok := claimed[host]; ok {
+			if owner == surface {
+				// Repeated within one surface: harmless intent, but Caddy
+				// rejects a repeated name outright, so drop it here.
+				continue
+			}
+			return nil, fmt.Errorf(
+				"hostname %q is claimed by both the %s and %s surfaces", host, owner, surface)
+		}
+		claimed[host] = surface
+		out = append(out, host)
+	}
+	return out, nil
 }
 
 // caddyLogLevel maps a zerolog level name onto the zap levels Caddy accepts.
