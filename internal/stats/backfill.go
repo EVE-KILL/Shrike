@@ -167,28 +167,174 @@ func aggregateRange(
 	period PeriodType,
 	wantStats, wantBreakdowns bool,
 ) (WriteResult, int64, error) {
+	if period == PeriodMonthly {
+		return aggregateRangeStaged(
+			ctx, pool, from, to, periodStart, period, wantStats, wantBreakdowns,
+		)
+	}
+
 	acc := NewAccumulator()
-	var lastID, kills int64
-	for {
-		batch, err := loadDay(ctx, pool, from, to, lastID, CatchupBatch)
-		if err != nil {
-			return WriteResult{}, kills, err
-		}
-		if len(batch) == 0 {
-			break
-		}
+	var kills int64
+	err := streamRange(ctx, pool, from, to, CatchupBatch, func(batch []dayItem) error {
 		for _, item := range batch {
 			acc.Add(item.km, item.attackers)
-			lastID = item.km.KillmailID
 			kills++
 		}
-		if len(batch) < CatchupBatch {
-			break
-		}
+		return nil
+	})
+	if err != nil {
+		return WriteResult{}, kills, err
 	}
 
 	written, err := WritePeriod(ctx, pool, acc, periodStart, period, wantStats, wantBreakdowns)
 	return written, kills, err
+}
+
+// aggregateRangeStaged bounds historical monthly aggregation by one input
+// batch. The final cardinality of stats_breakdowns for a busy month can be far
+// larger than the killmail batch itself, so keeping the accumulator for the
+// whole month defeats streaming the input.
+//
+// Session-local tables preserve the exact additive merge semantics without
+// changing the persistent schema. They shadow the public aggregate tables only
+// on this transaction's connection, letting the normal writer merge each
+// bounded accumulator into them. Public rows are touched once, after the full
+// month has succeeded.
+func aggregateRangeStaged(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	from, to, periodStart time.Time,
+	period PeriodType,
+	wantStats, wantBreakdowns bool,
+) (WriteResult, int64, error) {
+	var out WriteResult
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return out, 0, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+
+	for _, statement := range []string{
+		`CREATE TEMP TABLE stats
+			(LIKE public.stats INCLUDING DEFAULTS)
+			ON COMMIT DROP`,
+		`ALTER TABLE stats
+			ADD PRIMARY KEY (entity_type, entity_id, period_type, period_start)`,
+		`CREATE TEMP TABLE stats_breakdowns
+			(LIKE public.stats_breakdowns INCLUDING DEFAULTS)
+			ON COMMIT DROP`,
+		`ALTER TABLE stats_breakdowns
+			ADD PRIMARY KEY (
+				entity_type, entity_id, period_type, period_start, dim_category, dim_id
+			)`,
+	} {
+		if _, err := tx.Exec(ctx, statement); err != nil {
+			return out, 0, fmt.Errorf("create monthly stats staging: %w", err)
+		}
+	}
+
+	var kills int64
+	err = streamRange(ctx, pool, from, to, CatchupBatch, func(batch []dayItem) error {
+		acc := NewAccumulator()
+		for _, item := range batch {
+			acc.Add(item.km, item.attackers)
+			kills++
+		}
+		if _, err := WritePeriodTx(
+			ctx, tx, acc, periodStart, period, wantStats, wantBreakdowns,
+		); err != nil {
+			return fmt.Errorf("merge monthly stats staging: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return out, kills, err
+	}
+
+	if wantBreakdowns {
+		if _, err := tx.Exec(ctx,
+			capBreakdownsSQL("pg_temp.stats_breakdowns"),
+			int16(period), periodStart.Format("2006-01-02"), BreakdownTopN,
+		); err != nil {
+			return out, kills, fmt.Errorf("cap monthly stats staging: %w", err)
+		}
+	}
+
+	if wantStats {
+		tag, err := tx.Exec(ctx, `
+			INSERT INTO public.stats AS target (
+				entity_type, entity_id, period_type, period_start,
+				kills, losses, solo_kills, solo_losses, npc_losses, final_blows,
+				points, isk_destroyed, isk_lost, damage_dealt, damage_taken,
+				sum_attacker_count
+			)
+			SELECT entity_type, entity_id, period_type, period_start,
+			       kills, losses, solo_kills, solo_losses, npc_losses, final_blows,
+			       points, isk_destroyed, isk_lost, damage_dealt, damage_taken,
+			       sum_attacker_count
+			FROM pg_temp.stats
+			ON CONFLICT (entity_type, entity_id, period_type, period_start)
+			DO UPDATE SET
+				kills              = target.kills              + EXCLUDED.kills,
+				losses             = target.losses             + EXCLUDED.losses,
+				solo_kills         = target.solo_kills         + EXCLUDED.solo_kills,
+				solo_losses        = target.solo_losses        + EXCLUDED.solo_losses,
+				npc_losses         = target.npc_losses         + EXCLUDED.npc_losses,
+				final_blows        = target.final_blows        + EXCLUDED.final_blows,
+				points             = target.points             + EXCLUDED.points,
+				isk_destroyed      = target.isk_destroyed      + EXCLUDED.isk_destroyed,
+				isk_lost           = target.isk_lost           + EXCLUDED.isk_lost,
+				damage_dealt       = target.damage_dealt       + EXCLUDED.damage_dealt,
+				damage_taken       = target.damage_taken       + EXCLUDED.damage_taken,
+				sum_attacker_count = target.sum_attacker_count + EXCLUDED.sum_attacker_count`)
+		if err != nil {
+			return out, kills, fmt.Errorf("publish monthly stats staging: %w", err)
+		}
+		out.Stats = tag.RowsAffected()
+	}
+
+	if wantBreakdowns {
+		tag, err := tx.Exec(ctx, `
+			INSERT INTO public.stats_breakdowns AS target (
+				entity_type, entity_id, period_type, period_start,
+				dim_category, dim_id, kills, losses, isk_destroyed, isk_lost,
+				last_killmail_id, last_killmail_time
+			)
+			SELECT entity_type, entity_id, period_type, period_start,
+			       dim_category, dim_id, kills, losses, isk_destroyed, isk_lost,
+			       last_killmail_id, last_killmail_time
+			FROM pg_temp.stats_breakdowns
+			ON CONFLICT (
+				entity_type, entity_id, period_type, period_start, dim_category, dim_id
+			) DO UPDATE SET
+				kills         = target.kills         + EXCLUDED.kills,
+				losses        = target.losses        + EXCLUDED.losses,
+				isk_destroyed = target.isk_destroyed + EXCLUDED.isk_destroyed,
+				isk_lost      = target.isk_lost      + EXCLUDED.isk_lost,
+				last_killmail_id = CASE
+					WHEN target.last_killmail_time IS NULL
+					     OR EXCLUDED.last_killmail_time > target.last_killmail_time
+					THEN EXCLUDED.last_killmail_id
+					WHEN EXCLUDED.last_killmail_time = target.last_killmail_time
+					     AND (target.last_killmail_id IS NULL
+					          OR EXCLUDED.last_killmail_id > target.last_killmail_id)
+					THEN EXCLUDED.last_killmail_id
+					ELSE target.last_killmail_id
+				END,
+				last_killmail_time = greatest(
+					target.last_killmail_time, EXCLUDED.last_killmail_time
+				)`)
+		if err != nil {
+			return out, kills, fmt.Errorf("publish monthly breakdown staging: %w", err)
+		}
+		out.Breakdowns = tag.RowsAffected()
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return out, kills, err
+	}
+	return out, kills, nil
 }
 
 func monthStart(t time.Time) time.Time {
@@ -210,29 +356,35 @@ func monthsInclusive(from, to time.Time) []time.Time {
 }
 
 func capBreakdowns(ctx context.Context, pool *pgxpool.Pool, period PeriodType, start time.Time) error {
-	_, err := pool.Exec(ctx, `
-		DELETE FROM stats_breakdowns b
-		USING (
-			SELECT entity_type, entity_id, period_type, period_start, dim_category, dim_id
-			FROM (
+	_, err := pool.Exec(ctx,
+		capBreakdownsSQL("stats_breakdowns"),
+		int16(period), start.Format("2006-01-02"), BreakdownTopN,
+	)
+	return err
+}
+
+func capBreakdownsSQL(table string) string {
+	return fmt.Sprintf(`
+			DELETE FROM %[1]s b
+			USING (
+				SELECT entity_type, entity_id, period_type, period_start, dim_category, dim_id
+				FROM (
 				SELECT entity_type, entity_id, period_type, period_start, dim_category, dim_id,
 				       row_number() OVER (
 				           PARTITION BY entity_type, entity_id, period_type, period_start, dim_category
-				           ORDER BY (kills + losses) DESC, dim_id
-				       ) AS rn
-				FROM stats_breakdowns
-				WHERE period_type = $1 AND period_start = $2::date
-			) ranked
-			WHERE rn > $3
+					           ORDER BY (kills + losses) DESC, dim_id
+					       ) AS rn
+					FROM %[1]s
+					WHERE period_type = $1 AND period_start = $2::date
+				) ranked
+				WHERE rn > $3
 		) excess
 		WHERE b.entity_type = excess.entity_type
 		  AND b.entity_id = excess.entity_id
 		  AND b.period_type = excess.period_type
-		  AND b.period_start = excess.period_start
-		  AND b.dim_category = excess.dim_category
-		  AND b.dim_id = excess.dim_id`,
-		int16(period), start.Format("2006-01-02"), BreakdownTopN)
-	return err
+			  AND b.period_start = excess.period_start
+			  AND b.dim_category = excess.dim_category
+			  AND b.dim_id = excess.dim_id`, table)
 }
 
 func rebuildAllMonthlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, error) {

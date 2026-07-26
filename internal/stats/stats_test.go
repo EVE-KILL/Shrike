@@ -548,6 +548,107 @@ func TestRollupKeepsLatestKillmailIDPairedWithTimestamp(t *testing.T) {
 	}
 }
 
+func TestMonthlyAggregateStreamsThroughStaging(t *testing.T) {
+	pool := testPool(t)
+	clearTestStats(t, pool)
+	ctx := context.Background()
+
+	const (
+		firstID int32 = -2_000_000_000
+		count         = CatchupBatch + 1
+	)
+	lastID := firstID + count - 1
+	from := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, 1, 0)
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO killmails (
+			killmail_id, killmail_time, killmail_hash,
+			solar_system_id, constellation_id, region_id,
+			victim_character_id, victim_corporation_id, victim_alliance_id,
+			victim_ship_type_id, victim_damage_taken,
+			total_value, points, attacker_count, is_npc, is_solo
+		)
+		SELECT id, $1, 'stats-stream-test-' || id,
+		       30000142, 20000020, 10000002,
+		       $2, $3, $4, 17738, 10,
+		       1, 1, 1, false, true
+		FROM generate_series($5::int, $6::int) id`,
+		testPeriod, testIDBase+100, testIDBase+200, testIDBase+300,
+		firstID, lastID,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO killmail_attackers (
+			killmail_id, killmail_time, attacker_index,
+			character_id, corporation_id, alliance_id, ship_type_id,
+			damage_done, final_blow
+		)
+		SELECT id, $1, 0, $2, $3, $4, 587, 10, true
+		FROM generate_series($5::int, $6::int) id`,
+		testPeriod, testIDBase+1, testIDBase+10, testIDBase+20,
+		firstID, lastID,
+	); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM killmail_attackers WHERE killmail_id BETWEEN $1 AND $2`,
+			firstID, lastID)
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM killmails WHERE killmail_id BETWEEN $1 AND $2`,
+			firstID, lastID)
+	})
+
+	written, kills, err := aggregateRange(
+		ctx, pool, from, to, from, PeriodMonthly, true, true,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kills != count {
+		t.Fatalf("aggregated %d killmails, want %d", kills, count)
+	}
+	if written.Stats == 0 || written.Breakdowns == 0 {
+		t.Fatalf("staged aggregate wrote %+v, want both tables populated", written)
+	}
+
+	var gotKills int64
+	if err := pool.QueryRow(ctx, `
+		SELECT kills FROM stats
+		WHERE entity_type = $1 AND entity_id = $2
+		  AND period_type = $3 AND period_start = $4`,
+		int16(EntityCharacter), testIDBase+1,
+		int16(PeriodMonthly), from.Format("2006-01-02"),
+	).Scan(&gotKills); err != nil {
+		t.Fatal(err)
+	}
+	if gotKills != count {
+		t.Errorf("monthly character kills = %d, want %d", gotKills, count)
+	}
+
+	var breakdownKills, marker int64
+	if err := pool.QueryRow(ctx, `
+		SELECT kills, last_killmail_id
+		FROM stats_breakdowns
+		WHERE entity_type = $1 AND entity_id = $2
+		  AND period_type = $3 AND period_start = $4
+		  AND dim_category = $5 AND dim_id = $6`,
+		int16(EntityCharacter), testIDBase+1,
+		int16(PeriodMonthly), from.Format("2006-01-02"),
+		int16(DimShipFlown), 587,
+	).Scan(&breakdownKills, &marker); err != nil {
+		t.Fatal(err)
+	}
+	if breakdownKills != count {
+		t.Errorf("monthly ship breakdown kills = %d, want %d", breakdownKills, count)
+	}
+	if marker != int64(lastID) {
+		t.Errorf("monthly ship breakdown marker = %d, want %d", marker, lastID)
+	}
+}
+
 // --- Derived metrics ---
 
 func TestDerivedMetrics(t *testing.T) {

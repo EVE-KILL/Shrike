@@ -102,23 +102,15 @@ func catchupDay(
 	// are still there — stale, but present — which is a better failure than a
 	// day of counters deleted and not replaced.
 	acc := NewAccumulator()
-	var lastID int64
-	for {
-		batch, err := loadDay(ctx, pool, day, next, lastID, CatchupBatch)
-		if err != nil {
-			return 0, out, err
-		}
-		if len(batch) == 0 {
-			break
-		}
+	err := streamRange(ctx, pool, day, next, CatchupBatch, func(batch []dayItem) error {
 		for _, item := range batch {
 			acc.Add(item.km, item.attackers)
 			out.killmails++
-			lastID = item.km.KillmailID
 		}
-		if len(batch) < CatchupBatch {
-			break
-		}
+		return nil
+	})
+	if err != nil {
+		return 0, out, err
 	}
 
 	tx, err := pool.Begin(ctx)
@@ -183,33 +175,49 @@ type dayItem struct {
 	storedAttackerCount pgtype.Int4
 }
 
-// loadDay reads a batch of one day's killmails with their attackers.
+// streamRange reads a time range once, hydrating and yielding bounded batches.
 //
-// Paged by killmail id rather than by OFFSET: a busy day is hundreds of
-// thousands of rows and OFFSET would re-scan everything before the page on
-// every call. Two queries per batch rather than two per killmail — the
-// difference between a catchup that takes seconds and one that takes hours.
-func loadDay(ctx context.Context, pool *pgxpool.Pool, from, to time.Time, afterID int64, limit int) ([]dayItem, error) {
-	rows, err := pool.Query(ctx, `
-        SELECT killmail_id, killmail_time,
-               coalesce(solar_system_id, 0), coalesce(constellation_id, 0), coalesce(region_id, 0),
-               coalesce(victim_character_id, 0), coalesce(victim_corporation_id, 0),
-               coalesce(victim_alliance_id, 0), coalesce(victim_ship_type_id, 0),
-               coalesce(victim_damage_taken, 0),
-               coalesce(total_value, 0), coalesce(points, 0), attacker_count,
-               coalesce(is_npc, false), coalesce(is_solo, false)
-        FROM killmails
-        WHERE killmail_time >= $1 AND killmail_time < $2 AND killmail_id > $3
-        ORDER BY killmail_id
-        LIMIT $4`, from, to, afterID, limit)
-	if err != nil {
-		return nil, err
+// Keeping the base Rows open makes Postgres execute and sort the range query
+// once. Reissuing it with an advancing id cursor looks like keyset pagination,
+// but the available index is on killmail_time while the requested order is by
+// killmail_id; that plan rescans and resorts the remaining time range for every
+// page. The attacker lookup remains one query per batch rather than one per
+// killmail.
+func streamRange(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	from, to time.Time,
+	limit int,
+	yield func([]dayItem) error,
+) error {
+	if limit <= 0 {
+		return fmt.Errorf("stream range batch size must be positive")
 	}
 
-	var items []dayItem
-	byID := map[int64]int{}
-	var ids []int64
+	stream, err := pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer stream.Release()
 
+	rows, err := stream.Query(ctx, `
+	        SELECT killmail_id, killmail_time,
+	               coalesce(solar_system_id, 0), coalesce(constellation_id, 0), coalesce(region_id, 0),
+	               coalesce(victim_character_id, 0), coalesce(victim_corporation_id, 0),
+               coalesce(victim_alliance_id, 0), coalesce(victim_ship_type_id, 0),
+               coalesce(victim_damage_taken, 0),
+	               coalesce(total_value, 0), coalesce(points, 0), attacker_count,
+	               coalesce(is_npc, false), coalesce(is_solo, false)
+	        FROM killmails
+	        WHERE killmail_time >= $1 AND killmail_time < $2
+	        ORDER BY killmail_id
+	    `, from, to)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	items := make([]dayItem, 0, limit)
 	for rows.Next() {
 		var item dayItem
 		if err := rows.Scan(&item.km.KillmailID, &item.km.KillmailTime,
@@ -219,28 +227,48 @@ func loadDay(ctx context.Context, pool *pgxpool.Pool, from, to time.Time, afterI
 			&item.km.VictimDamageTaken,
 			&item.km.TotalValue, &item.km.Points, &item.storedAttackerCount,
 			&item.km.IsNPC, &item.km.IsSolo); err != nil {
-			rows.Close()
-			return nil, err
+			return err
 		}
-		byID[item.km.KillmailID] = len(items)
 		items = append(items, item)
-		ids = append(ids, item.km.KillmailID)
+		if len(items) == limit {
+			if err := hydrateAttackers(ctx, pool, items); err != nil {
+				return err
+			}
+			if err := yield(items); err != nil {
+				return err
+			}
+			items = make([]dayItem, 0, limit)
+		}
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return err
 	}
-	if len(items) == 0 {
-		return nil, nil
+	if len(items) > 0 {
+		if err := hydrateAttackers(ctx, pool, items); err != nil {
+			return err
+		}
+		if err := yield(items); err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
+func hydrateAttackers(ctx context.Context, pool *pgxpool.Pool, items []dayItem) error {
+	byID := make(map[int64]int, len(items))
+	ids := make([]int64, len(items))
+	for i := range items {
+		id := items[i].km.KillmailID
+		byID[id] = i
+		ids[i] = id
+	}
 	arows, err := pool.Query(ctx, `
-        SELECT killmail_id, coalesce(character_id, 0), coalesce(corporation_id, 0),
-               coalesce(alliance_id, 0), coalesce(ship_type_id, 0),
-               coalesce(damage_done, 0), coalesce(final_blow, false)
-        FROM killmail_attackers WHERE killmail_id = ANY($1::bigint[])`, ids)
+	        SELECT killmail_id, coalesce(character_id, 0), coalesce(corporation_id, 0),
+	               coalesce(alliance_id, 0), coalesce(ship_type_id, 0),
+	               coalesce(damage_done, 0), coalesce(final_blow, false)
+	        FROM killmail_attackers WHERE killmail_id = ANY($1::bigint[])`, ids)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer arows.Close()
 
@@ -249,14 +277,14 @@ func loadDay(ctx context.Context, pool *pgxpool.Pool, from, to time.Time, afterI
 		var a Attacker
 		if err := arows.Scan(&id, &a.CharacterID, &a.CorporationID, &a.AllianceID,
 			&a.ShipTypeID, &a.DamageDone, &a.FinalBlow); err != nil {
-			return nil, err
+			return err
 		}
 		if i, ok := byID[id]; ok {
 			items[i].attackers = append(items[i].attackers, a)
 		}
 	}
 	if err := arows.Err(); err != nil {
-		return nil, err
+		return err
 	}
 	for i := range items {
 		items[i].km.AttackerCount = resolvedAttackerCount(
@@ -264,5 +292,5 @@ func loadDay(ctx context.Context, pool *pgxpool.Pool, from, to time.Time, afterI
 			len(items[i].attackers),
 		)
 	}
-	return items, nil
+	return nil
 }
