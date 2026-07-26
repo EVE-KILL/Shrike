@@ -31,32 +31,58 @@ fi
 # --- 2. staged content matching a local secret --------------------------------
 # Collect candidate values from every local .env. Short values are ignored: a
 # port or a 'true' would match everything and make this check useless noise.
-secrets=$(
-  for f in .env .env.*; do
-    [ -f "$f" ] || continue
-    case "$f" in *.example) continue ;; esac
-    # KEY=value -> value, plus the password field of any URL-style value.
-    sed -nE 's/^[A-Z_0-9]+=(.*)$/\1/p' "$f"
-    sed -nE 's#^[A-Z_0-9]+=[a-z]+://[^:/@]+:([^@]+)@.*#\1#p' "$f"
-  done | sed 's/^"//; s/"$//' | awk 'length($0) >= 12' | sort -u
-)
+#
+# Two lists, scanned against different diffs, because .env.example needs
+# different treatment from everything else. Its whole job is to document the
+# same keys, so it legitimately repeats non-credential values — hostnames,
+# paths, a Memgraph bolt:// URL. Scanning it for those made every edit to it
+# unlandable, which is a check that trains you to reach for --no-verify.
+#
+#   values      — every KEY=value. Not scanned in .env.example.
+#   credentials — the password field of a URL-style value. Scanned everywhere,
+#                 including .env.example, because a real password there is
+#                 wrong no matter what the file is for.
+env_files=()
+for f in .env .env.*; do
+  [ -f "$f" ] || continue
+  case "$f" in *.example) continue ;; esac
+  env_files+=("$f")
+done
 
-if [ -n "$secrets" ]; then
-  diff_text=$(git diff --cached --diff-filter=ACM -U0 || true)
+collect() {
+  # $1: sed expression selecting the part of KEY=value to extract.
+  [ ${#env_files[@]} -gt 0 ] || return 0
+  sed -nE "$1" "${env_files[@]}" | sed 's/^"//; s/"$//' | awk 'length($0) >= 12' | sort -u
+}
+
+values=$(collect 's/^[A-Z_0-9]+=(.*)$/\1/p')
+credentials=$(collect 's#^[A-Z_0-9]+=[a-z]+://[^:/@]+:([^@]+)@.*#\1#p')
+
+diff_all=$(git diff --cached --diff-filter=ACM -U0 || true)
+diff_code=$(git diff --cached --diff-filter=ACM -U0 -- . ':(exclude).env.example' || true)
+
+# report_match <secret-list> <diff> — flags the first hit and stops. A DSN
+# matches both as a whole value and as its extracted password, so continuing
+# would print the same finding twice.
+report_match() {
+  local list="$1" text="$2" secret
+  [ -n "$list" ] || return 0
   while IFS= read -r secret; do
     [ -z "$secret" ] && continue
-    # Fixed-string match against added lines only.
-    if printf '%s' "$diff_text" | grep -F -- "$secret" >/dev/null 2>&1; then
-      # Report once and stop. A DSN matches both as a whole value and as its
-      # extracted password, so continuing would print the same finding twice.
+    if printf '%s' "$text" | grep -F -- "$secret" >/dev/null 2>&1; then
       red "Refusing to commit: a value from a local .env appears in the staged diff"
       # Report where, never what.
-      printf '%s' "$diff_text" | grep -nF -- "$secret" | head -3 \
+      printf '%s' "$text" | grep -nF -- "$secret" | head -3 \
         | sed -E 's/^([0-9]+):.*/    diff line \1 (value redacted)/'
       fail=1
-      break
+      return 0
     fi
-  done <<< "$secrets"
+  done <<< "$list"
+}
+
+report_match "$credentials" "$diff_all"
+if [ "$fail" -eq 0 ]; then
+  report_match "$values" "$diff_code"
 fi
 
 if [ "$fail" -eq 0 ]; then
