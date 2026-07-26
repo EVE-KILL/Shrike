@@ -1,0 +1,108 @@
+{
+ "attackers": [
+  {
+   "alliance_id": 99002775,
+   "character_id": 93829483,
+   "corporation_id": 98185728,
+   "damage_done": 5998,
+   "final_blow": true,
+   "security_status": -10.0,
+   "ship_type_id": 16240,
+   "weapon_type_id": 3178
+  },
+  {
+   "alliance_id": 99002775,
+   "character_id": 93828980,
+   "corporation_id": 98185728,
+   "damage_done": 4877,
+   "final_blow": false,
+   "security_status": -10.0,
+   "ship_type_id": 16240,
+   "weapon_type_id": 16240
+  }
+ ],
+ "killmail_hash": "8fb8a18aae20598fe6635a0d8db92f16bc3e27fa",
+ "killmail_id": 36592035,
+ "killmail_time": "2014-02-08T18:39:00Z",
+ "solar_system_id": 30004084,
+ "victim": {
+  "character_id": 93742727,
+  "corporation_id": 98228904,
+  "damage_taken": 10875,
+  "items": [
+   {
+    "flag": 27,
+    "item_type_id": 18052,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 134,
+    "item_type_id": 20,
+    "quantity_destroyed": 7920,
+    "singleton": 0
+   },
+   {
+    "flag": 19,
+    "item_type_id": 2545,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 20,
+    "item_type_id": 2537,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 92,
+    "item_type_id": 31790,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 11,
+    "item_type_id": 28576,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 28,
+    "item_type_id": 18052,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 93,
+    "item_type_id": 31790,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 12,
+    "item_type_id": 28576,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 27,
+    "item_type_id": 17912,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 13,
+    "item_type_id": 28576,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 28,
+    "item_type_id": 17912,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   }
+  ],
+  "ship_type_id": 22548
+ }
+}

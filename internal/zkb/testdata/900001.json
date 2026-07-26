@@ -1,0 +1,160 @@
+{
+  "killmail_id": 435341,
+  "hash": "cea7da03d815cbe8d5db3d135ed6f7e3a6ec2e60",
+  "esi": {
+    "attackers": [
+      {
+        "character_id": 834178711,
+        "corporation_id": 319218345,
+        "damage_done": 8402,
+        "final_blow": true,
+        "security_status": -10.0,
+        "ship_type_id": 24692,
+        "weapon_type_id": 3057
+      },
+      {
+        "character_id": 133487129,
+        "corporation_id": 319218345,
+        "damage_done": 7000,
+        "final_blow": false,
+        "security_status": -10.0,
+        "ship_type_id": 24688,
+        "weapon_type_id": 24688
+      },
+      {
+        "character_id": 801670853,
+        "corporation_id": 319218345,
+        "damage_done": 2480,
+        "final_blow": false,
+        "security_status": -10.0,
+        "ship_type_id": 24698,
+        "weapon_type_id": 209
+      },
+      {
+        "character_id": 1960380705,
+        "corporation_id": 319218345,
+        "damage_done": 2321,
+        "final_blow": false,
+        "security_status": -10.0,
+        "ship_type_id": 12021,
+        "weapon_type_id": 12021
+      }
+    ],
+    "killmail_id": 435341,
+    "killmail_time": "2008-01-06T00:44:00Z",
+    "solar_system_id": 30002691,
+    "victim": {
+      "alliance_id": 1685076665,
+      "character_id": 985810621,
+      "corporation_id": 1172774420,
+      "damage_taken": 20203,
+      "items": [
+        {
+          "flag": 0,
+          "item_type_id": 5051,
+          "quantity_destroyed": 1,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 16519,
+          "quantity_destroyed": 1,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 16519,
+          "quantity_dropped": 3,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 3244,
+          "quantity_dropped": 1,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 9247,
+          "quantity_destroyed": 2,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 9247,
+          "quantity_dropped": 2,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 16367,
+          "quantity_dropped": 2,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 12054,
+          "quantity_destroyed": 1,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 16375,
+          "quantity_destroyed": 1,
+          "singleton": 0
+        },
+        {
+          "flag": 87,
+          "item_type_id": 2488,
+          "quantity_destroyed": 10,
+          "singleton": 0
+        },
+        {
+          "flag": 5,
+          "item_type_id": 3540,
+          "quantity_dropped": 2,
+          "singleton": 0
+        },
+        {
+          "flag": 87,
+          "item_type_id": 2444,
+          "quantity_destroyed": 5,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 16383,
+          "quantity_destroyed": 1,
+          "singleton": 0
+        },
+        {
+          "flag": 0,
+          "item_type_id": 10998,
+          "quantity_dropped": 1,
+          "singleton": 0
+        }
+      ],
+      "ship_type_id": 644
+    }
+  },
+  "zkb": {
+    "locationID": 50000001,
+    "hash": "cea7da03d815cbe8d5db3d135ed6f7e3a6ec2e60",
+    "fittedValue": 1234567.89,
+    "droppedValue": 234567.0,
+    "destroyedValue": 1000000.89,
+    "totalValue": 1234567.89,
+    "points": 12,
+    "npc": false,
+    "solo": false,
+    "awox": false,
+    "labels": [
+      "pvp",
+      "loss"
+    ],
+    "attackerCount": 4,
+    "href": "https://esi.evetech.net/v1/killmails/435341/cea7da03d815cbe8d5db3d135ed6f7e3a6ec2e60/"
+  },
+  "uploaded_at": 1769000000,
+  "sequence_id": 900001
+}

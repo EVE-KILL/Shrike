@@ -1,0 +1,29 @@
+{
+ "attackers": [
+  {
+   "corporation_id": 241742359,
+   "damage_done": 289109,
+   "final_blow": true,
+   "security_status": 0.0,
+   "ship_type_id": 12235
+  }
+ ],
+ "killmail_hash": "2d50989bc74e4c3e35357945efa1dbf079aca609",
+ "killmail_id": 4289452,
+ "killmail_time": "2008-10-28T13:02:00Z",
+ "solar_system_id": 30001983,
+ "victim": {
+  "character_id": 141998953,
+  "corporation_id": 1650502528,
+  "damage_taken": 289109,
+  "items": [
+   {
+    "flag": 5,
+    "item_type_id": 16274,
+    "quantity_dropped": 95602,
+    "singleton": 0
+   }
+  ],
+  "ship_type_id": 28850
+ }
+}

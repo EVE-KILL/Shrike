@@ -2,100 +2,31 @@ package cli
 
 import (
 	"fmt"
-	"time"
 
+	"github.com/eve-kill/shrike/internal/configstore"
 	"github.com/eve-kill/shrike/internal/db"
-	"github.com/eve-kill/shrike/internal/sde"
 	"github.com/eve-kill/shrike/internal/ui"
 	"github.com/spf13/cobra"
 )
 
+// Importing prices lives under `everef:prices`, with the rest of the datasets
+// from the same publisher. What stays here is the question that has nothing to
+// do with importing: what does the table currently hold.
 var pricesCmd = &cobra.Command{
 	Use:   "prices",
-	Short: "EVE Ref market history",
-}
-
-var (
-	flagPriceDays int
-	flagPriceDate string
-)
-
-var pricesImportCmd = &cobra.Command{
-	Use:   "import",
-	Short: "Import daily market history from EVE Ref",
-	Long: `Loads one bzip2'd CSV per day and merges it into the prices table.
-
-Defaults to the last 7 days, which is what the scheduled job uses. A day that
-EVE Ref has not published yet is reported as absent rather than failing — the
-most recent day is routinely unavailable for several hours.
-
-Supercapital valuation depends on this data: those hulls never trade, so their
-custom price is computed from blueprint materials priced at market.
-
-    shrike prices:import --days 30
-    shrike prices:import --date 2026-07-22`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		if err := requireConfig(); err != nil {
-			return err
-		}
-		pool, err := db.New(cmd.Context(), cfg)
-		if err != nil {
-			return err
-		}
-		defer pool.Close()
-
-		ui.Section("Market history")
-		t := ui.NewTable("DATE", "ROWS", "TIME")
-		var total int64
-
-		record := func(r sde.PriceDayResult) {
-			rows := fmtCount(r.Rows)
-			if r.Missing {
-				rows = ui.Dim("not published")
-			}
-			total += r.Rows
-			t.Row(r.Date, rows, r.Elapsed)
-		}
-
-		if flagPriceDate != "" {
-			day, perr := time.Parse("2006-01-02", flagPriceDate)
-			if perr != nil {
-				return fmt.Errorf("invalid --date %q: expected YYYY-MM-DD", flagPriceDate)
-			}
-			r, ierr := sde.ImportPriceDay(cmd.Context(), pool, day, userAgent())
-			if ierr != nil {
-				return ierr
-			}
-			record(r)
-		} else {
-			if _, err := sde.ImportPriceRange(cmd.Context(), pool, flagPriceDays, userAgent(), record); err != nil {
-				fmt.Println(t.Render())
-				return err
-			}
-		}
-
-		fmt.Println(t.Render())
-		ui.Newline()
-		ui.KV("Rows merged", fmtCount(total))
-
-		latest, err := sde.LatestPriceDate(cmd.Context(), pool)
-		if err != nil {
-			return err
-		}
-		if latest != "" {
-			ui.KV("Latest held", latest)
-			if err := sde.RecordPriceProgress(cmd.Context(), pool, latest); err != nil {
-				return err
-			}
-		}
-		ui.Newline()
-		return nil
-	},
+	Short: "Inspect stored market history",
 }
 
 var pricesStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show what market history is loaded",
+	Long: `Reports the extent of the prices table.
+
+A gap here is worth noticing: every killmail is valued from the most recent
+average at or before its kill date, so missing days do not fail — they quietly
+value items at an older price, or at the 0.01 ISK floor.
+
+Prices are imported with ` + "`shrike everef:prices`" + `.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := requireConfig(); err != nil {
 			return err
@@ -107,19 +38,25 @@ var pricesStatusCmd = &cobra.Command{
 		defer pool.Close()
 
 		var rows, days, types int64
+		var earliest, latest *string
 		if err := pool.QueryRow(cmd.Context(), `
-            SELECT count(*), count(DISTINCT date), count(DISTINCT type_id) FROM prices
-        `).Scan(&rows, &days, &types); err != nil {
+            SELECT count(*), count(DISTINCT date), count(DISTINCT type_id),
+                   min(date)::text, max(date)::text
+            FROM prices
+        `).Scan(&rows, &days, &types, &earliest, &latest); err != nil {
 			return err
 		}
-		latest, err := sde.LatestPriceDate(cmd.Context(), pool)
+
+		bookmark, err := configstore.Get(cmd.Context(), pool, configstore.KeyPricesLastDate)
 		if err != nil {
 			return err
 		}
 
 		if ui.JSONMode {
 			return ui.JSON(map[string]any{
-				"rows": rows, "days": days, "types": types, "latest": latest,
+				"rows": rows, "days": days, "types": types,
+				"earliest": deref(earliest), "latest": deref(latest),
+				"bookmark": bookmark,
 			})
 		}
 
@@ -127,18 +64,28 @@ var pricesStatusCmd = &cobra.Command{
 		ui.KV("Rows", fmtCount(rows))
 		ui.KV("Days", fmtCount(days))
 		ui.KV("Types", fmtCount(types))
-		if latest == "" {
-			ui.KV("Latest", ui.Dim("none loaded"))
+		if latest == nil {
+			ui.KV("Range", ui.Dim("none loaded"))
 		} else {
-			ui.KV("Latest", latest)
+			ui.KV("Range", fmt.Sprintf("%s to %s", deref(earliest), deref(latest)))
+		}
+		if bookmark == "" {
+			ui.KV("Import bookmark", ui.Dim("unset"))
+		} else {
+			ui.KV("Import bookmark", bookmark)
 		}
 		ui.Newline()
 		return nil
 	},
 }
 
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func init() {
-	pricesImportCmd.Flags().IntVar(&flagPriceDays, "days", 7, "Number of days to import, ending yesterday")
-	pricesImportCmd.Flags().StringVar(&flagPriceDate, "date", "", "Import a single day (YYYY-MM-DD)")
-	pricesCmd.AddCommand(pricesImportCmd, pricesStatusCmd)
+	pricesCmd.AddCommand(pricesStatusCmd)
 }

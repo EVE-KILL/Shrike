@@ -1,0 +1,108 @@
+{
+ "attackers": [
+  {
+   "character_id": 2113101267,
+   "corporation_id": 98490111,
+   "damage_done": 1443,
+   "final_blow": true,
+   "security_status": -0.4,
+   "ship_type_id": 28606,
+   "weapon_type_id": 2456
+  }
+ ],
+ "killmail_hash": "a69afe240035e5d2c35efb9ff829447f849e4c55",
+ "killmail_id": 86524138,
+ "killmail_time": "2020-08-20T21:40:02Z",
+ "solar_system_id": 30004995,
+ "victim": {
+  "character_id": 2112736440,
+  "corporation_id": 98653326,
+  "damage_taken": 1443,
+  "items": [
+   {
+    "flag": 14,
+    "item_type_id": 1319,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 27,
+    "item_type_id": 483,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 20,
+    "item_type_id": 22175,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 93,
+    "item_type_id": 31119,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 21,
+    "item_type_id": 434,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 92,
+    "item_type_id": 31119,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 28,
+    "item_type_id": 24348,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 12,
+    "item_type_id": 1319,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 19,
+    "item_type_id": 22177,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 11,
+    "item_type_id": 1319,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 16,
+    "item_type_id": 1319,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 15,
+    "item_type_id": 1319,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 13,
+    "item_type_id": 1319,
+    "quantity_dropped": 1,
+    "singleton": 0
+   }
+  ],
+  "position": {
+   "x": -145976406634.49225,
+   "y": -18461860227.37037,
+   "z": -36848394791.056915
+  },
+  "ship_type_id": 1944
+ }
+}

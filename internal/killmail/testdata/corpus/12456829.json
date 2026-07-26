@@ -1,0 +1,56 @@
+{
+ "attackers": [
+  {
+   "alliance_id": 600719567,
+   "character_id": 2026212731,
+   "corporation_id": 667805394,
+   "damage_done": 20571,
+   "final_blow": true,
+   "security_status": 5.0,
+   "ship_type_id": 22852,
+   "weapon_type_id": 32363
+  },
+  {
+   "alliance_id": 600719567,
+   "character_id": 161421162,
+   "corporation_id": 667805394,
+   "damage_done": 6116,
+   "final_blow": false,
+   "security_status": 4.4,
+   "ship_type_id": 24483,
+   "weapon_type_id": 23057
+  },
+  {
+   "alliance_id": 600719567,
+   "character_id": 679787783,
+   "corporation_id": 667805394,
+   "damage_done": 1174,
+   "final_blow": false,
+   "security_status": 5.0,
+   "ship_type_id": 24483,
+   "weapon_type_id": 23061
+  },
+  {
+   "alliance_id": 600719567,
+   "character_id": 694387643,
+   "corporation_id": 667805394,
+   "damage_done": 0,
+   "final_blow": false,
+   "security_status": 4.6,
+   "ship_type_id": 24483,
+   "weapon_type_id": 12271
+  }
+ ],
+ "killmail_hash": "119953d83cf8de5d38437b00fcb87f2a1c13b741",
+ "killmail_id": 12456829,
+ "killmail_time": "2010-04-23T19:58:00Z",
+ "moon_id": 40062602,
+ "solar_system_id": 30000982,
+ "victim": {
+  "alliance_id": 1989262607,
+  "corporation_id": 550945845,
+  "damage_taken": 27861,
+  "items": [],
+  "ship_type_id": 17621
+ }
+}

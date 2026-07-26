@@ -21,8 +21,8 @@ var dbCmd = &cobra.Command{
 // commands print the plan and change nothing.
 var flagApply bool
 
-var dbStatusCmd = &cobra.Command{
-	Use:   "status",
+var dbMigrationsCmd = &cobra.Command{
+	Use:   "migrations",
 	Short: "Show migration state and what would be applied",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := requireConfig(); err != nil {
@@ -214,5 +214,5 @@ func boolLabel(b bool, yes, no string) string {
 func init() {
 	dbMigrateCmd.Flags().BoolVar(&flagApply, "apply", false, "Actually execute; without it this is a dry run")
 	dbBaselineCmd.Flags().BoolVar(&flagApply, "apply", false, "Actually write the ledger; without it this is a dry run")
-	dbCmd.AddCommand(dbStatusCmd, dbMigrateCmd, dbBaselineCmd)
+	dbCmd.AddCommand(dbStatusCmd, dbMigrationsCmd, dbMigrateCmd, dbBaselineCmd)
 }

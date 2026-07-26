@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/cron"
 	"github.com/eve-kill/shrike/internal/jobs"
 	"github.com/eve-kill/shrike/internal/ui"
+	"github.com/eve-kill/shrike/internal/workers"
 	"github.com/spf13/cobra"
 )
 
@@ -117,8 +120,120 @@ func formatPerDay(n float64) string {
 	}
 }
 
+var cronRunCmd = &cobra.Command{
+	Use:   "run <name>",
+	Short: "Run one scheduled job immediately",
+	Long: `Runs a cron once, in the foreground, and prints what it did.
+
+This deliberately bypasses the queue. An operator running a job by hand wants it
+to run now and to see the result on their terminal — not to insert a row and
+hope a worker somewhere picks it up.
+
+Jobs run this way are not gated on Tranquility being online. If you are asking
+for it explicitly, you get it.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name := args[0]
+
+		pool, err := openPool(cmd)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+
+		// A queue client, because several crons exist only to enqueue work and
+		// would otherwise fail with "needs a queue to dispatch into".
+		d, err := deps(cmd.Context(), pool, true)
+		if err != nil {
+			return err
+		}
+
+		registry, err := workers.RegisterCrons(d)
+		if err != nil {
+			return err
+		}
+
+		run, err := cron.RunOnce(cmd.Context(), registry, name)
+		if err != nil {
+			// A cron that is declared but unported is a fact about the port, not
+			// a failure of this invocation — say so plainly and list what does
+			// work rather than printing a bare error.
+			if len(registry.Implemented()) > 0 {
+				ui.Newline()
+				ui.KV("Implemented", strings.Join(registry.Implemented(), ", "))
+				ui.Newline()
+			}
+			return err
+		}
+
+		if ui.JSONMode {
+			return ui.JSON(map[string]any{
+				"cron":       run.Name,
+				"report":     run.Report,
+				"elapsed_ms": run.Elapsed.Milliseconds(),
+			})
+		}
+
+		ui.Newline()
+		ui.KV("Cron", run.Name)
+		if run.Report != "" {
+			ui.KV("Result", run.Report)
+		}
+		ui.KV("Elapsed", run.Elapsed.Round(time.Millisecond).String())
+		ui.Newline()
+		return nil
+	},
+}
+
+var cronStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show which crons have a Go implementation",
+	Long: `Compares the declared crons against the ones actually implemented.
+
+During the port this gap is most of them, and it is worth looking at directly: a
+scheduler running eight of thirty-two jobs is indistinguishable from one running
+all thirty-two and finding nothing to do.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		// No pool: this reports on wiring, not on data, and must work against a
+		// machine with no database reachable.
+		registry, err := workers.RegisterCrons(&workers.Deps{})
+		if err != nil {
+			return err
+		}
+
+		implemented := registry.Implemented()
+		missing := registry.Unimplemented()
+
+		if ui.JSONMode {
+			return ui.JSON(map[string]any{
+				"implemented":   implemented,
+				"unimplemented": missing,
+				"declared":      len(jobs.Crons),
+			})
+		}
+
+		ui.Section("Cron implementation status")
+		table := ui.NewTable("CRON", "STATUS", "EVERY", "DESCRIPTION")
+		for _, c := range jobs.Crons {
+			// "unported" rather than "fail": these jobs are not broken, they
+			// have not been written yet, and a red badge for expected work in
+			// progress trains people to ignore red badges.
+			status := ui.StatusBadge("unported")
+			if _, ok := registry.Lookup(c.Name); ok {
+				status = ui.StatusBadge("ok")
+			}
+			table.Row(ui.Command(c.Name), status, c.Schedule, c.Description)
+		}
+		fmt.Println(table.Render())
+		ui.Newline()
+		ui.KV("Implemented", fmt.Sprintf("%d/%d", len(implemented), len(jobs.Crons)))
+		ui.Newline()
+		return nil
+	},
+}
+
 func init() {
 	cronListCmd.Flags().BoolVar(&flagCronSortByFreq, "by-frequency", false,
 		"Sort fastest-first instead of alphabetically")
-	cronCmd.AddCommand(cronListCmd)
+	cronCmd.AddCommand(cronListCmd, cronRunCmd, cronStatusCmd)
 }

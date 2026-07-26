@@ -1,0 +1,136 @@
+{
+ "attackers": [
+  {
+   "alliance_id": 99010431,
+   "character_id": 2120971740,
+   "corporation_id": 98753370,
+   "damage_done": 558548,
+   "final_blow": false,
+   "security_status": -2.1,
+   "ship_type_id": 29988,
+   "weapon_type_id": 2444
+  },
+  {
+   "alliance_id": 99010431,
+   "character_id": 872311767,
+   "corporation_id": 98753370,
+   "damage_done": 524037,
+   "final_blow": false,
+   "security_status": -1.6,
+   "ship_type_id": 29988,
+   "weapon_type_id": 2444
+  },
+  {
+   "alliance_id": 99010431,
+   "character_id": 90830966,
+   "corporation_id": 98753370,
+   "damage_done": 500467,
+   "final_blow": true,
+   "security_status": 0.4,
+   "ship_type_id": 29988,
+   "weapon_type_id": 2444
+  },
+  {
+   "alliance_id": 99010431,
+   "character_id": 814137728,
+   "corporation_id": 98753370,
+   "damage_done": 473986,
+   "final_blow": false,
+   "security_status": 0.5,
+   "ship_type_id": 29988,
+   "weapon_type_id": 2444
+  },
+  {
+   "alliance_id": 99010431,
+   "character_id": 2123821136,
+   "corporation_id": 98753370,
+   "damage_done": 426599,
+   "final_blow": false,
+   "security_status": 0.1,
+   "ship_type_id": 29988,
+   "weapon_type_id": 2444
+  },
+  {
+   "alliance_id": 99010431,
+   "character_id": 2121022237,
+   "corporation_id": 98753370,
+   "damage_done": 241110,
+   "final_blow": false,
+   "security_status": -1.6,
+   "ship_type_id": 17843,
+   "weapon_type_id": 2444
+  },
+  {
+   "alliance_id": 99010431,
+   "character_id": 1204020139,
+   "corporation_id": 98753370,
+   "damage_done": 213547,
+   "final_blow": false,
+   "security_status": -1.1,
+   "ship_type_id": 29988,
+   "weapon_type_id": 2444
+  },
+  {
+   "alliance_id": 99010431,
+   "character_id": 2123821148,
+   "corporation_id": 98753370,
+   "damage_done": 0,
+   "final_blow": false,
+   "security_status": 0.1,
+   "ship_type_id": 29988,
+   "weapon_type_id": 2444
+  }
+ ],
+ "killmail_hash": "b4c40016188cc8801db903233777750ed0d29287",
+ "killmail_id": 134554450,
+ "killmail_time": "2026-04-06T22:49:27Z",
+ "solar_system_id": 30000204,
+ "victim": {
+  "corporation_id": 1000134,
+  "damage_taken": 2938294,
+  "items": [
+   {
+    "flag": 11,
+    "item_type_id": 37532,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 19,
+    "item_type_id": 35941,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 28,
+    "item_type_id": 35925,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 20,
+    "item_type_id": 35943,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 12,
+    "item_type_id": 37532,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 27,
+    "item_type_id": 35925,
+    "quantity_dropped": 1,
+    "singleton": 0
+   }
+  ],
+  "position": {
+   "x": 213934793068.53485,
+   "y": -547962329930.4323,
+   "z": 194850426736.52203
+  },
+  "ship_type_id": 46364
+ }
+}

@@ -1,0 +1,88 @@
+{
+ "attackers": [
+  {
+   "damage_done": 7142,
+   "faction_id": 500021,
+   "final_blow": true,
+   "security_status": 0.0,
+   "ship_type_id": 30204
+  }
+ ],
+ "killmail_hash": "ca5741a63cfa3838626a2703a3c4fbbe8903f090",
+ "killmail_id": 73596260,
+ "killmail_time": "2018-11-21T06:52:18Z",
+ "solar_system_id": 31001036,
+ "victim": {
+  "character_id": 2114358850,
+  "corporation_id": 98562726,
+  "damage_taken": 7142,
+  "items": [
+   {
+    "flag": 28,
+    "item_type_id": 17482,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 27,
+    "item_type_id": 17482,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 12,
+    "item_type_id": 28576,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 94,
+    "item_type_id": 31179,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 11,
+    "item_type_id": 28576,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 92,
+    "item_type_id": 31179,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 10246,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 10246,
+    "quantity_dropped": 4,
+    "singleton": 0
+   },
+   {
+    "flag": 93,
+    "item_type_id": 31179,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 13,
+    "item_type_id": 28576,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   }
+  ],
+  "position": {
+   "x": 563914997334.276,
+   "y": -117685618205.17467,
+   "z": 846810314568.9373
+  },
+  "ship_type_id": 17478
+ }
+}

@@ -12,3 +12,6 @@ bin/
 # Local docker-compose state (postgres, valkey, memgraph). Reproducible from
 # `docker compose up` plus the SDE importer, so it is never committed.
 .data/
+
+# Local architecture notes.
+/UNIXSOCKETS.md

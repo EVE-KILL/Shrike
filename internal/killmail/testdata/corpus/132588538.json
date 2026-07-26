@@ -1,0 +1,157 @@
+{
+ "attackers": [
+  {
+   "alliance_id": 498125261,
+   "character_id": 96057996,
+   "corporation_id": 98294509,
+   "damage_done": 859,
+   "final_blow": true,
+   "security_status": 5.0,
+   "ship_type_id": 12038,
+   "weapon_type_id": 2977
+  }
+ ],
+ "killmail_hash": "cd34575a58f8881f196497f231557454c62be3bd",
+ "killmail_id": 132588538,
+ "killmail_time": "2026-01-12T08:54:15Z",
+ "solar_system_id": 30002485,
+ "victim": {
+  "character_id": 2121349362,
+  "corporation_id": 1000045,
+  "damage_taken": 859,
+  "items": [
+   {
+    "flag": 23,
+    "item_type_id": 2038,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 25620,
+    "quantity_destroyed": 15,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 25607,
+    "quantity_destroyed": 5,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 25625,
+    "quantity_destroyed": 12,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 25625,
+    "quantity_dropped": 13,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 25616,
+    "quantity_destroyed": 22,
+    "singleton": 0
+   },
+   {
+    "flag": 19,
+    "item_type_id": 5971,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 21,
+    "item_type_id": 33180,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 12,
+    "item_type_id": 2603,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 31751,
+    "quantity_destroyed": 1,
+    "singleton": 2
+   },
+   {
+    "flag": 5,
+    "item_type_id": 56080,
+    "quantity_destroyed": 2,
+    "singleton": 0
+   },
+   {
+    "flag": 22,
+    "item_type_id": 33180,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 20,
+    "item_type_id": 22177,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 93,
+    "item_type_id": 31201,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 27,
+    "item_type_id": 17938,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 25619,
+    "quantity_dropped": 17,
+    "singleton": 0
+   },
+   {
+    "flag": 27,
+    "item_type_id": 30488,
+    "quantity_destroyed": 8,
+    "singleton": 0
+   },
+   {
+    "flag": 11,
+    "item_type_id": 2603,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 92,
+    "item_type_id": 31201,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 30488,
+    "quantity_dropped": 8,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 53977,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   }
+  ],
+  "position": {
+   "x": -377884488898.6159,
+   "y": -106651973762.25307,
+   "z": -865236390544.9725
+  },
+  "ship_type_id": 605
+ }
+}

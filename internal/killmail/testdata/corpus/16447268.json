@@ -1,0 +1,124 @@
+{
+ "attackers": [
+  {
+   "alliance_id": 927292903,
+   "character_id": 235122628,
+   "corporation_id": 398807099,
+   "damage_done": 7024,
+   "final_blow": true,
+   "security_status": -0.4,
+   "ship_type_id": 16242,
+   "weapon_type_id": 2889
+  },
+  {
+   "corporation_id": 1000124,
+   "damage_done": 2480,
+   "final_blow": false,
+   "security_status": 0.0,
+   "ship_type_id": 11026
+  }
+ ],
+ "killmail_hash": "96027081d071cf78b79221007bb8fdb693f3c5af",
+ "killmail_id": 16447268,
+ "killmail_time": "2011-01-14T21:52:00Z",
+ "solar_system_id": 30002095,
+ "victim": {
+  "character_id": 1935510776,
+  "corporation_id": 98004474,
+  "damage_taken": 9504,
+  "faction_id": 500002,
+  "items": [
+   {
+    "flag": 5,
+    "item_type_id": 2679,
+    "quantity_dropped": 98,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 3244,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 2897,
+    "quantity_dropped": 4,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 12076,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 1999,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 1236,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 1355,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 2679,
+    "quantity_destroyed": 42,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 2679,
+    "quantity_dropped": 42,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 31790,
+    "quantity_destroyed": 3,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 21896,
+    "quantity_destroyed": 236,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 21896,
+    "quantity_dropped": 236,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 25715,
+    "quantity_dropped": 2,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 3841,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 21896,
+    "quantity_destroyed": 732,
+    "singleton": 0
+   }
+  ],
+  "ship_type_id": 622
+ }
+}

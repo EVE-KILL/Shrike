@@ -1,0 +1,23 @@
+{
+ "attackers": [
+  {
+   "damage_done": 773,
+   "faction_id": 500010,
+   "final_blow": true,
+   "security_status": 0.0,
+   "ship_type_id": 19505
+  }
+ ],
+ "killmail_hash": "b8463d4cdb11aea295c6e2626b8c4d8de9ef74d9",
+ "killmail_id": 24209201,
+ "killmail_time": "2012-06-05T06:24:00Z",
+ "solar_system_id": 30011407,
+ "victim": {
+  "alliance_id": 99000463,
+  "character_id": 92089219,
+  "corporation_id": 98084881,
+  "damage_taken": 773,
+  "items": [],
+  "ship_type_id": 583
+ }
+}

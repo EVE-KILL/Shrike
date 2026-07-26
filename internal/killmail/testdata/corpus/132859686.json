@@ -1,0 +1,33 @@
+{
+ "attackers": [
+  {
+   "alliance_id": 1900696668,
+   "character_id": 2122745253,
+   "corporation_id": 98715582,
+   "damage_done": 461,
+   "final_blow": true,
+   "security_status": 5.0,
+   "ship_type_id": 33818,
+   "weapon_type_id": 27381
+  }
+ ],
+ "killmail_hash": "fc381a93288c1a9a0081a06a2588feb78bd9da15",
+ "killmail_id": 132859686,
+ "killmail_time": "2026-01-24T10:21:07Z",
+ "solar_system_id": 30004617,
+ "victim": {
+  "alliance_id": 99003581,
+  "character_id": 2114218742,
+  "corporation_id": 98598862,
+  "damage_taken": 461,
+  "faction_id": 500011,
+  "items": [],
+  "position": {
+   "x": -2471357776833.916,
+   "y": 207016548176.48605,
+   "z": -192026406818.36908
+  },
+  "ship_type_id": 670
+ },
+ "war_id": 755391
+}

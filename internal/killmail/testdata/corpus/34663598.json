@@ -1,0 +1,42 @@
+{
+ "attackers": [
+  {
+   "corporation_id": 1000125,
+   "damage_done": 703,
+   "final_blow": true,
+   "security_status": 0.0,
+   "ship_type_id": 3885
+  }
+ ],
+ "killmail_hash": "b71cd4d95f77694846bbfce10a6010fd34228bc9",
+ "killmail_id": 34663598,
+ "killmail_time": "2013-11-21T13:42:00Z",
+ "solar_system_id": 30000131,
+ "victim": {
+  "alliance_id": 1354830081,
+  "character_id": 91765128,
+  "corporation_id": 197097487,
+  "damage_taken": 703,
+  "items": [
+   {
+    "flag": 27,
+    "item_type_id": 3640,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 34,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 28,
+    "item_type_id": 3651,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   }
+  ],
+  "ship_type_id": 606
+ }
+}

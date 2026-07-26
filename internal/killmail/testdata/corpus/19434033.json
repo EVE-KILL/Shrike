@@ -1,0 +1,1029 @@
+{
+ "attackers": [
+  {
+   "alliance_id": 386292982,
+   "character_id": 1066856424,
+   "corporation_id": 828800677,
+   "damage_done": 331912,
+   "final_blow": false,
+   "security_status": -3.1,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1218394366,
+   "corporation_id": 427125032,
+   "damage_done": 291512,
+   "final_blow": false,
+   "security_status": -1.8,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32325
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 166807583,
+   "corporation_id": 828800677,
+   "damage_done": 276183,
+   "final_blow": false,
+   "security_status": -10.0,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32325
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 465016644,
+   "corporation_id": 302750157,
+   "damage_done": 275224,
+   "final_blow": false,
+   "security_status": -9.1,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 496249971,
+   "corporation_id": 627225053,
+   "damage_done": 232568,
+   "final_blow": false,
+   "security_status": -2.4,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1683943345,
+   "corporation_id": 1941177176,
+   "damage_done": 227225,
+   "final_blow": false,
+   "security_status": 3.0,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1560161030,
+   "corporation_id": 627225053,
+   "damage_done": 206950,
+   "final_blow": false,
+   "security_status": -7.0,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 355991412,
+   "corporation_id": 673319797,
+   "damage_done": 204584,
+   "final_blow": false,
+   "security_status": 1.4,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 763257228,
+   "corporation_id": 112548774,
+   "damage_done": 198946,
+   "final_blow": false,
+   "security_status": -7.1,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32325
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1400571177,
+   "corporation_id": 673319797,
+   "damage_done": 191154,
+   "final_blow": false,
+   "security_status": -1.6,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32344
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1218378562,
+   "corporation_id": 828800677,
+   "damage_done": 185990,
+   "final_blow": false,
+   "security_status": -2.3,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 142366439,
+   "corporation_id": 112548774,
+   "damage_done": 181657,
+   "final_blow": false,
+   "security_status": -3.2,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1914057526,
+   "corporation_id": 302750157,
+   "damage_done": 181339,
+   "final_blow": false,
+   "security_status": -4.7,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 800448586,
+   "corporation_id": 302750157,
+   "damage_done": 176797,
+   "final_blow": false,
+   "security_status": -9.4,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 551599722,
+   "corporation_id": 828800677,
+   "damage_done": 175730,
+   "final_blow": false,
+   "security_status": -0.4,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 814076069,
+   "corporation_id": 673319797,
+   "damage_done": 172821,
+   "final_blow": false,
+   "security_status": -1.5,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 723791738,
+   "corporation_id": 1941177176,
+   "damage_done": 166755,
+   "final_blow": false,
+   "security_status": 1.8,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 780700973,
+   "corporation_id": 1941177176,
+   "damage_done": 165255,
+   "final_blow": false,
+   "security_status": 0.2,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32325
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 638967149,
+   "corporation_id": 828800677,
+   "damage_done": 148379,
+   "final_blow": true,
+   "security_status": 2.7,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 834441065,
+   "corporation_id": 828800677,
+   "damage_done": 145719,
+   "final_blow": false,
+   "security_status": -9.3,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 2049693009,
+   "corporation_id": 828800677,
+   "damage_done": 141761,
+   "final_blow": false,
+   "security_status": -1.6,
+   "ship_type_id": 23919,
+   "weapon_type_id": 32342
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 688977622,
+   "corporation_id": 828800677,
+   "damage_done": 128800,
+   "final_blow": false,
+   "security_status": -9.9,
+   "ship_type_id": 23913,
+   "weapon_type_id": 32340
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 423735798,
+   "corporation_id": 1941177176,
+   "damage_done": 106832,
+   "final_blow": false,
+   "security_status": -8.3,
+   "ship_type_id": 11567,
+   "weapon_type_id": 11567
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 111244994,
+   "corporation_id": 681897792,
+   "damage_done": 30719,
+   "final_blow": false,
+   "security_status": 1.2,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1340873988,
+   "corporation_id": 828800677,
+   "damage_done": 26874,
+   "final_blow": false,
+   "security_status": -2.0,
+   "ship_type_id": 17738,
+   "weapon_type_id": 21640
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 439420743,
+   "corporation_id": 263585335,
+   "damage_done": 26338,
+   "final_blow": false,
+   "security_status": -1.8,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1268475330,
+   "corporation_id": 1941177176,
+   "damage_done": 25708,
+   "final_blow": false,
+   "security_status": 1.3,
+   "ship_type_id": 638,
+   "weapon_type_id": 2811
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1106805787,
+   "corporation_id": 1941177176,
+   "damage_done": 24336,
+   "final_blow": false,
+   "security_status": 3.9,
+   "ship_type_id": 17738,
+   "weapon_type_id": 21640
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 746392706,
+   "corporation_id": 828800677,
+   "damage_done": 24173,
+   "final_blow": false,
+   "security_status": -8.5,
+   "ship_type_id": 17738,
+   "weapon_type_id": 2446
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 384243544,
+   "corporation_id": 681897792,
+   "damage_done": 23704,
+   "final_blow": false,
+   "security_status": 1.4,
+   "ship_type_id": 639,
+   "weapon_type_id": 28215
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 425807115,
+   "corporation_id": 1941177176,
+   "damage_done": 21423,
+   "final_blow": false,
+   "security_status": 2.2,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 915634133,
+   "corporation_id": 828800677,
+   "damage_done": 21382,
+   "final_blow": false,
+   "security_status": -3.0,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 104796083,
+   "corporation_id": 673319797,
+   "damage_done": 21235,
+   "final_blow": false,
+   "security_status": 1.8,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 187415140,
+   "corporation_id": 828800677,
+   "damage_done": 21198,
+   "final_blow": false,
+   "security_status": -1.0,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 618847404,
+   "corporation_id": 1941177176,
+   "damage_done": 20796,
+   "final_blow": false,
+   "security_status": -1.1,
+   "ship_type_id": 17732,
+   "weapon_type_id": 17732
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 712613004,
+   "corporation_id": 681897792,
+   "damage_done": 20759,
+   "final_blow": false,
+   "security_status": -2.5,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 854746727,
+   "corporation_id": 1941177176,
+   "damage_done": 19902,
+   "final_blow": false,
+   "security_status": -3.6,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 296912862,
+   "corporation_id": 627225053,
+   "damage_done": 19508,
+   "final_blow": false,
+   "security_status": -7.2,
+   "ship_type_id": 639,
+   "weapon_type_id": 2446
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1533928786,
+   "corporation_id": 1941177176,
+   "damage_done": 19363,
+   "final_blow": false,
+   "security_status": -8.8,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1404663706,
+   "corporation_id": 673319797,
+   "damage_done": 19226,
+   "final_blow": false,
+   "security_status": 2.1,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 776010507,
+   "corporation_id": 935245418,
+   "damage_done": 19191,
+   "final_blow": false,
+   "security_status": -8.3,
+   "ship_type_id": 639,
+   "weapon_type_id": 2478
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 962215199,
+   "corporation_id": 112548774,
+   "damage_done": 18588,
+   "final_blow": false,
+   "security_status": -6.5,
+   "ship_type_id": 17738,
+   "weapon_type_id": 17738
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 245756905,
+   "corporation_id": 828800677,
+   "damage_done": 18359,
+   "final_blow": false,
+   "security_status": -9.8,
+   "ship_type_id": 17738,
+   "weapon_type_id": 21640
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 620146331,
+   "corporation_id": 302750157,
+   "damage_done": 18049,
+   "final_blow": false,
+   "security_status": -2.6,
+   "ship_type_id": 17738,
+   "weapon_type_id": 17738
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 767401250,
+   "corporation_id": 627225053,
+   "damage_done": 16121,
+   "final_blow": false,
+   "security_status": -2.4,
+   "ship_type_id": 24694,
+   "weapon_type_id": 24694
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 231385496,
+   "corporation_id": 681897792,
+   "damage_done": 15926,
+   "final_blow": false,
+   "security_status": 1.9,
+   "ship_type_id": 639,
+   "weapon_type_id": 2488
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 630099021,
+   "corporation_id": 828800677,
+   "damage_done": 15225,
+   "final_blow": false,
+   "security_status": -10.0,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1056531010,
+   "corporation_id": 828800677,
+   "damage_done": 14912,
+   "final_blow": false,
+   "security_status": -10.0,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 618070211,
+   "corporation_id": 1508316288,
+   "damage_done": 14740,
+   "final_blow": false,
+   "security_status": -4.2,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1580200753,
+   "corporation_id": 828800677,
+   "damage_done": 13667,
+   "final_blow": false,
+   "security_status": -9.8,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1172329999,
+   "corporation_id": 681897792,
+   "damage_done": 13554,
+   "final_blow": false,
+   "security_status": 2.8,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 224983720,
+   "corporation_id": 1941177176,
+   "damage_done": 13307,
+   "final_blow": false,
+   "security_status": 4.2,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 2038365339,
+   "corporation_id": 828800677,
+   "damage_done": 12439,
+   "final_blow": false,
+   "security_status": -4.7,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1497826625,
+   "corporation_id": 1941177176,
+   "damage_done": 12065,
+   "final_blow": false,
+   "security_status": -1.0,
+   "ship_type_id": 639,
+   "weapon_type_id": 639
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 195862319,
+   "corporation_id": 673319797,
+   "damage_done": 10609,
+   "final_blow": false,
+   "security_status": -2.5,
+   "ship_type_id": 644,
+   "weapon_type_id": 2811
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 642601021,
+   "corporation_id": 828800677,
+   "damage_done": 4778,
+   "final_blow": false,
+   "security_status": -10.0,
+   "ship_type_id": 638,
+   "weapon_type_id": 27339
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 785334147,
+   "corporation_id": 627225053,
+   "damage_done": 2737,
+   "final_blow": false,
+   "security_status": -0.3,
+   "ship_type_id": 12017,
+   "weapon_type_id": 12017
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1217109605,
+   "corporation_id": 828800677,
+   "damage_done": 1512,
+   "final_blow": false,
+   "security_status": -3.1,
+   "ship_type_id": 12017,
+   "weapon_type_id": 12017
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 790718213,
+   "corporation_id": 302750157,
+   "damage_done": 815,
+   "final_blow": false,
+   "security_status": -2.1,
+   "ship_type_id": 11995,
+   "weapon_type_id": 27435
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1154605883,
+   "corporation_id": 828800677,
+   "damage_done": 765,
+   "final_blow": false,
+   "security_status": 1.2,
+   "ship_type_id": 639,
+   "weapon_type_id": 2929
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 303268281,
+   "corporation_id": 112548774,
+   "damage_done": 542,
+   "final_blow": false,
+   "security_status": -2.1,
+   "ship_type_id": 12013,
+   "weapon_type_id": 12013
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 795675347,
+   "corporation_id": 263585335,
+   "damage_done": 367,
+   "final_blow": false,
+   "security_status": 3.2,
+   "ship_type_id": 12021,
+   "weapon_type_id": 28654
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1189811121,
+   "corporation_id": 627225053,
+   "damage_done": 348,
+   "final_blow": false,
+   "security_status": -3.4,
+   "ship_type_id": 11978,
+   "weapon_type_id": 11978
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 1252853187,
+   "corporation_id": 828800677,
+   "damage_done": 219,
+   "final_blow": false,
+   "security_status": -7.7,
+   "ship_type_id": 12013,
+   "weapon_type_id": 12013
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 938251948,
+   "corporation_id": 1941177176,
+   "damage_done": 212,
+   "final_blow": false,
+   "security_status": -4.1,
+   "ship_type_id": 12013,
+   "weapon_type_id": 2977
+  },
+  {
+   "character_id": 1808729611,
+   "corporation_id": 98043801,
+   "damage_done": 103,
+   "final_blow": false,
+   "security_status": -2.4,
+   "ship_type_id": 17928,
+   "weapon_type_id": 17928
+  },
+  {
+   "character_id": 878738531,
+   "corporation_id": 1000060,
+   "damage_done": 27,
+   "final_blow": false,
+   "security_status": -2.1,
+   "ship_type_id": 12013,
+   "weapon_type_id": 12013
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 527089688,
+   "corporation_id": 828800677,
+   "damage_done": 10,
+   "final_blow": false,
+   "security_status": -0.8,
+   "ship_type_id": 12013,
+   "weapon_type_id": 12013
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 859658691,
+   "corporation_id": 828800677,
+   "damage_done": 0,
+   "final_blow": false,
+   "security_status": -1.7,
+   "ship_type_id": 12013,
+   "weapon_type_id": 28654
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 777802316,
+   "corporation_id": 627225053,
+   "damage_done": 0,
+   "final_blow": false,
+   "security_status": -0.7,
+   "ship_type_id": 23911,
+   "weapon_type_id": 16479
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 903342372,
+   "corporation_id": 828800677,
+   "damage_done": 0,
+   "final_blow": false,
+   "security_status": -9.9,
+   "ship_type_id": 12013,
+   "weapon_type_id": 28654
+  },
+  {
+   "alliance_id": 386292982,
+   "character_id": 147590286,
+   "corporation_id": 828800677,
+   "damage_done": 0,
+   "final_blow": false,
+   "security_status": 3.0,
+   "ship_type_id": 11978,
+   "weapon_type_id": 484
+  }
+ ],
+ "killmail_hash": "206dfe2d8b835f45584fe99a413a35355a2d842d",
+ "killmail_id": 19434033,
+ "killmail_time": "2011-07-24T19:56:00Z",
+ "solar_system_id": 30000163,
+ "victim": {
+  "alliance_id": 1706573995,
+  "character_id": 1195795743,
+  "corporation_id": 1738407293,
+  "damage_taken": 5139924,
+  "items": [
+   {
+    "flag": 0,
+    "item_type_id": 12219,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 29009,
+    "quantity_destroyed": 3,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 22765,
+    "quantity_destroyed": 25,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 22765,
+    "quantity_dropped": 10,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 32342,
+    "quantity_destroyed": 6,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 32342,
+    "quantity_dropped": 13,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 14190,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 23707,
+    "quantity_destroyed": 29,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 18947,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 24569,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 2488,
+    "quantity_destroyed": 10,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 2488,
+    "quantity_dropped": 40,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 15804,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 15804,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 18881,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 18881,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 2185,
+    "quantity_dropped": 20,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 28680,
+    "quantity_dropped": 18,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 30013,
+    "quantity_dropped": 6,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 14236,
+    "quantity_dropped": 2,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 32325,
+    "quantity_destroyed": 7,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 32325,
+    "quantity_dropped": 12,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 18943,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 29011,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 29011,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 2032,
+    "quantity_destroyed": 2,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 2032,
+    "quantity_dropped": 2,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 18939,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 16273,
+    "quantity_destroyed": 900,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 2048,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 11239,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 26302,
+    "quantity_destroyed": 3,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 21640,
+    "quantity_destroyed": 14,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 21640,
+    "quantity_dropped": 8,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 14234,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 28215,
+    "quantity_destroyed": 9,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 28215,
+    "quantity_dropped": 30,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 18935,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 28211,
+    "quantity_destroyed": 25,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 28211,
+    "quantity_dropped": 10,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 31944,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 31944,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 17559,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 14244,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 23523,
+    "quantity_destroyed": 8,
+    "singleton": 0
+   },
+   {
+    "flag": 87,
+    "item_type_id": 23523,
+    "quantity_dropped": 6,
+    "singleton": 0
+   },
+   {
+    "flag": 0,
+    "item_type_id": 14190,
+    "quantity_dropped": 1,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 12271,
+    "quantity_destroyed": 2,
+    "singleton": 0
+   },
+   {
+    "flag": 5,
+    "item_type_id": 21096,
+    "quantity_destroyed": 1,
+    "singleton": 0
+   }
+  ],
+  "ship_type_id": 23919
+ }
+}

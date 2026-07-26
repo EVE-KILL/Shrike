@@ -108,27 +108,6 @@ func TestToRoman(t *testing.T) {
 	}
 }
 
-// Empty CSV fields must be NULL, not zero: a price of zero would drag
-// valuations down, and an absent price is not a price.
-func TestCSVCoercion(t *testing.T) {
-	if csvFloat("") != nil {
-		t.Error("csvFloat(empty) should be nil")
-	}
-	if got := csvFloat("3.98"); got == nil || *got != 3.98 {
-		t.Errorf("csvFloat = %v, want 3.98", got)
-	}
-	if csvInt("") != nil {
-		t.Error("csvInt(empty) should be nil")
-	}
-	if got := csvInt("12"); got == nil || *got != 12 {
-		t.Errorf("csvInt = %v, want 12", got)
-	}
-	// Counts occasionally arrive as floats.
-	if got := csvInt("12.0"); got == nil || *got != 12 {
-		t.Errorf("csvInt(12.0) = %v, want 12", got)
-	}
-}
-
 // The manual list is the authority for hulls the market cannot price, so a
 // duplicate or a truncated value would be written silently.
 func TestManualPricesAreSaneAndUnique(t *testing.T) {

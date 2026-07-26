@@ -1,0 +1,28 @@
+{
+ "attackers": [
+  {
+   "damage_done": 1260,
+   "faction_id": 500020,
+   "final_blow": true,
+   "security_status": 0.0,
+   "ship_type_id": 11076
+  }
+ ],
+ "killmail_hash": "09860d9398bc2e2b2467d5ff31f9643e0e528bb3",
+ "killmail_id": 88336558,
+ "killmail_time": "2020-11-02T12:15:49Z",
+ "solar_system_id": 30045305,
+ "victim": {
+  "alliance_id": 99010268,
+  "character_id": 2117706379,
+  "corporation_id": 1258218697,
+  "damage_taken": 1260,
+  "items": [],
+  "position": {
+   "x": 1488680431173.0273,
+   "y": -1437837555914.4626,
+   "z": -167545406401.44812
+  },
+  "ship_type_id": 609
+ }
+}
