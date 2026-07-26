@@ -232,6 +232,49 @@ func TestUnassignedCorpsAreNotCounted(t *testing.T) {
 	}
 }
 
+func TestAllianceFallbackAttributesFilteredCorporations(t *testing.T) {
+	kms, atts := twoSided()
+
+	// This corporation is below the interaction threshold and therefore has no
+	// direct corp-team placement, but the rest of its alliance is firmly on
+	// the attacking side.
+	atts[1] = append(atts[1], Attacker{
+		KillmailID:    1,
+		CharacterID:   999,
+		CorporationID: 300,
+		AllianceID:    2000,
+		DamageDone:    1,
+		FinalBlow:     true,
+	})
+	atts[1][0].FinalBlow = false
+
+	a := AssignTeams(kms, atts)
+	if _, placed := a.CorpTeam[300]; placed {
+		t.Fatal("filtered corporation unexpectedly received a direct team")
+	}
+
+	teams := ComputeTeamStats(kms, atts, a)
+	attackerTeam := a.CorpTeam[200]
+	if teams[attackerTeam].Kills != int64(len(kms)) {
+		t.Fatalf("attacking alliance received %d kills, want %d with alliance fallback",
+			teams[attackerTeam].Kills, len(kms))
+	}
+
+	var filtered *TeamEntry
+	for i := range teams[attackerTeam].Entries {
+		if teams[attackerTeam].Entries[i].CorporationID == 300 {
+			filtered = &teams[attackerTeam].Entries[i]
+			break
+		}
+	}
+	if filtered == nil {
+		t.Fatal("alliance-sided filtered corporation is absent from team members")
+	}
+	if filtered.AllianceID != 2000 || filtered.Kills != 1 {
+		t.Errorf("filtered corporation stats = %+v, want alliance 2000 and one kill", *filtered)
+	}
+}
+
 // Every kill is somebody's loss, so the two must balance across the fight.
 func TestKillsAndLossesBalance(t *testing.T) {
 	kms, atts := twoSided()

@@ -35,14 +35,30 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 		w.Deps.Ticker.BattleExpired(ctx, id)
 	}
 
-	candidates, err := battle.FindCandidates(ctx, w.Deps.Pool, from, to)
+	candidates, err := battle.FindHotspotWindows(
+		ctx,
+		w.Deps.Pool,
+		from,
+		to,
+		battleHotspotMinimum,
+	)
 	if err != nil {
 		return err
 	}
 
 	var found int
 	for _, c := range candidates {
-		kms, atts, err := battle.LoadSystem(ctx, w.Deps.Pool, c.SolarSystemID, from, to)
+		// The hourly candidate query deliberately stays cheap. Extend its
+		// boundaries before doing the detailed five-minute segmentation so a
+		// fight beginning just before a hot hour or ending just after it is not
+		// clipped.
+		kms, atts, err := battle.LoadSystem(
+			ctx,
+			w.Deps.Pool,
+			c.SolarSystemID,
+			c.Start.Add(-battleEdgeExtension),
+			c.End.Add(battleEdgeExtension),
+		)
 		if err != nil {
 			return err
 		}
@@ -77,6 +93,14 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 // announcing. Detection finds hundreds of small fights a day; the ticker is for
 // the ones that matter to people who were not there.
 const battleTickerThreshold = 150
+
+const (
+	// These are the backend detector's phase-one parameters. Five kills in a
+	// five-minute segment makes the final cut; ten kills in an hour merely
+	// decides whether the more expensive attacker load is worth doing.
+	battleHotspotMinimum = 10
+	battleEdgeExtension  = 30 * time.Minute
+)
 
 // systemName resolves a system for display, tolerating an unknown id.
 func (w *BattleDetectionWorker) systemName(id int32) string {

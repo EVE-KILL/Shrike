@@ -40,12 +40,15 @@ type Detected struct {
 
 // ComputeTeamStats tallies each side from the killmails and the assignment.
 //
-// Only corporations the assignment placed are counted, and that exclusion is
-// load-bearing rather than tidy. Killwhore-filtered alts, NPC structures
-// landing a final blow, and third parties whose victims were filtered out all
-// have no side — defaulting them onto team zero silently inflates one side's
-// kills with no matching loss on the other, which is what makes a battle's
-// numbers stop adding up.
+// Direct corporation placement wins, with the cohered alliance placement as a
+// fallback. That is the current backend behavior: a corporation filtered from
+// the interaction graph can still have its kills and losses attributed when
+// its alliance was unambiguously assigned by the rest of the fight.
+//
+// Team totals are accumulated from sided events rather than derived from the
+// member rows. A sided event can have no corporation row (for example an
+// alliance-affiliated NPC corporation), so the two representations are not
+// guaranteed to sum to the same value.
 func ComputeTeamStats(killmails []Killmail, attackersByKill map[int64][]Attacker, a TeamAssignment) [2]Team {
 	type corpStats struct {
 		team         int
@@ -57,24 +60,53 @@ func ComputeTeamStats(killmails []Killmail, attackersByKill map[int64][]Attacker
 	}
 	stats := map[int32]*corpStats{}
 
-	// Returns nil for a corporation with no side — see the note above.
-	get := func(corpID int32) *corpStats {
-		team, ok := a.CorpTeam[corpID]
-		if !ok {
+	allianceTeam := make(map[int32]int)
+	for corpID, team := range a.CorpTeam {
+		allianceID := a.CorpAlliance[corpID]
+		if allianceID != 0 {
+			if _, exists := allianceTeam[allianceID]; !exists {
+				allianceTeam[allianceID] = team
+			}
+		}
+	}
+
+	sideOf := func(corpID, allianceID int32) (int, bool) {
+		if corpID != 0 {
+			if team, ok := a.CorpTeam[corpID]; ok {
+				return team, true
+			}
+		}
+		if allianceID != 0 {
+			team, ok := allianceTeam[allianceID]
+			return team, ok
+		}
+		return 0, false
+	}
+
+	get := func(corpID, allianceID int32, team int) *corpStats {
+		if corpID == 0 {
 			return nil
 		}
 		s, exists := stats[corpID]
 		if !exists {
-			s = &corpStats{team: team, allianceID: a.CorpAlliance[corpID]}
+			if allianceID == 0 {
+				allianceID = a.CorpAlliance[corpID]
+			}
+			s = &corpStats{team: team, allianceID: allianceID}
 			stats[corpID] = s
 		}
 		return s
 	}
 
+	var teams [2]Team
 	for _, km := range killmails {
-		if s := get(km.VictimCorporationID); s != nil {
-			s.losses++
-			s.iskLost += km.TotalValue
+		if team, ok := sideOf(km.VictimCorporationID, km.VictimAllianceID); ok {
+			teams[team].Losses++
+			teams[team].IskLost += km.TotalValue
+			if s := get(km.VictimCorporationID, km.VictimAllianceID, team); s != nil {
+				s.losses++
+				s.iskLost += km.TotalValue
+			}
 		}
 
 		// The kill is credited to the final blow, falling back to the top
@@ -98,13 +130,16 @@ func ComputeTeamStats(killmails []Killmail, attackersByKill map[int64][]Attacker
 		if killer == nil {
 			continue
 		}
-		if s := get(killer.CorporationID); s != nil {
-			s.kills++
-			s.iskDestroyed += km.TotalValue
+		if team, ok := sideOf(killer.CorporationID, killer.AllianceID); ok {
+			teams[team].Kills++
+			teams[team].IskDestroyed += km.TotalValue
+			if s := get(killer.CorporationID, killer.AllianceID, team); s != nil {
+				s.kills++
+				s.iskDestroyed += km.TotalValue
+			}
 		}
 	}
 
-	var teams [2]Team
 	corps := make([]int32, 0, len(stats))
 	for id := range stats {
 		corps = append(corps, id)
@@ -124,10 +159,6 @@ func ComputeTeamStats(killmails []Killmail, attackersByKill map[int64][]Attacker
 			IskDestroyed:  s.iskDestroyed,
 			IskLost:       s.iskLost,
 		})
-		t.Kills += s.kills
-		t.Losses += s.losses
-		t.IskDestroyed += s.iskDestroyed
-		t.IskLost += s.iskLost
 	}
 
 	return teams
