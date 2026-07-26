@@ -2,7 +2,9 @@ package workers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/esi"
 	"github.com/eve-kill/shrike/internal/killmail"
@@ -41,12 +43,24 @@ func (w *CharacterKillmailWorker) Work(ctx context.Context, job *river.Job[queue
 		return err
 	}
 
-	refs, err := w.Deps.walkKillmails(ctx, token.AccessToken,
+	started := time.Now()
+	walk, err := w.Deps.walkKillmails(ctx, token.AccessToken,
 		fmt.Sprintf("/latest/characters/%d/killmails/recent/", id), id, sso.ScopeCharacterKillmails)
+	if err != nil {
+		w.Deps.logKillmailFetch(ctx, id,
+			fmt.Sprintf("/characters/%d/killmails/recent/", id),
+			"character_killmail_fetch", walk, nil, time.Since(started))
+		return err
+	}
+
+	unknown, err := w.Deps.unknownKillmails(ctx, walk.Refs)
 	if err != nil {
 		return err
 	}
-	return w.Deps.enqueueUnknownKillmails(ctx, refs, token.DelayHours)
+	w.Deps.logKillmailFetch(ctx, id,
+		fmt.Sprintf("/characters/%d/killmails/recent/", id),
+		"character_killmail_fetch", walk, unknown, time.Since(started))
+	return w.Deps.enqueueKillmails(ctx, unknown, token.DelayHours)
 }
 
 // CorporationKillmailWorker reads one corporation's killmails.
@@ -63,13 +77,25 @@ func (w *CorporationKillmailWorker) Work(ctx context.Context, job *river.Job[que
 		return err
 	}
 
-	refs, err := w.Deps.walkKillmails(ctx, token.AccessToken,
+	started := time.Now()
+	walk, err := w.Deps.walkKillmails(ctx, token.AccessToken,
 		fmt.Sprintf("/latest/corporations/%d/killmails/recent/", corpID),
 		charID, sso.ScopeCorporationKillmails)
 	if err != nil {
+		w.Deps.logKillmailFetch(ctx, charID,
+			fmt.Sprintf("/corporations/%d/killmails/recent/", corpID),
+			"corp_killmail_fetch", walk, nil, time.Since(started))
 		return err
 	}
-	return w.Deps.enqueueUnknownKillmails(ctx, refs, token.DelayHours)
+
+	unknown, err := w.Deps.unknownKillmails(ctx, walk.Refs)
+	if err != nil {
+		return err
+	}
+	w.Deps.logKillmailFetch(ctx, charID,
+		fmt.Sprintf("/corporations/%d/killmails/recent/", corpID),
+		"corp_killmail_fetch", walk, unknown, time.Since(started))
+	return w.Deps.enqueueKillmails(ctx, unknown, token.DelayHours)
 }
 
 // usableToken loads a token and checks it still carries the scope.
@@ -96,12 +122,18 @@ func (d *Deps) usableToken(ctx context.Context, characterID int32, scope string)
 // who lost that role keeps being granted a scope they cannot use, and every
 // attempt is a 403 against the shared error budget. Recording the revocation
 // locally is what stops the next refresh handing the scope straight back.
-func (d *Deps) walkKillmails(ctx context.Context, accessToken, path string, characterID int32, scope string) ([]esi.WarKillmailRef, error) {
-	var out []esi.WarKillmailRef
+type killmailWalk struct {
+	Refs   []esi.WarKillmailRef
+	Status int
+}
+
+func (d *Deps) walkKillmails(ctx context.Context, accessToken, path string, characterID int32, scope string) (killmailWalk, error) {
+	var out killmailWalk
 
 	for page := 1; page <= killmailPageLimit; page++ {
 		url := fmt.Sprintf("%s?page=%d", path, page)
 		res, err := esi.GetAuthenticated[[]esi.WarKillmailRef](ctx, d.ESI, url, accessToken)
+		out.Status = res.Status
 		if err != nil {
 			return out, err
 		}
@@ -137,24 +169,26 @@ func (d *Deps) walkKillmails(ctx context.Context, accessToken, path string, char
 		if len(refs) == 0 {
 			return out, nil
 		}
-		out = append(out, refs...)
+		out.Refs = append(out.Refs, refs...)
+		if res.Pages > 0 && page >= res.Pages {
+			return out, nil
+		}
 	}
 	return out, nil
 }
 
-// enqueueUnknownKillmails queues the killmails not already stored.
+// unknownKillmails filters out killmails already stored.
 //
 // The filter matters more here than elsewhere: these endpoints return a
 // character's whole recent history on every run, so almost everything they
 // report is already known, and enqueuing all of it would spend the killmail
 // budget re-fetching what is on disk.
-func (d *Deps) enqueueUnknownKillmails(
+func (d *Deps) unknownKillmails(
 	ctx context.Context,
 	refs []esi.WarKillmailRef,
-	delayHours int,
-) error {
+) ([]killmail.Ref, error) {
 	if len(refs) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	ids := make([]int64, 0, len(refs))
@@ -165,20 +199,20 @@ func (d *Deps) enqueueUnknownKillmails(
 	rows, err := d.Pool.Query(ctx,
 		`SELECT killmail_id FROM killmails WHERE killmail_id = ANY($1::bigint[])`, ids)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	stored := make(map[int64]bool, len(ids))
 	for rows.Next() {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
 			rows.Close()
-			return err
+			return nil, err
 		}
 		stored[id] = true
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
-		return err
+		return nil, err
 	}
 
 	var unknown []killmail.Ref
@@ -190,6 +224,15 @@ func (d *Deps) enqueueUnknownKillmails(
 			})
 		}
 	}
+	return unknown, nil
+}
+
+// enqueueKillmails either delays or dispatches already-filtered references.
+func (d *Deps) enqueueKillmails(
+	ctx context.Context,
+	unknown []killmail.Ref,
+	delayHours int,
+) error {
 	if len(unknown) == 0 {
 		return nil
 	}
@@ -203,7 +246,7 @@ func (d *Deps) enqueueUnknownKillmails(
 		return nil
 	}
 
-	ids = ids[:0]
+	ids := make([]int64, 0, len(unknown))
 	for _, ref := range unknown {
 		ids = append(ids, ref.KillmailID)
 	}
@@ -223,6 +266,54 @@ func (d *Deps) enqueueUnknownKillmails(
 			KillmailHash: ref.KillmailHash,
 		})
 	}
-	_, err = queue.DispatchMany(ctx, d.Queue, batch, queue.RecentBackfill)
+	_, err := queue.DispatchMany(ctx, d.Queue, batch, queue.RecentBackfill)
 	return err
+}
+
+// logKillmailFetch preserves the operational ledger written by the TypeScript
+// workers. It is deliberately best-effort: observability must not turn a
+// successful ESI fetch into a retry, and the TS implementation follows the
+// same rule.
+func (d *Deps) logKillmailFetch(
+	ctx context.Context,
+	characterID int32,
+	endpoint, source string,
+	walk killmailWalk,
+	unknown []killmail.Ref,
+	elapsed time.Duration,
+) {
+	ids := make([]int64, 0, len(unknown))
+	for _, ref := range unknown {
+		ids = append(ids, ref.KillmailID)
+	}
+
+	var newIDs any
+	if len(ids) > 0 {
+		body, err := json.Marshal(ids)
+		if err != nil {
+			return
+		}
+		newIDs = string(body)
+	}
+
+	success := walk.Status >= 200 && walk.Status < 300
+	var errorMessage any
+	if walk.Status >= 400 {
+		errorMessage = fmt.Sprintf("HTTP %d", walk.Status)
+	}
+
+	_, _ = d.Pool.Exec(ctx, `
+        INSERT INTO esi_request_logs (
+            character_id, endpoint, method, status_code, success,
+            error_message, items_returned, new_items, new_item_ids,
+            source, request_duration_ms
+        ) VALUES (
+            $1, $2, 'GET', nullif($3, 0), $4,
+            $5, $6, $7, $8::jsonb,
+            $9, $10
+        )`,
+		characterID, endpoint, walk.Status, success,
+		errorMessage, len(walk.Refs), len(ids), newIDs,
+		source, elapsed.Round(time.Millisecond).Milliseconds(),
+	)
 }
