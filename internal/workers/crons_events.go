@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -132,6 +133,13 @@ func (d *Deps) cronAnnouncementSchedule(ctx context.Context) (string, error) {
 // per registry rather than per run, because it caches its expensive tiers
 // between ticks and a fresh one would refetch everything every second.
 func (d *Deps) cronStatusUpdate(ctx context.Context) (string, error) {
+	// A developer process can share the production relay Redis. Do not make
+	// local host stats alternate with the in-cluster publisher unless the
+	// operator explicitly opts in.
+	if os.Getenv("KUBERNETES_SERVICE_HOST") == "" && os.Getenv("STATUS_PUBLISH") != "1" {
+		return "", nil
+	}
+
 	s := d.statusCollector.Collect(ctx)
 	d.Relay.Publish(ctx, relay.ChannelStatus, []string{"all", "status"}, s)
 
