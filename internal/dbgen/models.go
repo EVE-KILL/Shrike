@@ -492,6 +492,7 @@ type CustomDomainCampaign struct {
 	CampaignID         string             `json:"campaign_id"`
 	AddedByCharacterID int32              `json:"added_by_character_id"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	PublicOnDomain     bool               `json:"public_on_domain"`
 }
 
 type CustomPrice struct {

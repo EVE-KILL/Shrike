@@ -2,12 +2,16 @@ package migrate
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -152,8 +156,8 @@ func TestBaselineIsNotRepeatable(t *testing.T) {
 	if st.DBVersion != BaselineVersion {
 		t.Fatalf("DBVersion = %d; want %d", st.DBVersion, BaselineVersion)
 	}
-	if len(st.Pending()) != 0 {
-		t.Fatalf("Pending = %d; want 0 after baselining", len(st.Pending()))
+	if len(st.Pending()) != 1 || st.Pending()[0].Version != 2 {
+		t.Fatalf("Pending = %+v; want only post-baseline migration 2", st.Pending())
 	}
 
 	if err := Baseline(ctx, pool); !errors.Is(err, ErrAlreadyBaselined) {
@@ -166,7 +170,12 @@ func TestApplyAfterBaselineDoesNotRunBaseline(t *testing.T) {
 	ctx := context.Background()
 	pool := scratchDB(t, "applyafterbaseline")
 
-	if _, err := pool.Exec(ctx, `CREATE TABLE pretend_existing (id int primary key)`); err != nil {
+	if _, err := pool.Exec(ctx, `
+		CREATE TABLE pretend_existing (id int primary key);
+		CREATE TABLE custom_domain_campaigns (
+			public_on_domain boolean DEFAULT false NOT NULL
+		);
+	`); err != nil {
 		t.Fatalf("seed schema: %v", err)
 	}
 	if err := Baseline(ctx, pool); err != nil {
@@ -176,7 +185,8 @@ func TestApplyAfterBaselineDoesNotRunBaseline(t *testing.T) {
 		t.Fatalf("Apply after baseline: %v", err)
 	}
 
-	// Migration 1 creates ~102 tables. If it had run, this would not be 1.
+	// Migration 1 creates ~102 tables. Migration 2 adopts the column already
+	// applied by TypeScript and records itself without changing its definition.
 	var n int
 	if err := pool.QueryRow(ctx, `
         SELECT count(*) FROM information_schema.tables
@@ -185,8 +195,8 @@ func TestApplyAfterBaselineDoesNotRunBaseline(t *testing.T) {
     `).Scan(&n); err != nil {
 		t.Fatalf("recount: %v", err)
 	}
-	if n != 1 {
-		t.Fatalf("table count = %d; want 1 — the baseline was executed despite being stamped", n)
+	if n != 2 {
+		t.Fatalf("table count = %d; want 2 — the baseline was executed despite being stamped", n)
 	}
 }
 
@@ -221,4 +231,297 @@ func TestApplyOnFreshDatabaseCreatesSchema(t *testing.T) {
 	if !hasTrgm {
 		t.Fatal("pg_trgm missing — entity search would fail on a fresh database")
 	}
+}
+
+// Goose intentionally replaces Drizzle as the migration mechanism. That is
+// safe only while it produces the same application schema. Build both histories
+// in disposable databases and compare PostgreSQL's normalized catalog output,
+// excluding only the migration ledgers owned by each mechanism.
+func TestGooseSchemaMatchesTypeScriptMigrations(t *testing.T) {
+	ctx := context.Background()
+	goosePool := scratchDB(t, "goose_schema")
+	typeScriptPool := scratchDB(t, "typescript_schema")
+
+	if err := Apply(ctx, goosePool); err != nil {
+		t.Fatalf("apply Goose schema: %v", err)
+	}
+	applyTypeScriptSchema(t, ctx, typeScriptPool)
+
+	gooseObjects := applicationSchemaObjects(t, ctx, goosePool)
+	typeScriptObjects := applicationSchemaObjects(t, ctx, typeScriptPool)
+
+	var differences []string
+	for key, gooseDefinition := range gooseObjects {
+		typeScriptDefinition, ok := typeScriptObjects[key]
+		switch {
+		case !ok:
+			differences = append(differences, "- TypeScript missing "+key)
+		case typeScriptDefinition != gooseDefinition:
+			differences = append(differences,
+				fmt.Sprintf("- %s\n  Goose:     %s\n  TypeScript: %s",
+					key, gooseDefinition, typeScriptDefinition))
+		}
+	}
+	for key := range typeScriptObjects {
+		if _, ok := gooseObjects[key]; !ok {
+			differences = append(differences, "- Goose missing "+key)
+		}
+	}
+	sort.Strings(differences)
+	if len(differences) > 0 {
+		t.Fatalf("Goose and TypeScript application schemas differ:\n%s",
+			strings.Join(differences, "\n"))
+	}
+}
+
+func applyTypeScriptSchema(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+	t.Helper()
+
+	drizzleDir := filepath.Join("..", "..", "..", "backend", "drizzle")
+	manifestBytes, err := os.ReadFile(filepath.Join(
+		drizzleDir,
+		"baseline-2026-07-21.json",
+	))
+	if errors.Is(err, os.ErrNotExist) {
+		t.Skip("TypeScript backend migration bundle is not present beside the Go module")
+	}
+	if err != nil {
+		t.Fatalf("read TypeScript migration manifest: %v", err)
+	}
+
+	var manifest struct {
+		Through string `json:"through"`
+	}
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		t.Fatalf("decode TypeScript migration manifest: %v", err)
+	}
+
+	bootstrap, err := os.ReadFile(filepath.Join(
+		drizzleDir,
+		"bootstrap",
+		"2026-07-21.sql",
+	))
+	if err != nil {
+		t.Fatalf("read TypeScript bootstrap: %v", err)
+	}
+	if _, err := pool.Exec(
+		ctx,
+		stripPSQLMetaCommands(string(bootstrap)),
+		pgx.QueryExecModeSimpleProtocol,
+	); err != nil {
+		t.Fatalf("apply TypeScript bootstrap: %v", err)
+	}
+	// pg_dump deliberately empties search_path for its own session. The
+	// post-baseline migrations are run later by the backend on ordinary
+	// application connections, whose search_path resolves unqualified objects
+	// in public.
+	if _, err := pool.Exec(ctx, `SET search_path TO public`); err != nil {
+		t.Fatalf("restore application search path: %v", err)
+	}
+
+	entries, err := os.ReadDir(drizzleDir)
+	if err != nil {
+		t.Fatalf("list TypeScript migrations: %v", err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || filepath.Ext(name) != ".sql" || name <= manifest.Through {
+			continue
+		}
+		sql, err := os.ReadFile(filepath.Join(drizzleDir, name))
+		if err != nil {
+			t.Fatalf("read TypeScript migration %s: %v", name, err)
+		}
+		for _, statement := range splitTypeScriptStatements(string(sql)) {
+			if _, err := pool.Exec(
+				ctx,
+				statement,
+				pgx.QueryExecModeSimpleProtocol,
+			); err != nil {
+				t.Fatalf("apply TypeScript migration %s: %v", name, err)
+			}
+		}
+	}
+}
+
+func stripPSQLMetaCommands(sql string) string {
+	lines := strings.Split(sql, "\n")
+	out := lines[:0]
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), `\`) {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
+func splitTypeScriptStatements(sql string) []string {
+	parts := strings.Split(sql, "--> statement-breakpoint")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if statement := strings.TrimSpace(part); statement != "" {
+			out = append(out, statement)
+		}
+	}
+	return out
+}
+
+func applicationSchemaObjects(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+) map[string]string {
+	t.Helper()
+
+	const query = `
+		WITH excluded_relations(name) AS (
+			VALUES
+				('goose_db_version'::text),
+				('__evekill_schema_migrations'::text),
+				('__drizzle_migrations'::text)
+		)
+		SELECT kind, object_name, definition
+		FROM (
+			SELECT
+				'column'::text AS kind,
+				c.relname || '.' || a.attname AS object_name,
+				concat_ws('|',
+					format_type(a.atttypid, a.atttypmod),
+					CASE WHEN a.attnotnull THEN 'not-null' ELSE 'nullable' END,
+					CASE
+						WHEN a.attidentity = '' THEN NULL
+						ELSE 'identity=' || a.attidentity::text
+					END,
+					CASE
+						WHEN a.attgenerated = '' THEN NULL
+						ELSE 'generated=' || a.attgenerated::text
+					END,
+					pg_get_expr(d.adbin, d.adrelid),
+					CASE
+						WHEN a.attcollation = 0 THEN NULL
+						ELSE coll.collname
+					END
+				) AS definition
+			FROM pg_attribute a
+			JOIN pg_class c ON c.oid = a.attrelid
+			JOIN pg_namespace n ON n.oid = c.relnamespace
+			LEFT JOIN pg_attrdef d
+				ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+			LEFT JOIN pg_collation coll ON coll.oid = a.attcollation
+			WHERE n.nspname = 'public'
+			  AND c.relkind IN ('r', 'p')
+			  AND a.attnum > 0
+			  AND NOT a.attisdropped
+			  AND c.relname NOT IN (SELECT name FROM excluded_relations)
+
+			UNION ALL
+
+			SELECT
+				'constraint',
+				c.relname || '.' || con.conname,
+				pg_get_constraintdef(con.oid, true)
+			FROM pg_constraint con
+			JOIN pg_class c ON c.oid = con.conrelid
+			JOIN pg_namespace n ON n.oid = c.relnamespace
+			WHERE n.nspname = 'public'
+			  AND c.relname NOT IN (SELECT name FROM excluded_relations)
+
+			UNION ALL
+
+			SELECT
+				'index',
+				table_class.relname || '.' || index_class.relname,
+				pg_get_indexdef(index_class.oid)
+			FROM pg_index index_meta
+			JOIN pg_class index_class ON index_class.oid = index_meta.indexrelid
+			JOIN pg_class table_class ON table_class.oid = index_meta.indrelid
+			JOIN pg_namespace n ON n.oid = table_class.relnamespace
+			WHERE n.nspname = 'public'
+			  AND table_class.relname NOT IN (SELECT name FROM excluded_relations)
+
+			UNION ALL
+
+			SELECT
+				'function',
+				p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
+				pg_get_functiondef(p.oid)
+			FROM pg_proc p
+			JOIN pg_namespace n ON n.oid = p.pronamespace
+			LEFT JOIN pg_depend dep
+				ON dep.classid = 'pg_proc'::regclass
+				AND dep.objid = p.oid
+				AND dep.deptype = 'e'
+			WHERE n.nspname = 'public'
+			  AND dep.objid IS NULL
+
+			UNION ALL
+
+			SELECT
+				'trigger',
+				c.relname || '.' || trigger.tgname,
+				pg_get_triggerdef(trigger.oid, true)
+			FROM pg_trigger trigger
+			JOIN pg_class c ON c.oid = trigger.tgrelid
+			JOIN pg_namespace n ON n.oid = c.relnamespace
+			WHERE n.nspname = 'public'
+			  AND NOT trigger.tgisinternal
+			  AND c.relname NOT IN (SELECT name FROM excluded_relations)
+
+			UNION ALL
+
+			SELECT
+				'sequence',
+				c.relname,
+				concat_ws('|',
+					format_type(sequence.seqtypid, NULL),
+					sequence.seqstart,
+					sequence.seqincrement,
+					sequence.seqmax,
+					sequence.seqmin,
+					sequence.seqcache,
+					sequence.seqcycle
+				)
+			FROM pg_sequence sequence
+			JOIN pg_class c ON c.oid = sequence.seqrelid
+			JOIN pg_namespace n ON n.oid = c.relnamespace
+			WHERE n.nspname = 'public'
+			  AND c.relname NOT IN (
+				'goose_db_version_id_seq',
+				'__evekill_schema_migrations_id_seq',
+				'__drizzle_migrations_id_seq'
+			  )
+
+			UNION ALL
+
+			SELECT
+				'view',
+				c.relname,
+				pg_get_viewdef(c.oid, true)
+			FROM pg_class c
+			JOIN pg_namespace n ON n.oid = c.relnamespace
+			WHERE n.nspname = 'public'
+			  AND c.relkind IN ('v', 'm')
+		) objects
+		ORDER BY kind, object_name
+	`
+
+	rows, err := pool.Query(ctx, query)
+	if err != nil {
+		t.Fatalf("query normalized schema: %v", err)
+	}
+	defer rows.Close()
+
+	objects := make(map[string]string)
+	for rows.Next() {
+		var kind, name, definition string
+		if err := rows.Scan(&kind, &name, &definition); err != nil {
+			t.Fatalf("scan normalized schema: %v", err)
+		}
+		objects[kind+":"+name] = definition
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read normalized schema: %v", err)
+	}
+	return objects
 }
