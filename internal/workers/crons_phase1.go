@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/eve-kill/shrike/internal/entities"
 	"github.com/eve-kill/shrike/internal/esi"
@@ -405,15 +406,9 @@ func errNeedsQueue(name string) error {
 	return fmt.Errorf("%s needs a queue to dispatch into", name)
 }
 
-// cronSDEUpdate checks whether CCP has published a newer static data export.
-//
-// It reports rather than imports. The import is tens of minutes of work, tens
-// of tables and about a hundred megabytes, and running it from inside a cron
-// tick — which is what the TypeScript does by shelling out to the CLI — means a
-// scheduled job that can occupy a worker for an hour and cannot be observed
-// while it does. Surfacing "a new build exists" and leaving `sde:import` to be
-// run deliberately keeps the long operation something a human starts and
-// watches.
+// cronSDEUpdate checks whether CCP has published a newer static data export and
+// imports it. The River cron worker has a two-hour timeout for long maintenance
+// jobs; the build marker is only written after the full import succeeds.
 func (d *Deps) cronSDEUpdate(ctx context.Context) (string, error) {
 	manifest, err := sde.FetchManifest(ctx, d.UserAgent)
 	if err != nil {
@@ -428,10 +423,22 @@ func (d *Deps) cronSDEUpdate(ctx context.Context) (string, error) {
 	if loaded == manifest.BuildNumber {
 		return "", nil
 	}
-	if loaded == 0 {
-		return fmt.Sprintf("no SDE imported; build %d is available — run sde:import",
-			manifest.BuildNumber), nil
+
+	result, err := sde.ImportBuild(ctx, d.Pool, manifest, sde.ImportOptions{
+		CacheDir:  filepath.Join(".data", "sde"),
+		UserAgent: d.UserAgent,
+		Progress: func(message string) {
+			d.Log.Info().
+				Str("cron", "sde_update").
+				Msg(message)
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("import SDE build %d: %w", manifest.BuildNumber, err)
 	}
-	return fmt.Sprintf("SDE build %d is available, %d is loaded — run sde:import",
-		manifest.BuildNumber, loaded), nil
+
+	return fmt.Sprintf(
+		"SDE build %d imported (%d rows read, %d written in %s; previous build %d)",
+		result.BuildNumber, result.Read, result.Written, result.Elapsed, loaded,
+	), nil
 }
