@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -22,6 +23,7 @@ var ErrNotStored = errors.New("killmail is not stored")
 // the same counters as the original run, since both read the same stored row.
 func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, []Attacker, error) {
 	var km Killmail
+	var attackerCount pgtype.Int4
 
 	err := pool.QueryRow(ctx, `
         SELECT killmail_id, killmail_time,
@@ -29,7 +31,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
                coalesce(victim_character_id, 0), coalesce(victim_corporation_id, 0),
                coalesce(victim_alliance_id, 0), coalesce(victim_ship_type_id, 0),
                coalesce(victim_damage_taken, 0),
-               coalesce(total_value, 0), coalesce(points, 0), coalesce(attacker_count, 0),
+               coalesce(total_value, 0), coalesce(points, 0), attacker_count,
                coalesce(is_npc, false), coalesce(is_solo, false)
         FROM killmails WHERE killmail_id = $1`, killmailID).
 		Scan(&km.KillmailID, &km.KillmailTime,
@@ -37,7 +39,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
 			&km.VictimCharacterID, &km.VictimCorporationID,
 			&km.VictimAllianceID, &km.VictimShipTypeID,
 			&km.VictimDamageTaken,
-			&km.TotalValue, &km.Points, &km.AttackerCount,
+			&km.TotalValue, &km.Points, &attackerCount,
 			&km.IsNPC, &km.IsSolo)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return km, nil, ErrNotStored
@@ -64,5 +66,21 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
 		}
 		attackers = append(attackers, a)
 	}
-	return km, attackers, rows.Err()
+	if err := rows.Err(); err != nil {
+		return km, nil, err
+	}
+
+	// Historical/imported rows can predate attacker_count. The TypeScript
+	// writer falls back to the number of stored attacker rows only when the
+	// column is NULL (an explicit zero stays zero), so preserve that distinction
+	// rather than coalescing NULL to zero in SQL.
+	km.AttackerCount = resolvedAttackerCount(attackerCount, len(attackers))
+	return km, attackers, nil
+}
+
+func resolvedAttackerCount(stored pgtype.Int4, rows int) int64 {
+	if stored.Valid {
+		return int64(stored.Int32)
+	}
+	return int64(rows)
 }

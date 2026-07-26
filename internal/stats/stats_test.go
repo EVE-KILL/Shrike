@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -99,6 +100,18 @@ func fleetKill() (Killmail, []Attacker) {
 			ShipTypeID: 621, DamageDone: 1000},
 	}
 	return km, attackers
+}
+
+func TestAttackerCountFallsBackOnlyWhenMissing(t *testing.T) {
+	if got := resolvedAttackerCount(pgtype.Int4{}, 7); got != 7 {
+		t.Errorf("NULL attacker_count resolved to %d, want the 7 stored attacker rows", got)
+	}
+	if got := resolvedAttackerCount(pgtype.Int4{Int32: 0, Valid: true}, 7); got != 0 {
+		t.Errorf("explicit zero attacker_count resolved to %d, want 0", got)
+	}
+	if got := resolvedAttackerCount(pgtype.Int4{Int32: 3, Valid: true}, 7); got != 3 {
+		t.Errorf("stored attacker_count resolved to %d, want 3", got)
+	}
 }
 
 // The central rule: an organisation counts one kill however many members it

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -167,8 +168,9 @@ func deleteDaily(
 }
 
 type dayItem struct {
-	km        Killmail
-	attackers []Attacker
+	km                  Killmail
+	attackers           []Attacker
+	storedAttackerCount pgtype.Int4
 }
 
 // loadDay reads a batch of one day's killmails with their attackers.
@@ -184,7 +186,7 @@ func loadDay(ctx context.Context, pool *pgxpool.Pool, from, to time.Time, afterI
                coalesce(victim_character_id, 0), coalesce(victim_corporation_id, 0),
                coalesce(victim_alliance_id, 0), coalesce(victim_ship_type_id, 0),
                coalesce(victim_damage_taken, 0),
-               coalesce(total_value, 0), coalesce(points, 0), coalesce(attacker_count, 0),
+               coalesce(total_value, 0), coalesce(points, 0), attacker_count,
                coalesce(is_npc, false), coalesce(is_solo, false)
         FROM killmails
         WHERE killmail_time >= $1 AND killmail_time < $2 AND killmail_id > $3
@@ -199,20 +201,20 @@ func loadDay(ctx context.Context, pool *pgxpool.Pool, from, to time.Time, afterI
 	var ids []int64
 
 	for rows.Next() {
-		var km Killmail
-		if err := rows.Scan(&km.KillmailID, &km.KillmailTime,
-			&km.SolarSystemID, &km.ConstellationID, &km.RegionID,
-			&km.VictimCharacterID, &km.VictimCorporationID,
-			&km.VictimAllianceID, &km.VictimShipTypeID,
-			&km.VictimDamageTaken,
-			&km.TotalValue, &km.Points, &km.AttackerCount,
-			&km.IsNPC, &km.IsSolo); err != nil {
+		var item dayItem
+		if err := rows.Scan(&item.km.KillmailID, &item.km.KillmailTime,
+			&item.km.SolarSystemID, &item.km.ConstellationID, &item.km.RegionID,
+			&item.km.VictimCharacterID, &item.km.VictimCorporationID,
+			&item.km.VictimAllianceID, &item.km.VictimShipTypeID,
+			&item.km.VictimDamageTaken,
+			&item.km.TotalValue, &item.km.Points, &item.storedAttackerCount,
+			&item.km.IsNPC, &item.km.IsSolo); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		byID[km.KillmailID] = len(items)
-		items = append(items, dayItem{km: km})
-		ids = append(ids, km.KillmailID)
+		byID[item.km.KillmailID] = len(items)
+		items = append(items, item)
+		ids = append(ids, item.km.KillmailID)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -243,5 +245,14 @@ func loadDay(ctx context.Context, pool *pgxpool.Pool, from, to time.Time, afterI
 			items[i].attackers = append(items[i].attackers, a)
 		}
 	}
-	return items, arows.Err()
+	if err := arows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].km.AttackerCount = resolvedAttackerCount(
+			items[i].storedAttackerCount,
+			len(items[i].attackers),
+		)
+	}
+	return items, nil
 }
