@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/configstore"
@@ -57,8 +58,9 @@ func (o owner) held() bool { return o.alliance != 0 || o.corporation != 0 || o.f
 // against the last. Re-reading the table between snapshots would be thousands
 // of round trips for data the importer just wrote.
 type sovState struct {
-	pool  *pgxpool.Pool
-	owned map[int32]owner
+	pool       *pgxpool.Pool
+	owned      map[int32]owner
+	historical bool
 }
 
 func loadSovState(ctx context.Context, pool *pgxpool.Pool) (*sovState, error) {
@@ -67,6 +69,42 @@ func loadSovState(ctx context.Context, pool *pgxpool.Pool) (*sovState, error) {
 	rows, err := pool.Query(ctx, `
         SELECT system_id, coalesce(alliance_id, 0), coalesce(corporation_id, 0), coalesce(faction_id, 0)
         FROM sovereignty`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int32
+		var o owner
+		if err := rows.Scan(&id, &o.alliance, &o.corporation, &o.faction); err != nil {
+			return nil, err
+		}
+		s.owned[id] = o
+	}
+	return s, rows.Err()
+}
+
+// loadSovHistoryState returns the last recorded owner before a historical
+// replay begins. Using the current-state table here would compare a 2017
+// snapshot with today's map, manufacture a false first change for nearly every
+// system, and temporarily rewind the current table as the replay progressed.
+func loadSovHistoryState(ctx context.Context, pool *pgxpool.Pool, before time.Time) (*sovState, error) {
+	s := &sovState{
+		pool:       pool,
+		owned:      make(map[int32]owner, 9000),
+		historical: true,
+	}
+
+	rows, err := pool.Query(ctx, `
+		SELECT DISTINCT ON (system_id)
+		       system_id,
+		       coalesce(alliance_id, 0),
+		       coalesce(corporation_id, 0),
+		       coalesce(faction_id, 0)
+		FROM sovereignty_history
+		WHERE date_added < $1
+		ORDER BY system_id, date_added DESC, id DESC`, before)
 	if err != nil {
 		return nil, err
 	}
@@ -160,10 +198,30 @@ func (s *sovState) apply(ctx context.Context, entries []sovEntry, at time.Time) 
 	// every run re-detects the same differences against a current-state table
 	// that never advances. Over one week that produced 19,132 history rows
 	// describing 694 distinct ownership states.
-	if _, err := tx.Exec(ctx, pgbulk.MergeSQL("sovereignty", sovStaging, sovColumns,
-		[]string{"system_id"}, pgbulk.DoUpdate)); err != nil {
+	mergeSovereignty := pgbulk.MergeSQL("sovereignty", sovStaging, sovColumns,
+		[]string{"system_id"}, pgbulk.DoUpdate)
+	if s.historical {
+		// A historical replay may fill an absent current row or advance one
+		// whose timestamp is older than the snapshot. It must never rewind a
+		// current row that already represents newer ownership.
+		mergeSovereignty = fmt.Sprintf(`
+			INSERT INTO public.sovereignty (%[1]s)
+			SELECT DISTINCT ON (system_id) %[1]s FROM %[2]s
+			ON CONFLICT (system_id) DO UPDATE SET
+				alliance_id = EXCLUDED.alliance_id,
+				corporation_id = EXCLUDED.corporation_id,
+				faction_id = EXCLUDED.faction_id,
+				date_added = EXCLUDED.date_added,
+				updated_at = EXCLUDED.updated_at
+			WHERE sovereignty.updated_at IS NULL
+			   OR sovereignty.updated_at <= EXCLUDED.updated_at`,
+			strings.Join(sovColumns, ", "), sovStaging)
+	}
+	sovTag, err := tx.Exec(ctx, mergeSovereignty)
+	if err != nil {
 		return res, fmt.Errorf("merge sovereignty: %w", err)
 	}
+	res.Rows = sovTag.RowsAffected()
 
 	if len(history) > 0 {
 		histColumns := []string{"system_id", "alliance_id", "corporation_id", "faction_id", "date_added"}
@@ -183,22 +241,39 @@ func (s *sovState) apply(ctx context.Context, entries []sovEntry, at time.Time) 
 		if err := hw.Flush(); err != nil {
 			return res, err
 		}
-		// A plain append: the id column is a sequence and there is no key to
-		// conflict on, so this is an INSERT ... SELECT with no ON CONFLICT.
-		if _, err := tx.Exec(ctx, fmt.Sprintf(
-			`INSERT INTO public.sovereignty_history (system_id, alliance_id, corporation_id, faction_id, date_added)
-             SELECT system_id, alliance_id, corporation_id, faction_id, date_added FROM %s`,
-			histStaging)); err != nil {
+		// The schema has no natural-key constraint for history. Guard the
+		// append explicitly so replaying the same date converges instead of
+		// adding another copy of the same ownership event.
+		histTag, err := tx.Exec(ctx, fmt.Sprintf(`
+			INSERT INTO public.sovereignty_history (
+				system_id, alliance_id, corporation_id, faction_id, date_added
+			)
+			SELECT DISTINCT ON (candidate.system_id)
+			       candidate.system_id,
+			       candidate.alliance_id,
+			       candidate.corporation_id,
+			       candidate.faction_id,
+			       candidate.date_added
+			FROM %[1]s candidate
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM sovereignty_history existing
+				WHERE existing.system_id = candidate.system_id
+				  AND existing.alliance_id IS NOT DISTINCT FROM candidate.alliance_id
+				  AND existing.corporation_id IS NOT DISTINCT FROM candidate.corporation_id
+				  AND existing.faction_id IS NOT DISTINCT FROM candidate.faction_id
+				  AND existing.date_added = candidate.date_added
+			)`, histStaging))
+		if err != nil {
 			return res, fmt.Errorf("append sovereignty_history: %w", err)
 		}
-		res.Related = hw.Written()
+		res.Related = histTag.RowsAffected()
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return res, err
 	}
 
-	res.Rows = w.Written()
 	return res, nil
 }
 
@@ -241,7 +316,12 @@ func ImportSovereigntyRange(ctx context.Context, pool *pgxpool.Pool, client *Cli
 	start := time.Now()
 	total := Result{Name: "sovereignty"}
 
-	state, err := loadSovState(ctx, pool)
+	fromTime, err := time.Parse(dateLayout, from)
+	if err != nil {
+		return total, fmt.Errorf("invalid start date %q: %w", from, err)
+	}
+
+	state, err := loadSovHistoryState(ctx, pool, fromTime)
 	if err != nil {
 		return total, err
 	}

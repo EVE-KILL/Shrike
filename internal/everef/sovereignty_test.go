@@ -183,6 +183,67 @@ func TestSovereigntyLossIsRecordedAsNull(t *testing.T) {
 	}
 }
 
+// Replaying history is not allowed to rewind the live sovereignty map, and a
+// second replay of the same snapshot must not duplicate the history event.
+func TestSovereigntyHistoricalReplayIsIdempotentAndDoesNotRewindCurrent(t *testing.T) {
+	pool := testPool(t)
+	ids := sovSystems(t, pool, 1)
+	ctx := context.Background()
+
+	currentAt := time.Date(2026, 7, 25, 12, 0, 0, 0, time.UTC)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO sovereignty (
+			system_id, alliance_id, date_added, updated_at
+		) VALUES ($1, $2, $3, $3)`,
+		ids[0], int32(99000002), currentAt); err != nil {
+		t.Fatal(err)
+	}
+
+	replayAt := time.Date(2017, 1, 2, 12, 0, 0, 0, time.UTC)
+	applyReplay := func() Result {
+		t.Helper()
+		state, err := loadSovHistoryState(ctx, pool, replayAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := state.apply(ctx,
+			[]sovEntry{{SystemID: ids[0], AllianceID: 99000001}},
+			replayAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res
+	}
+
+	first := applyReplay()
+	if first.Rows != 0 {
+		t.Errorf("historical replay rewrote %d current rows, want 0", first.Rows)
+	}
+	if first.Related != 1 {
+		t.Errorf("first replay added %d history rows, want 1", first.Related)
+	}
+
+	second := applyReplay()
+	if second.Related != 0 {
+		t.Errorf("second replay duplicated %d history rows", second.Related)
+	}
+
+	var currentOwner int32
+	if err := pool.QueryRow(ctx,
+		`SELECT alliance_id FROM sovereignty WHERE system_id = $1`, ids[0]).
+		Scan(&currentOwner); err != nil {
+		t.Fatal(err)
+	}
+	if currentOwner != 99000002 {
+		t.Errorf("current owner = %d after historical replay, want 99000002", currentOwner)
+	}
+
+	_, history := sovCounts(t, pool, ids)
+	if history != 1 {
+		t.Errorf("history rows after two replays = %d, want 1", history)
+	}
+}
+
 // The whole path, from the published JSON to the two tables.
 func TestImportSovereigntyLatest(t *testing.T) {
 	pool := testPool(t)

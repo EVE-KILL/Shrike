@@ -309,7 +309,11 @@ func (w *WarImport) ImportWarArchive(ctx context.Context, url, name string) (Res
 			}
 			parsed, err := killmail.Parse(ctx, w.Cache, w.Prices, &km, km.KillmailHash, warID)
 			if err != nil {
-				return err
+				// A malformed or unresolvable killmail is isolated to that
+				// member. War metadata and the other killmails in the archive
+				// are still authoritative and should be retained.
+				res.Failed++
+				return nil
 			}
 			batch = append(batch, parsed)
 			res.Seen++

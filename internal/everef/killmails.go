@@ -137,7 +137,11 @@ func (k *KillmailImport) ImportKillmailDay(ctx context.Context, date string) (Re
 		// does not, because there the hash is half the request.
 		parsed, err := killmail.Parse(ctx, k.Cache, k.Prices, &km, km.KillmailHash, km.WarID)
 		if err != nil {
-			return err
+			// One document that cannot be valued or resolved must not strand
+			// the entire daily archive. The TypeScript importer counts that
+			// document as failed and keeps the successfully parsed mails.
+			res.Failed++
+			return nil
 		}
 		batch = append(batch, parsed)
 		if len(batch) >= killmailBatch {
@@ -181,8 +185,9 @@ func (k *KillmailImport) ImportKillmails(ctx context.Context, dates []string, pr
 		if progress != nil {
 			progress(r)
 		}
-		// The bookmark advances only after a day finishes, so an interrupted
-		// import resumes at the day it was cut off rather than past it.
+		// The bookmark advances only after a day finishes. If a batch or
+		// download fails, this assignment is never reached and the failed day
+		// remains the next day selected by the CLI.
 		if err := configstore.Set(ctx, k.Pool, configstore.KeyKillmailsLastDate, date); err != nil {
 			return total, err
 		}

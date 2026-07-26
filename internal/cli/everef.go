@@ -199,8 +199,12 @@ every run re-detects the same differences. This implementation updates the row.
 				}
 				return reportResults("Sovereignty", []everef.Result{res})
 			}
-			flagEverefFrom = saved
-			ui.KV("Resuming from", saved)
+			next, err := everef.DayAfter(saved)
+			if err != nil {
+				return fmt.Errorf("invalid saved sovereignty date %q: %w", saved, err)
+			}
+			flagEverefFrom = next
+			ui.KV("Resuming from", next)
 		}
 
 		to := flagEverefTo
@@ -420,11 +424,15 @@ func resolveKillmailStart(ctx context.Context, pool *pgxpool.Pool) (string, erro
 	if saved == "" {
 		return "", fmt.Errorf("no saved position — use --from or --backfill")
 	}
-	// Resume at the saved day rather than past it: the bookmark advances only
-	// when a day completes, so re-running it costs a skipped insert and never
-	// loses a partial day.
-	ui.KV("Resuming from", saved)
-	return saved, nil
+	// The bookmark is written only after the whole day succeeds. A failed
+	// partial day therefore leaves the previous bookmark in place and remains
+	// selected when we resume from the following day.
+	next, err := everef.DayAfter(saved)
+	if err != nil {
+		return "", fmt.Errorf("invalid saved killmail date %q: %w", saved, err)
+	}
+	ui.KV("Resuming from", next)
+	return next, nil
 }
 
 // reportResults renders what an import did, in the same shape for all five.
