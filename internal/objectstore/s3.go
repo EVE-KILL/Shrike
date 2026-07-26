@@ -39,6 +39,7 @@ type S3Options struct {
 	HTTPClient        *http.Client
 	CacheTTL          time.Duration
 	CacheMaximumBytes int64
+	DisableCache      bool
 	MaximumBytes      int64
 
 	now func() time.Time
@@ -48,6 +49,29 @@ type cachedObject struct {
 	body      []byte
 	expiresAt time.Time
 	element   *list.Element
+}
+
+type PutOptions struct {
+	ContentType  string
+	CacheControl string
+	Metadata     map[string]string
+}
+
+// ObjectInfo is the metadata available from S3 HEAD and GET responses.
+type ObjectInfo struct {
+	Key          string
+	Size         int64
+	ETag         string
+	ContentType  string
+	CacheControl string
+	LastModified time.Time
+	Metadata     map[string]string
+}
+
+// Object is an object body together with the metadata returned by B2.
+type Object struct {
+	Body []byte
+	ObjectInfo
 }
 
 // S3Store is a path-style, Signature V4 S3 client with a small in-process
@@ -93,21 +117,25 @@ func NewS3Store(options S3Options) (*S3Store, error) {
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
 	}
-	cacheTTL := options.CacheTTL
-	if cacheTTL == 0 {
-		cacheTTL = defaultCacheTTL
-	}
-	if cacheTTL < 0 {
-		return nil, errors.New("object storage cache TTL cannot be negative")
-	}
-	cacheMaximum := options.CacheMaximumBytes
-	if cacheMaximum == 0 {
-		cacheMaximum = defaultCacheMaximumBytes
-	}
-	if cacheMaximum < 1 {
-		return nil, errors.New(
-			"object storage cache maximum size must be positive",
-		)
+	var cacheTTL time.Duration
+	var cacheMaximum int64
+	if !options.DisableCache {
+		cacheTTL = options.CacheTTL
+		if cacheTTL == 0 {
+			cacheTTL = defaultCacheTTL
+		}
+		if cacheTTL < 0 {
+			return nil, errors.New("object storage cache TTL cannot be negative")
+		}
+		cacheMaximum = options.CacheMaximumBytes
+		if cacheMaximum == 0 {
+			cacheMaximum = defaultCacheMaximumBytes
+		}
+		if cacheMaximum < 1 {
+			return nil, errors.New(
+				"object storage cache maximum size must be positive",
+			)
+		}
 	}
 	maximum := options.MaximumBytes
 	if maximum == 0 {
@@ -147,10 +175,36 @@ func (s *S3Store) Put(
 	body []byte,
 	contentType string,
 ) error {
+	return s.PutWithOptions(ctx, key, body, PutOptions{
+		ContentType: contentType,
+	})
+}
+
+func (s *S3Store) PutWithOptions(
+	ctx context.Context,
+	key string,
+	body []byte,
+	options PutOptions,
+) error {
 	if int64(len(body)) > s.maximum {
 		return fmt.Errorf("object %q exceeds the configured size limit", key)
 	}
-	response, err := s.request(ctx, http.MethodPut, key, body, contentType)
+	headers := make(http.Header)
+	if options.ContentType != "" {
+		headers.Set("Content-Type", options.ContentType)
+	}
+	if options.CacheControl != "" {
+		headers.Set("Cache-Control", options.CacheControl)
+	}
+	for name, value := range options.Metadata {
+		name = strings.TrimSpace(name)
+		if name == "" || strings.ContainsAny(name, "\r\n:") ||
+			strings.ContainsAny(value, "\r\n") {
+			return errors.New("object storage metadata is invalid")
+		}
+		headers.Set("X-Amz-Meta-"+name, value)
+	}
+	response, err := s.request(ctx, http.MethodPut, key, body, headers)
 	if err != nil {
 		return err
 	}
@@ -166,7 +220,19 @@ func (s *S3Store) Get(ctx context.Context, key string) ([]byte, error) {
 	if body, ok := s.cacheGet(key); ok {
 		return body, nil
 	}
-	response, err := s.request(ctx, http.MethodGet, key, nil, "")
+	object, err := s.GetObject(ctx, key)
+	if err != nil || object == nil {
+		return nil, err
+	}
+	s.cachePut(key, object.Body)
+	return append([]byte(nil), object.Body...), nil
+}
+
+// GetObject bypasses the small generic cache so callers that need current
+// ETags and metadata do not accidentally pair a cached body with fresh object
+// metadata. The image service owns its own response cache and uses this method.
+func (s *S3Store) GetObject(ctx context.Context, key string) (*Object, error) {
+	response, err := s.request(ctx, http.MethodGet, key, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -184,12 +250,30 @@ func (s *S3Store) Get(ctx context.Context, key string) ([]byte, error) {
 	if int64(len(body)) > s.maximum {
 		return nil, fmt.Errorf("object %q exceeds the configured size limit", key)
 	}
-	s.cachePut(key, body)
-	return append([]byte(nil), body...), nil
+	info := objectInfoFromResponse(key, response)
+	info.Size = int64(len(body))
+	return &Object{Body: body, ObjectInfo: info}, nil
+}
+
+// Stat returns nil for a missing object.
+func (s *S3Store) Stat(ctx context.Context, key string) (*ObjectInfo, error) {
+	response, err := s.request(ctx, http.MethodHead, key, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, objectStoreStatusError(response)
+	}
+	info := objectInfoFromResponse(key, response)
+	return &info, nil
 }
 
 func (s *S3Store) Delete(ctx context.Context, key string) error {
-	response, err := s.request(ctx, http.MethodDelete, key, nil, "")
+	response, err := s.request(ctx, http.MethodDelete, key, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -206,7 +290,7 @@ func (s *S3Store) request(
 	ctx context.Context,
 	method, key string,
 	body []byte,
-	contentType string,
+	headers http.Header,
 ) (*http.Response, error) {
 	objectURL, err := s.objectURL(key)
 	if err != nil {
@@ -220,8 +304,10 @@ func (s *S3Store) request(
 	if err != nil {
 		return nil, fmt.Errorf("build object storage request: %w", err)
 	}
-	if contentType != "" {
-		request.Header.Set("Content-Type", contentType)
+	for name, values := range headers {
+		for _, value := range values {
+			request.Header.Add(name, value)
+		}
 	}
 	digest := sha256.Sum256(body)
 	payloadHash := hex.EncodeToString(digest[:])
@@ -242,6 +328,28 @@ func (s *S3Store) request(
 		return nil, fmt.Errorf("object storage request: %w", err)
 	}
 	return response, nil
+}
+
+func objectInfoFromResponse(key string, response *http.Response) ObjectInfo {
+	info := ObjectInfo{
+		Key:          key,
+		Size:         response.ContentLength,
+		ETag:         strings.Trim(response.Header.Get("ETag"), `"`),
+		ContentType:  response.Header.Get("Content-Type"),
+		CacheControl: response.Header.Get("Cache-Control"),
+		Metadata:     make(map[string]string),
+	}
+	if value := response.Header.Get("Last-Modified"); value != "" {
+		info.LastModified, _ = http.ParseTime(value)
+	}
+	for name, values := range response.Header {
+		const prefix = "X-Amz-Meta-"
+		if len(name) <= len(prefix) || !strings.EqualFold(name[:len(prefix)], prefix) {
+			continue
+		}
+		info.Metadata[strings.ToLower(name[len(prefix):])] = strings.Join(values, ",")
+	}
+	return info
 }
 
 func (s *S3Store) objectURL(key string) (string, error) {

@@ -59,10 +59,16 @@ type Config struct {
 	// S3-compatible Backblaze B2 storage used for custom-domain images.
 	// Names match frontend/server/utils/storage.ts so the Go process can take
 	// over without changing deployment secrets.
-	B2Endpoint    string
-	B2MediaBucket string
-	B2KeyID       string
-	B2AppKey      string
+	B2Endpoint     string
+	B2MediaBucket  string
+	B2ImagesBucket string
+	B2KeyID        string
+	B2AppKey       string
+
+	// ImageCacheBytes bounds the encoded-response LRU owned by `shrike serve`.
+	// It is a ceiling, not a reservation, and is deliberately not used by
+	// workers or import commands.
+	ImageCacheBytes int64
 
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
@@ -157,6 +163,15 @@ func Load(explicitPath string) (*Config, error) {
 		}
 		return n
 	}
+	getInt64 := func(field, key string, def int64) int64 {
+		raw := get(field, key, strconv.FormatInt(def, 10))
+		n, convErr := strconv.ParseInt(raw, 10, 64)
+		if convErr != nil || n < 0 {
+			c.sources[field] = SourceDefault
+			return def
+		}
+		return n
+	}
 
 	c.DatabaseURL = get("DatabaseURL", "DATABASE_URL", "postgresql://localhost:5432/evekill")
 	c.RedisHost = get("RedisHost", "REDIS_HOST", "localhost")
@@ -179,8 +194,14 @@ func Load(explicitPath string) (*Config, error) {
 	c.ESIUserAgent = get("ESIUserAgent", "ESI_USER_AGENT", "")
 	c.B2Endpoint = get("B2Endpoint", "B2_ENDPOINT", "")
 	c.B2MediaBucket = get("B2MediaBucket", "B2_MEDIA_BUCKET", "")
+	c.B2ImagesBucket = get("B2ImagesBucket", "B2_IMAGES_BUCKET", "")
 	c.B2KeyID = get("B2KeyID", "B2_KEY_ID", "")
 	c.B2AppKey = get("B2AppKey", "B2_APP_KEY", "")
+	c.ImageCacheBytes = getInt64(
+		"ImageCacheBytes",
+		"IMAGE_CACHE_BYTES",
+		1<<30,
+	)
 	c.Port = getInt("Port", "PORT", 4000)
 
 	// Production hostnames only. Development adds its .localhost aliases in
@@ -238,22 +259,47 @@ func (c *Config) IsProduction() bool {
 // contract is available. B2PartiallyConfigured distinguishes a deliberately
 // disabled local setup from a deployment typo that should fail loudly.
 func (c *Config) B2Configured() bool {
-	return c.B2Endpoint != "" &&
-		c.B2MediaBucket != "" &&
-		c.B2KeyID != "" &&
-		c.B2AppKey != ""
+	return c.b2CredentialsConfigured() && c.B2MediaBucket != ""
 }
 
 func (c *Config) B2PartiallyConfigured() bool {
+	return c.B2MediaPartiallyConfigured()
+}
+
+// B2ImagesConfigured reports whether the dedicated image bucket and shared B2
+// credentials are complete.
+func (c *Config) B2ImagesConfigured() bool {
+	return c.b2CredentialsConfigured() && c.B2ImagesBucket != ""
+}
+
+// B2MediaPartiallyConfigured and B2ImagesPartiallyConfigured distinguish a
+// deliberately omitted bucket from incomplete shared credentials. Once the
+// endpoint and credentials are complete, either bucket may independently be
+// disabled by leaving its name empty.
+func (c *Config) B2MediaPartiallyConfigured() bool {
+	return c.b2CredentialsPartiallyConfigured() ||
+		(c.B2MediaBucket != "" && !c.b2CredentialsConfigured())
+}
+
+func (c *Config) B2ImagesPartiallyConfigured() bool {
+	return c.b2CredentialsPartiallyConfigured() ||
+		(c.B2ImagesBucket != "" && !c.b2CredentialsConfigured())
+}
+
+func (c *Config) b2CredentialsConfigured() bool {
+	return c.B2Endpoint != "" && c.B2KeyID != "" && c.B2AppKey != ""
+}
+
+func (c *Config) b2CredentialsPartiallyConfigured() bool {
 	configured := 0
 	for _, value := range []string{
-		c.B2Endpoint, c.B2MediaBucket, c.B2KeyID, c.B2AppKey,
+		c.B2Endpoint, c.B2KeyID, c.B2AppKey,
 	} {
 		if value != "" {
 			configured++
 		}
 	}
-	return configured > 0 && configured < 4
+	return configured > 0 && configured < 3
 }
 
 // loadDotenv finds and parses a .env file. With an explicit path, a missing

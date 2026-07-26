@@ -208,7 +208,8 @@ func clearEnv(t *testing.T) {
 		"REDIS_CACHE_HOST", "REDIS_CACHE_PORT", "VALKEY_QUEUE", "VALKEY_CACHE",
 		"MEMGRAPH_URL", "PORT",
 		"EVE_CLIENT_ID", "EVE_CLIENT_SECRET", "EVE_CALLBACK_URL", "ESI_USER_AGENT",
-		"B2_ENDPOINT", "B2_MEDIA_BUCKET", "B2_KEY_ID", "B2_APP_KEY",
+		"B2_ENDPOINT", "B2_MEDIA_BUCKET", "B2_IMAGES_BUCKET",
+		"B2_KEY_ID", "B2_APP_KEY", "IMAGE_CACHE_BYTES",
 		"NODE_ENV", "GIT_SHA", "LOG_LEVEL", "LOG_FORMAT",
 		"PUBLIC_API_HOST", "IMAGES_HOST", "NUXT_SOCKET", "DATA_DIR",
 	} {
@@ -220,7 +221,7 @@ func clearEnv(t *testing.T) {
 	t.Chdir(t.TempDir())
 }
 
-func TestB2ConfigurationRequiresTheExistingFourVariableContract(t *testing.T) {
+func TestB2BucketsShareCredentialsButConfigureIndependently(t *testing.T) {
 	clearEnv(t)
 	c, err := Load("")
 	if err != nil {
@@ -242,6 +243,7 @@ func TestB2ConfigurationRequiresTheExistingFourVariableContract(t *testing.T) {
 	}
 
 	t.Setenv("B2_MEDIA_BUCKET", "evekill-media")
+	t.Setenv("B2_IMAGES_BUCKET", "evekill-images")
 	t.Setenv("B2_KEY_ID", "key-id")
 	t.Setenv("B2_APP_KEY", "application-key")
 	c, err = Load("")
@@ -251,6 +253,44 @@ func TestB2ConfigurationRequiresTheExistingFourVariableContract(t *testing.T) {
 	if !c.B2Configured() || c.B2PartiallyConfigured() {
 		t.Fatalf("complete B2 config = complete %t, partial %t",
 			c.B2Configured(), c.B2PartiallyConfigured())
+	}
+	if !c.B2ImagesConfigured() || c.B2ImagesPartiallyConfigured() {
+		t.Fatalf("image B2 config = complete %t, partial %t",
+			c.B2ImagesConfigured(), c.B2ImagesPartiallyConfigured())
+	}
+
+	t.Setenv("B2_MEDIA_BUCKET", "")
+	c, err = Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.B2Configured() || c.B2PartiallyConfigured() {
+		t.Fatalf("omitted media bucket = complete %t, partial %t",
+			c.B2Configured(), c.B2PartiallyConfigured())
+	}
+	if !c.B2ImagesConfigured() {
+		t.Fatal("omitting the media bucket disabled the image bucket")
+	}
+}
+
+func TestImageCacheBytesIsBoundedConfiguration(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("IMAGE_CACHE_BYTES", "268435456")
+	c, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ImageCacheBytes != 256<<20 {
+		t.Fatalf("ImageCacheBytes = %d, want %d", c.ImageCacheBytes, 256<<20)
+	}
+
+	t.Setenv("IMAGE_CACHE_BYTES", "-1")
+	c, err = Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.ImageCacheBytes != 1<<30 {
+		t.Fatalf("negative ImageCacheBytes = %d, want default", c.ImageCacheBytes)
 	}
 }
 

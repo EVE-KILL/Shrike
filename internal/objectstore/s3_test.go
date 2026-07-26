@@ -304,6 +304,82 @@ func TestS3StoreNotFoundAndStatusErrors(t *testing.T) {
 	}
 }
 
+func TestS3StoreStatMetadataAndUncachedObjects(t *testing.T) {
+	var gets int
+	server := httptest.NewServer(http.HandlerFunc(func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
+		switch r.Method {
+		case http.MethodHead:
+			w.Header().Set("ETag", `"abc123"`)
+			w.Header().Set("Content-Type", "image/png")
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+			w.Header().Set("Content-Length", "7")
+			w.Header().Set("Last-Modified", "Sun, 26 Jul 2026 12:00:00 GMT")
+			w.Header().Set("X-Amz-Meta-Origin-Etag", "ccp-value")
+		case http.MethodGet:
+			gets++
+			w.Header().Set("ETag", `"abc123"`)
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("payload"))
+		case http.MethodPut:
+			if got := r.Header.Get("X-Amz-Meta-Origin-Etag"); got != "ccp-value" {
+				t.Errorf("origin metadata = %q", got)
+			}
+			if got := r.Header.Get("Cache-Control"); got != "public, max-age=60" {
+				t.Errorf("cache control = %q", got)
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected method %s", r.Method)
+		}
+	}))
+	defer server.Close()
+
+	store, err := NewS3Store(S3Options{
+		Endpoint: server.URL, Bucket: "images", Region: BackblazeRegion,
+		AccessKeyID: "id", SecretAccessKey: "secret",
+		DisableCache: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	info, err := store.Stat(ctx, "entities/character/7/original")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info == nil || info.ETag != "abc123" || info.Size != 7 ||
+		info.ContentType != "image/png" ||
+		info.Metadata["origin-etag"] != "ccp-value" {
+		t.Fatalf("stat = %#v", info)
+	}
+
+	for range 2 {
+		object, getErr := store.GetObject(ctx, "entities/character/7/original")
+		if getErr != nil || object == nil || string(object.Body) != "payload" {
+			t.Fatalf("GetObject = %#v, %v", object, getErr)
+		}
+	}
+	if gets != 2 {
+		t.Fatalf("uncached GET count = %d, want 2", gets)
+	}
+
+	if err := store.PutWithOptions(
+		ctx,
+		"entities/character/7/original",
+		[]byte("payload"),
+		PutOptions{
+			ContentType:  "image/png",
+			CacheControl: "public, max-age=60",
+			Metadata:     map[string]string{"origin-etag": "ccp-value"},
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestS3StoreRejectsUnsafeConfigurationKeysAndLargeObjects(t *testing.T) {
 	valid := S3Options{
 		Endpoint: "https://s3.example.test", Bucket: "media",
@@ -341,5 +417,13 @@ func TestS3StoreRejectsUnsafeConfigurationKeysAndLargeObjects(t *testing.T) {
 		context.Background(), "safe", []byte("12345"), "text/plain",
 	); err == nil {
 		t.Error("oversize PUT reached the network")
+	}
+	if err := store.PutWithOptions(
+		context.Background(),
+		"safe",
+		[]byte("1234"),
+		PutOptions{Metadata: map[string]string{"bad:name": "value"}},
+	); err == nil {
+		t.Error("unsafe metadata reached the network")
 	}
 }
