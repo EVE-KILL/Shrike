@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/cron"
@@ -10,6 +11,7 @@ import (
 	"github.com/eve-kill/shrike/internal/eve"
 	"github.com/eve-kill/shrike/internal/everef"
 	"github.com/eve-kill/shrike/internal/graph"
+	"github.com/eve-kill/shrike/internal/images"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/relay"
@@ -92,6 +94,16 @@ func deps(ctx context.Context, pool *pgxpool.Pool, withQueue bool) (*workers.Dep
 			},
 		},
 	}
+
+	imageStore, err := newImageStorage(cfg)
+	if err != nil {
+		return nil, err
+	}
+	d.ImageStore = imageStore
+	d.Images = images.New(images.Options{
+		Store: imageStore, UserAgent: userAgent(),
+	})
+	d.GitHubToken = os.Getenv("GITHUB_TOKEN")
 
 	// The ticker publishes through the relay and persists to the cache Redis,
 	// which is a different instance from the coordination one: ephemeral

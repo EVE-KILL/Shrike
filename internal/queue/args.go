@@ -225,6 +225,16 @@ type StatsWriterArgs struct {
 
 func (StatsWriterArgs) Kind() string { return "stats_writer" }
 
+// ImageRefreshArgs refreshes one cached character, corporation, or alliance
+// image from CCP. Kind and ID form the uniqueness key so a popular stale image
+// produces one refresh regardless of how many HTTP replicas noticed it.
+type ImageRefreshArgs struct {
+	EntityKind string `json:"entity_kind" river:"unique"`
+	EntityID   int64  `json:"entity_id" river:"unique"`
+}
+
+func (ImageRefreshArgs) Kind() string { return "image_refresh" }
+
 // AnnouncementEventArgs forwards an announcement lifecycle event.
 //
 // The payload is opaque: it is produced by the frontend and consumed by the

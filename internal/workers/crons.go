@@ -77,6 +77,7 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 	register("campaign_pending", d.cronCampaignPending)
 	register("campaign_processing", d.cronCampaignProcessing)
 	register("ek_wallet_reservation_expiry", d.cronEkWalletReservationExpiry)
+	register("image_type_sync", d.cronImageTypeSync)
 
 	return r, nil
 }

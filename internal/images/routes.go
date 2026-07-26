@@ -1,0 +1,368 @@
+package images
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/rs/zerolog/log"
+)
+
+// Register adds the canonical /images namespace to the shared Huma document.
+// The dedicated image hostname uses an adapter that prepends this namespace,
+// so old root URLs and the documented routes execute the same operations.
+func Register(a huma.API, service *Service) {
+	registerOverview(a)
+	for _, kind := range []EntityKind{Character, Corporation, Alliance} {
+		registerEntityRoute(a, service, kind, false)
+		registerEntityRoute(a, service, kind, true)
+	}
+	registerTypeRoute(a, service)
+	for _, category := range []string{
+		"regions", "systems", "constellations", "ui",
+	} {
+		registerStaticRoute(a, service, category)
+	}
+	registerOldCharacterRoute(a, service)
+	registerKillmailSocialRoute(a, service)
+	registerMetadataRoute(a, service)
+}
+
+func registerOverview(a huma.API) {
+	op := huma.Operation{
+		OperationID: "images-overview",
+		Method:      http.MethodGet,
+		Path:        "/images",
+		Summary:     "Image API overview",
+		Tags:        []string{"images"},
+		Extensions:  map[string]any{"x-audience": "public"},
+	}
+	huma.Register(a, op, func(_ context.Context, _ *struct{}) (*struct {
+		Body struct {
+			Service string   `json:"service"`
+			Routes  []string `json:"routes"`
+		}
+	}, error) {
+		output := &struct {
+			Body struct {
+				Service string   `json:"service"`
+				Routes  []string `json:"routes"`
+			}
+		}{}
+		output.Body.Service = "EVE-KILL Images"
+		output.Body.Routes = []string{
+			"/images/characters/{id}/portrait",
+			"/images/corporations/{id}/logo",
+			"/images/alliances/{id}/logo",
+			"/images/types/{id}/{variant}",
+			"/images/regions/{id}",
+			"/images/systems/{id}",
+			"/images/constellations/{id}",
+			"/images/ui/{name}",
+			"/images/oldcharacters/{id}",
+			"/images/killmail/{id}/social.png",
+		}
+		return output, nil
+	})
+}
+
+func registerKillmailSocialRoute(a huma.API, service *Service) {
+	registerBinary(a, huma.Operation{
+		OperationID: "image-killmail-social",
+		Method:      http.MethodGet,
+		Path:        "/images/killmail/{id}/social.png",
+		Summary:     "Killmail social card",
+		Tags:        []string{"images"},
+		Parameters: []*huma.Param{
+			{Name: "id", In: "path", Required: true,
+				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
+		},
+	}, func(ctx huma.Context) (Result, error) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			return Result{}, statusError(http.StatusBadRequest, "Invalid killmail ID", nil)
+		}
+		return service.KillmailSocial(ctx.Context(), id)
+	})
+}
+
+func registerEntityRoute(
+	a huma.API,
+	service *Service,
+	kind EntityKind,
+	withVariant bool,
+) {
+	path := "/images/" + string(kind) + "/{id}"
+	operationID := "image-" + strings.TrimSuffix(string(kind), "s")
+	if withVariant {
+		path += "/{variant}"
+		operationID += "-variant"
+	}
+	registerBinary(a, huma.Operation{
+		OperationID: operationID,
+		Method:      http.MethodGet,
+		Path:        path,
+		Summary:     "EVE " + strings.TrimSuffix(string(kind), "s") + " image",
+		Tags:        []string{"images"},
+		Parameters: []*huma.Param{
+			{Name: "id", In: "path", Required: true,
+				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
+			{Name: "size", In: "query",
+				Schema: &huma.Schema{Type: huma.TypeInteger}},
+			{Name: "imagetype", In: "query",
+				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+		},
+	}, func(ctx huma.Context) (Result, error) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
+		}
+		return service.Entity(
+			ctx.Context(),
+			kind,
+			id,
+			parseSize(ctx.Query("size")),
+			requestedFormat(ctx, ""),
+		)
+	})
+}
+
+func registerTypeRoute(a huma.API, service *Service) {
+	registerBinary(a, huma.Operation{
+		OperationID: "image-type",
+		Method:      http.MethodGet,
+		Path:        "/images/types/{id}/{variant}",
+		Summary:     "EVE inventory type image",
+		Tags:        []string{"images"},
+		Parameters: []*huma.Param{
+			{Name: "id", In: "path", Required: true,
+				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
+			{Name: "variant", In: "path", Required: true,
+				Schema: &huma.Schema{Type: huma.TypeString}},
+			{Name: "size", In: "query",
+				Schema: &huma.Schema{Type: huma.TypeInteger}},
+			{Name: "imagetype", In: "query",
+				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+		},
+	}, func(ctx huma.Context) (Result, error) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
+		}
+		return service.Type(
+			ctx.Context(),
+			id,
+			ctx.Param("variant"),
+			parseSize(ctx.Query("size")),
+			requestedFormat(ctx, ""),
+		)
+	})
+}
+
+func registerStaticRoute(a huma.API, service *Service, category string) {
+	parameter := "id"
+	if category == "ui" {
+		parameter = "name"
+	}
+	registerBinary(a, huma.Operation{
+		OperationID: "image-" + strings.TrimSuffix(category, "s"),
+		Method:      http.MethodGet,
+		Path:        "/images/" + category + "/{" + parameter + "}",
+		Summary:     "EVE " + strings.TrimSuffix(category, "s") + " image",
+		Tags:        []string{"images"},
+		Parameters: []*huma.Param{
+			{Name: parameter, In: "path", Required: true,
+				Schema: &huma.Schema{Type: huma.TypeString}},
+			{Name: "size", In: "query",
+				Schema: &huma.Schema{Type: huma.TypeInteger}},
+			{Name: "imagetype", In: "query",
+				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+		},
+	}, func(ctx huma.Context) (Result, error) {
+		return service.Static(
+			ctx.Context(),
+			category,
+			ctx.Param(parameter),
+			parseSize(ctx.Query("size")),
+			requestedFormat(ctx, "png"),
+		)
+	})
+}
+
+func registerOldCharacterRoute(a huma.API, service *Service) {
+	registerBinary(a, huma.Operation{
+		OperationID: "image-old-character",
+		Method:      http.MethodGet,
+		Path:        "/images/oldcharacters/{id}",
+		Summary:     "Legacy EVE character portrait",
+		Tags:        []string{"images"},
+		Parameters: []*huma.Param{
+			{Name: "id", In: "path", Required: true,
+				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
+			{Name: "imagetype", In: "query",
+				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+		},
+	}, func(ctx huma.Context) (Result, error) {
+		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+		if err != nil {
+			return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
+		}
+		return service.OldCharacter(
+			ctx.Context(),
+			id,
+			requestedFormat(ctx, "jpeg"),
+		)
+	})
+}
+
+func registerMetadataRoute(a huma.API, service *Service) {
+	op := huma.Operation{
+		OperationID: "image-service-metadata",
+		Method:      http.MethodGet,
+		Path:        "/images/service-metadata",
+		Summary:     "Current TurtleTools type image metadata",
+		Tags:        []string{"images"},
+		Extensions:  map[string]any{"x-audience": "public"},
+		Responses: map[string]*huma.Response{
+			"200": {
+				Description: "Service bundle metadata",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: &huma.Schema{
+							Type:                 huma.TypeObject,
+							AdditionalProperties: true,
+						},
+					},
+				},
+			},
+		},
+	}
+	a.OpenAPI().AddOperation(&op)
+	a.Adapter().Handle(&op, func(ctx huma.Context) {
+		body, err := service.ServiceMetadata(ctx.Context())
+		if err != nil {
+			writeError(ctx, err)
+			return
+		}
+		ctx.SetHeader("Content-Type", "application/json")
+		ctx.SetHeader("Cache-Control", "public, max-age=3600")
+		ctx.SetStatus(http.StatusOK)
+		_, _ = ctx.BodyWriter().Write(body)
+	})
+}
+
+func registerBinary(
+	a huma.API,
+	op huma.Operation,
+	handler func(huma.Context) (Result, error),
+) {
+	op.Extensions = map[string]any{"x-audience": "public"}
+	op.Responses = binaryResponses()
+	a.OpenAPI().AddOperation(&op)
+	a.Adapter().Handle(&op, func(ctx huma.Context) {
+		result, err := handler(ctx)
+		if err != nil {
+			writeError(ctx, err)
+			return
+		}
+		writeResult(ctx, result)
+	})
+}
+
+func binaryResponses() map[string]*huma.Response {
+	content := make(map[string]*huma.MediaType)
+	for _, contentType := range []string{"image/jpeg", "image/png", "image/webp"} {
+		content[contentType] = &huma.MediaType{
+			Schema: &huma.Schema{Type: huma.TypeString, Format: "binary"},
+		}
+	}
+	return map[string]*huma.Response{
+		"200": {Description: "Image", Content: content},
+		"304": {Description: "Not modified"},
+		"400": {Description: "Invalid request"},
+		"404": {Description: "Image not found"},
+		"502": {Description: "Image origin unavailable"},
+		"503": {Description: "Image storage unavailable"},
+	}
+}
+
+func writeResult(ctx huma.Context, result Result) {
+	ctx.SetHeader("Content-Type", result.ContentType)
+	ctx.SetHeader("Cache-Control", result.CacheControl)
+	ctx.SetHeader("ETag", result.ETag)
+	ctx.SetHeader("Vary", "Accept")
+	if !result.LastModified.IsZero() {
+		ctx.SetHeader("Last-Modified", result.LastModified.UTC().Format(http.TimeFormat))
+	}
+	if etagMatches(ctx.Header("If-None-Match"), result.ETag) {
+		ctx.SetStatus(http.StatusNotModified)
+		return
+	}
+	ctx.SetStatus(http.StatusOK)
+	_, _ = ctx.BodyWriter().Write(result.Body)
+}
+
+func writeError(ctx huma.Context, err error) {
+	status, message := asStatus(err)
+	if status >= 500 {
+		log.Error().Err(err).Msg("image request failed")
+	}
+	body, _ := json.Marshal(map[string]string{"error": message})
+	ctx.SetHeader("Content-Type", "application/json")
+	ctx.SetHeader("Cache-Control", "no-store")
+	ctx.SetStatus(status)
+	_, _ = ctx.BodyWriter().Write(body)
+}
+
+func requestedFormat(ctx huma.Context, fallback string) string {
+	if raw := strings.ToLower(ctx.Query("imagetype")); raw != "" {
+		if raw == "webp" {
+			return "webp"
+		}
+		return fallback
+	}
+	if strings.Contains(strings.ToLower(ctx.Header("Accept")), "image/webp") {
+		return "webp"
+	}
+	return fallback
+}
+
+func parseSize(raw string) int {
+	size, _ := strconv.Atoi(raw)
+	return size
+}
+
+func etagMatches(header, etag string) bool {
+	for _, candidate := range strings.Split(header, ",") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "*" || candidate == etag ||
+			strings.TrimPrefix(candidate, "W/") == etag {
+			return true
+		}
+	}
+	return false
+}
+
+func hostPrefixHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		clone := r.Clone(r.Context())
+		requestURL := *r.URL
+		if requestURL.Path == "/" {
+			requestURL.Path = "/images"
+		} else {
+			requestURL.Path = "/images" + requestURL.Path
+		}
+		requestURL.RawPath = ""
+		clone.URL = &requestURL
+		next.ServeHTTP(w, clone)
+	})
+}
+
+// HostHandler adapts documented /images routes to the established
+// images.eve-kill.com root-path contract.
+func HostHandler(next http.Handler) http.Handler {
+	return hostPrefixHandler(next)
+}

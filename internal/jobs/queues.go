@@ -8,7 +8,8 @@
 // before any worker is written, so a missed concurrency or retry setting is
 // caught by inspection rather than by a production incident.
 //
-// `shrike queue:verify` diffs it against what is actually live in Redis.
+// The image refresh queue is a Go-side addition: HTTP replicas use it for
+// stale-while-revalidate rather than doing origin work on the request path.
 package jobs
 
 // Queue describes one background queue.
@@ -137,6 +138,11 @@ var Queues = []Queue{
 		Name:        "killmails",
 		Description: "Process incoming killmails (parse, insert, stats, blob)",
 		Concurrency: 5, Retries: 3, BackoffDelay: 1000, RequiresTQ: true,
+	},
+	{
+		Name:        "image_refresh",
+		Description: "Refresh stale entity images from CCP into B2",
+		Concurrency: 4, Retries: 3, BackoffDelay: 10_000,
 	},
 	{
 		Name:        "stats_writer",

@@ -17,6 +17,7 @@ import (
 	"github.com/eve-kill/shrike/internal/eve"
 	"github.com/eve-kill/shrike/internal/everef"
 	"github.com/eve-kill/shrike/internal/graph"
+	"github.com/eve-kill/shrike/internal/images"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/relay"
 	"github.com/eve-kill/shrike/internal/sso"
@@ -73,6 +74,13 @@ type Deps struct {
 	// Queue is how a job enqueues follow-up work. Nil in the CLI paths that run
 	// a job once without a running queue, so every use has to tolerate that.
 	Queue *queue.Client
+
+	// Images serves and refreshes entity images. ImageStore is kept separately
+	// for the daily bulk TurtleTools import, which does not belong in the HTTP
+	// service's response cache.
+	Images      *images.Service
+	ImageStore  images.ObjectStore
+	GitHubToken string
 
 	// UserAgent identifies us to CCP, which their acceptable-use policy requires.
 	UserAgent string

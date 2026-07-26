@@ -125,6 +125,7 @@ func init() {
 		pricesCmd,
 		esiCmd,
 		killmailCmd,
+		imagesCmd,
 		completionCmd,
 	)
 }

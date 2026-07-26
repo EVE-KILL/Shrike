@@ -17,6 +17,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	"github.com/eve-kill/shrike/internal/images"
 	"github.com/go-chi/chi/v5"
 	"github.com/redis/go-redis/v9"
 )
@@ -36,6 +37,7 @@ type Options struct {
 
 	Auth         AuthOptions
 	DomainAssets DomainAssetStorage
+	Images       *images.Service
 }
 
 type GraphDatabase interface {
@@ -50,6 +52,7 @@ type GraphDatabase interface {
 type Service struct {
 	apiHost    http.Handler
 	sameOrigin http.Handler
+	images     http.Handler
 }
 
 type sameOriginPrefixContextKey struct{}
@@ -79,6 +82,7 @@ func New(opts Options) *Service {
 	return &Service{
 		apiHost:    crossOriginAPI(cached),
 		sameOrigin: sameOriginPrefix(cached),
+		images:     crossOriginAPI(images.HostHandler(cached)),
 	}
 }
 
@@ -91,6 +95,13 @@ func (s *Service) APIHost() http.Handler {
 // leaving browser OAuth routes under /auth unchanged.
 func (s *Service) SameOrigin() http.Handler {
 	return s.sameOrigin
+}
+
+// Images serves the established root-path image contract on the dedicated
+// image hostname while executing the same /images operations documented by
+// the shared Huma registry.
+func (s *Service) Images() http.Handler {
+	return s.images
 }
 
 // APIHost constructs a root-path API handler. Production should normally
@@ -215,9 +226,10 @@ func WS(Options) http.Handler {
 	return notImplemented("websocket")
 }
 
-// Images is images.eve-kill.com. Placeholder, as WS.
-func Images(Options) http.Handler {
-	return notImplemented("image server")
+// Images constructs the dedicated-host image adapter. Production should
+// retain a Service so all transports share one registry instance.
+func Images(opts Options) http.Handler {
+	return New(opts).Images()
 }
 
 func notImplemented(surface string) http.Handler {

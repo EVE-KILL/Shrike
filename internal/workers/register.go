@@ -100,6 +100,10 @@ var registrations = []registration{
 		kind: queue.CampaignProcessingArgs{}.Kind(),
 		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &CampaignProcessingWorker{Deps: d}) },
 	},
+	{
+		kind: queue.ImageRefreshArgs{}.Kind(),
+		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &ImageRefreshWorker{Deps: d}) },
+	},
 }
 
 // Register builds the worker set.

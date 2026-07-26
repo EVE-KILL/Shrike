@@ -10,8 +10,10 @@ import (
 	"github.com/eve-kill/shrike/internal/config"
 	"github.com/eve-kill/shrike/internal/db"
 	"github.com/eve-kill/shrike/internal/graph"
+	"github.com/eve-kill/shrike/internal/images"
 	"github.com/eve-kill/shrike/internal/ingress"
 	"github.com/eve-kill/shrike/internal/objectstore"
+	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/ui"
 	shrikewebsocket "github.com/eve-kill/shrike/internal/websocket"
@@ -71,12 +73,26 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			if err != nil {
 				return err
 			}
-
+			imageStorage, err := newImageStorage(cfg)
+			if err != nil {
+				return err
+			}
 			pool, err := db.New(ctx, cfg)
 			if err != nil {
 				return fmt.Errorf("connect API database: %w", err)
 			}
 			defer pool.Close()
+
+			imageQueue, err := queue.New(queue.Options{Pool: pool})
+			if err != nil {
+				return fmt.Errorf("configure image refresh queue: %w", err)
+			}
+			imageService := images.New(images.Options{
+				Store: imageStorage, UserAgent: cfg.ESIUserAgent,
+				CacheBytes: cfg.ImageCacheBytes,
+				Refresh:    imageRefreshDispatcher{Queue: imageQueue},
+				Social:     images.PostgresSocialLoader{DB: pool},
+			})
 
 			var graphClient *graph.Client
 			graphCtx, cancelGraph := context.WithTimeout(ctx, 3*time.Second)
@@ -109,6 +125,7 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 				Version: ui.Version, Commit: ui.Commit,
 				DB: pool, Graph: graphClient, Feed: feed, Cache: cacheRedis,
 				DomainAssets: domainAssets,
+				Images:       imageService,
 				Auth: api.AuthOptions{
 					ClientID: cfg.EVEClientID, ClientSecret: cfg.EVEClientSecret,
 					StateSecret: cfg.EVEClientSecret, CallbackURL: cfg.EVECallbackURL,
@@ -120,7 +137,7 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 				ingress.SurfaceSameOrigin: apiService.SameOrigin(),
 				ingress.SurfaceAPIHost:    apiService.APIHost(),
 				ingress.SurfaceWS:         wsServer,
-				ingress.SurfaceImages:     api.Images(opts),
+				ingress.SurfaceImages:     apiService.Images(),
 			}
 			manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 
@@ -148,6 +165,46 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			return nil
 		})
 	},
+}
+
+type imageRefreshDispatcher struct {
+	Queue *queue.Client
+}
+
+func (d imageRefreshDispatcher) EnqueueImageRefresh(
+	ctx context.Context,
+	kind images.EntityKind,
+	id int64,
+) error {
+	_, err := queue.Dispatch(ctx, d.Queue, queue.ImageRefreshArgs{
+		EntityKind: string(kind),
+		EntityID:   id,
+	}, queue.Live)
+	return err
+}
+
+func newImageStorage(cfg *config.Config) (*objectstore.S3Store, error) {
+	if cfg.B2ImagesPartiallyConfigured() {
+		return nil, fmt.Errorf(
+			"configure B2_ENDPOINT, B2_IMAGES_BUCKET, B2_KEY_ID, and B2_APP_KEY together",
+		)
+	}
+	if !cfg.B2ImagesConfigured() {
+		return nil, nil
+	}
+	store, err := objectstore.NewS3Store(objectstore.S3Options{
+		Endpoint:        cfg.B2Endpoint,
+		Bucket:          cfg.B2ImagesBucket,
+		Region:          objectstore.BackblazeRegion,
+		AccessKeyID:     cfg.B2KeyID,
+		SecretAccessKey: cfg.B2AppKey,
+		MaximumBytes:    32 << 20,
+		DisableCache:    true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("configure image object storage: %w", err)
+	}
+	return store, nil
 }
 
 func newDomainAssetStorage(cfg *config.Config) (api.DomainAssetStorage, error) {
