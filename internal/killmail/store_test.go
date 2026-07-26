@@ -155,15 +155,15 @@ func TestCorpusRoundTripsThroughPostgres(t *testing.T) {
 		}
 	}
 
-	// The processing ledger is what the derived-effect machinery reads; a
-	// killmail without one is invisible to it.
+	// Archive imports are historical data, not newly-arrived queue work. Match
+	// the TS importers by leaving them out of the derived-effects ledger.
 	var ledger int64
 	if err := pool.QueryRow(ctx,
 		`SELECT count(*) FROM killmail_processing WHERE killmail_id = ANY($1::int[])`, ids).Scan(&ledger); err != nil {
 		t.Fatal(err)
 	}
-	if ledger != int64(len(batch)) {
-		t.Errorf("%d processing rows for %d killmails", ledger, len(batch))
+	if ledger != 0 {
+		t.Errorf("%d processing rows created for an archive import, want 0", ledger)
 	}
 }
 

@@ -52,6 +52,11 @@ type BatchResult struct {
 //
 // The three tables go in together under one transaction, so a failure never
 // leaves attackers without their killmail.
+//
+// Archive imports deliberately do not create killmail_processing rows. The TS
+// importers treat historical rows as already imported data, not newly-arrived
+// queue work. Creating a zeroed ledger here would make the entire archive look
+// like a pending derived-effects backlog.
 func InsertBatch(ctx context.Context, pool *pgxpool.Pool, batch []*Parsed) (BatchResult, error) {
 	var res BatchResult
 	if len(batch) == 0 {
@@ -74,14 +79,12 @@ func InsertBatch(ctx context.Context, pool *pgxpool.Pool, batch []*Parsed) (Batc
 		kmStaging   = "km_staging_killmails"
 		attStaging  = "km_staging_attackers"
 		itemStaging = "km_staging_items"
-		procStaging = "km_staging_processing"
 	)
 
 	for _, s := range []struct{ name, like string }{
 		{kmStaging, "killmails"},
 		{attStaging, "killmail_attackers"},
 		{itemStaging, "killmail_items"},
-		{procStaging, "killmail_processing"},
 	} {
 		if err := pgbulk.StagingTx(ctx, tx, s.name, s.like); err != nil {
 			return res, err
@@ -91,7 +94,6 @@ func InsertBatch(ctx context.Context, pool *pgxpool.Pool, batch []*Parsed) (Batc
 	kmw := pgbulk.NewCopier(ctx, tx, kmStaging, killmailColumns)
 	attw := pgbulk.NewCopier(ctx, tx, attStaging, attackerColumns)
 	itemw := pgbulk.NewCopier(ctx, tx, itemStaging, itemColumns)
-	procw := pgbulk.NewCopier(ctx, tx, procStaging, []string{"killmail_id", "effects_completed"})
 
 	for _, p := range batch {
 		km := p.Killmail
@@ -112,10 +114,6 @@ func InsertBatch(ctx context.Context, pool *pgxpool.Pool, batch []*Parsed) (Batc
 		}); err != nil {
 			return res, err
 		}
-		if err := procw.Add([]any{km.KillmailID, int32(0)}); err != nil {
-			return res, err
-		}
-
 		for _, a := range p.Attackers {
 			if err := attw.Add([]any{
 				a.KillmailID, a.KillmailTime, a.AttackerIndex,
@@ -136,20 +134,18 @@ func InsertBatch(ctx context.Context, pool *pgxpool.Pool, batch []*Parsed) (Batc
 		}
 	}
 
-	for _, w := range []*pgbulk.Copier{kmw, procw, attw, itemw} {
+	for _, w := range []*pgbulk.Copier{kmw, attw, itemw} {
 		if err := w.Flush(); err != nil {
 			return res, err
 		}
 	}
 
-	// killmails first: killmail_processing has a foreign key to it, and the
-	// attacker and item rows are meaningless without it.
+	// Killmails first: the attacker and item rows are meaningless without it.
 	for _, m := range []struct {
 		table, staging string
 		columns, pk    []string
 	}{
 		{"killmails", kmStaging, killmailColumns, []string{"killmail_id"}},
-		{"killmail_processing", procStaging, []string{"killmail_id", "effects_completed"}, []string{"killmail_id"}},
 		{"killmail_attackers", attStaging, attackerColumns, []string{"killmail_id", "attacker_index"}},
 		{"killmail_items", itemStaging, itemColumns, []string{"killmail_id", "item_index"}},
 	} {
