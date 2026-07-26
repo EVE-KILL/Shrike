@@ -388,6 +388,26 @@ func TestLastKillmailNeverMovesBackwards(t *testing.T) {
 	}
 }
 
+func TestLastKillmailUsesIDToBreakTimestampTie(t *testing.T) {
+	a := NewAccumulator()
+
+	higher, at := fleetKill()
+	higher.KillmailID = 137_000_002
+	higher.KillmailTime = testPeriod
+	a.Add(higher, at)
+
+	lower, at2 := fleetKill()
+	lower.KillmailID = 137_000_001
+	lower.KillmailTime = higher.KillmailTime
+	a.Add(lower, at2)
+
+	b := a.Breakdowns[BreakdownKey{EntityCharacter, testIDBase + 1, DimShipFlown, 587}]
+	if b.LastKillmailID != higher.KillmailID {
+		t.Errorf("last_killmail_id = %d for equal timestamps, want higher id %d",
+			b.LastKillmailID, higher.KillmailID)
+	}
+}
+
 // --- Writing ---
 
 // The merge adds to what is stored rather than replacing it, which is what
@@ -461,6 +481,45 @@ func TestWriteBreakdowns(t *testing.T) {
 	}
 	if lastID != km.KillmailID {
 		t.Errorf("last_killmail_id = %d, want %d", lastID, km.KillmailID)
+	}
+}
+
+func TestWriteBreakdownsUsesIDToBreakTimestampTie(t *testing.T) {
+	pool := testPool(t)
+	clearTestStats(t, pool)
+	ctx := context.Background()
+
+	lower, attackers := fleetKill()
+	lower.KillmailID = 137_000_001
+	lower.KillmailTime = testPeriod
+	lowerAcc := NewAccumulator()
+	lowerAcc.Add(lower, attackers)
+	if _, err := Write(ctx, pool, lowerAcc, lower.KillmailTime); err != nil {
+		t.Fatal(err)
+	}
+
+	higher, attackers2 := fleetKill()
+	higher.KillmailID = 137_000_002
+	higher.KillmailTime = lower.KillmailTime
+	higherAcc := NewAccumulator()
+	higherAcc.Add(higher, attackers2)
+	if _, err := Write(ctx, pool, higherAcc, higher.KillmailTime); err != nil {
+		t.Fatal(err)
+	}
+
+	var lastID int64
+	if err := pool.QueryRow(ctx, `
+		SELECT last_killmail_id FROM stats_breakdowns
+		WHERE entity_type = $1 AND entity_id = $2 AND period_type = $3
+		  AND period_start = $4 AND dim_category = $5 AND dim_id = $6`,
+		int16(EntityCharacter), testIDBase+1, int16(PeriodDaily),
+		testPeriod.Format("2006-01-02"), int16(DimShipFlown), 587).
+		Scan(&lastID); err != nil {
+		t.Fatal(err)
+	}
+	if lastID != higher.KillmailID {
+		t.Errorf("last_killmail_id = %d for equal timestamps, want higher id %d",
+			lastID, higher.KillmailID)
 	}
 }
 

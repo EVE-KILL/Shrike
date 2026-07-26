@@ -282,7 +282,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		b := a.breakdown(t, id, cat, dim)
 		b.Kills++
 		b.IskDestroyed += v
-		if kmTime > b.LastKillmailTime {
+		if markerAfter(kmTime, km.KillmailID, b.LastKillmailTime, b.LastKillmailID) {
 			b.LastKillmailTime, b.LastKillmailID = kmTime, km.KillmailID
 		}
 	}
@@ -341,7 +341,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		b := a.breakdown(t, id, cat, dim)
 		b.Losses++
 		b.IskLost += v
-		if kmTime > b.LastKillmailTime {
+		if markerAfter(kmTime, km.KillmailID, b.LastKillmailTime, b.LastKillmailID) {
 			b.LastKillmailTime, b.LastKillmailID = kmTime, km.KillmailID
 		}
 	}

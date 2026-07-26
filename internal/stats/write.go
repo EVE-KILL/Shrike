@@ -242,7 +242,12 @@ func writeBreakdowns(
             isk_destroyed = stats_breakdowns.isk_destroyed + EXCLUDED.isk_destroyed,
             isk_lost      = stats_breakdowns.isk_lost      + EXCLUDED.isk_lost,
             last_killmail_id = CASE
-                WHEN EXCLUDED.last_killmail_time > coalesce(stats_breakdowns.last_killmail_time, '-infinity'::timestamptz)
+                WHEN stats_breakdowns.last_killmail_time IS NULL
+                     OR EXCLUDED.last_killmail_time > stats_breakdowns.last_killmail_time
+                THEN EXCLUDED.last_killmail_id
+                WHEN EXCLUDED.last_killmail_time = stats_breakdowns.last_killmail_time
+                     AND (stats_breakdowns.last_killmail_id IS NULL
+                          OR EXCLUDED.last_killmail_id > stats_breakdowns.last_killmail_id)
                 THEN EXCLUDED.last_killmail_id
                 ELSE stats_breakdowns.last_killmail_id END,
             last_killmail_time = greatest(

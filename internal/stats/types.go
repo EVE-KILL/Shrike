@@ -132,10 +132,20 @@ func (b *Breakdown) Add(o Breakdown) {
 	b.Losses += o.Losses
 	b.IskDestroyed += o.IskDestroyed
 	b.IskLost += o.IskLost
-	if o.LastKillmailTime > b.LastKillmailTime {
+	if markerAfter(o.LastKillmailTime, o.LastKillmailID, b.LastKillmailTime, b.LastKillmailID) {
 		b.LastKillmailTime = o.LastKillmailTime
 		b.LastKillmailID = o.LastKillmailID
 	}
+}
+
+// markerAfter compares the stored "last seen" marker as one value.
+//
+// ESI timestamps have one-second precision, so equal timestamps are routine.
+// The killmail id is the deterministic tie-breaker used by the SQL rollups and
+// war interactions; applying the same ordering here keeps live ingest,
+// catchups, and rollups convergent regardless of processing order.
+func markerAfter(at, id, currentAt, currentID int64) bool {
+	return at > currentAt || (at == currentAt && id > currentID)
 }
 
 // Derived are the metrics computed from a Row rather than stored.
