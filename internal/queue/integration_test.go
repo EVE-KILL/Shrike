@@ -347,6 +347,45 @@ func TestBatchInsertMatchesSingleInsert(t *testing.T) {
 	}
 }
 
+func TestBatchDuplicateDispatchPromotesAvailableJobs(t *testing.T) {
+	pool := testPool(t)
+	clearTestJobs(t, pool)
+	ctx := context.Background()
+
+	c, err := New(Options{Pool: pool})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM river_job WHERE kind = 'esi_alliance'`)
+	}()
+
+	batch := []river.JobArgs{
+		AllianceArgs{AllianceID: 2_100_000_020},
+		AllianceArgs{AllianceID: 2_100_000_021},
+		AllianceArgs{AllianceID: 2_100_000_022},
+	}
+	if n, err := DispatchMany(ctx, c, batch, DormantBackfill); err != nil || n != len(batch) {
+		t.Fatalf("initial batch inserted %d: %v", n, err)
+	}
+	if n, err := DispatchMany(ctx, c, batch, Immediate); err != nil || n != 0 {
+		t.Fatalf("duplicate batch inserted %d: %v", n, err)
+	}
+
+	var promoted int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*)
+		FROM river_job
+		WHERE kind = 'esi_alliance'
+		  AND args->>'alliance_id' IN ('2100000020', '2100000021', '2100000022')
+		  AND priority = $1`, int(Immediate)).Scan(&promoted); err != nil {
+		t.Fatal(err)
+	}
+	if promoted != len(batch) {
+		t.Errorf("promoted %d batch duplicates, want %d", promoted, len(batch))
+	}
+}
+
 func queuePriorityForTest() Priority { return DormantBackfill }
 
 // The gate has to actually pause the queue rows River reads, not merely record

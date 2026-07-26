@@ -577,35 +577,38 @@ func (c *Collector) tokenInfo(ctx context.Context, killmailsCovered int64) *ESIT
 	}
 
 	if err := c.Pool.QueryRow(ctx, `
-        SELECT count(*),
-               coalesce((
-                   SELECT sum(avg_items)::bigint
-                   FROM (
-                       SELECT avg(items_returned) AS avg_items
-                       FROM esi_request_logs
-                       WHERE source IN ('character_killmail_fetch', 'corp_killmail_fetch')
-                       GROUP BY character_id
-                   ) averages
-               ), 0),
-               coalesce(sum(new_items), 0),
-               count(*) FILTER (WHERE NOT success)
-        FROM esi_request_logs
-        WHERE source IN ('character_killmail_fetch', 'corp_killmail_fetch')`).Scan(
+	        WITH per_character AS MATERIALIZED (
+	            SELECT character_id,
+	                   count(*)::bigint AS total,
+	                   avg(items_returned) AS avg_items,
+	                   coalesce(sum(new_items), 0)::bigint AS new_items,
+	                   count(*) FILTER (WHERE NOT success)::bigint AS failed,
+	                   count(*) FILTER (
+	                       WHERE created_at > now() - interval '24 hours'
+	                   )::bigint AS total_24h,
+	                   coalesce(sum(new_items) FILTER (
+	                       WHERE created_at > now() - interval '24 hours'
+	                   ), 0)::bigint AS new_items_24h,
+	                   count(*) FILTER (
+	                       WHERE NOT success
+	                         AND created_at > now() - interval '24 hours'
+	                   )::bigint AS failed_24h
+	            FROM esi_request_logs
+	            WHERE source IN ('character_killmail_fetch', 'corp_killmail_fetch')
+	            GROUP BY character_id
+	        )
+	        SELECT coalesce(sum(total), 0)::bigint,
+	               coalesce(sum(avg_items), 0)::bigint,
+	               coalesce(sum(new_items), 0)::bigint,
+	               coalesce(sum(failed), 0)::bigint,
+	               coalesce(sum(total_24h), 0)::bigint,
+	               coalesce(sum(new_items_24h), 0)::bigint,
+	               coalesce(sum(failed_24h), 0)::bigint
+	        FROM per_character`).Scan(
 		&out.Fetches.AllTime.Total,
 		&out.Fetches.AllTime.KillmailsFound,
 		&out.Fetches.AllTime.NewKillmails,
 		&out.Fetches.AllTime.Failed,
-	); err != nil {
-		return nil
-	}
-
-	if err := c.Pool.QueryRow(ctx, `
-        SELECT count(*),
-               coalesce(sum(new_items), 0),
-               count(*) FILTER (WHERE NOT success)
-        FROM esi_request_logs
-        WHERE source IN ('character_killmail_fetch', 'corp_killmail_fetch')
-          AND created_at > now() - interval '24 hours'`).Scan(
 		&out.Fetches.Last24h.Total,
 		&out.Fetches.Last24h.NewKillmails,
 		&out.Fetches.Last24h.Failed,

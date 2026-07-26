@@ -83,14 +83,49 @@ func DispatchMany(ctx context.Context, c *Client, batch []river.JobArgs, priorit
 
 	inserted := 0
 	for _, r := range results {
-		if err := c.promoteDuplicate(ctx, r, priority); err != nil {
-			return inserted, err
-		}
 		if !r.UniqueSkippedAsDuplicate {
 			inserted++
 		}
 	}
+	if err := c.promoteDuplicates(ctx, results, priority); err != nil {
+		return inserted, err
+	}
 	return inserted, nil
+}
+
+// promoteDuplicates is the batch form of promoteDuplicate. A live discovery
+// can collide with thousands of dormant repair jobs at once; promoting those
+// one UPDATE at a time would turn a single InsertMany into thousands of extra
+// round trips.
+func (c *Client) promoteDuplicates(
+	ctx context.Context,
+	results []*rivertype.JobInsertResult,
+	requested Priority,
+) error {
+	if c == nil || c.pool == nil || !requested.Valid() {
+		return nil
+	}
+
+	ids := make([]int64, 0, len(results))
+	for _, res := range results {
+		if res == nil || res.Job == nil || !res.UniqueSkippedAsDuplicate ||
+			res.Job.Priority <= int(requested) {
+			continue
+		}
+		ids = append(ids, res.Job.ID)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	_, err := c.pool.Exec(ctx, `
+		UPDATE river_job
+		SET priority = $2
+		WHERE id = ANY($1::bigint[])
+		  AND state = $3
+		  AND priority > $2`,
+		ids, int(requested), rivertype.JobStateAvailable)
+	return err
 }
 
 // promoteDuplicate moves an already-available duplicate into a more urgent
