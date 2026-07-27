@@ -21,3 +21,9 @@ bin/
 # as README.md remains tracked; Markdown in subdirectories is unaffected.
 /*.md
 !CLAUDE.md
+
+# Editor state. The directory currently holds only machine-local runtime files
+# such as .server-controller-port.log, which name a port valid for one session
+# on one machine. Re-include a specific file with `!` if a setting ever needs
+# to be shared.
+.vscode/
