@@ -11719,7 +11719,16 @@ export type KilllistAdvancedResponses = {
 export type KilllistAdvancedResponse = KilllistAdvancedResponses[keyof KilllistAdvancedResponses];
 
 export type KillmailSubmitData = {
-    body?: never;
+    body: {
+        /**
+         * ESI killmail links. Joined with newlines and parsed the same way as text.
+         */
+        links?: Array<string> | null;
+        /**
+         * Free text containing ESI killmail links, one per line. Takes precedence over links.
+         */
+        text?: string;
+    };
     path?: never;
     query?: never;
     url: '/killmail/post';

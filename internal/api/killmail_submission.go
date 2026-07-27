@@ -2,9 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -27,9 +24,11 @@ type submittedKillmail struct {
 	Hash string
 }
 
+// killmailSubmissionBody is both the decode target and the documented schema.
+// Either form is accepted; text wins when both arrive.
 type killmailSubmissionBody struct {
-	Text  *string  `json:"text"`
-	Links []string `json:"links"`
+	Text  *string  `json:"text,omitempty" doc:"Free text containing ESI killmail links, one per line. Takes precedence over links."`
+	Links []string `json:"links,omitempty" doc:"ESI killmail links. Joined with newlines and parsed the same way as text."`
 }
 
 type killmailSubmissionDispatcher func(
@@ -38,14 +37,15 @@ type killmailSubmissionDispatcher func(
 ) error
 
 func registerKillmailSubmissionRoute(a huma.API, opts Options) {
-	registerLegacy(a, huma.Operation{
+	registerLegacyJSON(a, huma.Operation{
 		OperationID: "killmail-submit",
 		Method:      http.MethodPost,
 		Path:        "/killmail/post",
 		Summary:     "Submit ESI killmail links",
 		Description: "Queues valid ESI killmail links that are not already stored.",
 		Tags:        []string{"killmails"},
-	}, killmailSubmissionHandler(opts, newKillmailSubmissionDispatcher(opts)))
+	}, killmailSubmissionBodyLimit,
+		killmailSubmissionHandler(opts, newKillmailSubmissionDispatcher(opts)))
 }
 
 func newKillmailSubmissionDispatcher(opts Options) killmailSubmissionDispatcher {
@@ -75,12 +75,10 @@ func newKillmailSubmissionDispatcher(opts Options) killmailSubmissionDispatcher 
 func killmailSubmissionHandler(
 	opts Options,
 	dispatch killmailSubmissionDispatcher,
-) legacyHandler {
-	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-		body, err := decodeKillmailSubmission(req.Body)
-		if err != nil {
-			return legacyPayload{}, err
-		}
+) bodyHandler[killmailSubmissionBody] {
+	return func(
+		ctx context.Context, req *legacyRequest, body *killmailSubmissionBody,
+	) (legacyPayload, error) {
 		text := ""
 		if body.Text != nil {
 			text = *body.Text
@@ -151,26 +149,6 @@ func killmailSubmissionHandler(
 			"killmails":   ids,
 			"existingIds": existingIDs,
 		}), nil
-	}
-}
-
-func decodeKillmailSubmission(body io.Reader) (killmailSubmissionBody, error) {
-	decoder := json.NewDecoder(io.LimitReader(body, killmailSubmissionBodyLimit+1))
-	var value killmailSubmissionBody
-	if err := decoder.Decode(&value); err != nil {
-		return value, apiError(http.StatusBadRequest, "Invalid request body")
-	}
-	var extra any
-	err := decoder.Decode(&extra)
-	switch {
-	case errors.Is(err, io.EOF):
-		return value, nil
-	case err == nil:
-		return value, apiError(
-			http.StatusBadRequest, "Body must contain one JSON value",
-		)
-	default:
-		return value, apiError(http.StatusBadRequest, "Invalid request body")
 	}
 }
 

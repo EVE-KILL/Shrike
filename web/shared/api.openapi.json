@@ -22133,6 +22133,33 @@
       "post": {
         "description": "Queues valid ESI killmail links that are not already stored.",
         "operationId": "killmail-submit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "links": {
+                    "description": "ESI killmail links. Joined with newlines and parsed the same way as text.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "text": {
+                    "description": "Free text containing ESI killmail links, one per line. Takes precedence over links.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

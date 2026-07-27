@@ -28,9 +28,11 @@ func TestParseSubmittedKillmailsAcceptsESIVariantsAndDeduplicates(t *testing.T) 
 }
 
 func TestDecodeKillmailSubmissionPreservesTextPrecedence(t *testing.T) {
-	body, err := decodeKillmailSubmission(strings.NewReader(
-		`{"text":"","links":["https://esi.evetech.net/killmails/1/aabbccddeeff00112233"]}`,
-	))
+	body, err := decodeJSONBody[killmailSubmissionBody](&legacyRequest{
+		Body: strings.NewReader(
+			`{"text":"","links":["https://esi.evetech.net/killmails/1/aabbccddeeff00112233"]}`,
+		),
+	}, killmailSubmissionBodyLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +42,10 @@ func TestDecodeKillmailSubmissionPreservesTextPrecedence(t *testing.T) {
 }
 
 func TestDecodeKillmailSubmissionRejectsTrailingJSON(t *testing.T) {
-	_, err := decodeKillmailSubmission(strings.NewReader(`{} {}`))
+	_, err := decodeJSONBody[killmailSubmissionBody](
+		&legacyRequest{Body: strings.NewReader(`{} {}`)},
+		killmailSubmissionBodyLimit,
+	)
 	var apiErr *legacyAPIError
 	if !errors.As(err, &apiErr) || apiErr.Status != 400 {
 		t.Fatalf("error = %#v, want API 400", err)
