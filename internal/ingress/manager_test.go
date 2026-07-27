@@ -128,7 +128,7 @@ func TestCatchAllWithoutSocketIsAnExplicit404(t *testing.T) {
 	}
 
 	last := lastRoute(t, cfg)
-	handler := firstHandler(t, last)
+	handler := originHandler(t, last)
 	if got := handler["handler"]; got != "static_response" {
 		t.Fatalf("catch-all handler = %v, want static_response", got)
 	}
@@ -147,7 +147,7 @@ func TestCatchAllWithSocketProxiesOverUnix(t *testing.T) {
 		t.Fatalf("buildConfig: %v", err)
 	}
 
-	handler := firstHandler(t, lastRoute(t, built))
+	handler := originHandler(t, lastRoute(t, built))
 	if got := handler["handler"]; got != "reverse_proxy" {
 		t.Fatalf("catch-all handler = %v, want reverse_proxy", got)
 	}
@@ -177,6 +177,25 @@ func TestEveryRouteIsTerminal(t *testing.T) {
 		route := raw.(map[string]any)
 		if terminal, _ := route["terminal"].(bool); !terminal {
 			t.Errorf("route %d is not terminal: %+v", i, route)
+		}
+	}
+}
+
+func TestEveryRouteStartsWithAccessLogger(t *testing.T) {
+	m := newTestManager(t, testConfig())
+
+	cfg, _, _, err := m.buildConfig()
+	if err != nil {
+		t.Fatalf("buildConfig: %v", err)
+	}
+	for i, raw := range allRoutes(t, cfg) {
+		route := raw.(map[string]any)
+		handlers := route["handle"].([]any)
+		if got := handlers[0].(map[string]any)["handler"]; got != "shrike_access_log" {
+			t.Errorf("route %d first handler = %v, want shrike_access_log", i, got)
+		}
+		if len(handlers) < 2 {
+			t.Errorf("route %d has an access logger but no origin handler", i)
 		}
 	}
 }
@@ -589,11 +608,11 @@ func lastRoute(t *testing.T, cfg map[string]any) map[string]any {
 	return routes[len(routes)-1].(map[string]any)
 }
 
-func firstHandler(t *testing.T, route map[string]any) map[string]any {
+func originHandler(t *testing.T, route map[string]any) map[string]any {
 	t.Helper()
 	handlers, ok := route["handle"].([]any)
-	if !ok || len(handlers) == 0 {
-		t.Fatalf("route has no handlers: %+v", route)
+	if !ok || len(handlers) < 2 {
+		t.Fatalf("route has no access and origin handlers: %+v", route)
 	}
-	return handlers[0].(map[string]any)
+	return handlers[len(handlers)-1].(map[string]any)
 }

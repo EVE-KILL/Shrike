@@ -12,6 +12,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 	"github.com/riverqueue/river/rivertype"
+	"github.com/rs/zerolog/log"
 )
 
 // CronConcurrency is how many scheduled jobs may run at once.
@@ -85,6 +86,7 @@ func New(opts Options) (*Client, error) {
 	var consuming []string
 	if opts.Workers != nil {
 		cfg.Workers = opts.Workers
+		cfg.Middleware = []rivertype.Middleware{newJobLogMiddleware(log.Logger)}
 		cfg.Queues = map[string]river.QueueConfig{}
 
 		for _, q := range selectQueues(opts.Queues) {

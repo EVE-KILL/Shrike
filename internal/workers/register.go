@@ -3,11 +3,13 @@ package workers
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/eve-kill/shrike/internal/cron"
 	"github.com/eve-kill/shrike/internal/jobs"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/riverqueue/river"
+	"github.com/rs/zerolog"
 )
 
 // registration pairs a queue with the worker that consumes it.
@@ -121,9 +123,45 @@ func Register(d *Deps) (*river.Workers, *cron.Registry, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	river.AddWorker(w, &cron.Worker{Registry: registry, Redis: d.Redis})
+	river.AddWorker(w, newCronWorker(d, registry))
 
 	return w, registry, nil
+}
+
+func newCronWorker(d *Deps, registry *cron.Registry) *cron.Worker {
+	cronLog := d.Log.With().Str("component", "cron").Logger()
+	return &cron.Worker{
+		Registry: registry,
+		Redis:    d.Redis,
+		OnStart: func(name string) {
+			cronLog.Info().Str("cron", name).Msg("cron started")
+		},
+		OnRun: func(run cron.Run) {
+			logCronRun(cronLog, run)
+		},
+	}
+}
+
+func logCronRun(logger zerolog.Logger, run cron.Run) {
+	var event *zerolog.Event
+	if run.Err != nil {
+		event = logger.Error().Err(run.Err)
+	} else {
+		event = logger.Info()
+	}
+	event.Str("cron", run.Name).Dur("duration", run.Elapsed)
+	if report := strings.TrimSpace(run.Report); report != "" {
+		event.Str("report", report)
+	}
+
+	switch {
+	case run.Skipped:
+		event.Msg("cron skipped")
+	case run.Err != nil:
+		event.Msg("cron failed")
+	default:
+		event.Msg("cron completed")
+	}
 }
 
 // ImplementedQueues returns the declared queues that have a worker.

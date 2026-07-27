@@ -1,11 +1,17 @@
 package workers
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/eve-kill/shrike/internal/cron"
 	"github.com/eve-kill/shrike/internal/jobs"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/rs/zerolog"
 )
 
 // What is and is not ported has to be stated accurately, because the failure it
@@ -52,6 +58,73 @@ func TestRegisterAddsAWorkerForEveryKind(t *testing.T) {
 	// panics on a duplicate kind, which is the failure worth catching.
 	if len(registrations) == 0 {
 		t.Fatal("no workers are registered at all")
+	}
+}
+
+func TestCronRunLogIncludesOutcomeAndReport(t *testing.T) {
+	boom := errors.New("upstream unavailable")
+	for _, tc := range []struct {
+		name      string
+		run       cron.Run
+		wantLevel string
+		wantMsg   string
+	}{
+		{
+			name: "completed",
+			run: cron.Run{
+				Name:    "analyze",
+				Report:  "planner statistics updated",
+				Elapsed: 2 * time.Second,
+			},
+			wantLevel: "info",
+			wantMsg:   "cron completed",
+		},
+		{
+			name: "skipped",
+			run: cron.Run{
+				Name:    "wars",
+				Report:  "Tranquility is offline",
+				Skipped: true,
+			},
+			wantLevel: "info",
+			wantMsg:   "cron skipped",
+		},
+		{
+			name: "failed",
+			run: cron.Run{
+				Name:    "insurance",
+				Report:  "download failed",
+				Elapsed: time.Second,
+				Err:     boom,
+			},
+			wantLevel: "error",
+			wantMsg:   "cron failed",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			logCronRun(zerolog.New(&output), tc.run)
+
+			var record map[string]any
+			if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); err != nil {
+				t.Fatalf("decode log %q: %v", output.String(), err)
+			}
+			if got := record["level"]; got != tc.wantLevel {
+				t.Errorf("level = %v, want %q", got, tc.wantLevel)
+			}
+			if got := record["message"]; got != tc.wantMsg {
+				t.Errorf("message = %v, want %q", got, tc.wantMsg)
+			}
+			if got := record["cron"]; got != tc.run.Name {
+				t.Errorf("cron = %v, want %q", got, tc.run.Name)
+			}
+			if got := record["report"]; got != tc.run.Report {
+				t.Errorf("report = %v, want %q", got, tc.run.Report)
+			}
+			if tc.run.Err != nil && record["error"] != tc.run.Err.Error() {
+				t.Errorf("error = %v, want %q", record["error"], tc.run.Err)
+			}
+		})
 	}
 }
 

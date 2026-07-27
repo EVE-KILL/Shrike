@@ -32,6 +32,9 @@ type Worker struct {
 	Registry *Registry
 	Redis    *redis.Client
 
+	// OnStart is called immediately before a valid scheduled run. Optional.
+	OnStart func(name string)
+
 	// OnRun is called after each run, for logging. Optional.
 	OnRun func(Run)
 }
@@ -52,6 +55,10 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[queue.CronArgs]) error
 	handler, ok := w.Registry.Lookup(name)
 	if !ok {
 		return river.JobCancel(fmt.Errorf("cron %q has no implementation", name))
+	}
+
+	if w.OnStart != nil {
+		w.OnStart(name)
 	}
 
 	// A TQ-dependent job during a downtime is skipped, not failed. Failing it

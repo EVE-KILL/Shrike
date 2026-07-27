@@ -315,12 +315,22 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	var routes []any
 	var status []RouteStatus
 
+	loggedHandlers := func(handler map[string]any) []any {
+		return []any{
+			map[string]any{"handler": "shrike_access_log"},
+			handler,
+		}
+	}
+
 	surfaceRoute := func(match map[string]any, describe, surface string) error {
 		if _, ok := m.surfaces[surface]; !ok {
 			return fmt.Errorf("surface %q is routed but not registered", surface)
 		}
 		route := map[string]any{
-			"handle":   []any{map[string]any{"handler": "shrike", "surface": surface}},
+			"handle": loggedHandlers(map[string]any{
+				"handler": "shrike",
+				"surface": surface,
+			}),
 			"terminal": true,
 		}
 		if match != nil {
@@ -368,23 +378,23 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	// developer nothing at all.
 	if socket := strings.TrimSpace(cfg.NuxtSocket); socket != "" {
 		routes = append(routes, map[string]any{
-			"handle": []any{map[string]any{
+			"handle": loggedHandlers(map[string]any{
 				"handler": "reverse_proxy",
 				"upstreams": []any{map[string]any{
 					"dial": "unix/" + socket,
 				}},
-			}},
+			}),
 			"terminal": true,
 		})
 		status = append(status, RouteStatus{Match: "(default)", Surface: "nuxt:" + socket})
 	} else {
 		routes = append(routes, map[string]any{
-			"handle": []any{map[string]any{
+			"handle": loggedHandlers(map[string]any{
 				"handler":     "static_response",
 				"status_code": 404,
 				"headers":     map[string]any{"Content-Type": []string{"text/plain; charset=utf-8"}},
 				"body":        "no renderer configured\n",
-			}},
+			}),
 			"terminal": true,
 		})
 		status = append(status, RouteStatus{Match: "(default)", Surface: "404 — no renderer configured"})

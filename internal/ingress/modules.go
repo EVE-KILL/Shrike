@@ -22,6 +22,7 @@ import (
 
 func init() {
 	caddy.RegisterModule(shrikeHandler{})
+	caddy.RegisterModule(accessLogHandler{})
 }
 
 // shrikeHandler hands a request to one of Shrike's surfaces.
