@@ -38,6 +38,39 @@ check-api-client: gen-api-client
 run:
 	go run $(PKG) $(ARGS)
 
+# Development stack: air rebuilds Go, `nuxt dev` serves the frontend, and Caddy
+# fronts both on DEV_PORT.
+#
+# The two run as siblings rather than parent and child. If shrike supervised the
+# development server, every Go rebuild would kill Vite — losing hot module
+# replacement state and paying a cold Nuxt start on each edit. Air restarts the
+# Go binary alone and Caddy re-attaches to the renderer that stayed up.
+#
+# Server-side rendering reaches Go on DEV_API_PORT rather than the production
+# Unix socket. `nuxt dev` runs under Node, and Node's fetch ignores the `unix`
+# request option that Bun implements and that web/shared/utils/serverApi.ts
+# uses, so a socket would resolve shrike.internal through DNS and fail. The
+# listener is loopback-only and serves the same handler.
+DEV_PORT     ?= 4001
+DEV_NUXT_PORT?= 3000
+DEV_API_PORT ?= 4002
+
+.PHONY: dev
+dev:
+	@command -v air >/dev/null || { \
+		echo "air is required: go install github.com/air-verse/air@latest" >&2; exit 1; }
+	@command -v bun >/dev/null || { echo "bun is required" >&2; exit 1; }
+	@echo "dev: https://localhost:$(DEV_PORT)  (nuxt :$(DEV_NUXT_PORT), ssr api :$(DEV_API_PORT))"
+	@NUXT_API_ORIGIN=http://127.0.0.1:$(DEV_API_PORT) \
+	NUXT_DEV_PROXY_PORT=$(DEV_PORT) \
+		bun --cwd=$(CURDIR)/web run dev \
+			--host 127.0.0.1 --port $(DEV_NUXT_PORT) & \
+	nuxt_pid=$$!; \
+	trap 'kill $$nuxt_pid 2>/dev/null' INT TERM EXIT; \
+	SHRIKE_DEV_RENDERER=127.0.0.1:$(DEV_NUXT_PORT) \
+	SHRIKE_DEV_API_ADDR=127.0.0.1:$(DEV_API_PORT) \
+	PORT=$(DEV_PORT) air
+
 .PHONY: test
 test:
 	go test ./...

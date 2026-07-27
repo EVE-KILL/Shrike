@@ -76,6 +76,83 @@ func TestRouteOrder(t *testing.T) {
 	}
 }
 
+// Development proxies the catch-all to a `nuxt dev` server over loopback,
+// because that server listens through listhen and cannot offer a socket. The
+// dial string is the only part of the route table that changes.
+func TestCatchAllDialsRendererSocketOrAddress(t *testing.T) {
+	for name, test := range map[string]struct {
+		cfg     Config
+		surface string
+		dial    string
+	}{
+		"socket": {
+			cfg:     Config{Address: "127.0.0.1:0", NuxtSocket: "/tmp/nuxt.sock"},
+			surface: "nuxt:/tmp/nuxt.sock",
+			dial:    "unix//tmp/nuxt.sock",
+		},
+		"address": {
+			cfg:     Config{Address: "127.0.0.1:0", NuxtAddress: "127.0.0.1:3000"},
+			surface: "nuxt-dev:127.0.0.1:3000",
+			dial:    "127.0.0.1:3000",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := newTestManager(t, test.cfg)
+			config, _, routes, err := m.buildConfig()
+			if err != nil {
+				t.Fatalf("buildConfig: %v", err)
+			}
+			last := routes[len(routes)-1]
+			if last.Match != "(default)" || last.Surface != test.surface {
+				t.Errorf("catch-all = %+v, want (default) → %s", last, test.surface)
+			}
+			if got := catchAllDial(t, config); got != test.dial {
+				t.Errorf("dial = %q, want %q", got, test.dial)
+			}
+		})
+	}
+}
+
+// Both set is a configuration mistake with no safe reading, so it is rejected
+// rather than resolved by precedence.
+func TestCatchAllRejectsSocketAndAddressTogether(t *testing.T) {
+	m := newTestManager(t, Config{
+		Address:     "127.0.0.1:0",
+		NuxtSocket:  "/tmp/nuxt.sock",
+		NuxtAddress: "127.0.0.1:3000",
+	})
+	_, _, _, err := m.buildConfig()
+	if err == nil {
+		t.Fatal("buildConfig accepted both a socket and an address")
+	}
+	if !strings.Contains(err.Error(), "NuxtSocket") ||
+		!strings.Contains(err.Error(), "NuxtAddress") {
+		t.Errorf("error %q does not name both fields", err)
+	}
+}
+
+// catchAllDial digs the upstream out of the generated Caddy JSON, so the test
+// asserts what Caddy is actually told rather than what Manager reports.
+func catchAllDial(t *testing.T, config map[string]any) string {
+	t.Helper()
+	apps := config["apps"].(map[string]any)
+	http := apps["http"].(map[string]any)
+	servers := http["servers"].(map[string]any)
+	server := servers["shrike"].(map[string]any)
+	routes := server["routes"].([]any)
+	last := routes[len(routes)-1].(map[string]any)
+	for _, handler := range last["handle"].([]any) {
+		entry := handler.(map[string]any)
+		if entry["handler"] != "reverse_proxy" {
+			continue
+		}
+		upstream := entry["upstreams"].([]any)[0].(map[string]any)
+		return upstream["dial"].(string)
+	}
+	t.Fatal("catch-all route has no reverse_proxy handler")
+	return ""
+}
+
 func TestGoOwnedPathsPrecedeNuxt(t *testing.T) {
 	m := newTestManager(t, testConfig())
 

@@ -1,4 +1,9 @@
-// Package unixhttp runs private HTTP surfaces over Unix domain sockets.
+// Package unixhttp runs private HTTP surfaces — listeners that carry
+// server-side rendering traffic and are never reachable from outside the host.
+//
+// Production uses a Unix domain socket, which is private by construction: it
+// has no port and no interface. Development uses a loopback port instead,
+// because `nuxt dev` runs under Node, whose fetch has no way to dial a socket.
 package unixhttp
 
 import (
@@ -13,10 +18,13 @@ import (
 	"time"
 )
 
-// Server is an HTTP server bound to one filesystem Unix socket.
+// Server is an HTTP server on one private listener.
 type Server struct {
-	http   *http.Server
+	http *http.Server
+	// socket is the filesystem path to unlink on Close. Empty for a loopback
+	// listener, which leaves nothing behind to clean up.
 	socket string
+	addr   string
 	done   chan struct{}
 
 	mu  sync.RWMutex
@@ -49,12 +57,50 @@ func Listen(socket string, handler http.Handler) (*Server, error) {
 		return nil, fmt.Errorf("secure Unix socket %s: %w", socket, err)
 	}
 
+	return serve(listener, socket, socket, handler), nil
+}
+
+// ListenLoopback binds a loopback TCP address and starts serving handler.
+//
+// This is the development counterpart to Listen. It refuses any address that
+// is not loopback: this listener carries the same authenticated surface as the
+// public one but without the edge in front of it, so binding it to a routable
+// interface would publish an unguarded copy of the whole site.
+func ListenLoopback(address string, handler http.Handler) (*Server, error) {
+	if handler == nil {
+		return nil, errors.New("private HTTP handler is required")
+	}
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, fmt.Errorf("private HTTP address must be host:port: %w", err)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || !ip.IsLoopback() {
+		return nil, fmt.Errorf(
+			"private HTTP address must be a loopback IP, got %q", host,
+		)
+	}
+
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return nil, fmt.Errorf("listen on %s: %w", address, err)
+	}
+	return serve(listener, "", listener.Addr().String(), handler), nil
+}
+
+func serve(
+	listener net.Listener,
+	socket string,
+	addr string,
+	handler http.Handler,
+) *Server {
 	server := &Server{
 		http: &http.Server{
 			Handler:           handler,
 			ReadHeaderTimeout: 10 * time.Second,
 		},
 		socket: socket,
+		addr:   addr,
 		done:   make(chan struct{}),
 	}
 	go func() {
@@ -67,12 +113,19 @@ func Listen(socket string, handler http.Handler) (*Server, error) {
 		server.mu.Unlock()
 		close(server.done)
 	}()
-	return server, nil
+	return server
 }
 
-// Socket returns the absolute socket path used by the server.
+// Socket returns the absolute socket path, or the empty string for a loopback
+// listener.
 func (s *Server) Socket() string {
 	return s.socket
+}
+
+// Addr returns the address the server is reachable at: a socket path, or a
+// resolved host:port.
+func (s *Server) Addr() string {
+	return s.addr
 }
 
 // Done closes if the private HTTP server stops.
@@ -95,6 +148,9 @@ func (s *Server) Close() error {
 	shutdownErr := s.http.Shutdown(ctx)
 	if errors.Is(shutdownErr, http.ErrServerClosed) {
 		shutdownErr = nil
+	}
+	if s.socket == "" {
+		return shutdownErr
 	}
 	if removeErr := os.Remove(s.socket); removeErr != nil && !os.IsNotExist(removeErr) {
 		if shutdownErr != nil {

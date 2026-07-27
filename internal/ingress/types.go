@@ -64,6 +64,17 @@ type Config struct {
 	// instead. That is the right shape for an API-only deployment and for
 	// tests, which should not need a renderer to assert on routing.
 	NuxtSocket string
+
+	// NuxtAddress is the host:port of an already-running `nuxt dev`, used
+	// instead of NuxtSocket during development.
+	//
+	// The dev server cannot offer a socket: it listens through listhen, whose
+	// options carry a port and a hostname and nothing else. Loopback costs
+	// nothing here — the socket exists in production so that the origin needs
+	// no second TCP listener, which is not a development concern.
+	//
+	// Set at most one of NuxtSocket and NuxtAddress.
+	NuxtAddress string
 }
 
 // ListenerStatus describes one bound listener for the status endpoint.

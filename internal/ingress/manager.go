@@ -376,17 +376,31 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	// unhandled request there is answered with an empty 200 — the single worst
 	// response available, since it tells a crawler the page exists and tells a
 	// developer nothing at all.
-	if socket := strings.TrimSpace(cfg.NuxtSocket); socket != "" {
+	socket := strings.TrimSpace(cfg.NuxtSocket)
+	address := strings.TrimSpace(cfg.NuxtAddress)
+	if socket != "" && address != "" {
+		return nil, nil, nil, errors.New(
+			"ingress: set at most one of NuxtSocket and NuxtAddress",
+		)
+	}
+	dial, describe := "", ""
+	switch {
+	case socket != "":
+		dial, describe = "unix/"+socket, "nuxt:"+socket
+	case address != "":
+		dial, describe = address, "nuxt-dev:"+address
+	}
+	if dial != "" {
 		routes = append(routes, map[string]any{
 			"handle": loggedHandlers(map[string]any{
 				"handler": "reverse_proxy",
 				"upstreams": []any{map[string]any{
-					"dial": "unix/" + socket,
+					"dial": dial,
 				}},
 			}),
 			"terminal": true,
 		})
-		status = append(status, RouteStatus{Match: "(default)", Surface: "nuxt:" + socket})
+		status = append(status, RouteStatus{Match: "(default)", Surface: describe})
 	} else {
 		routes = append(routes, map[string]any{
 			"handle": loggedHandlers(map[string]any{

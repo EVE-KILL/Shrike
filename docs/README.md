@@ -11,6 +11,8 @@ rules. It favors short, direct, and testable text.
 
 ## Operations
 
+- [Development](operations/development.md): Run the site locally with `make dev`,
+  and how it differs from production.
 - [Cloudflare image delivery](operations/cloudflare-image-delivery.md):
   Deferred image cache and origin fallback design.
 - [TLS](operations/tls.md): Local HTTPS and the planned Cloudflare origin TLS

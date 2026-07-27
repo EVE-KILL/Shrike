@@ -85,3 +85,51 @@ func TestListenRejectsUnsafePaths(t *testing.T) {
 		})
 	}
 }
+
+// The development listener carries the same authenticated surface as the public
+// one, without the edge in front of it. Binding it anywhere routable would
+// publish an unguarded copy of the whole site, so a non-loopback address is
+// refused rather than accepted with a warning.
+func TestListenLoopbackRejectsRoutableAddresses(t *testing.T) {
+	handler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
+	for _, address := range []string{
+		"0.0.0.0:0", "192.168.1.10:0", "::0", "example.test:80", "4002",
+	} {
+		if server, err := ListenLoopback(address, handler); err == nil {
+			_ = server.Close()
+			t.Errorf("ListenLoopback(%q) was accepted", address)
+		}
+	}
+}
+
+func TestListenLoopbackServesAndLeavesNoSocket(t *testing.T) {
+	server, err := ListenLoopback("127.0.0.1:0", http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.WriteString(w, r.URL.RequestURI())
+		},
+	))
+	if err != nil {
+		t.Fatalf("ListenLoopback: %v", err)
+	}
+	if server.Socket() != "" {
+		t.Errorf("Socket() = %q, want empty for a loopback listener", server.Socket())
+	}
+
+	response, err := http.Get("http://" + server.Addr() + "/site")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer response.Body.Close() //nolint:errcheck
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if string(body) != "/site" {
+		t.Errorf("body = %q, want %q", body, "/site")
+	}
+
+	// Close must not fail trying to unlink a socket that never existed.
+	if err := server.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+}

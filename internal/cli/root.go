@@ -113,6 +113,7 @@ func init() {
 
 	rootCmd.AddCommand(
 		serveCmd,
+		devCmd,
 		versionCmd,
 		doctorCmd,
 		configCmd,
