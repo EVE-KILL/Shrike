@@ -3,6 +3,11 @@
 
 export type ParamType = 'int' | 'string' | 'date' | 'enum' | 'entity'
 
+// The generated document covers the whole API, not just the read surface the
+// hand-maintained index described, so every method the routes register has to
+// render.
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
 export type EntityKind =
     | 'character'
     | 'corporation'
@@ -48,7 +53,7 @@ export interface ApiExample {
 }
 
 export interface ApiEndpoint {
-    method: 'GET' | 'POST'
+    method: HttpMethod
     path: string
     summary: string
     description?: string
@@ -58,6 +63,11 @@ export interface ApiEndpoint {
     examples?: ApiExample[]
     notes?: string
     returns?: string
+    // Present when the endpoint came from the OpenAPI document. The operation
+    // ID is the stable anchor for deep links; tags drive sidebar placement.
+    operationId?: string
+    tags?: string[]
+    deprecated?: boolean
 }
 
 export interface ApiCategory {
@@ -80,7 +90,7 @@ export interface ApiIndex {
  * Missing values are kept as-is so the user sees what's still required.
  */
 export function fillPath(path: string, values: Record<string, string | number>): string {
-    return path.replace(/:([a-zA-Z]+)/g, (_, name) => {
+    return path.replace(/:([A-Za-z0-9_]+)/g, (_, name) => {
         const v = values[name]
         return v != null && v !== '' ? String(v) : `:${name}`
     })
@@ -119,6 +129,9 @@ export function buildCurl(
     if (endpoint.method === 'GET') {
         return `curl '${url}'`
     }
+    if (!endpoint.body) {
+        return `curl -X ${endpoint.method} '${url}'`
+    }
     const body = JSON.stringify(bodyValue ?? {})
-    return `curl -X POST '${url}' \\\n  -H 'Content-Type: application/json' \\\n  -d '${body.replace(/'/g, `'\\''`)}'`
+    return `curl -X ${endpoint.method} '${url}' \\\n  -H 'Content-Type: application/json' \\\n  -d '${body.replace(/'/g, `'\\''`)}'`
 }

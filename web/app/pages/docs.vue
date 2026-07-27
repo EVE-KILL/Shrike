@@ -1,79 +1,103 @@
 <script setup lang="ts">
-import type { ApiIndex, ApiCategory } from '~/composables/apiDocs'
+import type { ApiEndpoint } from '~/composables/apiDocs'
+import { buildDocsModel, type DocsModel, type DocsTag } from '~/composables/openapiDocs'
 
 useHead({ title: 'API Documentation' })
 useSeoMeta({
-    description: 'Browse and test the EVE-KILL public REST API. Self-describing, JSON, CORS-open. Includes killmails, characters, corporations, alliances, ships, battles, wars, leaderboards, search, and the full SDE.',
+    description: 'Browse and test the EVE-KILL API. Self-describing, JSON, CORS-open. Killmails, characters, corporations, alliances, ships, battles, wars, leaderboards, search, and the full SDE.',
     ogTitle: 'API Documentation — EVE-KILL',
-    ogDescription: 'Interactive explorer for the EVE-KILL public API.',
+    ogDescription: 'Interactive explorer for the EVE-KILL API.',
 })
 
 const config = useRuntimeConfig()
-const baseUrl = ref<string>(config.public.publicApiUrl || 'https://eve-kill.com/api')
+const baseUrl = ref<string>(config.public.publicApiUrl || '/api')
 
-const index = ref<ApiIndex | null>(null)
+const model = ref<DocsModel | null>(null)
 const loading = ref(true)
 const loadError = ref<string | null>(null)
 
-const loadIndex = async () => {
+const loadSpec = async () => {
     loading.value = true
     loadError.value = null
     try {
-        const data = await apiFetch<ApiIndex>(`${baseUrl.value}/`)
-        index.value = data
-        // Trust the API's own self-reported baseUrl over our default — that
-        // way switching the env override or pointing at localhost works
-        // without code changes.
-        if (data.baseUrl) baseUrl.value = data.baseUrl
+        const doc = await $fetch<any>(`${baseUrl.value}/openapi.json`)
+        model.value = buildDocsModel(doc)
     } catch (e: any) {
-        loadError.value = e?.message ?? 'Failed to load API index'
+        loadError.value = e?.message ?? 'Failed to load the API document'
     } finally {
         loading.value = false
     }
 }
 
-// Client-side only — we want devs to see the real public URLs in their
-// network tab, not pre-rendered SSR markup.
-onMounted(loadIndex)
+// Client-side only, matching the previous page: developers should see the real
+// request in their network tab rather than markup rendered on the server.
+onMounted(loadSpec)
 
 const search = ref('')
+const activeTag = ref<string | null>(null)
 
-const filteredCategories = computed<ApiCategory[]>(() => {
-    if (!index.value) return []
-    if (!search.value.trim()) return index.value.categories
-    const q = search.value.toLowerCase()
-    return index.value.categories
-        .map(cat => ({
-            ...cat,
-            endpoints: cat.endpoints.filter(e =>
-                e.path.toLowerCase().includes(q)
-                || e.summary.toLowerCase().includes(q)
-                || (e.description?.toLowerCase().includes(q) ?? false),
-            ),
+/** Groups filtered by the search box. Empty tags and groups drop out. */
+const groups = computed(() => {
+    if (!model.value) return []
+    const query = search.value.trim().toLowerCase()
+    if (!query) return model.value.groups
+
+    const matches = (endpoint: ApiEndpoint) =>
+        endpoint.path.toLowerCase().includes(query)
+        || endpoint.summary.toLowerCase().includes(query)
+        || endpoint.method.toLowerCase() === query
+        || (endpoint.description?.toLowerCase().includes(query) ?? false)
+
+    return model.value.groups
+        .map(group => ({
+            ...group,
+            tags: group.tags
+                .map(tag => ({ ...tag, endpoints: tag.endpoints.filter(matches) }))
+                .filter(tag => tag.endpoints.length > 0),
         }))
-        .filter(cat => cat.endpoints.length > 0)
+        .filter(group => group.tags.length > 0)
 })
 
-const totalEndpoints = computed(() =>
-    filteredCategories.value.reduce((sum, c) => sum + c.endpoints.length, 0),
+const visibleCount = computed(() =>
+    groups.value.reduce(
+        (sum, group) => sum + group.tags.reduce((n, tag) => n + tag.endpoints.length, 0),
+        0,
+    ),
 )
 
-const scrollToCategory = (key: string) => {
-    const el = document.getElementById(`cat-${key}`)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+// Collapsed by default: 441 endpoints expanded at once is not navigation, it
+// is a wall. Searching opens everything that matched instead.
+const openGroups = ref<Set<string>>(new Set())
+const toggleGroup = (name: string) => {
+    const next = new Set(openGroups.value)
+    next.has(name) ? next.delete(name) : next.add(name)
+    openGroups.value = next
 }
+const isOpen = (name: string) => Boolean(search.value.trim()) || openGroups.value.has(name)
+
+const selectTag = (tag: DocsTag) => {
+    activeTag.value = tag.name
+    nextTick(() => {
+        document.getElementById(`tag-${tag.name}`)?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        })
+    })
+}
+
+const tagSlug = (name: string) => name.replace(/\s+/g, '-')
 </script>
 
 <template>
-    <div class="max-w-6xl mx-auto py-4 px-2">
+    <div class="max-w-7xl mx-auto py-4 px-2">
         <!-- Header -->
         <div class="glass-panel backdrop-blur-sm p-6 md:p-8 mb-6">
             <div class="flex items-start justify-between gap-4 flex-wrap">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold text-white">API Documentation</h1>
                     <p class="text-sm text-gray-400 mt-2 max-w-2xl">
-                        Public read-only API powering eve-kill.com. JSON, CORS-open, no auth required.
-                        Click any endpoint to expand it, fill in the parameters, and hit
+                        The API powering eve-kill.com. JSON, CORS-open, and read endpoints need no
+                        authentication. Click any endpoint to expand it, fill in the parameters, and hit
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-medium align-middle">
                             <Icon name="lucide:play" class="text-[10px]" />
                             Try it
@@ -81,11 +105,16 @@ const scrollToCategory = (key: string) => {
                         — requests fire straight against the live API.
                     </p>
                 </div>
-                <div v-if="!loading && index" class="text-xs text-gray-500 text-right">
-                    <div>{{ index.name }}</div>
-                    <div class="text-gray-600">v{{ index.version }}</div>
-                    <a :href="baseUrl" target="_blank" rel="noopener" class="font-mono text-blue-400/80 hover:text-blue-300 transition-colors">
-                        {{ baseUrl }}
+                <div v-if="!loading && model" class="text-xs text-gray-500 text-right">
+                    <div>{{ model.title }}</div>
+                    <div class="text-gray-600">v{{ model.version }}</div>
+                    <a
+                        :href="`${baseUrl}/openapi.json`"
+                        target="_blank"
+                        rel="noopener"
+                        class="font-mono text-blue-400/80 hover:text-blue-300 transition-colors"
+                    >
+                        openapi.json
                     </a>
                 </div>
             </div>
@@ -94,7 +123,7 @@ const scrollToCategory = (key: string) => {
         <!-- Loading -->
         <div v-if="loading" class="rounded-lg border border-white/[0.08] bg-white/[0.02] p-8 text-center">
             <Icon name="lucide:loader-2" class="text-2xl text-blue-400 animate-spin" />
-            <div class="text-sm text-gray-500 mt-3">Loading API index from {{ baseUrl }}…</div>
+            <div class="text-sm text-gray-500 mt-3">Loading the API document…</div>
         </div>
 
         <!-- Error -->
@@ -102,11 +131,11 @@ const scrollToCategory = (key: string) => {
             <div class="flex gap-3 items-start">
                 <Icon name="lucide:alert-triangle" class="text-red-400 text-xl flex-shrink-0 mt-0.5" />
                 <div class="flex-1">
-                    <div class="text-sm text-red-300 font-medium">Failed to load API index</div>
+                    <div class="text-sm text-red-300 font-medium">Failed to load the API document</div>
                     <div class="text-xs text-red-300/70 mt-1">{{ loadError }}</div>
                     <button
                         class="mt-3 text-xs px-3 py-1.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/30 transition-colors"
-                        @click="loadIndex"
+                        @click="loadSpec"
                     >
                         Retry
                     </button>
@@ -115,10 +144,9 @@ const scrollToCategory = (key: string) => {
         </div>
 
         <!-- Loaded -->
-        <div v-else-if="index" class="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
-            <!-- Sidebar nav (sticky) -->
-            <aside class="lg:sticky lg:top-4 lg:self-start space-y-4">
-                <!-- Search -->
+        <div v-else-if="model" class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
+            <!-- Sidebar -->
+            <aside class="lg:sticky lg:top-4 lg:self-start space-y-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
                 <div class="relative">
                     <Icon name="lucide:search" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none" />
                     <input
@@ -129,46 +157,74 @@ const scrollToCategory = (key: string) => {
                     >
                 </div>
 
-                <!-- Category list -->
                 <nav class="space-y-1">
                     <div class="text-[10px] uppercase tracking-wider text-gray-600 px-2 mb-1">
-                        {{ totalEndpoints }} endpoints
+                        {{ visibleCount }} of {{ model.total }} endpoints
                     </div>
-                    <button
-                        v-for="cat in filteredCategories"
-                        :key="cat.key"
-                        class="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs text-gray-400 hover:text-blue-300 hover:bg-blue-500/[0.06] transition-colors text-left"
-                        @click="scrollToCategory(cat.key)"
-                    >
-                        <span class="truncate">{{ cat.label }}</span>
-                        <span class="text-[10px] text-gray-600 font-mono flex-shrink-0">{{ cat.endpoints.length }}</span>
-                    </button>
-                    <div v-if="filteredCategories.length === 0" class="text-xs text-gray-600 px-2 py-3 text-center">
+
+                    <div v-for="group in groups" :key="group.name">
+                        <button
+                            class="w-full flex items-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium text-gray-300 hover:text-white hover:bg-white/[0.04] transition-colors text-left"
+                            @click="toggleGroup(group.name)"
+                        >
+                            <Icon
+                                :name="isOpen(group.name) ? 'lucide:chevron-down' : 'lucide:chevron-right'"
+                                class="text-[10px] flex-shrink-0 text-gray-500"
+                            />
+                            <span class="truncate flex-1">{{ group.name }}</span>
+                            <span class="text-[10px] text-gray-600 font-mono flex-shrink-0">
+                                {{ group.tags.reduce((n, t) => n + t.endpoints.length, 0) }}
+                            </span>
+                        </button>
+
+                        <div v-if="isOpen(group.name)" class="ml-3 pl-2 border-l border-white/[0.06] space-y-0.5 mt-0.5 mb-1">
+                            <button
+                                v-for="tag in group.tags"
+                                :key="tag.name"
+                                class="w-full flex items-center justify-between gap-2 px-2 py-1 rounded text-xs transition-colors text-left"
+                                :class="activeTag === tag.name
+                                    ? 'text-blue-300 bg-blue-500/[0.08]'
+                                    : 'text-gray-400 hover:text-blue-300 hover:bg-blue-500/[0.06]'"
+                                @click="selectTag(tag)"
+                            >
+                                <span class="truncate">{{ tag.name }}</span>
+                                <span class="text-[10px] text-gray-600 font-mono flex-shrink-0">{{ tag.endpoints.length }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="groups.length === 0" class="text-xs text-gray-600 px-2 py-3 text-center">
                         No endpoints match
                     </div>
                 </nav>
             </aside>
 
-            <!-- Main: categories + endpoints -->
-            <main class="space-y-8 min-w-0">
-                <section
-                    v-for="cat in filteredCategories"
-                    :id="`cat-${cat.key}`"
-                    :key="cat.key"
-                    class="scroll-mt-4"
-                >
-                    <div class="mb-3">
-                        <h2 class="text-xl font-semibold text-white">{{ cat.label }}</h2>
-                        <p v-if="cat.description" class="text-xs text-gray-500 mt-1">{{ cat.description }}</p>
-                    </div>
-                    <div class="space-y-2">
-                        <ApiDocsEndpoint
-                            v-for="ep in cat.endpoints"
-                            :key="`${ep.method} ${ep.path}`"
-                            :endpoint="ep"
-                            :base-url="baseUrl"
-                        />
-                    </div>
+            <!-- Main -->
+            <main class="space-y-10 min-w-0">
+                <section v-for="group in groups" :key="group.name" class="space-y-8">
+                    <h2 class="text-2xl font-bold text-white border-b border-white/[0.08] pb-2">
+                        {{ group.name }}
+                    </h2>
+
+                    <section
+                        v-for="tag in group.tags"
+                        :id="`tag-${tag.name}`"
+                        :key="tag.name"
+                        class="scroll-mt-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-lg font-semibold text-white capitalize">{{ tag.name }}</h3>
+                            <p v-if="tag.description" class="text-xs text-gray-500 mt-1">{{ tag.description }}</p>
+                        </div>
+                        <div class="space-y-2">
+                            <ApiDocsEndpoint
+                                v-for="ep in tag.endpoints"
+                                :key="`${ep.method} ${ep.path}`"
+                                :endpoint="ep"
+                                :base-url="baseUrl"
+                            />
+                        </div>
+                    </section>
                 </section>
             </main>
         </div>

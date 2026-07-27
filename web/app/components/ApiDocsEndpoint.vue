@@ -121,7 +121,9 @@ const tryIt = async () => {
 
     try {
         const init: RequestInit = { method: props.endpoint.method }
-        if (props.endpoint.method === 'POST') {
+        // Any method that declares a JSON body sends one, not POST alone —
+        // the document also carries PUT and PATCH routes.
+        if (props.endpoint.body) {
             init.headers = { 'Content-Type': 'application/json' }
             init.body = bodyValueText.value || '{}'
         }
@@ -145,16 +147,24 @@ const copyUrl = async () => {
     try { await navigator.clipboard.writeText(previewUrl.value) } catch { /* ignore */ }
 }
 
+// One colour per verb, so a wall of endpoints is scannable by shape. Deletes
+// are red because they are the ones worth pausing over before Try it.
+const METHOD_CLASSES: Record<string, string> = {
+    GET: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    POST: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    PUT: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    PATCH: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
+    DELETE: 'bg-red-500/10 text-red-400 border-red-500/20',
+}
+
 const methodClass = computed(() =>
-    props.endpoint.method === 'GET'
-        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-        : 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    METHOD_CLASSES[props.endpoint.method] ?? METHOD_CLASSES.GET!,
 )
 
 // Render path with named params highlighted.
 const pathSegments = computed(() => {
     const parts: { type: 'literal' | 'param'; value: string }[] = []
-    const regex = /(:[a-zA-Z]+)|([^:]+)/g
+    const regex = /(:[A-Za-z0-9_]+)|([^:]+)/g
     let m: RegExpExecArray | null
     while ((m = regex.exec(props.endpoint.path)) !== null) {
         if (m[1]) parts.push({ type: 'param', value: m[1] })
