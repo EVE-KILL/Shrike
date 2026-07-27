@@ -51,6 +51,27 @@ that Bun implements. dev serves the same handler on `127.0.0.1:4002` and sets
 top-level `entry` also replaces the entry that `nuxt dev` needs, which stops
 the development server from reporting its address to its parent.
 
+## Build cache
+
+`air` builds through `scripts/air-build.sh`. The script sets `GOCACHE` to
+`.data/go-build`, so rebuilds do not enter the shared Go cache.
+
+A cold build writes about 935 MiB. Each rebuild after that adds about 25 MiB.
+
+The script measures the cache after each build. Above 8 GiB it runs `go clean
+-cache`, and the next build is a full rebuild. A cold cache reaches that limit
+after about 290 rebuilds.
+
+Set `SHRIKE_AIR_CACHE_MAX_KIB` to change the limit. Set `SHRIKE_AIR_GOCACHE` to
+move the cache.
+
+```sh
+make dev SHRIKE_AIR_CACHE_MAX_KIB=16777216
+```
+
+`.data/` is not tracked, so the cache never enters a commit. Delete
+`.data/go-build` to reclaim the space at any time.
+
 ## Change the ports
 
 Set `DEV_PORT`, `DEV_NUXT_PORT`, or `DEV_API_PORT`:

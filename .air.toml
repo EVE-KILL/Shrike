@@ -10,7 +10,9 @@ root = "."
 tmp_dir = ".data/air"
 
 [build]
-  cmd = "go build -o .data/air/shrike ./cmd/shrike"
+  # The script exists to bound the Go build cache, which Air would otherwise
+  # grow without limit over a long session. See scripts/air-build.sh.
+  cmd = "./scripts/air-build.sh"
   bin = ".data/air/shrike"
   args_bin = ["dev"]
   include_ext = ["go"]
