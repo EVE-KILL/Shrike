@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/images"
@@ -22,11 +23,14 @@ allocate its large in-memory response cache.`,
 }
 
 var (
-	flagImagesSource        string
-	flagImagesArchive       string
-	flagImagesConcurrency   int
-	flagTypeSyncArchive     string
-	flagTypeSyncConcurrency int
+	flagImagesSource         string
+	flagImagesArchive        string
+	flagImagesConcurrency    int
+	flagOldImagesCacheDir    string
+	flagOldImagesConcurrency int
+	flagOldImagesForce       bool
+	flagTypeSyncArchive      string
+	flagTypeSyncConcurrency  int
 )
 
 var imagesImportStaticCmd = &cobra.Command{
@@ -58,8 +62,8 @@ var imagesImportOldCharactersCmd = &cobra.Command{
 	Use:   "import-old-characters",
 	Short: "Upload the static EVE Ref legacy portrait archive to B2",
 	Long: `Downloads OldCharPortraits_256.zip from EVE Ref, or reads --archive,
-and uploads each portrait under its sharded B2 key. The import is resumable:
-objects whose stored SHA-256 matches are skipped.`,
+and uploads each portrait under its sharded B2 key. Remote downloads resume
+from the local cache, and completed B2 shards are skipped on restart.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		store, err := openImageStore()
 		if err != nil {
@@ -72,8 +76,11 @@ objects whose stored SHA-256 matches are skipped.`,
 			flagImagesArchive,
 			&http.Client{},
 			images.ImportOptions{
-				Concurrency: flagImagesConcurrency,
-				Progress:    reportImageProgress,
+				Concurrency:      flagOldImagesConcurrency,
+				CacheDirectory:   flagOldImagesCacheDir,
+				Force:            flagOldImagesForce,
+				Progress:         reportImageProgress,
+				DownloadProgress: reportImageDownloadProgress,
 			},
 		)
 		if err != nil {
@@ -155,6 +162,22 @@ func reportImageProgress(result images.ImportResult) {
 	)
 }
 
+func reportImageDownloadProgress(completed, total int64) {
+	if ui.JSONMode {
+		return
+	}
+	percentage := 0.0
+	if total > 0 {
+		percentage = float64(completed) / float64(total) * 100
+	}
+	ui.Printf(
+		"  Archive %s / %s  %.1f%%\r",
+		formatBytes(completed),
+		formatBytes(total),
+		percentage,
+	)
+}
+
 func reportImageImport(
 	name string,
 	result images.ImportResult,
@@ -213,10 +236,22 @@ func init() {
 		"Local archive path or URL (default: EVE Ref)",
 	)
 	imagesImportOldCharactersCmd.Flags().IntVar(
-		&flagImagesConcurrency,
+		&flagOldImagesConcurrency,
 		"concurrency",
-		8,
+		64,
 		"Concurrent B2 uploads",
+	)
+	imagesImportOldCharactersCmd.Flags().StringVar(
+		&flagOldImagesCacheDir,
+		"cache-dir",
+		filepath.Join(".data", "images"),
+		"Directory for the resumable archive download",
+	)
+	imagesImportOldCharactersCmd.Flags().BoolVar(
+		&flagOldImagesForce,
+		"force",
+		false,
+		"Re-upload all portraits even when completion markers match",
 	)
 	imagesSyncTypesCmd.Flags().StringVar(
 		&flagTypeSyncArchive,

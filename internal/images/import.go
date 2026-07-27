@@ -6,21 +6,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"mime"
-	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
-	"sync"
 	"sync/atomic"
 
 	"github.com/eve-kill/shrike/internal/objectstore"
 	"golang.org/x/sync/errgroup"
 )
-
-const OldCharacterArchiveURL = "https://data.everef.net/ccp/portraits/OldCharPortraits_256.zip"
 
 type ImportResult struct {
 	Scanned  int64 `json:"scanned"`
@@ -30,8 +24,11 @@ type ImportResult struct {
 }
 
 type ImportOptions struct {
-	Concurrency int
-	Progress    func(ImportResult)
+	Concurrency      int
+	CacheDirectory   string
+	Force            bool
+	Progress         func(ImportResult)
+	DownloadProgress func(completed, total int64)
 }
 
 type importObject struct {
@@ -45,8 +42,6 @@ type localImportObject struct {
 	Key         string
 	ContentType string
 }
-
-var oldPortraitName = regexp.MustCompile(`^([0-9]+)_256\.jpg$`)
 
 // ImportStaticTree uploads the checked-in image-server assets that are not
 // supplied by the TurtleTools release: maps, UI icons, Dust 514 images, and
@@ -124,117 +119,6 @@ func ImportStaticTree(
 		}
 	}
 	return importLocalObjects(ctx, store, objects, options)
-}
-
-// ImportOldCharacters downloads or opens the static EVE Ref archive and
-// uploads individual portraits. The archive is never held in memory and the
-// operation is safe to restart: object SHA-256 metadata suppresses unchanged
-// writes.
-func ImportOldCharacters(
-	ctx context.Context,
-	store ObjectStore,
-	source string,
-	client *http.Client,
-	options ImportOptions,
-) (ImportResult, error) {
-	if store == nil {
-		return ImportResult{}, unavailable()
-	}
-	if source == "" {
-		source = OldCharacterArchiveURL
-	}
-	archivePath, cleanup, err := materializeArchive(ctx, source, client)
-	if err != nil {
-		return ImportResult{}, err
-	}
-	defer cleanup()
-
-	archive, err := zip.OpenReader(archivePath)
-	if err != nil {
-		return ImportResult{}, fmt.Errorf("open old portrait archive: %w", err)
-	}
-	defer archive.Close()
-
-	concurrency := options.Concurrency
-	if concurrency <= 0 {
-		concurrency = 8
-	}
-	group, groupCtx := errgroup.WithContext(ctx)
-	files := make(chan *zip.File, concurrency)
-	var result ImportResult
-	var resultMu sync.Mutex
-	for range concurrency {
-		group.Go(func() error {
-			for file := range files {
-				body, err := readZipFile(file, 8<<20)
-				if err != nil {
-					return err
-				}
-				base := filepath.Base(filepath.ToSlash(file.Name))
-				key := ""
-				if base == "missing_256.jpg" {
-					key = "oldcharacters/missing_256.jpg"
-				} else if match := oldPortraitName.FindStringSubmatch(base); match != nil {
-					id := match[1]
-					padded := strings.Repeat("0", max(0, 2-len(id))) + id
-					key = fmt.Sprintf(
-						"oldcharacters/%s/%s/%s",
-						padded[len(padded)-2:len(padded)-1],
-						padded[len(padded)-1:],
-						base,
-					)
-				}
-				if key == "" {
-					continue
-				}
-				uploaded, err := putIfChanged(
-					groupCtx,
-					store,
-					importObject{
-						Key: key, Body: body, ContentType: "image/jpeg",
-					},
-				)
-				if err != nil {
-					return err
-				}
-				resultMu.Lock()
-				result.Scanned++
-				if uploaded {
-					result.Uploaded++
-					result.Bytes += int64(len(body))
-				} else {
-					result.Skipped++
-				}
-				snapshot := result
-				resultMu.Unlock()
-				if options.Progress != nil && snapshot.Scanned%10_000 == 0 {
-					options.Progress(snapshot)
-				}
-			}
-			return nil
-		})
-	}
-	group.Go(func() error {
-		defer close(files)
-		for _, file := range archive.File {
-			if file.FileInfo().IsDir() {
-				continue
-			}
-			select {
-			case files <- file:
-			case <-groupCtx.Done():
-				return groupCtx.Err()
-			}
-		}
-		return nil
-	})
-	if err := group.Wait(); err != nil {
-		return result, err
-	}
-	if options.Progress != nil {
-		options.Progress(result)
-	}
-	return result, nil
 }
 
 func importLocalObjects(
@@ -328,52 +212,6 @@ func putIfChanged(
 		return false, fmt.Errorf("upload %s: %w", object.Key, err)
 	}
 	return true, nil
-}
-
-func materializeArchive(
-	ctx context.Context,
-	source string,
-	client *http.Client,
-) (string, func(), error) {
-	if !strings.HasPrefix(source, "http://") &&
-		!strings.HasPrefix(source, "https://") {
-		path, err := filepath.Abs(source)
-		return path, func() {}, err
-	}
-	if client == nil {
-		client = &http.Client{}
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
-	if err != nil {
-		return "", func() {}, err
-	}
-	response, err := client.Do(request)
-	if err != nil {
-		return "", func() {}, fmt.Errorf("download archive: %w", err)
-	}
-	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return "", func() {}, fmt.Errorf(
-			"download archive: HTTP %d",
-			response.StatusCode,
-		)
-	}
-	file, err := os.CreateTemp("", "shrike-images-*.zip")
-	if err != nil {
-		return "", func() {}, err
-	}
-	name := file.Name()
-	cleanup := func() { _ = os.Remove(name) }
-	if _, err := io.Copy(file, response.Body); err != nil {
-		_ = file.Close()
-		cleanup()
-		return "", func() {}, fmt.Errorf("download archive: %w", err)
-	}
-	if err := file.Close(); err != nil {
-		cleanup()
-		return "", func() {}, err
-	}
-	return name, cleanup, nil
 }
 
 func readZipFile(file *zip.File, maximum int64) ([]byte, error) {

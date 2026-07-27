@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -98,6 +100,164 @@ func TestImportOldCharactersPreservesShardContract(t *testing.T) {
 		if store.objects[key] == nil {
 			t.Errorf("missing object %q", key)
 		}
+	}
+
+	// Simulate interruption after every shard marker was published but before
+	// the final manifest made the whole import a one-request no-op.
+	delete(store.objects, oldCharacterManifestKey)
+	store.puts = nil
+	resumed, err := ImportOldCharacters(
+		context.Background(),
+		store,
+		archivePath,
+		nil,
+		ImportOptions{Concurrency: 2},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.Scanned != 2 || resumed.Uploaded != 0 || resumed.Skipped != 2 {
+		t.Fatalf("resumed result = %+v", resumed)
+	}
+	if len(store.puts) != 1 || store.puts[0] != oldCharacterManifestKey {
+		t.Fatalf("resumed uploads = %v", store.puts)
+	}
+
+	store.puts = nil
+	complete, err := ImportOldCharacters(
+		context.Background(),
+		store,
+		archivePath,
+		nil,
+		ImportOptions{Concurrency: 2},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if complete.Uploaded != 0 || complete.Skipped != 2 {
+		t.Fatalf("complete result = %+v", complete)
+	}
+	if len(store.puts) != 0 {
+		t.Fatalf("complete import unexpectedly wrote %v", store.puts)
+	}
+}
+
+func TestImportOldCharactersResumesRemoteArchiveDownload(t *testing.T) {
+	archiveBody := makeZip(t, map[string][]byte{
+		"1/2/900000012_256.jpg": []byte("portrait"),
+	})
+	sum := sha1.Sum(archiveBody)
+	digest := hex.EncodeToString(sum[:])
+	partialLength := len(archiveBody) / 3
+	var gets atomic.Int64
+	var ranges atomic.Int64
+	lastModified := "Fri, 17 Jan 2014 14:39:36 GMT"
+
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
+		w.Header().Set("Content-Length", strconv.Itoa(len(archiveBody)))
+		w.Header().Set("ETag", `"archive-v1"`)
+		w.Header().Set("Last-Modified", lastModified)
+		w.Header().Set("X-Amz-Meta-Large-File-Sha1", digest)
+		if r.Method == http.MethodHead {
+			return
+		}
+		gets.Add(1)
+		wantRange := "bytes=" + strconv.Itoa(partialLength) + "-"
+		if r.Header.Get("Range") != wantRange {
+			t.Errorf("Range = %q, want %q", r.Header.Get("Range"), wantRange)
+			http.Error(w, "bad range", http.StatusBadRequest)
+			return
+		}
+		ranges.Add(1)
+		w.Header().Set(
+			"Content-Range",
+			"bytes "+strconv.Itoa(partialLength)+"-"+
+				strconv.Itoa(len(archiveBody)-1)+"/"+
+				strconv.Itoa(len(archiveBody)),
+		)
+		w.Header().Set(
+			"Content-Length",
+			strconv.Itoa(len(archiveBody)-partialLength),
+		)
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = w.Write(archiveBody[partialLength:])
+	}))
+	defer server.Close()
+
+	cacheDirectory := t.TempDir()
+	source := server.URL + "/OldCharPortraits_256.zip"
+	partialPath := filepath.Join(
+		cacheDirectory,
+		"OldCharPortraits_256.zip.part",
+	)
+	writeTestFile(t, partialPath, archiveBody[:partialLength])
+	if err := writeArchiveCache(
+		partialPath+".json",
+		oldCharacterArchiveCache{
+			Source: source, Digest: "sha1:" + digest,
+			Size: int64(len(archiveBody)), ETag: `"archive-v1"`,
+			LastModified: lastModified,
+		},
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	store := newMemoryStore()
+	result, err := ImportOldCharacters(
+		context.Background(),
+		store,
+		source,
+		server.Client(),
+		ImportOptions{
+			Concurrency: 2, CacheDirectory: cacheDirectory,
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Uploaded != 1 || gets.Load() != 1 || ranges.Load() != 1 {
+		t.Fatalf(
+			"result = %+v, GETs = %d, ranges = %d",
+			result,
+			gets.Load(),
+			ranges.Load(),
+		)
+	}
+	finalPath := filepath.Join(cacheDirectory, "OldCharPortraits_256.zip")
+	finalBody, err := os.ReadFile(finalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(finalBody, archiveBody) {
+		t.Fatal("resumed archive does not match its source")
+	}
+
+	// A matching final B2 manifest is checked from the remote SHA-1 advertised
+	// by HEAD, before the local archive is downloaded or opened.
+	if err := os.Remove(finalPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(finalPath + ".json"); err != nil {
+		t.Fatal(err)
+	}
+	second, err := ImportOldCharacters(
+		context.Background(),
+		store,
+		source,
+		server.Client(),
+		ImportOptions{
+			Concurrency: 2, CacheDirectory: cacheDirectory,
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Uploaded != 0 || second.Skipped != 1 || gets.Load() != 1 {
+		t.Fatalf("second = %+v, GETs = %d", second, gets.Load())
 	}
 }
 
