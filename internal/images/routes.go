@@ -12,8 +12,6 @@ import (
 )
 
 // Register adds the canonical /images namespace to the shared Huma document.
-// The dedicated image hostname uses an adapter that prepends this namespace,
-// so old root URLs and the documented routes execute the same operations.
 func Register(a huma.API, service *Service) {
 	registerOverview(a)
 	for _, kind := range []EntityKind{Character, Corporation, Alliance} {
@@ -38,6 +36,7 @@ func registerOverview(a huma.API) {
 		Path:        "/images",
 		Summary:     "Image API overview",
 		Tags:        []string{"images"},
+		Servers:     imageServers(),
 		Extensions:  map[string]any{"x-audience": "public"},
 	}
 	huma.Register(a, op, func(_ context.Context, _ *struct{}) (*struct {
@@ -225,6 +224,7 @@ func registerMetadataRoute(a huma.API, service *Service) {
 		Path:        "/images/service-metadata",
 		Summary:     "Current TurtleTools type image metadata",
 		Tags:        []string{"images"},
+		Servers:     imageServers(),
 		Extensions:  map[string]any{"x-audience": "public"},
 		Responses: map[string]*huma.Response{
 			"200": {
@@ -260,6 +260,7 @@ func registerBinary(
 	handler func(huma.Context) (Result, error),
 ) {
 	op.Extensions = map[string]any{"x-audience": "public"}
+	op.Servers = imageServers()
 	op.Responses = binaryResponses()
 	a.OpenAPI().AddOperation(&op)
 	a.Adapter().Handle(&op, func(ctx huma.Context) {
@@ -270,6 +271,13 @@ func registerBinary(
 		}
 		writeResult(ctx, result)
 	})
+}
+
+func imageServers() []*huma.Server {
+	return []*huma.Server{{
+		URL:         "/",
+		Description: "EVE-KILL images",
+	}}
 }
 
 func binaryResponses() map[string]*huma.Response {
@@ -344,25 +352,4 @@ func etagMatches(header, etag string) bool {
 		}
 	}
 	return false
-}
-
-func hostPrefixHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		clone := r.Clone(r.Context())
-		requestURL := *r.URL
-		if requestURL.Path == "/" {
-			requestURL.Path = "/images"
-		} else {
-			requestURL.Path = "/images" + requestURL.Path
-		}
-		requestURL.RawPath = ""
-		clone.URL = &requestURL
-		next.ServeHTTP(w, clone)
-	})
-}
-
-// HostHandler adapts documented /images routes to the established
-// images.eve-kill.com root-path contract.
-func HostHandler(next http.Handler) http.Handler {
-	return hostPrefixHandler(next)
 }

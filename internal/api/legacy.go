@@ -210,10 +210,8 @@ func writeLegacyError(ctx huma.Context, err error) {
 	_, _ = ctx.BodyWriter().Write(body)
 }
 
-// crossOriginAPI applies the API-host transport policy to every response,
-// independent of whether it came from a handler, Redis, or a conditional
-// request. Payload compatibility does not require preserving the legacy
-// server's cache-dependent CORS quirks.
+// crossOriginAPI keeps the public /api and /images paths usable by browsers on
+// other origins, including for cache hits, errors, and conditional requests.
 func crossOriginAPI(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")

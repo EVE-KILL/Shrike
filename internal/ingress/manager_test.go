@@ -30,18 +30,12 @@ func testSurfaces() map[string]http.Handler {
 	}
 	return map[string]http.Handler{
 		SurfaceSameOrigin: h(SurfaceSameOrigin),
-		SurfaceAPIHost:    h(SurfaceAPIHost),
 		SurfaceWS:         h(SurfaceWS),
-		SurfaceImages:     h(SurfaceImages),
 	}
 }
 
 func testConfig() Config {
-	return Config{
-		Address:     "127.0.0.1:0",
-		APIHosts:    []string{"api.example.com", "api.localhost"},
-		ImagesHosts: []string{"images.example.com"},
-	}
+	return Config{Address: "127.0.0.1:0"}
 }
 
 // newTestManager builds a Manager without starting Caddy, so buildConfig can be
@@ -62,12 +56,12 @@ func TestRouteOrder(t *testing.T) {
 	}
 
 	want := []RouteStatus{
-		{Match: "host api.example.com, api.localhost and path /health", Surface: SurfaceAPIHost},
 		{Match: "path /health", Surface: SurfaceSameOrigin},
-		{Match: "host api.example.com, api.localhost", Surface: SurfaceAPIHost},
-		{Match: "host images.example.com", Surface: SurfaceImages},
 		{Match: "path /ws, /ws/*", Surface: SurfaceWS},
-		{Match: "path /api, /api/*, /auth, /auth/*", Surface: SurfaceSameOrigin},
+		{
+			Match:   "path /api, /api/*, /auth, /auth/*, /images, /images/*",
+			Surface: SurfaceSameOrigin,
+		},
 		{Match: "(default)", Surface: "404 — no renderer configured"},
 	}
 	if len(routes) != len(want) {
@@ -80,109 +74,24 @@ func TestRouteOrder(t *testing.T) {
 	}
 }
 
-// API-host health must reach the API-host adapter so its generated schema link
-// uses /schemas. The path-only fallback immediately after it keeps Kubernetes
-// probes independent of DNS and Host.
-func TestHealthRoutesPrecedeGeneralHostRoutes(t *testing.T) {
+func TestGoOwnedPathsPrecedeNuxt(t *testing.T) {
 	m := newTestManager(t, testConfig())
 
 	_, _, routes, err := m.buildConfig()
 	if err != nil {
 		t.Fatalf("buildConfig: %v", err)
 	}
-	if len(routes) < 2 {
-		t.Fatalf("got %d routes, want at least two health routes", len(routes))
-	}
-	if got := routes[0]; got.Surface != SurfaceAPIHost ||
-		!strings.Contains(got.Match, "api.example.com") ||
-		!strings.Contains(got.Match, "path /health") {
-		t.Fatalf("first route = %+v, want API-host health", got)
-	}
-	if got, want := routes[1], (RouteStatus{Match: "path /health", Surface: SurfaceSameOrigin}); got != want {
-		t.Fatalf("second route = %+v, want %+v", got, want)
-	}
-}
-
-// The same-origin path prefix must come after the host routes, so that a request
-// to api.example.com/api/... is answered by the API-host adapter. Reversed, the
-// root-path API would be shadowed by the same-origin prefix on its own
-// hostname.
-func TestHostRoutesPrecedeTheSameOriginPathPrefix(t *testing.T) {
-	m := newTestManager(t, testConfig())
-
-	_, _, routes, err := m.buildConfig()
-	if err != nil {
-		t.Fatalf("buildConfig: %v", err)
-	}
-
-	lastHost, sameOriginPath := -1, -1
+	site, fallback := -1, -1
 	for i, r := range routes {
-		if strings.HasPrefix(r.Match, "host ") {
-			lastHost = i
+		if strings.Contains(r.Match, "/images/*") {
+			site = i
 		}
-		if strings.Contains(r.Match, "/api/*") {
-			sameOriginPath = i
-		}
-	}
-	if lastHost == -1 || sameOriginPath == -1 {
-		t.Fatalf("expected both host routes and a same-origin path route, got %+v", routes)
-	}
-	if sameOriginPath < lastHost {
-		t.Errorf("same-origin path route at %d precedes the last host route at %d", sameOriginPath, lastHost)
-	}
-}
-
-func TestUnsetImageHostIsNotRouted(t *testing.T) {
-	cfg := testConfig()
-	cfg.ImagesHosts = nil
-
-	m := newTestManager(t, cfg)
-	_, _, routes, err := m.buildConfig()
-	if err != nil {
-		t.Fatalf("buildConfig: %v", err)
-	}
-	for _, r := range routes {
-		if strings.HasPrefix(r.Match, "host images.") {
-			t.Fatalf("images surface is host-routed despite an empty ImagesHosts: %+v", r)
+		if r.Match == "(default)" {
+			fallback = i
 		}
 	}
-}
-
-// Hostnames are normalised before they reach Caddy, whose host matcher rejects
-// a repeated name outright rather than ignoring it. Without this, a stray
-// duplicate in a comma-separated env var would fail the whole config load.
-func TestHostsAreLowercasedAndDeduplicated(t *testing.T) {
-	cfg := testConfig()
-	cfg.APIHosts = []string{"API.example.com", " api.localhost ", "api.example.com", ""}
-
-	m := newTestManager(t, cfg)
-	_, _, routes, err := m.buildConfig()
-	if err != nil {
-		t.Fatalf("buildConfig: %v", err)
-	}
-	for _, r := range routes {
-		if r.Surface == SurfaceAPIHost && !strings.Contains(r.Match, "path /health") {
-			if want := "host api.example.com, api.localhost"; r.Match != want {
-				t.Errorf("match = %q, want %q", r.Match, want)
-			}
-			return
-		}
-	}
-	t.Fatal("no API-host route was emitted")
-}
-
-// The same hostname under two surfaces must fail the build. Caddy would not
-// object — the matchers are separate, so the earlier route simply wins — and a
-// silently shadowed surface is far harder to notice than a refused startup.
-func TestHostClaimedByTwoSurfacesIsAnError(t *testing.T) {
-	cfg := testConfig()
-	cfg.ImagesHosts = []string{"api.localhost"} // already claimed by the API host
-
-	m := newTestManager(t, cfg)
-	if _, _, _, err := m.buildConfig(); err == nil {
-		t.Fatal("buildConfig accepted a hostname claimed by two surfaces")
-	} else if !strings.Contains(err.Error(), "api.localhost") {
-		t.Errorf("error does not name the contested hostname: %v", err)
+	if site == -1 || fallback == -1 || site >= fallback {
+		t.Fatalf("site route %d and fallback %d are misordered: %+v", site, fallback, routes)
 	}
 }
 
@@ -192,7 +101,7 @@ func TestHostClaimedByTwoSurfacesIsAnError(t *testing.T) {
 func TestUnregisteredSurfaceIsAnError(t *testing.T) {
 	m := New(map[string]http.Handler{
 		// same-origin is deliberately missing.
-		SurfaceAPIHost: http.NotFoundHandler(),
+		SurfaceWS: http.NotFoundHandler(),
 	}, zerolog.Nop())
 	m.cfg = testConfig()
 
@@ -348,20 +257,15 @@ func TestServesEachSurface(t *testing.T) {
 		code int
 	}{
 		{"health has no host requirement", "", "/health", SurfaceSameOrigin, 200},
-		{"API-host health uses API-host adapter", "api.example.com", "/health", SurfaceAPIHost, 200},
 		{"websocket path health is not special", "eve-kill.test", "/health", SurfaceSameOrigin, 200},
-		{"API hostname", "api.example.com", "/anything", SurfaceAPIHost, 200},
-		{"API .localhost alias", "api.localhost", "/anything", SurfaceAPIHost, 200},
-		{"alias is case-insensitive", "API.LOCALHOST", "/anything", SurfaceAPIHost, 200},
 		{"websocket root path", "eve-kill.test", "/ws", SurfaceWS, 200},
 		{"websocket endpoint path", "eve-kill.test", "/ws/killlist", SurfaceWS, 200},
-		{"images hostname", "images.example.com", "/x.png", SurfaceImages, 200},
 		{"frontend api root", "eve-kill.test", "/api", SurfaceSameOrigin, 200},
 		{"frontend api prefix", "eve-kill.test", "/api/killlist", SurfaceSameOrigin, 200},
 		{"frontend auth root", "eve-kill.test", "/auth", SurfaceSameOrigin, 200},
 		{"frontend auth prefix", "eve-kill.test", "/auth/callback", SurfaceSameOrigin, 200},
-		// The guarantee that ordering exists to provide.
-		{"API host wins over the api prefix", "api.example.com", "/api/x", SurfaceAPIHost, 200},
+		{"frontend images root", "eve-kill.test", "/images", SurfaceSameOrigin, 200},
+		{"frontend images prefix", "eve-kill.test", "/images/types/42/icon", SurfaceSameOrigin, 200},
 		// An unknown host is a frontend request by definition, which is what
 		// makes tenant custom domains work without being enumerated.
 		{"unknown host falls through", "tenant.example.com", "/", "", 404},

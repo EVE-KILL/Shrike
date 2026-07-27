@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -20,8 +19,24 @@ func (stubDatabase) Ping(context.Context) error {
 	return nil
 }
 
+func apiPathHandler(opts Options) http.Handler {
+	site := Site(opts)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		clone := r.Clone(r.Context())
+		requestURL := *r.URL
+		if requestURL.Path == "/" {
+			requestURL.Path = "/api"
+		} else {
+			requestURL.Path = "/api" + requestURL.Path
+		}
+		requestURL.RawPath = ""
+		clone.URL = &requestURL
+		site.ServeHTTP(w, clone)
+	})
+}
+
 func TestEstablishedRouteCatalogueMatchesEmbeddedIndex(t *testing.T) {
-	handler := APIHost(Options{
+	handler := apiPathHandler(Options{
 		Version: "test-version",
 		Commit:  "test-commit",
 		DB:      stubDatabase{},
@@ -139,8 +154,8 @@ func TestEstablishedRouteCatalogueMatchesEmbeddedIndex(t *testing.T) {
 	}
 }
 
-func TestAPIHostDocsUseScalar(t *testing.T) {
-	handler := APIHost(Options{
+func TestDocsUseScalar(t *testing.T) {
+	handler := apiPathHandler(Options{
 		Version: "test-version",
 		DB:      stubDatabase{},
 	})
@@ -161,40 +176,49 @@ func TestAPIHostDocsUseScalar(t *testing.T) {
 	}
 }
 
-func TestTransportsShareOneOpenAPIDocument(t *testing.T) {
+func TestSiteOpenAPIDocumentsAudienceAndServers(t *testing.T) {
 	service := New(Options{
 		Version: "test-version",
 		DB:      stubDatabase{},
 	})
 
-	apiHost := httptest.NewRecorder()
-	service.APIHost().ServeHTTP(
-		apiHost,
-		httptest.NewRequest(http.MethodGet, "http://api.example/openapi.json", nil),
-	)
-	sameOrigin := httptest.NewRecorder()
-	service.SameOrigin().ServeHTTP(
-		sameOrigin,
+	response := httptest.NewRecorder()
+	service.Site().ServeHTTP(
+		response,
 		httptest.NewRequest(
 			http.MethodGet, "http://www.example/api/openapi.json", nil,
 		),
 	)
-	if apiHost.Code != http.StatusOK || sameOrigin.Code != http.StatusOK {
-		t.Fatalf("documents returned %d and %d", apiHost.Code, sameOrigin.Code)
-	}
-	if !bytes.Equal(apiHost.Body.Bytes(), sameOrigin.Body.Bytes()) {
-		t.Fatal("API-host and same-origin transports returned different OpenAPI documents")
+	if response.Code != http.StatusOK {
+		t.Fatalf("document returned %d: %s", response.Code, response.Body.String())
 	}
 
 	var document struct {
+		Servers []struct {
+			URL string `json:"url"`
+		} `json:"servers"`
 		Paths map[string]map[string]struct {
 			OperationID string                `json:"operationId"`
 			Audience    string                `json:"x-audience"`
 			Security    []map[string][]string `json:"security"`
+			Servers     []struct {
+				URL string `json:"url"`
+			} `json:"servers"`
 		} `json:"paths"`
 	}
-	if err := json.Unmarshal(apiHost.Body.Bytes(), &document); err != nil {
+	if err := json.Unmarshal(response.Body.Bytes(), &document); err != nil {
 		t.Fatal(err)
+	}
+	if len(document.Servers) != 1 || document.Servers[0].URL != "/api" {
+		t.Fatalf("OpenAPI servers = %#v, want /api", document.Servers)
+	}
+	image := document.Paths["/images/characters/{id}/{variant}"]["get"]
+	if len(image.Servers) != 1 || image.Servers[0].URL != "/" {
+		t.Fatalf("image operation servers = %#v, want /", image.Servers)
+	}
+	auth := document.Paths["/auth/login"]["get"]
+	if len(auth.Servers) != 1 || auth.Servers[0].URL != "/" {
+		t.Fatalf("auth operation servers = %#v, want /", auth.Servers)
 	}
 	if got := document.Paths["/killmails"]["get"].Audience; got != "public" {
 		t.Errorf("killmails audience = %q, want public", got)
@@ -227,10 +251,10 @@ func TestTransportsShareOneOpenAPIDocument(t *testing.T) {
 	}
 }
 
-func TestSameOriginScalarUsesPrefixedOpenAPIURL(t *testing.T) {
+func TestSiteScalarUsesPrefixedOpenAPIURL(t *testing.T) {
 	service := New(Options{Version: "test-version", DB: stubDatabase{}})
 	rec := httptest.NewRecorder()
-	service.SameOrigin().ServeHTTP(
+	service.Site().ServeHTTP(
 		rec,
 		httptest.NewRequest(http.MethodGet, "http://www.example/api/docs", nil),
 	)
@@ -243,7 +267,7 @@ func TestSameOriginScalarUsesPrefixedOpenAPIURL(t *testing.T) {
 }
 
 func TestAPIFallbackAndEstablishedPostGuards(t *testing.T) {
-	handler := APIHost(Options{DB: stubDatabase{}})
+	handler := apiPathHandler(Options{DB: stubDatabase{}})
 	for _, test := range []struct {
 		method string
 		path   string
@@ -267,23 +291,23 @@ func TestAPIFallbackAndEstablishedPostGuards(t *testing.T) {
 }
 
 func TestAPIIndexHonorsForwardedOrigin(t *testing.T) {
-	handler := APIHost(Options{DB: stubDatabase{}})
-	req := httptest.NewRequest(http.MethodGet, "http://internal/", nil)
+	handler := Site(Options{DB: stubDatabase{}})
+	req := httptest.NewRequest(http.MethodGet, "http://internal/api", nil)
 	req.Header.Set("X-Forwarded-Proto", "https, http")
-	req.Header.Set("X-Forwarded-Host", "api.eve-kill.com, internal")
+	req.Header.Set("X-Forwarded-Host", "eve-kill.com, internal")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	var body map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if body["baseUrl"] != "https://api.eve-kill.com" {
+	if body["baseUrl"] != "https://eve-kill.com/api" {
 		t.Errorf("baseUrl = %q", body["baseUrl"])
 	}
 }
 
-func TestSameOriginAPIIndexIncludesPrefix(t *testing.T) {
-	handler := SameOrigin(Options{DB: stubDatabase{}})
+func TestSiteAPIIndexIncludesPrefix(t *testing.T) {
+	handler := Site(Options{DB: stubDatabase{}})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(
 		rec,
@@ -298,12 +322,46 @@ func TestSameOriginAPIIndexIncludesPrefix(t *testing.T) {
 	}
 }
 
+func TestSiteKeepsImagesAndAuthOutsideAPIPrefix(t *testing.T) {
+	handler := Site(Options{DB: stubDatabase{}})
+	for _, path := range []string{
+		"/api/images",
+		"/api/images/characters/7/portrait",
+		"/api/auth",
+		"/api/auth/callback",
+		"/killmails",
+		"/openapi.json",
+	} {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(
+			rec,
+			httptest.NewRequest(http.MethodGet, "https://eve-kill.com"+path, nil),
+		)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s status = %d, want 404", path, rec.Code)
+		}
+	}
+
+	images := httptest.NewRecorder()
+	handler.ServeHTTP(
+		images,
+		httptest.NewRequest(http.MethodGet, "https://eve-kill.com/images", nil),
+	)
+	if images.Code != http.StatusOK ||
+		!strings.Contains(images.Body.String(), `"service":"EVE-KILL Images"`) {
+		t.Fatalf("/images response = %d %s", images.Code, images.Body.String())
+	}
+	if got := images.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("/images CORS = %q, want *", got)
+	}
+}
+
 func TestFeedStreamOptionsPreserveSSEHeaders(t *testing.T) {
-	handler := APIHost(Options{DB: stubDatabase{}})
+	handler := Site(Options{DB: stubDatabase{}})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(
 		rec,
-		httptest.NewRequest(http.MethodOptions, "http://example.com/feed/stream", nil),
+		httptest.NewRequest(http.MethodOptions, "http://example.com/api/feed/stream", nil),
 	)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want 204", rec.Code)
@@ -337,7 +395,7 @@ func (stubDatabase) QueryRow(context.Context, string, ...any) pgx.Row {
 }
 
 func TestHealthPreservesEstablishedContract(t *testing.T) {
-	handler := APIHost(Options{
+	handler := Site(Options{
 		Version: "test-version",
 		Commit:  "test-commit",
 		DB:      stubDatabase{},
@@ -360,7 +418,7 @@ func TestHealthPreservesEstablishedContract(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if got := response["$schema"]; got != "http://example.com/schemas/health-response.json" {
+	if got := response["$schema"]; got != "http://example.com/api/schemas/health-response.json" {
 		t.Errorf("$schema = %q", got)
 	}
 	timestamp, _ := response["timestamp"].(string)
@@ -371,17 +429,17 @@ func TestHealthPreservesEstablishedContract(t *testing.T) {
 		t.Errorf("timestamp = %q, want UTC with exactly three fractional digits", timestamp)
 	}
 	if got := rec.Header().Get("Link"); got !=
-		`</schemas/health-response.json>; rel="describedBy"` {
+		`</api/schemas/health-response.json>; rel="describedBy"` {
 		t.Errorf("Link = %q", got)
 	}
-	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
-		t.Errorf("Access-Control-Allow-Origin = %q, want *", got)
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Errorf("health should not emit CORS headers, got %q", got)
 	}
 
 	schemaRec := httptest.NewRecorder()
 	handler.ServeHTTP(schemaRec, httptest.NewRequest(
 		http.MethodGet,
-		"http://example.com/schemas/health-response.json",
+		"http://example.com/api/schemas/health-response.json",
 		nil,
 	))
 	if schemaRec.Code != http.StatusOK {
@@ -419,43 +477,5 @@ func TestNormalizeJSONUsesJavaScriptMillisecondTimestamps(t *testing.T) {
 	fractional := normalized["fractional"].([]any)
 	if got := fractional[0]; got != "2026-07-26T12:34:56.123Z" {
 		t.Errorf("fractional timestamp = %q", got)
-	}
-}
-
-func TestSameOriginHealthUsesSharedContractAndPrefixedSchema(t *testing.T) {
-	handler := SameOrigin(Options{
-		Version: "test-version",
-		Commit:  "test-commit",
-		DB:      stubDatabase{},
-	})
-
-	health := httptest.NewRecorder()
-	handler.ServeHTTP(
-		health,
-		httptest.NewRequest(http.MethodGet, "http://example.com/health", nil),
-	)
-	if health.Code != http.StatusOK {
-		t.Fatalf("health status = %d, want 200 (body %q)", health.Code, health.Body.String())
-	}
-	if got := health.Header().Get("Link"); got !=
-		`</api/schemas/health-response.json>; rel="describedBy"` {
-		t.Fatalf("health Link = %q, want same-origin schema path", got)
-	}
-	if body := health.Body.String(); !strings.Contains(body, `"ok":true`) ||
-		!strings.Contains(body, `"timestamp":"`) {
-		t.Errorf("health body does not use shared contract: %s", body)
-	}
-
-	schema := httptest.NewRecorder()
-	handler.ServeHTTP(
-		schema,
-		httptest.NewRequest(
-			http.MethodGet,
-			"http://example.com/api/schemas/health-response.json",
-			nil,
-		),
-	)
-	if schema.Code != http.StatusOK {
-		t.Fatalf("schema status = %d, want 200 (body %q)", schema.Code, schema.Body.String())
 	}
 }

@@ -73,13 +73,6 @@ type Config struct {
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
 
-	// Hostnames the embedded ingress routes to dedicated API and image
-	// surfaces, as comma-separated lists so each can answer to both production
-	// and development aliases. WebSockets instead live at /ws on every
-	// frontend origin.
-	PublicAPIHosts []string
-	ImagesHosts    []string
-
 	// NuxtSocket is where the Nitro renderer listens. Every request matching no
 	// surface is proxied there. Empty disables the fallback, which is how an
 	// API-only deployment avoids proxying to a renderer that is not running.
@@ -120,36 +113,6 @@ func Load(explicitPath string) (*Config, error) {
 		}
 		c.sources[field] = SourceDefault
 		return def
-	}
-	// getList reads a comma-separated value.
-	//
-	// It does its own lookup rather than delegating to get, because it needs
-	// the opposite answer for an explicitly empty variable. get treats empty as
-	// unset, which is right for a scalar — REDIS_HOST="" is a mistake, not a
-	// request for no Redis. For a list, the empty list is a meaningful value:
-	// PUBLIC_API_HOST= is how a deployment says it does not serve that
-	// surface, and falling back to the default there would have it claim a
-	// hostname the operator just took away.
-	getList := func(field, key, def string) []string {
-		split := func(raw string) []string {
-			var out []string
-			for _, part := range strings.Split(raw, ",") {
-				if part = strings.TrimSpace(part); part != "" {
-					out = append(out, part)
-				}
-			}
-			return out
-		}
-		if v, ok := os.LookupEnv(key); ok {
-			c.sources[field] = SourceEnv
-			return split(v)
-		}
-		if v, ok := dotenv[key]; ok {
-			c.sources[field] = SourceDotenv
-			return split(v)
-		}
-		c.sources[field] = SourceDefault
-		return split(def)
 	}
 	getInt := func(field, key string, def int) int {
 		raw := get(field, key, strconv.Itoa(def))
@@ -203,12 +166,6 @@ func Load(explicitPath string) (*Config, error) {
 		1<<30,
 	)
 	c.Port = getInt("Port", "PORT", 4000)
-
-	// Production hostnames only. Development adds its .localhost aliases in
-	// .env — a default that shipped them would have production claiming names
-	// it has no business answering to, however unreachable they are.
-	c.PublicAPIHosts = getList("PublicAPIHosts", "PUBLIC_API_HOST", "api.eve-kill.com")
-	c.ImagesHosts = getList("ImagesHosts", "IMAGES_HOST", "images.eve-kill.com")
 
 	// Defaulted empty: until the renderer is actually wired up, proxying to a
 	// socket that will never exist would turn every frontend request into a

@@ -40,20 +40,15 @@ var serveCmd = &cobra.Command{
 Requests are routed by hostname and path to one of Shrike's surfaces:
 
   /health                                liveness, on any hostname
-  api.eve-kill.com     api.localhost     the API at root paths
-  images.eve-kill.com  images.localhost  the image server
+  /api, /api/*                           public and signed-in API
+  /auth, /auth/*                         browser authentication
+  /images, /images/*                     the image server
   /ws, /ws/*                             live event streams
-  /api, /auth                            the same API on the frontend origin
   everything else                        the Nuxt renderer, over NUXT_SOCKET
 
-The API-host and image surfaces answer to production hostnames and .localhost
-aliases, so http://api.localhost:PORT reaches the same place as
-api.eve-kill.com without touching /etc/hosts. WebSockets share whichever
-frontend origin is in use. Run with --port 80 to drop the port from those URLs.
-
-Hostnames come from PUBLIC_API_HOST and IMAGES_HOST as comma-separated lists;
-an empty one is not routed. With NUXT_SOCKET unset, unmatched requests get a
-404 rather than being proxied to a renderer that is not running.
+Every Go-owned surface shares the frontend origin, including tenant domains.
+With NUXT_SOCKET unset, unmatched requests get a 404 rather than being proxied
+to a renderer that is not running.
 
 SIGINT (Ctrl+C) and SIGTERM both trigger a graceful shutdown: the listener
 stops accepting, in-flight requests are given time to finish, then the process
@@ -134,20 +129,16 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			}
 			apiService := api.New(opts)
 			surfaces := map[string]http.Handler{
-				ingress.SurfaceSameOrigin: apiService.SameOrigin(),
-				ingress.SurfaceAPIHost:    apiService.APIHost(),
+				ingress.SurfaceSameOrigin: apiService.Site(),
 				ingress.SurfaceWS:         wsServer,
-				ingress.SurfaceImages:     apiService.Images(),
 			}
 			manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 
 			if err := manager.Start(ctx, ingress.Config{
-				Address:     fmt.Sprintf(":%d", port),
-				DataDir:     cfg.DataDir,
-				LogLevel:    cfg.LogLevel,
-				APIHosts:    cfg.PublicAPIHosts,
-				ImagesHosts: cfg.ImagesHosts,
-				NuxtSocket:  cfg.NuxtSocket,
+				Address:    fmt.Sprintf(":%d", port),
+				DataDir:    cfg.DataDir,
+				LogLevel:   cfg.LogLevel,
+				NuxtSocket: cfg.NuxtSocket,
 			}); err != nil {
 				return fmt.Errorf("starting embedded Caddy ingress: %w", err)
 			}

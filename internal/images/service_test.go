@@ -249,7 +249,7 @@ func TestStaleEntityServesAndEnqueuesRefresh(t *testing.T) {
 	}
 }
 
-func TestHumaImageNamespaceAndDedicatedHostShareHandler(t *testing.T) {
+func TestHumaImageNamespaceServesConditionalWebP(t *testing.T) {
 	source := solidPNG(t, 32, 32, colorValue(90, 80, 70))
 	upstream := httptest.NewServer(http.HandlerFunc(func(
 		w http.ResponseWriter,
@@ -267,36 +267,26 @@ func TestHumaImageNamespaceAndDedicatedHostShareHandler(t *testing.T) {
 	api := humachi.New(mux, huma.DefaultConfig("images", "test"))
 	Register(api, service)
 
-	for _, target := range []struct {
-		name    string
-		handler http.Handler
-		path    string
-	}{
-		{"documented", mux, "/images/corporations/42/logo?size=16"},
-		{"image-host", HostHandler(mux), "/corporations/42/logo?size=16"},
-	} {
-		t.Run(target.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, target.path, nil)
-			request.Header.Set("Accept", "image/webp")
-			recorder := httptest.NewRecorder()
-			target.handler.ServeHTTP(recorder, request)
-			if recorder.Code != http.StatusOK ||
-				recorder.Header().Get("Content-Type") != "image/webp" {
-				t.Fatalf("response = %d %s: %s",
-					recorder.Code, recorder.Header().Get("Content-Type"),
-					recorder.Body.String())
-			}
-			etag := recorder.Header().Get("ETag")
-			request = httptest.NewRequest(http.MethodGet, target.path, nil)
-			request.Header.Set("Accept", "image/webp")
-			request.Header.Set("If-None-Match", etag)
-			recorder = httptest.NewRecorder()
-			target.handler.ServeHTTP(recorder, request)
-			if recorder.Code != http.StatusNotModified || recorder.Body.Len() != 0 {
-				t.Fatalf("conditional response = %d, body %d",
-					recorder.Code, recorder.Body.Len())
-			}
-		})
+	path := "/images/corporations/42/logo?size=16"
+	request := httptest.NewRequest(http.MethodGet, path, nil)
+	request.Header.Set("Accept", "image/webp")
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK ||
+		recorder.Header().Get("Content-Type") != "image/webp" {
+		t.Fatalf("response = %d %s: %s",
+			recorder.Code, recorder.Header().Get("Content-Type"),
+			recorder.Body.String())
+	}
+	etag := recorder.Header().Get("ETag")
+	request = httptest.NewRequest(http.MethodGet, path, nil)
+	request.Header.Set("Accept", "image/webp")
+	request.Header.Set("If-None-Match", etag)
+	recorder = httptest.NewRecorder()
+	mux.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusNotModified || recorder.Body.Len() != 0 {
+		t.Fatalf("conditional response = %d, body %d",
+			recorder.Code, recorder.Body.Len())
 	}
 	if api.OpenAPI().Paths["/images/corporations/{id}/{variant}"] == nil {
 		t.Fatal("image operation is missing from OpenAPI")

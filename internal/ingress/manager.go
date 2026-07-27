@@ -275,16 +275,12 @@ func (m *Manager) Status() Status {
 //
 // The route table is ordered, and the order carries the routing policy:
 //
-//  1. /health on the dedicated API host goes through the API-host adapter.
-//     That keeps the response's generated schema link on the root /schemas path.
-//  2. /health on every other host goes through the same-origin API adapter.
+//  1. /health goes through the same-origin API adapter.
 //     Kubernetes probes by pod IP with no useful Host header, so this route
 //     matches on path alone rather than relying on DNS.
-//  3. The two dedicated hostnames, each to its own surface.
-//  4. /ws, /api and /auth on the frontend origin. After the hostnames so that a request
-//     to api.eve-kill.com/api/... resolves as the API-host adapter rather than
-//     being captured by the same-origin path prefix.
-//  5. Everything else to the Nuxt renderer. Unmatched is the frontend by
+//  2. /ws bypasses Nuxt and reaches the WebSocket relay.
+//  3. /api, /auth, and /images share the site's API registry.
+//  4. Everything else goes to the Nuxt renderer. Unmatched is the frontend by
 //     definition, which is what lets tenant custom domains work without ever
 //     being enumerated here.
 //
@@ -315,64 +311,12 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil
 	}
 
-	// claimed guards against one hostname being listed under two surfaces.
-	// Caddy would not object — the matchers are separate, so the earlier route
-	// would simply win — and a silently shadowed surface is a much harder
-	// thing to notice than a refused startup.
-	claimed := map[string]string{}
-
-	hostRoutes := []struct {
-		hosts   []string
-		surface string
-	}{
-		{cfg.APIHosts, SurfaceAPIHost},
-		{cfg.ImagesHosts, SurfaceImages},
-	}
-	for i := range hostRoutes {
-		hosts, err := normalizeHosts(hostRoutes[i].hosts, hostRoutes[i].surface, claimed)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		hostRoutes[i].hosts = hosts
-	}
-
-	// Huma generates response schema links from the surface's SchemasPath.
-	// API-host health must therefore reach the API-host adapter; sending every
-	// /health request to the same-origin adapter would emit /api/schemas links,
-	// which the dedicated hostname does not serve.
-	if publicHosts := hostRoutes[0].hosts; len(publicHosts) > 0 {
-		if err := surfaceRoute(
-			map[string]any{"host": publicHosts, "path": []string{"/health"}},
-			"host "+strings.Join(publicHosts, ", ")+" and path /health", SurfaceAPIHost,
-		); err != nil {
-			return nil, nil, nil, err
-		}
-	}
-
-	// The path-only fallback keeps liveness independent of DNS and Host. It
-	// also gives the WS and images hostnames the same process health endpoint
-	// while those surfaces remain non-Huma handlers.
+	// Path-only liveness keeps probes independent of DNS and Host.
 	if err := surfaceRoute(
 		map[string]any{"path": []string{"/health"}},
 		"path /health", SurfaceSameOrigin,
 	); err != nil {
 		return nil, nil, nil, err
-	}
-
-	for _, h := range hostRoutes {
-		hosts := h.hosts
-		if len(hosts) == 0 {
-			// No configured hostname means a deployment that does not serve
-			// that surface. Omitting the route is what keeps it from
-			// answering on a name nobody asked it to answer on.
-			continue
-		}
-		if err := surfaceRoute(
-			map[string]any{"host": hosts},
-			"host "+strings.Join(hosts, ", "), h.surface,
-		); err != nil {
-			return nil, nil, nil, err
-		}
 	}
 
 	// WebSockets share the frontend origin but bypass the Nuxt process. A
@@ -386,8 +330,13 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	}
 
 	if err := surfaceRoute(
-		map[string]any{"path": []string{"/api", "/api/*", "/auth", "/auth/*"}},
-		"path /api, /api/*, /auth, /auth/*", SurfaceSameOrigin,
+		map[string]any{"path": []string{
+			"/api", "/api/*",
+			"/auth", "/auth/*",
+			"/images", "/images/*",
+		}},
+		"path /api, /api/*, /auth, /auth/*, /images, /images/*",
+		SurfaceSameOrigin,
 	); err != nil {
 		return nil, nil, nil, err
 	}
@@ -472,35 +421,6 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		Description: "Embedded Caddy listener serving every Shrike surface",
 	}}
 	return config, listeners, status, nil
-}
-
-// normalizeHosts cleans one surface's hostname list and records each name in
-// claimed, so a second surface asking for the same one is an error.
-//
-// Lowercased because hostnames are case-insensitive and Caddy compares them
-// that way; without it, "API.localhost" and "api.localhost" would reach Caddy
-// as two distinct names, and Caddy would reject the pair as a duplicate after
-// normalising them itself.
-func normalizeHosts(hosts []string, surface string, claimed map[string]string) ([]string, error) {
-	out := make([]string, 0, len(hosts))
-	for _, raw := range hosts {
-		host := strings.ToLower(strings.TrimSpace(raw))
-		if host == "" {
-			continue
-		}
-		if owner, ok := claimed[host]; ok {
-			if owner == surface {
-				// Repeated within one surface: harmless intent, but Caddy
-				// rejects a repeated name outright, so drop it here.
-				continue
-			}
-			return nil, fmt.Errorf(
-				"hostname %q is claimed by both the %s and %s surfaces", host, owner, surface)
-		}
-		claimed[host] = surface
-		out = append(out, host)
-	}
-	return out, nil
 }
 
 // caddyLogLevel maps a zerolog level name onto the zap levels Caddy accepts.

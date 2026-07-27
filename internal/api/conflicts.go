@@ -246,8 +246,8 @@ func loadConflictDomainScope(
 
 func isPossibleCustomDomain(host string) bool {
 	switch host {
-	case "", "eve-kill.com", "www.eve-kill.com", "api.eve-kill.com",
-		"images.eve-kill.com", "zkillboard.co", "www.zkillboard.co",
+	case "", "eve-kill.com", "www.eve-kill.com",
+		"zkillboard.co", "www.zkillboard.co",
 		"localhost", "127.0.0.1", "::1":
 		return false
 	}

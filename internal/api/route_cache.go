@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// routeJSONCache gives selected anonymous reads the same shared Valkey cache
-// used by the API hostname. It is opt-in per handler: session,
+// routeJSONCache gives selected anonymous reads the shared Valkey API cache.
+// It is opt-in per handler: session,
 // custom-domain, and authenticated responses must never accidentally become
 // shared merely because they use GET.
 func routeJSONCache(

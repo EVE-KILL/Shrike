@@ -404,7 +404,7 @@ func feedIndex() map[string]any {
 				"description": "Server-Sent Events stream of killmails in ESI format",
 				"params":      map[string]any{"topics": "Comma-separated topic filters (default: all). Only matching kills are streamed."},
 				"headers":     map[string]any{"Last-Event-ID": "Sequence ID to resume from after reconnect (catches up from database)"},
-				"example":     "curl -N 'https://api.eve-kill.com/feed/stream?topics=solo,10b'",
+				"example":     "curl -N 'https://eve-kill.com/api/feed/stream?topics=solo,10b'",
 			},
 			"GET /feed/poll": map[string]any{
 				"description": "Poll for killmails after a given sequence ID, returned in ESI format. Response includes `latest` (current head seq), `next` (URL to walk forward from the returned page), and `last` (URL to jump to the most recent page) so fetchers can both stream forward and skip ahead.",
@@ -412,7 +412,7 @@ func feedIndex() map[string]any {
 					"after": "Sequence ID cursor — returns events after this (use 1 to start from the beginning, 0 for an empty kickstart response that reports the head position)",
 					"limit": "Max results 1–1000 (default: 100)",
 				},
-				"example": "curl 'https://api.eve-kill.com/feed/poll?after=1&limit=100'",
+				"example": "curl 'https://eve-kill.com/api/feed/poll?after=1&limit=100'",
 			},
 			"GET /feed/status": map[string]any{
 				"description": "Feed health: connected SSE clients, current sequence head",

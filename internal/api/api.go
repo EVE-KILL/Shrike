@@ -1,9 +1,8 @@
 // Package api builds Shrike's HTTP API.
 //
-// The API hostname and eve-kill.com deliberately share one Huma registry and
-// one OpenAPI document. The main site reaches the same root-path operations
-// through its same-origin /api prefix; authentication is described per
-// operation rather than by maintaining a second API catalogue.
+// The API, authentication, and image routes share one Huma registry and one
+// OpenAPI document on the main eve-kill.com origin. API operations live below
+// /api, images below /images, and browser OAuth below /auth.
 package api
 
 import (
@@ -44,21 +43,14 @@ type GraphDatabase interface {
 	Read(context.Context, string, map[string]any) ([]map[string]any, error)
 }
 
-// Service is one API registry exposed through two transport adapters.
-//
-// APIHost serves root paths on api.eve-kill.com. SameOrigin accepts
-// /api-prefixed paths on the main site and strips that transport-only prefix
-// before dispatch. Both expose the same operations and OpenAPI document.
+// Service is one API registry exposed through the main-site transport.
 type Service struct {
-	apiHost    http.Handler
-	sameOrigin http.Handler
-	images     http.Handler
+	site http.Handler
 }
 
 type sameOriginPrefixContextKey struct{}
 
-// New builds the shared API once. Callers should retain the returned Service
-// and hand its two transport adapters to ingress.
+// New builds the shared API once.
 func New(opts Options) *Service {
 	mux := chi.NewRouter()
 
@@ -70,52 +62,93 @@ func New(opts Options) *Service {
 
 	a := humachi.New(mux, cfg)
 	a.OpenAPI().Servers = []*huma.Server{
-		{URL: "/", Description: "API hostname"},
-		{URL: "/api", Description: "Same-origin frontend"},
+		{URL: "/api", Description: "EVE-KILL API"},
 	}
 	schemas := registerRoutes(a, opts)
+	setRootNamespaceServers(a.OpenAPI())
 	registerLegacyMethodGuards(mux)
 	mux.HandleFunc("/", legacyFallback)
 	mux.NotFound(legacyFallback)
 
 	cached := responseCache(opts.Cache, schemas, opts.Commit, mux)
-	return &Service{
-		apiHost:    crossOriginAPI(cached),
-		sameOrigin: sameOriginPrefix(cached),
-		images:     crossOriginAPI(images.HostHandler(cached)),
+	return &Service{site: sitePaths(cached)}
+}
+
+func setRootNamespaceServers(document *huma.OpenAPI) {
+	for path, item := range document.Paths {
+		if path != "/auth" && !strings.HasPrefix(path, "/auth/") {
+			continue
+		}
+		for _, operation := range []*huma.Operation{
+			item.Get,
+			item.Put,
+			item.Post,
+			item.Delete,
+			item.Options,
+			item.Head,
+			item.Patch,
+			item.Trace,
+		} {
+			if operation != nil {
+				operation.Servers = []*huma.Server{{
+					URL:         "/",
+					Description: "EVE-KILL authentication",
+				}}
+			}
+		}
 	}
 }
 
-// APIHost serves the shared API at root paths.
-func (s *Service) APIHost() http.Handler {
-	return s.apiHost
+// Site serves /api, /auth, /images, and /health on the frontend origin.
+func (s *Service) Site() http.Handler {
+	return s.site
 }
 
-// SameOrigin serves the shared API through eve-kill.com's /api prefix while
-// leaving browser OAuth routes under /auth unchanged.
-func (s *Service) SameOrigin() http.Handler {
-	return s.sameOrigin
+// Site constructs the main-origin handler.
+func Site(opts Options) http.Handler {
+	return New(opts).Site()
 }
 
-// Images serves the established root-path image contract on the dedicated
-// image hostname while executing the same /images operations documented by
-// the shared Huma registry.
-func (s *Service) Images() http.Handler {
-	return s.images
+func sitePaths(next http.Handler) http.Handler {
+	prefixed := apiPrefix(next)
+	publicAPI := apiPrefix(crossOriginAPI(next))
+	publicImages := crossOriginAPI(http.HandlerFunc(func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
+		clone := r.Clone(context.WithValue(
+			r.Context(),
+			sameOriginPrefixContextKey{},
+			"/api",
+		))
+		next.ServeHTTP(w, clone)
+	}))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api", strings.HasPrefix(r.URL.Path, "/api/"):
+			inner := strings.TrimPrefix(r.URL.Path, "/api")
+			if inner == "/images" || strings.HasPrefix(inner, "/images/") ||
+				inner == "/auth" || strings.HasPrefix(inner, "/auth/") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = w.Write([]byte(`{"error":"Not found"}`))
+				return
+			}
+			publicAPI.ServeHTTP(w, r)
+		case r.URL.Path == "/images", strings.HasPrefix(r.URL.Path, "/images/"):
+			publicImages.ServeHTTP(w, r)
+		case r.URL.Path == "/auth", strings.HasPrefix(r.URL.Path, "/auth/"),
+			r.URL.Path == "/health":
+			prefixed.ServeHTTP(w, r)
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"Not found"}`))
+		}
+	})
 }
 
-// APIHost constructs a root-path API handler. Production should normally
-// retain a Service so this and SameOrigin share the same registry instance.
-func APIHost(opts Options) http.Handler {
-	return New(opts).APIHost()
-}
-
-// SameOrigin constructs the /api-prefixed transport used by the main site.
-func SameOrigin(opts Options) http.Handler {
-	return New(opts).SameOrigin()
-}
-
-func sameOriginPrefix(next http.Handler) http.Handler {
+func apiPrefix(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		switch {
@@ -224,12 +257,6 @@ func firstForwarded(value string) string {
 // supplies the real same-origin /ws handler from internal/websocket.
 func WS(Options) http.Handler {
 	return notImplemented("websocket")
-}
-
-// Images constructs the dedicated-host image adapter. Production should
-// retain a Service so all transports share one registry instance.
-func Images(opts Options) http.Handler {
-	return New(opts).Images()
 }
 
 func notImplemented(surface string) http.Handler {

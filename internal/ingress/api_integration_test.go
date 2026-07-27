@@ -29,10 +29,9 @@ func (healthyDB) QueryRow(context.Context, string, ...any) pgx.Row {
 	panic("unexpected QueryRow")
 }
 
-// Exercise the shared Huma API through both Caddy transports. The frontend
-// adapter must prefix generated schema links even though both routes execute
-// the same operation from the same registry.
-func TestSharedAPIHealthSchemaLinksResolve(t *testing.T) {
+// Exercise the shared Huma API through Caddy. API schemas stay below /api
+// while image operations are served directly below /images.
+func TestSameOriginAPIAndImagesRouteThroughCaddy(t *testing.T) {
 	port := freePort(t)
 	cfg := testConfig()
 	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
@@ -40,10 +39,8 @@ func TestSharedAPIHealthSchemaLinksResolve(t *testing.T) {
 	opts := api.Options{Version: "test-version", Commit: "test-commit", DB: healthyDB{}}
 	apiService := api.New(opts)
 	m := New(map[string]http.Handler{
-		SurfaceSameOrigin: apiService.SameOrigin(),
-		SurfaceAPIHost:    apiService.APIHost(),
+		SurfaceSameOrigin: apiService.Site(),
 		SurfaceWS:         api.WS(opts),
-		SurfaceImages:     api.Images(opts),
 	}, zerolog.Nop())
 	if err := m.Start(context.Background(), cfg); err != nil {
 		t.Fatalf("Start: %v", err)
@@ -51,51 +48,69 @@ func TestSharedAPIHealthSchemaLinksResolve(t *testing.T) {
 	t.Cleanup(func() { _ = m.Close() })
 
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)
-	for _, tc := range []struct {
-		name       string
-		host       string
-		schemaPath string
-	}{
-		{"api-host", "api.example.com", "/schemas/health-response.json"},
-		{"same-origin", "tenant.example.com", "/api/schemas/health-response.json"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			res := requestWithHost(t, base+"/health", tc.host)
-			body, _ := io.ReadAll(res.Body)
-			_ = res.Body.Close()
-			if res.StatusCode != http.StatusOK {
-				t.Fatalf("health status = %d, want 200 (body %q)", res.StatusCode, body)
-			}
-			if !strings.Contains(string(body), `"ok":true`) ||
-				!strings.Contains(string(body), `"timestamp":"`) {
-				t.Errorf("health does not preserve shared contract: %s", body)
-			}
-			var payload map[string]any
-			if err := json.Unmarshal(body, &payload); err != nil {
-				t.Fatal(err)
-			}
-			schemaURL, err := url.Parse(payload["$schema"].(string))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if schemaURL.Path != tc.schemaPath {
-				t.Fatalf("$schema path = %q, want %q", schemaURL.Path, tc.schemaPath)
-			}
+	const host = "tenant.example.com"
+	res := requestWithHost(t, base+"/health", host)
+	body, _ := io.ReadAll(res.Body)
+	_ = res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("health status = %d, want 200 (body %q)", res.StatusCode, body)
+	}
+	if !strings.Contains(string(body), `"ok":true`) ||
+		!strings.Contains(string(body), `"timestamp":"`) {
+		t.Errorf("health does not preserve shared contract: %s", body)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	schemaURL, err := url.Parse(payload["$schema"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const schemaPath = "/api/schemas/health-response.json"
+	if schemaURL.Path != schemaPath {
+		t.Fatalf("$schema path = %q, want %q", schemaURL.Path, schemaPath)
+	}
+	schema := requestWithHost(t, base+schemaPath, host)
+	schemaBody, _ := io.ReadAll(schema.Body)
+	_ = schema.Body.Close()
+	if schema.StatusCode != http.StatusOK ||
+		!strings.Contains(string(schemaBody), `"$schema"`) {
+		t.Fatalf("schema response = %d %s", schema.StatusCode, schemaBody)
+	}
 
-			if !strings.Contains(res.Header.Get("Link"), "<"+tc.schemaPath+">") {
-				t.Fatalf("health Link = %q, want path %q", res.Header.Get("Link"), tc.schemaPath)
-			}
-			schema := requestWithHost(t, base+tc.schemaPath, tc.host)
-			schemaBody, _ := io.ReadAll(schema.Body)
-			_ = schema.Body.Close()
-			if schema.StatusCode != http.StatusOK {
-				t.Fatalf("schema status = %d, want 200 (body %q)", schema.StatusCode, schemaBody)
-			}
-			if string(schemaBody) == "null" ||
-				!strings.Contains(string(schemaBody), `"$schema"`) {
-				t.Fatalf("schema body is not usable: %s", schemaBody)
-			}
-		})
+	images := requestWithHost(t, base+"/images", host)
+	imageBody, _ := io.ReadAll(images.Body)
+	_ = images.Body.Close()
+	if images.StatusCode != http.StatusOK ||
+		!strings.Contains(string(imageBody), `"service":"EVE-KILL Images"`) {
+		t.Fatalf("images response = %d %s", images.StatusCode, imageBody)
+	}
+	var imagePayload map[string]any
+	if err := json.Unmarshal(imageBody, &imagePayload); err != nil {
+		t.Fatal(err)
+	}
+	imageSchemaURL, err := url.Parse(imagePayload["$schema"].(string))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(imageSchemaURL.Path, "/api/schemas/") ||
+		!strings.HasSuffix(imageSchemaURL.Path, ".json") {
+		t.Fatalf("image $schema path = %q, want /api/schemas/*.json", imageSchemaURL.Path)
+	}
+	imageSchema := requestWithHost(t, base+imageSchemaURL.Path, host)
+	imageSchemaBody, _ := io.ReadAll(imageSchema.Body)
+	_ = imageSchema.Body.Close()
+	if imageSchema.StatusCode != http.StatusOK ||
+		!strings.Contains(string(imageSchemaBody), `"$schema"`) {
+		t.Fatalf(
+			"image schema response = %d %s",
+			imageSchema.StatusCode,
+			imageSchemaBody,
+		)
+	}
+	if got := images.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("image CORS header = %q, want *", got)
 	}
 }
 

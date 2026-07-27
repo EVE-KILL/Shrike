@@ -23,14 +23,10 @@ import "time"
 // between the route table here and the handler map the caller supplies; a name
 // in one and not the other is a startup error rather than a runtime 404.
 const (
-	// SurfaceSameOrigin backs /api and /auth on the main-site origin.
+	// SurfaceSameOrigin backs /api, /auth, and /images on the main-site origin.
 	SurfaceSameOrigin = "same-origin"
-	// SurfaceAPIHost backs root-path requests on api.eve-kill.com.
-	SurfaceAPIHost = "api-host"
 	// SurfaceWS backs /ws and /ws/* on the frontend origin.
 	SurfaceWS = "ws"
-	// SurfaceImages backs images.eve-kill.com.
-	SurfaceImages = "images"
 )
 
 // Config describes the listener and where each surface lives.
@@ -48,18 +44,6 @@ type Config struct {
 
 	// LogLevel is a zerolog level name, translated to Caddy's zap levels.
 	LogLevel string
-
-	// APIHosts and ImagesHosts are matched exactly, and each surface may
-	// answer to several names — the production hostname plus its .localhost
-	// sibling for development, typically. An empty list drops that surface's
-	// route, which is how a deployment that does not serve a hostname avoids
-	// claiming it.
-	//
-	// Names are normalised and deduplicated before they reach Caddy, whose
-	// host matcher treats a repeated name as a configuration error rather
-	// than as a harmless redundancy.
-	APIHosts    []string
-	ImagesHosts []string
 
 	// NuxtSocket is the Unix socket the Nitro renderer listens on. Every
 	// request that matches no surface is proxied there, which is what makes
