@@ -15,6 +15,7 @@ func TestResolveGroup(t *testing.T) {
 		path string
 		want string
 	}{
+		{"/latest/status/?datasource=tranquility", "status"},
 		{"/latest/characters/12345/", "characters"},
 		{"/latest/characters/12345/corporationhistory/", "characters-corporationhistory"},
 		{"/latest/corporations/98187159/", "corporations"},

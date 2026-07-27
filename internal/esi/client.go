@@ -334,6 +334,45 @@ func (c *Client) doGet(ctx context.Context, path string) (raw, error) {
 	return raw{Status: 0, Group: group.Name}, nil
 }
 
+// doProbe performs an uncached GET without consulting the shared pause,
+// singleflight, or rate-limit state.
+//
+// This path exists for the Tranquility status endpoint, which is the authority
+// that sets and clears the global pause. Sending that request through the
+// regular pipeline creates a feedback loop: one failed check sets the pause,
+// then every later check obeys it and can never observe recovery. A status
+// probe is cheap, scheduled once per cluster, and has its own generous ESI
+// budget, so it is both safe and necessary to let it reach ESI directly.
+func (c *Client) doProbe(ctx context.Context, path string) (raw, error) {
+	url := c.fullURL(path)
+	group := ResolveGroup(url)
+
+	result, err := c.execute(ctx, http.MethodGet, url, nil, "", "")
+	if err != nil {
+		return raw{Group: group.Name}, err
+	}
+
+	// The probe bypasses local admission control, but its response still keeps
+	// the shared ESI diagnostics current.
+	c.updateErrorBudget(ctx, result.Header)
+	c.applyRateLimitHeaders(ctx, group, result.Header)
+
+	out := raw{
+		Status: result.Status,
+		Group:  group.Name,
+		Pages:  result.Pages,
+	}
+	switch result.Status {
+	case http.StatusOK:
+		out.Body = result.Body
+	case statusErrorLimited:
+		out.RetryAfter = c.pause(ctx, result.Header)
+	case http.StatusTooManyRequests:
+		out.RetryAfter = result.RetryAfter
+	}
+	return out, nil
+}
+
 // finishGet turns an HTTP result into a response, caching what deserves it.
 func (c *Client) finishGet(ctx context.Context, url string, group Group, etag string, cached *Entry, res httpResult) (raw, error) {
 	out := raw{Status: res.Status, Group: group.Name, Pages: res.Pages}

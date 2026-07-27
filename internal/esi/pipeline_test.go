@@ -572,6 +572,9 @@ func TestFetchStatus(t *testing.T) {
 			if r.URL.Path != "/latest/status/" {
 				t.Errorf("requested %q", r.URL.Path)
 			}
+			if got := r.URL.Query().Get("datasource"); got != "tranquility" {
+				t.Errorf("datasource = %q, want tranquility", got)
+			}
 			jsonOK(w, `{"players":28451,"server_version":"2847362","start_time":"2026-07-26T11:00:11Z"}`,
 				time.Now().Add(30*time.Second))
 		})
@@ -630,6 +633,67 @@ func TestFetchStatus(t *testing.T) {
 		}
 		if !res.Data.VIP {
 			t.Error("a VIP window was not reported")
+		}
+	})
+
+	t.Run("probe bypasses its own global pause", func(t *testing.T) {
+		rdb := testRedis(t)
+		fake := newFakeESI(t, func(w http.ResponseWriter, _ *http.Request) {
+			jsonOK(w, `{"players":28451,"server_version":"2847362"}`, time.Now().Add(30*time.Second))
+		})
+		c := testClient(t, rdb, fake.URL)
+		ctx := context.Background()
+
+		if err := rdb.Set(ctx, keyPaused, "tq_offline", time.Minute).Err(); err != nil {
+			t.Fatal(err)
+		}
+
+		callCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+		defer cancel()
+		res, err := FetchStatus(callCtx, c)
+		if err != nil {
+			t.Fatalf("status probe was blocked by the pause it must clear: %v", err)
+		}
+		if !res.OK() {
+			t.Fatalf("status = %d, want 200", res.Status)
+		}
+		if fake.Hits() != 1 {
+			t.Fatalf("ESI received %d probes, want one", fake.Hits())
+		}
+		if ttl := rdb.PTTL(ctx, keyPaused).Val(); ttl <= 0 {
+			t.Error("the probe changed pause state before its result was interpreted")
+		}
+	})
+
+	t.Run("probe bypasses local rate admission", func(t *testing.T) {
+		rdb := testRedis(t)
+		fake := newFakeESI(t, func(w http.ResponseWriter, _ *http.Request) {
+			jsonOK(w, `{"players":28451,"server_version":"2847362"}`, time.Now().Add(30*time.Second))
+		})
+		c := testClient(t, rdb, fake.URL)
+		ctx := context.Background()
+		group := Groups["status"]
+
+		if err := rdb.Set(ctx, keyRemaining(group.Name), "0", time.Minute).Err(); err != nil {
+			t.Fatal(err)
+		}
+		if err := rdb.Set(
+			ctx,
+			keyResetAt(group.Name),
+			strconv.FormatInt(time.Now().Add(time.Minute).UnixMilli(), 10),
+			time.Minute,
+		).Err(); err != nil {
+			t.Fatal(err)
+		}
+
+		callCtx, cancel := context.WithTimeout(ctx, 250*time.Millisecond)
+		defer cancel()
+		res, err := FetchStatus(callCtx, c)
+		if err != nil {
+			t.Fatalf("status probe was blocked by local rate admission: %v", err)
+		}
+		if !res.OK() || fake.Hits() != 1 {
+			t.Fatalf("response = %+v, ESI hits = %d", res, fake.Hits())
 		}
 	})
 }

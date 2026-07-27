@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/cron"
@@ -89,18 +90,17 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 // and the cron worker both read.
 func (d *Deps) cronTQStatus(ctx context.Context) (string, error) {
 	res, err := esi.FetchStatus(ctx, d.ESI)
-
-	// Any failure to get an answer is treated as offline. That is the safe
-	// direction: the cost of pausing while TQ is actually up is some latency,
-	// and the cost of not pausing while it is down is the shared ESI error
-	// budget, which takes far longer to recover than the downtime.
-	online := err == nil && res.OK() && res.Data != nil
+	observation, err := interpretTQStatus(res, err)
+	if err != nil {
+		// A local timeout, exhausted error budget, or malformed response says
+		// nothing authoritative about TQ. Keep the last known state and retry
+		// instead of manufacturing an offline transition.
+		return "", err
+	}
 
 	status := queue.TQOffline
-	players := 0
-	if online {
+	if observation.online {
 		status = "online"
-		players = int(res.Data.Players)
 	}
 
 	// The previous value, read before it is overwritten, is what makes this a
@@ -114,8 +114,8 @@ func (d *Deps) cronTQStatus(ctx context.Context) (string, error) {
 		if err := d.Redis.Set(ctx, queue.TQStatusKey, status, 0).Err(); err != nil {
 			return "", err
 		}
-		if online {
-			if err := d.Redis.Set(ctx, tqPlayersKey, players, 0).Err(); err != nil {
+		if observation.online {
+			if err := d.Redis.Set(ctx, tqPlayersKey, observation.players, 0).Err(); err != nil {
 				return "", err
 			}
 			// The in-process ESI client uses the same pause key as the
@@ -138,23 +138,64 @@ func (d *Deps) cronTQStatus(ctx context.Context) (string, error) {
 
 	changed := previous != "" && previous != status
 
-	if !online {
+	if !observation.online {
 		if changed {
-			d.Ticker.TQOffline(ctx, "Tranquility is not responding")
+			d.Ticker.TQOffline(ctx, observation.reason)
 		}
-		return "Tranquility is offline", nil
+		return "Tranquility is offline: " + observation.reason, nil
 	}
 	if changed {
-		d.Ticker.TQOnline(ctx, fmt.Sprintf("%s players connected", ticker.FormatCount(players)))
+		d.Ticker.TQOnline(ctx, fmt.Sprintf("%s players connected", ticker.FormatCount(observation.players)))
 	}
-	return fmt.Sprintf("Tranquility is online, %d players", players), nil
+	return fmt.Sprintf("Tranquility is online, %d players", observation.players), nil
+}
+
+type tqStatusObservation struct {
+	online  bool
+	players int
+	reason  string
+}
+
+func interpretTQStatus(res esi.Response[esi.Status], fetchErr error) (tqStatusObservation, error) {
+	if fetchErr != nil {
+		return tqStatusObservation{}, fmt.Errorf("check Tranquility status: %w", fetchErr)
+	}
+	if res.OK() && res.Data != nil {
+		if res.Data.Error != "" {
+			return tqStatusObservation{reason: res.Data.Error}, nil
+		}
+		return tqStatusObservation{online: true, players: int(res.Data.Players)}, nil
+	}
+
+	switch {
+	case res.Status >= http.StatusInternalServerError:
+		return tqStatusObservation{reason: fmt.Sprintf("ESI returned HTTP %d", res.Status)}, nil
+	case res.Status == 0:
+		return tqStatusObservation{}, fmt.Errorf("check Tranquility status: probe did not reach ESI")
+	case res.Status == statusErrorLimited:
+		return tqStatusObservation{}, fmt.Errorf(
+			"check Tranquility status: ESI error limit reached (HTTP %d, retry after %ds)",
+			res.Status, res.RetryAfter,
+		)
+	case res.Status == http.StatusTooManyRequests:
+		return tqStatusObservation{}, fmt.Errorf(
+			"check Tranquility status: ESI rate limit reached (HTTP %d, retry after %ds)",
+			res.Status, res.RetryAfter,
+		)
+	default:
+		return tqStatusObservation{}, fmt.Errorf(
+			"check Tranquility status: unexpected HTTP %d",
+			res.Status,
+		)
+	}
 }
 
 const tqPlayersKey = "esi:tq:players"
 
 const (
-	esiPausedKey = "esi:paused"
-	tqPauseTTL   = 2 * time.Minute
+	esiPausedKey       = "esi:paused"
+	tqPauseTTL         = 2 * time.Minute
+	statusErrorLimited = 420
 )
 
 // cronSovereignty imports the latest sovereignty snapshot.

@@ -236,6 +236,7 @@ type Status struct {
 	Players       int32  `json:"players"`
 	ServerVersion string `json:"server_version"`
 	StartTime     string `json:"start_time"`
+	Error         string `json:"error"`
 	// VIP marks a restricted login window after a patch — the server is up but
 	// only staff can play, so no killmails will arrive.
 	VIP bool `json:"vip"`
@@ -245,10 +246,12 @@ type Status struct {
 
 // FetchStatus reads the state of Tranquility.
 //
-// A non-200 means the server is down, which is information rather than a
-// failure: callers check the status precisely so that they can stop.
+// It deliberately bypasses the ordinary ESI pause, cache, and limiter. This is
+// the probe that decides whether those mechanisms should be paused, so making
+// it obey their current state would prevent it from ever observing recovery.
 func FetchStatus(ctx context.Context, c *Client) (Response[Status], error) {
-	return Get[Status](ctx, c, "/latest/status/")
+	r, err := c.doProbe(ctx, "/latest/status/?datasource=tranquility")
+	return typed[Status](r, err)
 }
 
 // FetchCharacter reads one character's public profile.

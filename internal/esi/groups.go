@@ -41,6 +41,10 @@ type Group struct {
 
 // Groups is the registry, keyed by name.
 var Groups = map[string]Group{
+	"status": {
+		Name: "status", PathPrefix: "status",
+		Limit: 600, Window: 900, HeaderAuthoritative: true,
+	},
 	"characters": {
 		Name: "characters", PathPrefix: "characters",
 		Limit: 300, Window: 60, HeaderAuthoritative: true,
@@ -98,6 +102,7 @@ var groupOrder = []string{
 	"characters-corporationhistory",
 	"corporations-alliancehistory",
 	"characters-affiliation",
+	"status",
 	"characters",
 	"corporations",
 	"alliances",
