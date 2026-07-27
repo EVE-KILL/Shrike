@@ -610,9 +610,7 @@ func inspectOldCharacterArchive(
 	if filename == "." || filename == "/" || filename == "" {
 		filename = "OldCharPortraits_256.zip"
 	}
-	expectedSHA1 := strings.ToLower(strings.TrimSpace(
-		response.Header.Get("X-Amz-Meta-Large-File-Sha1"),
-	))
+	expectedSHA1 := oldCharacterArchiveSHA1(response.Header)
 	if decoded, decodeErr := hex.DecodeString(expectedSHA1); decodeErr != nil ||
 		len(decoded) != sha1.Size {
 		expectedSHA1 = ""
@@ -631,6 +629,17 @@ func inspectOldCharacterArchive(
 		lastModified: strings.TrimSpace(response.Header.Get("Last-Modified")),
 		remote:       true,
 	}, cleanup, nil
+}
+
+func oldCharacterArchiveSHA1(header http.Header) string {
+	for name, values := range header {
+		normalized := strings.ReplaceAll(strings.ToLower(name), "-", "_")
+		if normalized != "x_amz_meta_large_file_sha1" {
+			continue
+		}
+		return strings.ToLower(strings.TrimSpace(strings.Join(values, ",")))
+	}
+	return ""
 }
 
 func materializeOldCharacterArchive(

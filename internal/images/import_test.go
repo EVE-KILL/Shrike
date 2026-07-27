@@ -162,7 +162,8 @@ func TestImportOldCharactersResumesRemoteArchiveDownload(t *testing.T) {
 		w.Header().Set("Content-Length", strconv.Itoa(len(archiveBody)))
 		w.Header().Set("ETag", `"archive-v1"`)
 		w.Header().Set("Last-Modified", lastModified)
-		w.Header().Set("X-Amz-Meta-Large-File-Sha1", digest)
+		// EVE Ref exposes the Backblaze large-file checksum with underscores.
+		w.Header().Set("X-Amz-Meta-Large_File_Sha1", digest)
 		if r.Method == http.MethodHead {
 			return
 		}
@@ -227,6 +228,16 @@ func TestImportOldCharactersResumesRemoteArchiveDownload(t *testing.T) {
 			gets.Load(),
 			ranges.Load(),
 		)
+	}
+	var manifest oldCharacterManifest
+	if err := json.Unmarshal(
+		store.objects[oldCharacterManifestKey].Body,
+		&manifest,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.ArchiveDigest != "sha1:"+digest {
+		t.Fatalf("archive digest = %q", manifest.ArchiveDigest)
 	}
 	finalPath := filepath.Join(cacheDirectory, "OldCharPortraits_256.zip")
 	finalBody, err := os.ReadFile(finalPath)
