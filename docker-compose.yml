@@ -56,7 +56,7 @@ services:
 
   valkey:
     # Shared L2 cache, coordination, and pub/sub. Prod runs 8.1.x.
-    image: valkey/valkey:8.1-alpine
+    image: valkey/valkey:9.1-alpine
     ports:
       - "6379:6379"
     command:
