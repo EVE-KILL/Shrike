@@ -33,6 +33,7 @@ const (
 	oldCharacterManifestKey     = "oldcharacters/manifest.json"
 	oldCharacterShardPrefix     = "oldcharacters/manifests/v1/"
 	downloadProgressInterval    = 64 << 20
+	oldCharacterUploadAttempts  = 4
 )
 
 var oldPortraitName = regexp.MustCompile(`^([0-9]+)_256\.jpg$`)
@@ -342,8 +343,9 @@ func importOldCharacterShard(
 				}
 				sum := sha256.Sum256(body)
 				digest := hex.EncodeToString(sum[:])
-				if err := store.PutWithOptions(
+				if err := putOldCharacterObject(
 					groupCtx,
+					store,
 					key,
 					body,
 					objectstore.PutOptions{
@@ -351,6 +353,7 @@ func importOldCharacterShard(
 						CacheControl: immutableCacheControl,
 						Metadata:     map[string]string{"sha256": digest},
 					},
+					sleepOldCharacterRetry,
 				); err != nil {
 					return fmt.Errorf("upload %s: %w", key, err)
 				}
@@ -386,6 +389,48 @@ func importOldCharacterShard(
 		return fmt.Errorf("publish old character shard %s: %w", shard, err)
 	}
 	return nil
+}
+
+func putOldCharacterObject(
+	ctx context.Context,
+	store ObjectStore,
+	key string,
+	body []byte,
+	options objectstore.PutOptions,
+	sleep func(context.Context, time.Duration) error,
+) error {
+	var err error
+	for attempt := range oldCharacterUploadAttempts {
+		err = store.PutWithOptions(ctx, key, body, options)
+		if err == nil {
+			return nil
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if attempt == oldCharacterUploadAttempts-1 {
+			break
+		}
+		delay := min(2*time.Second<<attempt, 10*time.Second)
+		if err := sleep(ctx, delay); err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func sleepOldCharacterRetry(
+	ctx context.Context,
+	delay time.Duration,
+) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func oldCharacterObjectKey(name string) (string, error) {

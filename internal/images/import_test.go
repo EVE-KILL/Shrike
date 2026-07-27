@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -259,6 +260,56 @@ func TestImportOldCharactersResumesRemoteArchiveDownload(t *testing.T) {
 	if second.Uploaded != 0 || second.Skipped != 1 || gets.Load() != 1 {
 		t.Fatalf("second = %+v, GETs = %d", second, gets.Load())
 	}
+}
+
+func TestPutOldCharacterObjectRetriesLongStorageIncident(t *testing.T) {
+	store := &flakyOldCharacterStore{memoryStore: newMemoryStore()}
+	store.failures.Store(2)
+	var delays []time.Duration
+	err := putOldCharacterObject(
+		context.Background(),
+		store,
+		"oldcharacters/0/1/900000001_256.jpg",
+		[]byte("portrait"),
+		objectstore.PutOptions{ContentType: "image/jpeg"},
+		func(_ context.Context, delay time.Duration) error {
+			delays = append(delays, delay)
+			return nil
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.calls.Load() != 3 {
+		t.Fatalf("calls = %d, want 3", store.calls.Load())
+	}
+	if len(delays) != 2 ||
+		delays[0] != 2*time.Second ||
+		delays[1] != 4*time.Second {
+		t.Fatalf("delays = %v", delays)
+	}
+	if store.objects["oldcharacters/0/1/900000001_256.jpg"] == nil {
+		t.Fatal("portrait was not eventually uploaded")
+	}
+}
+
+type flakyOldCharacterStore struct {
+	*memoryStore
+	failures atomic.Int64
+	calls    atomic.Int64
+}
+
+func (s *flakyOldCharacterStore) PutWithOptions(
+	ctx context.Context,
+	key string,
+	body []byte,
+	options objectstore.PutOptions,
+) error {
+	s.calls.Add(1)
+	if s.failures.Add(-1) >= 0 {
+		return errors.New("sustained B2 incident")
+	}
+	return s.memoryStore.PutWithOptions(ctx, key, body, options)
 }
 
 func TestSyncTypeExportVerifiesDigestAndUsesDirectTypeIDKeys(t *testing.T) {
