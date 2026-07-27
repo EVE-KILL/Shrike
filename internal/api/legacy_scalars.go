@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"reflect"
 
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -112,4 +113,59 @@ func preview(data []byte) string {
 		return text[:limit] + "…"
 	}
 	return text
+}
+
+// optional distinguishes a field that was absent from one sent as null.
+//
+// The patch-style handlers depend on that difference: an absent description
+// leaves the stored value alone, while an explicit null clears it. A plain
+// *string collapses both to nil and would silently turn every clear into a
+// no-op, so the distinction is carried in the type rather than inferred.
+type optional[T any] struct {
+	Set   bool
+	Value *T
+}
+
+func (o *optional[T]) UnmarshalJSON(data []byte) error {
+	o.Set = true
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		o.Value = nil
+		return nil
+	}
+	var value T
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	o.Value = &value
+	return nil
+}
+
+func (o optional[T]) MarshalJSON() ([]byte, error) {
+	if !o.Set || o.Value == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(*o.Value)
+}
+
+// Schema reports the wrapped type, marked nullable because null is meaningful
+// rather than merely tolerated.
+func (optional[T]) Schema(r huma.Registry) *huma.Schema {
+	var zero T
+	schema := huma.SchemaFromType(r, reflect.TypeOf(zero))
+	if schema == nil {
+		return &huma.Schema{}
+	}
+	schema.Nullable = true
+	return schema
+}
+
+// present reports whether the caller sent the field at all.
+func (o optional[T]) present() bool { return o.Set }
+
+// valueOr returns the sent value, or the fallback when absent or null.
+func (o optional[T]) valueOr(fallback T) T {
+	if o.Value == nil {
+		return fallback
+	}
+	return *o.Value
 }

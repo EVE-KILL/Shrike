@@ -57,3 +57,34 @@ func TestJSScalarsDocumentBothAcceptedForms(t *testing.T) {
 		t.Errorf("schema forms = %v, %v", schema.OneOf[0].Type, schema.OneOf[1].Type)
 	}
 }
+
+// An absent description leaves the stored value alone; an explicit null clears
+// it. Collapsing both to nil would turn every clear into a silent no-op.
+func TestOptionalSeparatesAbsentFromNull(t *testing.T) {
+	type patch struct {
+		Name        optional[string] `json:"name"`
+		Description optional[string] `json:"description"`
+	}
+
+	var absent patch
+	if err := json.Unmarshal([]byte(`{"name":"keep"}`), &absent); err != nil {
+		t.Fatal(err)
+	}
+	if !absent.Name.present() || absent.Name.valueOr("") != "keep" {
+		t.Errorf("name = %+v", absent.Name)
+	}
+	if absent.Description.present() {
+		t.Error("an absent description reported as present")
+	}
+
+	var cleared patch
+	if err := json.Unmarshal([]byte(`{"description":null}`), &cleared); err != nil {
+		t.Fatal(err)
+	}
+	if !cleared.Description.present() {
+		t.Error("an explicit null reported as absent")
+	}
+	if cleared.Description.Value != nil {
+		t.Errorf("null produced a value: %v", *cleared.Description.Value)
+	}
+}
