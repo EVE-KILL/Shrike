@@ -380,6 +380,76 @@ func TestS3StoreStatMetadataAndUncachedObjects(t *testing.T) {
 	}
 }
 
+func TestS3StoreRetriesTransientResponsesWithTheOriginalBody(t *testing.T) {
+	var attempts int
+	var bodies []string
+	server := httptest.NewServer(http.HandlerFunc(func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
+		attempts++
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		bodies = append(bodies, string(body))
+		if attempts < 3 {
+			http.Error(w, "temporary B2 incident", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	var delays []time.Duration
+	store, err := NewS3Store(S3Options{
+		Endpoint: server.URL, Bucket: "images", Region: BackblazeRegion,
+		AccessKeyID: "id", SecretAccessKey: "secret",
+		DisableCache: true,
+		sleep: func(_ context.Context, delay time.Duration) error {
+			delays = append(delays, delay)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Put(
+		context.Background(),
+		"static/systems/30000551.png",
+		[]byte("image"),
+		"image/png",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", attempts)
+	}
+	for attempt, body := range bodies {
+		if body != "image" {
+			t.Errorf("attempt %d body = %q", attempt+1, body)
+		}
+	}
+	if len(delays) != 2 ||
+		delays[0] != defaultRetryDelay ||
+		delays[1] != 2*defaultRetryDelay {
+		t.Errorf("retry delays = %v", delays)
+	}
+}
+
+func TestObjectStoreRetryDelayHonorsRetryAfterAndCapsIt(t *testing.T) {
+	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	response := &http.Response{Header: make(http.Header)}
+	response.Header.Set("Retry-After", "60")
+	if got := objectStoreRetryDelay(0, response, now); got != maximumRetryDelay {
+		t.Errorf("seconds Retry-After delay = %s", got)
+	}
+	response.Header.Set("Retry-After", now.Add(2*time.Second).Format(http.TimeFormat))
+	if got := objectStoreRetryDelay(0, response, now); got != 2*time.Second {
+		t.Errorf("date Retry-After delay = %s", got)
+	}
+}
+
 func TestS3StoreRejectsUnsafeConfigurationKeysAndLargeObjects(t *testing.T) {
 	valid := S3Options{
 		Endpoint: "https://s3.example.test", Bucket: "media",

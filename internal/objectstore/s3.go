@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,9 @@ const (
 	defaultCacheMaximumBytes   = 64 << 20
 	defaultCacheMaximumEntries = 1024
 	defaultMaximumBytes        = 8 << 20
+	defaultRequestAttempts     = 6
+	defaultRetryDelay          = 250 * time.Millisecond
+	maximumRetryDelay          = 5 * time.Second
 )
 
 type S3Options struct {
@@ -42,7 +46,8 @@ type S3Options struct {
 	DisableCache      bool
 	MaximumBytes      int64
 
-	now func() time.Time
+	now   func() time.Time
+	sleep func(context.Context, time.Duration) error
 }
 
 type cachedObject struct {
@@ -88,6 +93,7 @@ type S3Store struct {
 	cacheMaximum int64
 	maximum      int64
 	now          func() time.Time
+	sleep        func(context.Context, time.Duration) error
 
 	cacheMu    sync.Mutex
 	cacheBytes int64
@@ -148,6 +154,10 @@ func NewS3Store(options S3Options) (*S3Store, error) {
 	if now == nil {
 		now = time.Now
 	}
+	sleep := options.sleep
+	if sleep == nil {
+		sleep = sleepContext
+	}
 	endpoint.Path = strings.TrimRight(endpoint.Path, "/")
 	endpoint.RawPath = ""
 	return &S3Store{
@@ -164,6 +174,7 @@ func NewS3Store(options S3Options) (*S3Store, error) {
 		cacheMaximum: cacheMaximum,
 		maximum:      maximum,
 		now:          now,
+		sleep:        sleep,
 		cache:        make(map[string]*cachedObject),
 		cacheOrder:   list.New(),
 	}, nil
@@ -296,38 +307,107 @@ func (s *S3Store) request(
 	if err != nil {
 		return nil, err
 	}
-	var reader io.Reader
-	if body != nil {
-		reader = bytes.NewReader(body)
-	}
-	request, err := http.NewRequestWithContext(ctx, method, objectURL, reader)
-	if err != nil {
-		return nil, fmt.Errorf("build object storage request: %w", err)
-	}
-	for name, values := range headers {
-		for _, value := range values {
-			request.Header.Add(name, value)
-		}
-	}
 	digest := sha256.Sum256(body)
 	payloadHash := hex.EncodeToString(digest[:])
-	request.Header.Set("X-Amz-Content-Sha256", payloadHash)
-	if err := s.signer.SignHTTP(
-		ctx,
-		s.credential,
-		request,
-		payloadHash,
-		"s3",
-		s.region,
-		s.now().UTC(),
-	); err != nil {
-		return nil, fmt.Errorf("sign object storage request: %w", err)
+
+	for attempt := 0; attempt < defaultRequestAttempts; attempt++ {
+		var reader io.Reader
+		if body != nil {
+			reader = bytes.NewReader(body)
+		}
+		request, err := http.NewRequestWithContext(
+			ctx,
+			method,
+			objectURL,
+			reader,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("build object storage request: %w", err)
+		}
+		for name, values := range headers {
+			for _, value := range values {
+				request.Header.Add(name, value)
+			}
+		}
+		request.Header.Set("X-Amz-Content-Sha256", payloadHash)
+		if err := s.signer.SignHTTP(
+			ctx,
+			s.credential,
+			request,
+			payloadHash,
+			"s3",
+			s.region,
+			s.now().UTC(),
+		); err != nil {
+			return nil, fmt.Errorf("sign object storage request: %w", err)
+		}
+		response, requestErr := s.client.Do(request)
+		retry := requestErr != nil ||
+			(response != nil && retryableObjectStoreStatus(response.StatusCode))
+		if !retry || attempt == defaultRequestAttempts-1 {
+			if requestErr != nil {
+				return nil, fmt.Errorf("object storage request: %w", requestErr)
+			}
+			return response, nil
+		}
+		if response != nil {
+			_, _ = io.Copy(
+				io.Discard,
+				io.LimitReader(response.Body, 64<<10),
+			)
+			_ = response.Body.Close()
+		}
+		delay := objectStoreRetryDelay(attempt, response, s.now())
+		if err := s.sleep(ctx, delay); err != nil {
+			return nil, fmt.Errorf("object storage retry: %w", err)
+		}
 	}
-	response, err := s.client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("object storage request: %w", err)
+	return nil, errors.New("object storage retry loop exhausted")
+}
+
+func retryableObjectStoreStatus(status int) bool {
+	switch status {
+	case http.StatusRequestTimeout,
+		http.StatusTooEarly,
+		http.StatusTooManyRequests,
+		http.StatusInternalServerError,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
 	}
-	return response, nil
+}
+
+func objectStoreRetryDelay(
+	attempt int,
+	response *http.Response,
+	now time.Time,
+) time.Duration {
+	if response != nil {
+		if value := strings.TrimSpace(response.Header.Get("Retry-After")); value != "" {
+			if seconds, err := strconv.Atoi(value); err == nil && seconds >= 0 {
+				return min(time.Duration(seconds)*time.Second, maximumRetryDelay)
+			}
+			if date, err := http.ParseTime(value); err == nil && date.After(now) {
+				return min(date.Sub(now), maximumRetryDelay)
+			}
+		}
+	}
+	delay := defaultRetryDelay << attempt
+	return min(delay, maximumRetryDelay)
+}
+
+func sleepContext(ctx context.Context, delay time.Duration) error {
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func objectInfoFromResponse(key string, response *http.Response) ObjectInfo {
