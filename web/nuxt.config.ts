@@ -140,7 +140,10 @@ export default defineNuxtConfig({
   css: ['~/assets/main.css'],
 
   nitro: {
-      preset: 'bun',
+      // The node-server entrypoint supports NITRO_UNIX_SOCKET, avoiding a
+      // second TCP port between the renderer and Shrike's embedded Caddy
+      // front door.
+      preset: 'node-server',
       minify: true,
       compressPublicAssets: true,
       sourceMap: false,

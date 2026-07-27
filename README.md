@@ -1,7 +1,8 @@
 # Shrike
 
-The Go backend for [EVE-KILL](https://eve-kill.com). One binary: API, queue workers,
-cron runner, WebSocket relay, feed service.
+The self-contained [EVE-KILL](https://eve-kill.com) application: Go API, queue
+workers, cron runner, WebSocket relay and image service, plus the Nuxt renderer
+and its vendored dogma engine.
 
 ## Quick start
 
@@ -12,6 +13,24 @@ make build                    # also symlinks bin/ek
 ./bin/shrike doctor
 ./bin/shrike db:migrate --apply
 ```
+
+## Container
+
+One image is built for every workload:
+
+```sh
+docker build -t evekill .
+docker run evekill serve
+docker run evekill work:queues
+docker run evekill work:cron
+docker run evekill work:zkb
+```
+
+`serve` starts the Nuxt renderer on an internal Unix socket and then starts
+Shrike's embedded Caddy front door. Every other command execs the same Go binary
+directly, so worker and cron pods do not start Node or carry a second application
+image. The image is multi-architecture: Docker's target platform controls both
+the Go binary and Nuxt's native image dependencies.
 
 ## Commands
 

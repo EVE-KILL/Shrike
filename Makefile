@@ -54,6 +54,13 @@ dist:
 	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY)-linux-amd64 $(PKG)
 	GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY)-linux-arm64 $(PKG)
 
+.PHONY: image
+image:
+	docker build \
+		--build-arg VERSION="$(VERSION)" \
+		--build-arg COMMIT="$(COMMIT)" \
+		-t evekill:$(COMMIT) .
+
 .PHONY: hooks
 hooks:
 	lefthook install
