@@ -287,16 +287,27 @@ func shortVersion(banner string) string {
 	return truncate(banner, 40)
 }
 
-// redisVersion pulls redis_version out of an INFO server block.
+// redisVersion identifies Valkey by its native version when the compatibility
+// redis_version field is also present. Valkey 8 reports redis_version 7.2.4,
+// which is a protocol compatibility marker rather than the running version.
 func redisVersion(info string) string {
-	const key = "redis_version:"
+	if version := infoValue(info, "valkey_version:"); version != "" {
+		return "Valkey " + version
+	}
+	if version := infoValue(info, "redis_version:"); version != "" {
+		return "Redis " + version
+	}
+	return ""
+}
+
+func infoValue(info, key string) string {
 	i := strings.Index(info, key)
 	if i < 0 {
 		return ""
 	}
 	rest := info[i+len(key):]
 	if end := strings.IndexAny(rest, "\r\n"); end >= 0 {
-		return "v" + rest[:end]
+		return rest[:end]
 	}
-	return "v" + rest
+	return rest
 }

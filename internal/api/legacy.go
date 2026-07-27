@@ -197,8 +197,22 @@ func writeLegacyError(ctx huma.Context, err error) {
 	if errors.As(err, &apiErr) {
 		status = apiErr.Status
 		message = apiErr.Message
+	} else if errors.Is(err, context.Canceled) {
+		// Nuxt renders both responsive trees during SSR. Its duplicate fetches
+		// share a key, so completing one cancels the redundant request. That is
+		// client-driven control flow, not an API failure worth paging on.
+		requestURL := ctx.URL()
+		log.Debug().
+			Str("method", ctx.Method()).
+			Str("path", requestURL.Path).
+			Msg("API request canceled by client")
 	} else {
-		log.Error().Err(err).Msg("API request failed")
+		requestURL := ctx.URL()
+		log.Error().
+			Err(err).
+			Str("method", ctx.Method()).
+			Str("path", requestURL.Path).
+			Msg("API request failed")
 	}
 	body, marshalErr := json.Marshal(map[string]string{"error": message})
 	if marshalErr != nil {
