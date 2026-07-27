@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
 	"net/url"
@@ -164,34 +163,6 @@ func requireContentAdmin(
 	return principal, nil
 }
 
-func decodeContentBody(
-	req *legacyRequest,
-	allowEmpty bool,
-) (map[string]any, error) {
-	limited := io.LimitReader(req.Body, contentBodyLimit+1)
-	decoder := json.NewDecoder(limited)
-	decoder.UseNumber()
-	var body map[string]any
-	err := decoder.Decode(&body)
-	if allowEmpty && errors.Is(err, io.EOF) {
-		return map[string]any{}, nil
-	}
-	if err != nil || body == nil {
-		return nil, apiError(
-			http.StatusBadRequest,
-			"Body must be a JSON object",
-		)
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return nil, apiError(
-			http.StatusBadRequest,
-			"Body must contain one JSON value",
-		)
-	}
-	return body, nil
-}
-
 func boundedContentInt(raw string, fallback, minimum, maximum int) int {
 	value, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
 	if err != nil || value == 0 || math.IsNaN(value) ||
@@ -297,14 +268,14 @@ func registerBlogServiceRoutes(
 		Tags:        []string{"admin", "blog"},
 		Security:    requiredSession,
 	}, service.adminListHandler())
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[blogCreateBody](a, huma.Operation{
 		OperationID: "blog-admin-create",
 		Method:      http.MethodPost,
 		Path:        "/admin/blog",
 		Summary:     "Create a blog post",
 		Tags:        []string{"admin", "blog"},
 		Security:    requiredSession,
-	}, service.adminCreateHandler())
+	}), service.adminCreateHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "blog-admin-detail",
 		Method:      http.MethodGet,
@@ -313,14 +284,14 @@ func registerBlogServiceRoutes(
 		Tags:        []string{"admin", "blog"},
 		Security:    requiredSession,
 	}, service.adminDetailHandler())
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[blogUpdateBody](a, huma.Operation{
 		OperationID: "blog-admin-update",
 		Method:      http.MethodPatch,
 		Path:        "/admin/blog/{id}",
 		Summary:     "Update a blog post",
 		Tags:        []string{"admin", "blog"},
 		Security:    requiredSession,
-	}, service.adminUpdateHandler())
+	}), service.adminUpdateHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "blog-admin-delete",
 		Method:      http.MethodDelete,
@@ -494,6 +465,36 @@ func (s *blogService) adminPreviewHandler() legacyHandler {
 	}
 }
 
+// Wire types for the blog write routes.
+//
+// Create reads its fields directly, so those are typed. Update branches on key
+// presence for every field — an absent slug leaves the stored one alone — so
+// those stay json.RawMessage and go through rawJSONField, which reports
+// presence the way the map lookup did.
+type blogCreateBody struct {
+	Title         string          `json:"title" doc:"Post title."`
+	Slug          string          `json:"slug,omitempty" doc:"URL slug. Derived from the title when omitted."`
+	BodyMD        string          `json:"body_md" doc:"Post body, in Markdown."`
+	Excerpt       json.RawMessage `json:"excerpt,omitempty" doc:"Short summary, at most 500 characters."`
+	CoverImageURL json.RawMessage `json:"cover_image_url,omitempty" doc:"Cover image URL, at most 4096 characters."`
+	Status        json.RawMessage `json:"status,omitempty" doc:"Publication status."`
+	PublishedAt   json.RawMessage `json:"published_at,omitempty" doc:"Publication timestamp."`
+	Tags          json.RawMessage `json:"tags,omitempty" doc:"Tag list."`
+}
+
+// blogUpdateBody patches a post. Every field is optional and an absent field
+// is left unchanged.
+type blogUpdateBody struct {
+	Title         json.RawMessage `json:"title,omitempty" doc:"New title."`
+	Slug          json.RawMessage `json:"slug,omitempty" doc:"New slug."`
+	BodyMD        json.RawMessage `json:"body_md,omitempty" doc:"New body, in Markdown."`
+	Excerpt       json.RawMessage `json:"excerpt,omitempty" doc:"New excerpt."`
+	CoverImageURL json.RawMessage `json:"cover_image_url,omitempty" doc:"New cover image URL."`
+	Status        json.RawMessage `json:"status,omitempty" doc:"New publication status."`
+	PublishedAt   json.RawMessage `json:"published_at,omitempty" doc:"New publication timestamp."`
+	Tags          json.RawMessage `json:"tags,omitempty" doc:"Replacement tag list."`
+}
+
 func (s *blogService) adminCreateHandler() legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		setAccountNoStore(req.Huma)
@@ -507,18 +508,18 @@ func (s *blogService) adminCreateHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[blogCreateBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		title := strings.TrimSpace(stringField(body["title"]))
+		title := strings.TrimSpace(body.Title)
 		if title == "" {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,
 				"title is required",
 			)
 		}
-		slug := slugifyBlogTitle(stringField(body["slug"]))
+		slug := slugifyBlogTitle(body.Slug)
 		if slug == "" {
 			slug = slugifyBlogTitle(title)
 		}
@@ -529,7 +530,7 @@ func (s *blogService) adminCreateHandler() legacyHandler {
 			)
 		}
 		status := int16(blogStatusDraft)
-		if value, ok := contentInteger(body["status"]); ok &&
+		if value, ok := contentInteger(rawJSONValue(body.Status)); ok &&
 			(value == blogStatusDraft || value == blogStatusLive ||
 				value == blogStatusArchive) {
 			status = int16(value)
@@ -537,7 +538,7 @@ func (s *blogService) adminCreateHandler() legacyHandler {
 		var publishedAt *time.Time
 		if status == blogStatusLive {
 			value := s.now().UTC()
-			if raw, found := body["published_at"]; found && raw != nil {
+			if raw, found := rawJSONField(body.PublishedAt); found && raw != nil {
 				parsed, ok := parseContentTime(raw)
 				if !ok {
 					return legacyPayload{}, apiError(
@@ -563,17 +564,17 @@ func (s *blogService) adminCreateHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		bodyMD := stringField(body["body_md"])
+		bodyMD := body.BodyMD
 		row, err := s.store.Create(ctx, blogCreate{
 			Slug: slug, Title: title,
-			Excerpt: optionalTrimmedString(body["excerpt"], 500),
+			Excerpt: optionalTrimmedString(rawJSONValue(body.Excerpt), 500),
 			BodyMD:  bodyMD, BodyHTML: renderBlogMarkdown(bodyMD),
 			CoverImageURL: optionalTrimmedString(
-				body["cover_image_url"], 4096,
+				rawJSONValue(body.CoverImageURL), 4096,
 			),
 			Status: status, AuthorID: principal.CharacterID,
 			AuthorName: principal.CharacterName, Author: author,
-			Tags:        normalizeBlogTags(body["tags"]),
+			Tags:        normalizeBlogTags(rawJSONValue(body.Tags)),
 			PublishedAt: publishedAt,
 		})
 		if isUniqueViolation(err) {
@@ -605,7 +606,7 @@ func (s *blogService) adminUpdateHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[blogUpdateBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -620,7 +621,7 @@ func (s *blogService) adminUpdateHandler() legacyHandler {
 			)
 		}
 		update := map[string]any{"updated_at": s.now().UTC()}
-		if raw, found := body["title"]; found {
+		if raw, found := rawJSONField(body.Title); found {
 			title := strings.TrimSpace(stringField(raw))
 			if title == "" {
 				return legacyPayload{}, apiError(
@@ -630,7 +631,7 @@ func (s *blogService) adminUpdateHandler() legacyHandler {
 			}
 			update["title"] = title
 		}
-		if raw, found := body["slug"]; found {
+		if raw, found := rawJSONField(body.Slug); found {
 			slug := slugifyBlogTitle(stringField(raw))
 			if slug == "" {
 				return legacyPayload{}, apiError(
@@ -652,18 +653,18 @@ func (s *blogService) adminUpdateHandler() legacyHandler {
 				update["slug"] = slug
 			}
 		}
-		if raw, found := body["excerpt"]; found {
+		if raw, found := rawJSONField(body.Excerpt); found {
 			update["excerpt"] = optionalTrimmedString(raw, 500)
 		}
-		if raw, found := body["body_md"]; found {
+		if raw, found := rawJSONField(body.BodyMD); found {
 			bodyMD := stringField(raw)
 			update["body_md"] = bodyMD
 			update["body_html"] = renderBlogMarkdown(bodyMD)
 		}
-		if raw, found := body["cover_image_url"]; found {
+		if raw, found := rawJSONField(body.CoverImageURL); found {
 			update["cover_image_url"] = optionalTrimmedString(raw, 4096)
 		}
-		if raw, found := body["status"]; found {
+		if raw, found := rawJSONField(body.Status); found {
 			value, ok := contentInteger(raw)
 			if !ok || (value != blogStatusDraft &&
 				value != blogStatusLive && value != blogStatusArchive) {
@@ -676,16 +677,16 @@ func (s *blogService) adminUpdateHandler() legacyHandler {
 			currentStatus, _ := int64Value(current["status"])
 			if value == blogStatusLive &&
 				currentStatus != blogStatusLive {
-				if _, explicit := body["published_at"]; !explicit &&
+				if _, explicit := rawJSONField(body.PublishedAt); !explicit &&
 					current["published_at"] == nil {
 					update["published_at"] = s.now().UTC()
 				}
 			}
 		}
-		if raw, found := body["tags"]; found {
+		if raw, found := rawJSONField(body.Tags); found {
 			update["tags"] = normalizeBlogTags(raw)
 		}
-		if raw, found := body["published_at"]; found {
+		if raw, found := rawJSONField(body.PublishedAt); found {
 			if raw == nil {
 				update["published_at"] = nil
 			} else {

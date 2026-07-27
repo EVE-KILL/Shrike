@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -95,14 +96,14 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
 	}, commentList)
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationActionBody](a, huma.Operation{
 		OperationID: "admin-comment-moderation",
 		Method:      http.MethodPatch,
 		Path:        "/admin/comments/{id}",
 		Summary:     "Hide or restore a comment",
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
-	}, service.commentVisibilityHandler(""))
+	}), service.commentVisibilityHandler(""))
 	registerLegacy(a, huma.Operation{
 		OperationID: "admin-comment-hide-live-alias",
 		Method:      http.MethodPost,
@@ -119,14 +120,14 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
 	}, service.commentVisibilityHandler("restore"))
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationResolutionBody](a, huma.Operation{
 		OperationID: "admin-comment-report-resolution",
 		Method:      http.MethodPatch,
 		Path:        "/admin/comment-reports/{id}",
 		Summary:     "Resolve a comment report",
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
-	}, service.reportResolutionHandler())
+	}), service.reportResolutionHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "admin-comment-report-resolution-live-alias",
 		Method:      http.MethodPost,
@@ -153,14 +154,14 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
 	}, queueList)
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationDecisionBody](a, huma.Operation{
 		OperationID: "admin-moderation-review",
 		Method:      http.MethodPatch,
 		Path:        "/admin/moderation/{id}",
 		Summary:     "Approve or reject a moderation item",
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
-	}, service.reviewHandler("", false))
+	}), service.reviewHandler("", false))
 	registerLegacy(a, huma.Operation{
 		OperationID: "admin-moderation-approve-live-alias",
 		Method:      http.MethodPost,
@@ -243,6 +244,19 @@ func (s *moderationService) commentQueueHandler() legacyHandler {
 	}
 }
 
+type moderationActionBody struct {
+	Action json.RawMessage `json:"action,omitempty" doc:"Moderation action to apply."`
+}
+
+type moderationResolutionBody struct {
+	Resolution json.RawMessage `json:"resolution,omitempty" doc:"How the report was resolved."`
+}
+
+type moderationDecisionBody struct {
+	Decision json.RawMessage `json:"decision,omitempty" doc:"Moderator decision for the queued item."`
+	Notes    json.RawMessage `json:"notes,omitempty" doc:"Operator note, at most 1000 characters."`
+}
+
 func (s *moderationService) commentVisibilityHandler(
 	forcedAction string,
 ) legacyHandler {
@@ -256,12 +270,12 @@ func (s *moderationService) commentVisibilityHandler(
 		}
 		action := forcedAction
 		if action == "" {
-			body, bodyErr := decodeContentBody(req, false)
+			body, bodyErr := decodeJSONBody[moderationActionBody](req, contentBodyLimit)
 			if bodyErr != nil {
 				return legacyPayload{}, bodyErr
 			}
 			action = strings.ToLower(
-				strings.TrimSpace(stringField(body["action"])),
+				strings.TrimSpace(stringField(rawJSONValue(body.Action))),
 			)
 			if action == "hidden" {
 				action = "hide"
@@ -344,12 +358,12 @@ func (s *moderationService) reportResolutionHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[moderationResolutionBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		resolution := strings.ToLower(
-			strings.TrimSpace(stringField(body["resolution"])),
+			strings.TrimSpace(stringField(rawJSONValue(body.Resolution))),
 		)
 		if !valid[resolution] {
 			return legacyPayload{}, apiError(
@@ -632,19 +646,19 @@ func (s *moderationService) reviewHandler(
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, true)
+		body, err := decodeJSONBody[moderationDecisionBody](req, contentBodyLimit)
 		if err != nil {
 			if forcedDecision == "" {
 				return legacyPayload{}, err
 			}
 			// The live approve/reject handlers intentionally treated an
 			// unreadable optional body as {}.
-			body = map[string]any{}
+			body = &moderationDecisionBody{}
 		}
 		decision := forcedDecision
 		if decision == "" {
 			decision = strings.ToLower(
-				strings.TrimSpace(stringField(body["decision"])),
+				strings.TrimSpace(stringField(rawJSONValue(body.Decision))),
 			)
 		}
 		if decision != "approve" && decision != "reject" {
@@ -653,7 +667,7 @@ func (s *moderationService) reviewHandler(
 				"decision must be approve or reject",
 			)
 		}
-		notes := optionalTrimmedString(body["notes"], 1000)
+		notes := optionalTrimmedString(rawJSONValue(body.Notes), 1000)
 		queueRow, comment, state, err := s.review(
 			ctx,
 			id,

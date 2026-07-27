@@ -13916,6 +13916,46 @@
       },
       "post": {
         "operationId": "announcement-admin-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body_md": {
+                    "description": "Announcement text, in Markdown."
+                  },
+                  "color": {
+                    "description": "Accent color."
+                  },
+                  "expires_at": {
+                    "description": "When it stops being shown."
+                  },
+                  "icon": {
+                    "description": "Icon name."
+                  },
+                  "link_label": {
+                    "description": "Label for the call-to-action."
+                  },
+                  "link_url": {
+                    "description": "Optional call-to-action URL."
+                  },
+                  "starts_at": {
+                    "description": "When the announcement becomes visible."
+                  },
+                  "tier": {
+                    "description": "Severity tier."
+                  },
+                  "title": {
+                    "description": "Announcement headline."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -13999,6 +14039,46 @@
       },
       "patch": {
         "operationId": "announcement-admin-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body_md": {
+                    "description": "New text, in Markdown."
+                  },
+                  "color": {
+                    "description": "New accent color."
+                  },
+                  "expires_at": {
+                    "description": "New expiry."
+                  },
+                  "icon": {
+                    "description": "New icon name."
+                  },
+                  "link_label": {
+                    "description": "New call-to-action label."
+                  },
+                  "link_url": {
+                    "description": "New call-to-action URL."
+                  },
+                  "starts_at": {
+                    "description": "New visibility start."
+                  },
+                  "tier": {
+                    "description": "New severity tier."
+                  },
+                  "title": {
+                    "description": "New headline."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14084,6 +14164,50 @@
       },
       "post": {
         "operationId": "blog-admin-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body_md": {
+                    "description": "Post body, in Markdown.",
+                    "type": "string"
+                  },
+                  "cover_image_url": {
+                    "description": "Cover image URL, at most 4096 characters."
+                  },
+                  "excerpt": {
+                    "description": "Short summary, at most 500 characters."
+                  },
+                  "published_at": {
+                    "description": "Publication timestamp."
+                  },
+                  "slug": {
+                    "description": "URL slug. Derived from the title when omitted.",
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "Publication status."
+                  },
+                  "tags": {
+                    "description": "Tag list."
+                  },
+                  "title": {
+                    "description": "Post title.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "body_md"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14196,6 +14320,43 @@
       },
       "patch": {
         "operationId": "blog-admin-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body_md": {
+                    "description": "New body, in Markdown."
+                  },
+                  "cover_image_url": {
+                    "description": "New cover image URL."
+                  },
+                  "excerpt": {
+                    "description": "New excerpt."
+                  },
+                  "published_at": {
+                    "description": "New publication timestamp."
+                  },
+                  "slug": {
+                    "description": "New slug."
+                  },
+                  "status": {
+                    "description": "New publication status."
+                  },
+                  "tags": {
+                    "description": "Replacement tag list."
+                  },
+                  "title": {
+                    "description": "New title."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14456,6 +14617,22 @@
     "/admin/comment-reports/{id}": {
       "patch": {
         "operationId": "admin-comment-report-resolution",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "resolution": {
+                    "description": "How the report was resolved."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14572,6 +14749,22 @@
     "/admin/comments/{id}": {
       "patch": {
         "operationId": "admin-comment-moderation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Moderation action to apply."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14949,6 +15142,25 @@
     "/admin/moderation/{id}": {
       "patch": {
         "operationId": "admin-moderation-review",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "decision": {
+                    "description": "Moderator decision for the queued item."
+                  },
+                  "notes": {
+                    "description": "Operator note, at most 1000 characters."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -18047,6 +18259,38 @@
       },
       "post": {
         "operationId": "comments-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body_md": {
+                    "description": "Comment text, in Markdown.",
+                    "type": "string"
+                  },
+                  "parent_id": {
+                    "description": "Comment being replied to. Omit for a top-level comment."
+                  },
+                  "target_id": {
+                    "description": "Identifier of the thing being commented on."
+                  },
+                  "target_slug": {
+                    "description": "Slug form of the target, where one exists."
+                  },
+                  "target_type": {
+                    "description": "What the thread is attached to: a killmail, campaign, battle and so on."
+                  }
+                },
+                "required": [
+                  "body_md"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -18134,6 +18378,22 @@
     "/comments/preview": {
       "post": {
         "operationId": "comments-preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body_md": {
+                    "description": "Comment text, in Markdown."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -18246,6 +18506,26 @@
       },
       "patch": {
         "operationId": "comment-edit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "body_md": {
+                    "description": "Replacement comment text, in Markdown.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "body_md"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -18275,6 +18555,25 @@
     "/comments/{id}/report": {
       "post": {
         "operationId": "comment-report",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "message": {
+                    "description": "Additional detail for the moderator."
+                  },
+                  "reason": {
+                    "description": "Why the comment is being reported."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

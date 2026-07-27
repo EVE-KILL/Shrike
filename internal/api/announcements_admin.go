@@ -144,14 +144,14 @@ func registerAnnouncementAdminServiceRoutes(
 		Tags:        []string{"admin", "announcements"},
 		Security:    requiredSession,
 	}, service.listHandler())
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[announcementCreateBody](a, huma.Operation{
 		OperationID: "announcement-admin-create",
 		Method:      http.MethodPost,
 		Path:        "/admin/announcements",
 		Summary:     "Create an announcement",
 		Tags:        []string{"admin", "announcements"},
 		Security:    requiredSession,
-	}, service.createHandler())
+	}), service.createHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "announcement-admin-detail",
 		Method:      http.MethodGet,
@@ -160,14 +160,14 @@ func registerAnnouncementAdminServiceRoutes(
 		Tags:        []string{"admin", "announcements"},
 		Security:    requiredSession,
 	}, service.detailHandler())
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[announcementUpdateBody](a, huma.Operation{
 		OperationID: "announcement-admin-update",
 		Method:      http.MethodPatch,
 		Path:        "/admin/announcements/{id}",
 		Summary:     "Update an announcement",
 		Tags:        []string{"admin", "announcements"},
 		Security:    requiredSession,
-	}, service.updateHandler())
+	}), service.updateHandler())
 	archive := service.archiveHandler()
 	registerLegacy(a, huma.Operation{
 		OperationID: "announcement-admin-archive",
@@ -253,6 +253,58 @@ func (s *announcementsAdminService) detailHandler() legacyHandler {
 	}
 }
 
+type announcementCreateBody struct {
+	Title     json.RawMessage `json:"title,omitempty" doc:"Announcement headline."`
+	BodyMD    json.RawMessage `json:"body_md,omitempty" doc:"Announcement text, in Markdown."`
+	Tier      json.RawMessage `json:"tier,omitempty" doc:"Severity tier."`
+	Color     json.RawMessage `json:"color,omitempty" doc:"Accent color."`
+	Icon      json.RawMessage `json:"icon,omitempty" doc:"Icon name."`
+	LinkURL   json.RawMessage `json:"link_url,omitempty" doc:"Optional call-to-action URL."`
+	LinkLabel json.RawMessage `json:"link_label,omitempty" doc:"Label for the call-to-action."`
+	StartsAt  json.RawMessage `json:"starts_at,omitempty" doc:"When the announcement becomes visible."`
+	ExpiresAt json.RawMessage `json:"expires_at,omitempty" doc:"When it stops being shown."`
+}
+
+// field resolves a wire key to its raw value, so the column loops below can
+// stay table-driven instead of unrolling into one branch per field.
+func (b *announcementUpdateBody) field(name string) json.RawMessage {
+	switch name {
+	case "title":
+		return b.Title
+	case "body_md":
+		return b.BodyMD
+	case "tier":
+		return b.Tier
+	case "color":
+		return b.Color
+	case "icon":
+		return b.Icon
+	case "link_url":
+		return b.LinkURL
+	case "link_label":
+		return b.LinkLabel
+	case "starts_at":
+		return b.StartsAt
+	case "expires_at":
+		return b.ExpiresAt
+	}
+	return nil
+}
+
+// announcementUpdateBody carries the same fields as create. Every one is
+// optional, and an absent field leaves the stored value alone.
+type announcementUpdateBody struct {
+	Title     json.RawMessage `json:"title,omitempty" doc:"New headline."`
+	BodyMD    json.RawMessage `json:"body_md,omitempty" doc:"New text, in Markdown."`
+	Tier      json.RawMessage `json:"tier,omitempty" doc:"New severity tier."`
+	Color     json.RawMessage `json:"color,omitempty" doc:"New accent color."`
+	Icon      json.RawMessage `json:"icon,omitempty" doc:"New icon name."`
+	LinkURL   json.RawMessage `json:"link_url,omitempty" doc:"New call-to-action URL."`
+	LinkLabel json.RawMessage `json:"link_label,omitempty" doc:"New call-to-action label."`
+	StartsAt  json.RawMessage `json:"starts_at,omitempty" doc:"New visibility start."`
+	ExpiresAt json.RawMessage `json:"expires_at,omitempty" doc:"New expiry."`
+}
+
 func (s *announcementsAdminService) createHandler() legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		if err := requireSameOriginMutation(req.Huma); err != nil {
@@ -262,25 +314,25 @@ func (s *announcementsAdminService) createHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[announcementCreateBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		tier, ok := contentInteger(body["tier"])
+		tier, ok := contentInteger(rawJSONValue(body.Tier))
 		if !ok || (tier != 1 && tier != 2 && tier != 3) {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,
 				"tier must be 1, 2, or 3",
 			)
 		}
-		title := strings.TrimSpace(stringField(body["title"]))
+		title := strings.TrimSpace(stringField(rawJSONValue(body.Title)))
 		if title == "" {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,
 				"title is required",
 			)
 		}
-		expiresAt, ok := parseContentTime(body["expires_at"])
+		expiresAt, ok := parseContentTime(rawJSONValue(body.ExpiresAt))
 		if !ok {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,
@@ -288,7 +340,7 @@ func (s *announcementsAdminService) createHandler() legacyHandler {
 			)
 		}
 		startsAt := s.now().UTC()
-		if raw, found := body["starts_at"]; found && raw != nil &&
+		if raw, found := rawJSONField(body.StartsAt); found && raw != nil &&
 			stringField(raw) != "" {
 			startsAt, ok = parseContentTime(raw)
 			if !ok {
@@ -304,18 +356,18 @@ func (s *announcementsAdminService) createHandler() legacyHandler {
 				"expires_at must be after starts_at",
 			)
 		}
-		bodyMD := strings.TrimSpace(stringField(body["body_md"]))
+		bodyMD := strings.TrimSpace(stringField(rawJSONValue(body.BodyMD)))
 		input := announcementAdminCreate{
 			Tier: int16(tier), Title: title,
 			BodyMD:   bodyMD,
 			BodyHTML: renderAnnouncementMarkdown(bodyMD),
-			Color:    announcementColor(body["color"]),
-			Icon:     optionalTrimmedString(body["icon"], 512),
+			Color:    announcementColor(rawJSONValue(body.Color)),
+			Icon:     optionalTrimmedString(rawJSONValue(body.Icon), 512),
 			LinkURL: optionalTrimmedString(
-				body["link_url"], 4096,
+				rawJSONValue(body.LinkURL), 4096,
 			),
 			LinkLabel: optionalTrimmedString(
-				body["link_label"], 512,
+				rawJSONValue(body.LinkLabel), 512,
 			),
 			StartsAt: startsAt, ExpiresAt: expiresAt,
 			CreatedBy: principal.CharacterID,
@@ -349,12 +401,12 @@ func (s *announcementsAdminService) updateHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[announcementUpdateBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		update := map[string]any{}
-		if raw, found := body["tier"]; found {
+		if raw, found := rawJSONField(body.Tier); found {
 			value, ok := contentInteger(raw)
 			if !ok || (value != 1 && value != 2 && value != 3) {
 				return legacyPayload{}, apiError(
@@ -364,7 +416,7 @@ func (s *announcementsAdminService) updateHandler() legacyHandler {
 			}
 			update["tier"] = int16(value)
 		}
-		if raw, found := body["title"]; found {
+		if raw, found := rawJSONField(body.Title); found {
 			title := strings.TrimSpace(stringField(raw))
 			if title == "" {
 				return legacyPayload{}, apiError(
@@ -374,26 +426,26 @@ func (s *announcementsAdminService) updateHandler() legacyHandler {
 			}
 			update["title"] = title
 		}
-		if raw, found := body["body_md"]; found {
+		if raw, found := rawJSONField(body.BodyMD); found {
 			bodyMD := strings.TrimSpace(stringField(raw))
 			update["body_md"] = bodyMD
 			update["body_html"] = renderAnnouncementMarkdown(bodyMD)
 		}
-		if raw, found := body["color"]; found {
+		if raw, found := rawJSONField(body.Color); found {
 			update["color"] = announcementColor(raw)
 		}
 		for bodyKey, column := range map[string]string{
 			"icon": "icon", "link_url": "link_url",
 			"link_label": "link_label",
 		} {
-			if raw, found := body[bodyKey]; found {
+			if raw, found := rawJSONField(body.field(bodyKey)); found {
 				update[column] = optionalTrimmedString(raw, 4096)
 			}
 		}
 		for bodyKey, column := range map[string]string{
 			"starts_at": "starts_at", "expires_at": "expires_at",
 		} {
-			if raw, found := body[bodyKey]; found {
+			if raw, found := rawJSONField(body.field(bodyKey)); found {
 				value, ok := parseContentTime(raw)
 				if !ok {
 					return legacyPayload{}, apiError(

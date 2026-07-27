@@ -234,14 +234,14 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    optional,
 	}, commentCached(opts, 30*time.Second, service.listHandler()))
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentCreateBody](a, huma.Operation{
 		OperationID: "comments-create",
 		Method:      http.MethodPost,
 		Path:        "/comments",
 		Summary:     "Publish a comment or reply",
 		Tags:        []string{"comments"},
 		Security:    required,
-	}, service.createHandler())
+	}), service.createHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "comments-thread",
 		Method:      http.MethodGet,
@@ -250,14 +250,14 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    optional,
 	}, commentCached(opts, 30*time.Second, service.threadHandler()))
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentBodyOnlyBody](a, huma.Operation{
 		OperationID: "comments-preview",
 		Method:      http.MethodPost,
 		Path:        "/comments/preview",
 		Summary:     "Render a comment preview",
 		Tags:        []string{"comments"},
 		Security:    required,
-	}, service.previewHandler())
+	}), service.previewHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "comments-klipy-search",
 		Method:      http.MethodGet,
@@ -282,14 +282,14 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    optional,
 	}, commentCached(opts, 15*time.Second, service.detailHandler()))
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentEditBody](a, huma.Operation{
 		OperationID: "comment-edit",
 		Method:      http.MethodPatch,
 		Path:        "/comments/{id}",
 		Summary:     "Edit a recent comment",
 		Tags:        []string{"comments"},
 		Security:    required,
-	}, service.editHandler())
+	}), service.editHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "comment-delete",
 		Method:      http.MethodDelete,
@@ -298,14 +298,14 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    required,
 	}, service.deleteHandler(false))
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentReportBody](a, huma.Operation{
 		OperationID: "comment-report",
 		Method:      http.MethodPost,
 		Path:        "/comments/{id}/report",
 		Summary:     "Report a published comment",
 		Tags:        []string{"comments"},
 		Security:    required,
-	}, service.reportHandler())
+	}), service.reportHandler())
 
 	myList := service.myCommentsHandler()
 	registerLegacy(a, huma.Operation{
@@ -628,6 +628,27 @@ func (s *commentService) detailHandler() legacyHandler {
 	}
 }
 
+type commentCreateBody struct {
+	BodyMD     string          `json:"body_md" doc:"Comment text, in Markdown."`
+	ParentID   json.RawMessage `json:"parent_id,omitempty" doc:"Comment being replied to. Omit for a top-level comment."`
+	TargetType json.RawMessage `json:"target_type,omitempty" doc:"What the thread is attached to: a killmail, campaign, battle and so on."`
+	TargetID   json.RawMessage `json:"target_id,omitempty" doc:"Identifier of the thing being commented on."`
+	TargetSlug json.RawMessage `json:"target_slug,omitempty" doc:"Slug form of the target, where one exists."`
+}
+
+type commentEditBody struct {
+	BodyMD string `json:"body_md" doc:"Replacement comment text, in Markdown."`
+}
+
+type commentReportBody struct {
+	Reason  json.RawMessage `json:"reason,omitempty" doc:"Why the comment is being reported."`
+	Message json.RawMessage `json:"message,omitempty" doc:"Additional detail for the moderator."`
+}
+
+type commentBodyOnlyBody struct {
+	BodyMD json.RawMessage `json:"body_md,omitempty" doc:"Comment text, in Markdown."`
+}
+
 func (s *commentService) createHandler() legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		setAccountNoStore(req.Huma)
@@ -641,7 +662,7 @@ func (s *commentService) createHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[commentCreateBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -659,7 +680,7 @@ func (s *commentService) createHandler() legacyHandler {
 		); err != nil {
 			return legacyPayload{}, err
 		}
-		bodyMD, err := validateCommentBodyValue(body["body_md"])
+		bodyMD, err := validateCommentBodyValue(body.BodyMD)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -704,7 +725,7 @@ func (s *commentService) createHandler() legacyHandler {
 		visibility, queueStatus := commentVerdictStates(verdict.Action)
 
 		var parentID *int64
-		if raw, found := body["parent_id"]; found && raw != nil {
+		if raw, found := rawJSONField(body.ParentID); found && raw != nil {
 			value, ok := contentInteger(raw)
 			if !ok || value <= 0 {
 				return legacyPayload{}, apiError(
@@ -793,11 +814,11 @@ func (s *commentService) editHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[commentEditBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		bodyMD, err := validateCommentBodyValue(body["body_md"])
+		bodyMD, err := validateCommentBodyValue(body.BodyMD)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -978,12 +999,12 @@ func (s *commentService) reportHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[commentReportBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		reason := strings.ToLower(
-			strings.TrimSpace(stringField(body["reason"])),
+			strings.TrimSpace(stringField(rawJSONValue(body.Reason))),
 		)
 		if !validReasons[reason] {
 			return legacyPayload{}, apiError(
@@ -991,7 +1012,7 @@ func (s *commentService) reportHandler() legacyHandler {
 				"reason must be one of: spam, harassment, nsfw, offtopic, other",
 			)
 		}
-		message := optionalTrimmedString(body["message"], 1000)
+		message := optionalTrimmedString(rawJSONValue(body.Message), 1000)
 		domain, err := s.resolveDomain(ctx, req)
 		if err != nil {
 			return legacyPayload{}, err
@@ -1080,11 +1101,11 @@ func (s *commentService) previewHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeContentBody(req, false)
+		body, err := decodeJSONBody[commentBodyOnlyBody](req, contentBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		raw := stringField(body["body_md"])
+		raw := stringField(rawJSONValue(body.BodyMD))
 		if strings.TrimSpace(raw) == "" {
 			return accountNoStorePayload(
 				map[string]any{"html": ""},
@@ -1738,11 +1759,12 @@ func commentTargetFromQuery(
 	return int16(targetType), targetID, slug, err
 }
 
+// commentTargetFromBody reads the thread target from a create body.
 func commentTargetFromBody(
-	body map[string]any,
+	body *commentCreateBody,
 ) (int16, int64, *string, error) {
-	targetType, typeOK := contentInteger(body["target_type"])
-	targetID, idOK := contentInteger(body["target_id"])
+	targetType, typeOK := contentInteger(rawJSONValue(body.TargetType))
+	targetID, idOK := contentInteger(rawJSONValue(body.TargetID))
 	if !typeOK {
 		targetType = 0
 	}
@@ -1750,7 +1772,7 @@ func commentTargetFromBody(
 		targetID = math.MinInt64
 	}
 	var slug *string
-	if raw, ok := body["target_slug"].(string); ok && raw != "" {
+	if raw, ok := rawJSONValue(body.TargetSlug).(string); ok && raw != "" {
 		value := raw
 		slug = &value
 	}

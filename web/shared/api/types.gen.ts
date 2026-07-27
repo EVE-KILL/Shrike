@@ -6737,7 +6737,44 @@ export type AnnouncementAdminListResponses = {
 export type AnnouncementAdminListResponse = AnnouncementAdminListResponses[keyof AnnouncementAdminListResponses];
 
 export type AnnouncementAdminCreateData = {
-    body?: never;
+    body: {
+        /**
+         * Announcement text, in Markdown.
+         */
+        body_md?: unknown;
+        /**
+         * Accent color.
+         */
+        color?: unknown;
+        /**
+         * When it stops being shown.
+         */
+        expires_at?: unknown;
+        /**
+         * Icon name.
+         */
+        icon?: unknown;
+        /**
+         * Label for the call-to-action.
+         */
+        link_label?: unknown;
+        /**
+         * Optional call-to-action URL.
+         */
+        link_url?: unknown;
+        /**
+         * When the announcement becomes visible.
+         */
+        starts_at?: unknown;
+        /**
+         * Severity tier.
+         */
+        tier?: unknown;
+        /**
+         * Announcement headline.
+         */
+        title?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/announcements';
@@ -6791,7 +6828,44 @@ export type AnnouncementAdminDetailResponses = {
 export type AnnouncementAdminDetailResponse = AnnouncementAdminDetailResponses[keyof AnnouncementAdminDetailResponses];
 
 export type AnnouncementAdminUpdateData = {
-    body?: never;
+    body: {
+        /**
+         * New text, in Markdown.
+         */
+        body_md?: unknown;
+        /**
+         * New accent color.
+         */
+        color?: unknown;
+        /**
+         * New expiry.
+         */
+        expires_at?: unknown;
+        /**
+         * New icon name.
+         */
+        icon?: unknown;
+        /**
+         * New call-to-action label.
+         */
+        link_label?: unknown;
+        /**
+         * New call-to-action URL.
+         */
+        link_url?: unknown;
+        /**
+         * New visibility start.
+         */
+        starts_at?: unknown;
+        /**
+         * New severity tier.
+         */
+        tier?: unknown;
+        /**
+         * New headline.
+         */
+        title?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/announcements/{id}';
@@ -6845,7 +6919,40 @@ export type BlogAdminListResponses = {
 export type BlogAdminListResponse = BlogAdminListResponses[keyof BlogAdminListResponses];
 
 export type BlogAdminCreateData = {
-    body?: never;
+    body: {
+        /**
+         * Post body, in Markdown.
+         */
+        body_md: string;
+        /**
+         * Cover image URL, at most 4096 characters.
+         */
+        cover_image_url?: unknown;
+        /**
+         * Short summary, at most 500 characters.
+         */
+        excerpt?: unknown;
+        /**
+         * Publication timestamp.
+         */
+        published_at?: unknown;
+        /**
+         * URL slug. Derived from the title when omitted.
+         */
+        slug?: string;
+        /**
+         * Publication status.
+         */
+        status?: unknown;
+        /**
+         * Tag list.
+         */
+        tags?: unknown;
+        /**
+         * Post title.
+         */
+        title: string;
+    };
     path?: never;
     query?: never;
     url: '/admin/blog';
@@ -6917,7 +7024,40 @@ export type BlogAdminDetailResponses = {
 export type BlogAdminDetailResponse = BlogAdminDetailResponses[keyof BlogAdminDetailResponses];
 
 export type BlogAdminUpdateData = {
-    body?: never;
+    body: {
+        /**
+         * New body, in Markdown.
+         */
+        body_md?: unknown;
+        /**
+         * New cover image URL.
+         */
+        cover_image_url?: unknown;
+        /**
+         * New excerpt.
+         */
+        excerpt?: unknown;
+        /**
+         * New publication timestamp.
+         */
+        published_at?: unknown;
+        /**
+         * New slug.
+         */
+        slug?: unknown;
+        /**
+         * New publication status.
+         */
+        status?: unknown;
+        /**
+         * Replacement tag list.
+         */
+        tags?: unknown;
+        /**
+         * New title.
+         */
+        title?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/blog/{id}';
@@ -7053,7 +7193,12 @@ export type CampaignPrizePaidResponses = {
 export type CampaignPrizePaidResponse = CampaignPrizePaidResponses[keyof CampaignPrizePaidResponses];
 
 export type AdminCommentReportResolutionData = {
-    body?: never;
+    body: {
+        /**
+         * How the report was resolved.
+         */
+        resolution?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/comment-reports/{id}';
@@ -7125,7 +7270,12 @@ export type AdminCommentReportResolutionLiveAliasResponses = {
 export type AdminCommentReportResolutionLiveAliasResponse = AdminCommentReportResolutionLiveAliasResponses[keyof AdminCommentReportResolutionLiveAliasResponses];
 
 export type AdminCommentModerationData = {
-    body?: never;
+    body: {
+        /**
+         * Moderation action to apply.
+         */
+        action?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/comments/{id}';
@@ -7359,7 +7509,16 @@ export type AdminModerationLiveQueueAliasResponses = {
 export type AdminModerationLiveQueueAliasResponse = AdminModerationLiveQueueAliasResponses[keyof AdminModerationLiveQueueAliasResponses];
 
 export type AdminModerationReviewData = {
-    body?: never;
+    body: {
+        /**
+         * Moderator decision for the queued item.
+         */
+        decision?: unknown;
+        /**
+         * Operator note, at most 1000 characters.
+         */
+        notes?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/moderation/{id}';
@@ -9250,7 +9409,28 @@ export type CommentsFeedResponses = {
 export type CommentsFeedResponse = CommentsFeedResponses[keyof CommentsFeedResponses];
 
 export type CommentsCreateData = {
-    body?: never;
+    body: {
+        /**
+         * Comment text, in Markdown.
+         */
+        body_md: string;
+        /**
+         * Comment being replied to. Omit for a top-level comment.
+         */
+        parent_id?: unknown;
+        /**
+         * Identifier of the thing being commented on.
+         */
+        target_id?: unknown;
+        /**
+         * Slug form of the target, where one exists.
+         */
+        target_slug?: unknown;
+        /**
+         * What the thread is attached to: a killmail, campaign, battle and so on.
+         */
+        target_type?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/comments';
@@ -9304,7 +9484,12 @@ export type CommentsKlipyTrendingResponses = {
 export type CommentsKlipyTrendingResponse = CommentsKlipyTrendingResponses[keyof CommentsKlipyTrendingResponses];
 
 export type CommentsPreviewData = {
-    body?: never;
+    body: {
+        /**
+         * Comment text, in Markdown.
+         */
+        body_md?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/comments/preview';
@@ -9376,7 +9561,12 @@ export type CommentDetailResponses = {
 export type CommentDetailResponse = CommentDetailResponses[keyof CommentDetailResponses];
 
 export type CommentEditData = {
-    body?: never;
+    body: {
+        /**
+         * Replacement comment text, in Markdown.
+         */
+        body_md: string;
+    };
     path?: never;
     query?: never;
     url: '/comments/{id}';
@@ -9394,7 +9584,16 @@ export type CommentEditResponses = {
 export type CommentEditResponse = CommentEditResponses[keyof CommentEditResponses];
 
 export type CommentReportData = {
-    body?: never;
+    body: {
+        /**
+         * Additional detail for the moderator.
+         */
+        message?: unknown;
+        /**
+         * Why the comment is being reported.
+         */
+        reason?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/comments/{id}/report';
