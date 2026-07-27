@@ -50,15 +50,50 @@ type Service struct {
 
 type sameOriginPrefixContextKey struct{}
 
+const apiIntroduction = `EVE-KILL turns EVE Online combat data into a queryable, near-real-time history of New Eden.
+Use it to explore killmails, characters, corporations, alliances, wars, battles, campaigns,
+fittings, statistics, market data, and the static universe behind them. Live consumers can
+follow the feed instead of repeatedly polling list endpoints.
+
+## One API, three namespaces
+
+- **/api** contains the data API used by the website and third-party applications.
+- **/auth** contains browser-based EVE SSO flows.
+- **/images** serves cached character, corporation, alliance, type, map, and social images.
+
+Most read operations are public. Operations that act on an account, character, corporation,
+custom domain, or administrative resource declare their session requirement individually.
+In Scalar, the lock icon and each operation's **Security** section are authoritative.
+
+## Contract and data freshness
+
+This is a single, continuously evolving API: there are no versioned paths, compatibility
+dates, or separate public/private catalogues. We make a best effort to keep existing clients
+working, prefer additive changes, and document authentication per operation. Corrections to
+incorrect calculations or malformed data may intentionally change output.
+
+Killmails and derived statistics are eventually consistent. A newly ingested event can appear
+before every leaderboard, campaign, graph, or aggregate has caught up, and historical values
+can be corrected when better source data becomes available.
+
+## Responsible use
+
+Send an identifying **User-Agent** with an application name and a way to contact its operator.
+Reuse responses according to their cache headers, prefer the live feed for continuous
+consumption, and back off when a response includes **Retry-After** or returns
+**429 Too Many Requests**.`
+
 // New builds the shared API once.
 func New(opts Options) *Service {
 	mux := chi.NewRouter()
 
 	cfg := huma.DefaultConfig("EVE-KILL API", opts.Version)
 	cfg.DocsRenderer = huma.DocsRendererScalar
-	cfg.Info.Description = "The API powering EVE-KILL. Public data, signed-in " +
-		"account operations, and administration share one best-effort stable " +
-		"contract; authentication requirements are documented per operation."
+	cfg.Info.Description = apiIntroduction
+	cfg.Info.Contact = &huma.Contact{
+		Name: "EVE-KILL on GitHub",
+		URL:  "https://github.com/eve-kill",
+	}
 
 	a := humachi.New(mux, cfg)
 	a.OpenAPI().Servers = []*huma.Server{

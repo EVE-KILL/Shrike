@@ -194,6 +194,13 @@ func TestSiteOpenAPIDocumentsAudienceAndServers(t *testing.T) {
 	}
 
 	var document struct {
+		Info struct {
+			Description string `json:"description"`
+			Contact     struct {
+				Name string `json:"name"`
+				URL  string `json:"url"`
+			} `json:"contact"`
+		} `json:"info"`
 		Servers []struct {
 			URL string `json:"url"`
 		} `json:"servers"`
@@ -208,6 +215,21 @@ func TestSiteOpenAPIDocumentsAudienceAndServers(t *testing.T) {
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &document); err != nil {
 		t.Fatal(err)
+	}
+	for _, section := range []string{
+		"## One API, three namespaces",
+		"## Contract and data freshness",
+		"## Responsible use",
+		"User-Agent",
+		"Retry-After",
+	} {
+		if !strings.Contains(document.Info.Description, section) {
+			t.Errorf("API introduction does not contain %q", section)
+		}
+	}
+	if document.Info.Contact.Name != "EVE-KILL on GitHub" ||
+		document.Info.Contact.URL != "https://github.com/eve-kill" {
+		t.Errorf("API contact = %#v", document.Info.Contact)
 	}
 	if len(document.Servers) != 1 || document.Servers[0].URL != "/api" {
 		t.Fatalf("OpenAPI servers = %#v, want /api", document.Servers)
