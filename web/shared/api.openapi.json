@@ -13658,7 +13658,7 @@
         ],
         "summary": "Announcement administration",
         "tags": [
-          "announcements",
+          "admin-announcements",
           "admin"
         ],
         "x-audience": "admin"
@@ -13685,7 +13685,7 @@
         ],
         "summary": "Create an announcement",
         "tags": [
-          "announcements",
+          "admin-announcements",
           "admin"
         ],
         "x-audience": "admin"
@@ -13714,7 +13714,7 @@
         ],
         "summary": "Archive an announcement",
         "tags": [
-          "announcements",
+          "admin-announcements",
           "admin"
         ],
         "x-audience": "admin"
@@ -13741,7 +13741,7 @@
         ],
         "summary": "Announcement administration detail",
         "tags": [
-          "announcements",
+          "admin-announcements",
           "admin"
         ],
         "x-audience": "admin"
@@ -13768,7 +13768,7 @@
         ],
         "summary": "Update an announcement",
         "tags": [
-          "announcements",
+          "admin-announcements",
           "admin"
         ],
         "x-audience": "admin"
@@ -13797,7 +13797,7 @@
         ],
         "summary": "Archive an announcement",
         "tags": [
-          "announcements",
+          "admin-announcements",
           "admin"
         ],
         "x-audience": "admin"
@@ -13826,7 +13826,7 @@
         ],
         "summary": "Blog administration",
         "tags": [
-          "blog",
+          "admin-blog",
           "admin"
         ],
         "x-audience": "admin"
@@ -13853,7 +13853,7 @@
         ],
         "summary": "Create a blog post",
         "tags": [
-          "blog",
+          "admin-blog",
           "admin"
         ],
         "x-audience": "admin"
@@ -13882,7 +13882,7 @@
         ],
         "summary": "Preview a blog post in any state",
         "tags": [
-          "blog",
+          "admin-blog",
           "admin"
         ],
         "x-audience": "admin"
@@ -13911,7 +13911,7 @@
         ],
         "summary": "Permanently delete a blog post",
         "tags": [
-          "blog",
+          "admin-blog",
           "admin"
         ],
         "x-audience": "admin"
@@ -13938,7 +13938,7 @@
         ],
         "summary": "Blog post administration detail",
         "tags": [
-          "blog",
+          "admin-blog",
           "admin"
         ],
         "x-audience": "admin"
@@ -13965,7 +13965,7 @@
         ],
         "summary": "Update a blog post",
         "tags": [
-          "blog",
+          "admin-blog",
           "admin"
         ],
         "x-audience": "admin"
@@ -13994,7 +13994,7 @@
         ],
         "summary": "Mark a claimed campaign prize paid",
         "tags": [
-          "campaigns",
+          "admin-campaigns",
           "admin"
         ],
         "x-audience": "admin"
@@ -14023,7 +14023,7 @@
         ],
         "summary": "Campaign administration",
         "tags": [
-          "campaigns",
+          "admin-campaigns",
           "admin"
         ],
         "x-audience": "admin"
@@ -14052,7 +14052,7 @@
         ],
         "summary": "Apply an administrative campaign action",
         "tags": [
-          "campaigns",
+          "admin-campaigns",
           "admin"
         ],
         "x-audience": "admin"
@@ -14081,7 +14081,7 @@
         ],
         "summary": "Apply an administrative campaign action",
         "tags": [
-          "campaigns",
+          "admin-campaigns",
           "admin"
         ],
         "x-audience": "admin"
@@ -14110,7 +14110,7 @@
         ],
         "summary": "Mark a claimed campaign prize paid",
         "tags": [
-          "campaigns",
+          "admin-campaigns",
           "admin"
         ],
         "x-audience": "admin"
@@ -14139,7 +14139,7 @@
         ],
         "summary": "Resolve a comment report",
         "tags": [
-          "comments",
+          "admin-comments",
           "admin"
         ],
         "x-audience": "admin"
@@ -14168,7 +14168,7 @@
         ],
         "summary": "Reported and flagged comments",
         "tags": [
-          "comments",
+          "admin-comments",
           "admin"
         ],
         "x-audience": "admin"
@@ -14197,7 +14197,7 @@
         ],
         "summary": "Reported and flagged comments (live frontend alias)",
         "tags": [
-          "comments",
+          "admin-comments",
           "admin"
         ],
         "x-audience": "admin"
@@ -14226,7 +14226,7 @@
         ],
         "summary": "Resolve a comment report (live frontend alias)",
         "tags": [
-          "comments",
+          "admin-comments",
           "admin"
         ],
         "x-audience": "admin"
@@ -14255,7 +14255,7 @@
         ],
         "summary": "Hide or restore a comment",
         "tags": [
-          "comments",
+          "admin-comments",
           "admin"
         ],
         "x-audience": "admin"
@@ -14284,7 +14284,7 @@
         ],
         "summary": "Hide a comment (live frontend alias)",
         "tags": [
-          "comments",
+          "admin-comments",
           "admin"
         ],
         "x-audience": "admin"
@@ -14313,7 +14313,7 @@
         ],
         "summary": "Restore a comment (live frontend alias)",
         "tags": [
-          "comments",
+          "admin-comments",
           "admin"
         ],
         "x-audience": "admin"
@@ -14342,7 +14342,7 @@
         ],
         "summary": "List custom domains",
         "tags": [
-          "domains",
+          "admin-domains",
           "admin"
         ],
         "x-audience": "admin"
@@ -14371,7 +14371,7 @@
         ],
         "summary": "Custom domain administration detail",
         "tags": [
-          "domains",
+          "admin-domains",
           "admin"
         ],
         "x-audience": "admin"
@@ -14400,7 +14400,7 @@
         ],
         "summary": "Preview a domain image",
         "tags": [
-          "domains",
+          "admin-domains",
           "admin"
         ],
         "x-audience": "admin"
@@ -14429,7 +14429,7 @@
         ],
         "summary": "Review a domain image",
         "tags": [
-          "domains",
+          "admin-domains",
           "admin"
         ],
         "x-audience": "admin"
@@ -14458,7 +14458,7 @@
         ],
         "summary": "Toggle a custom domain",
         "tags": [
-          "domains",
+          "admin-domains",
           "admin"
         ],
         "x-audience": "admin"
@@ -14487,7 +14487,7 @@
         ],
         "summary": "ESI request overview",
         "tags": [
-          "esi",
+          "admin-esi",
           "admin"
         ],
         "x-audience": "admin"
@@ -14516,7 +14516,7 @@
         ],
         "summary": "Search entities with ESI request logs",
         "tags": [
-          "esi",
+          "admin-esi",
           "admin"
         ],
         "x-audience": "admin"
@@ -14545,7 +14545,7 @@
         ],
         "summary": "Search ESI request logs",
         "tags": [
-          "esi",
+          "admin-esi",
           "admin"
         ],
         "x-audience": "admin"
@@ -14574,7 +14574,7 @@
         ],
         "summary": "Unified moderation queue",
         "tags": [
-          "moderation",
+          "admin-moderation",
           "admin"
         ],
         "x-audience": "admin"
@@ -14603,7 +14603,7 @@
         ],
         "summary": "Unified moderation queue (live frontend alias)",
         "tags": [
-          "moderation",
+          "admin-moderation",
           "admin"
         ],
         "x-audience": "admin"
@@ -14632,7 +14632,7 @@
         ],
         "summary": "Approve or reject a moderation item",
         "tags": [
-          "moderation",
+          "admin-moderation",
           "admin"
         ],
         "x-audience": "admin"
@@ -14661,7 +14661,7 @@
         ],
         "summary": "Approve a moderation item (live frontend alias)",
         "tags": [
-          "moderation",
+          "admin-moderation",
           "admin"
         ],
         "x-audience": "admin"
@@ -14690,7 +14690,7 @@
         ],
         "summary": "Reject a moderation item (live frontend alias)",
         "tags": [
-          "moderation",
+          "admin-moderation",
           "admin"
         ],
         "x-audience": "admin"
@@ -14747,7 +14747,7 @@
         ],
         "summary": "List users",
         "tags": [
-          "users",
+          "admin-users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14776,7 +14776,7 @@
         ],
         "summary": "User administration detail",
         "tags": [
-          "users",
+          "admin-users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14805,7 +14805,7 @@
         ],
         "summary": "Set a user's Discord identity",
         "tags": [
-          "users",
+          "admin-users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14834,7 +14834,7 @@
         ],
         "summary": "Toggle a user's administrator status",
         "tags": [
-          "users",
+          "admin-users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14863,7 +14863,7 @@
         ],
         "summary": "Corporation wallet administration",
         "tags": [
-          "wallet",
+          "admin-wallet",
           "admin"
         ],
         "x-audience": "admin"
@@ -14892,7 +14892,7 @@
         ],
         "summary": "Create a corporation-wallet authorization URL",
         "tags": [
-          "wallet",
+          "admin-wallet",
           "admin"
         ],
         "x-audience": "admin"
@@ -14921,7 +14921,7 @@
         ],
         "summary": "Queue a corporation wallet sync",
         "tags": [
-          "wallet",
+          "admin-wallet",
           "admin"
         ],
         "x-audience": "admin"
@@ -17932,7 +17932,7 @@
         },
         "summary": "Custom-domain killmails in this constellation",
         "tags": [
-          "domains"
+          "custom"
         ],
         "x-audience": "public"
       }
@@ -17955,7 +17955,7 @@
         },
         "summary": "Custom-domain killmail list",
         "tags": [
-          "domains"
+          "custom"
         ],
         "x-audience": "public"
       }
@@ -17978,7 +17978,7 @@
         },
         "summary": "Custom-domain most valuable kills",
         "tags": [
-          "domains"
+          "custom"
         ],
         "x-audience": "public"
       }
@@ -18001,7 +18001,7 @@
         },
         "summary": "Custom-domain top killers and locations",
         "tags": [
-          "domains"
+          "custom"
         ],
         "x-audience": "public"
       }
@@ -18024,7 +18024,7 @@
         },
         "summary": "Custom-domain killmails in this region",
         "tags": [
-          "domains"
+          "custom"
         ],
         "x-audience": "public"
       }
@@ -18047,7 +18047,7 @@
         },
         "summary": "Custom-domain statistics",
         "tags": [
-          "domains"
+          "custom"
         ],
         "x-audience": "public"
       }
@@ -18070,7 +18070,7 @@
         },
         "summary": "Custom-domain killmails in this system",
         "tags": [
-          "domains"
+          "custom"
         ],
         "x-audience": "public"
       }
@@ -26539,6 +26539,10 @@
       "name": "ships"
     },
     {
+      "description": "Killboard reads scoped to a custom-domain killboard.",
+      "name": "custom"
+    },
+    {
       "description": "Detected battles, their reports, compositions, timelines, and killmails.",
       "name": "battles"
     },
@@ -26619,28 +26623,48 @@
       "name": "notifications"
     },
     {
-      "description": "EVE Swagger Interface (ESI) token state and request logs for the signed-in character.",
-      "name": "esi"
-    },
-    {
-      "description": "Campaign prize wallets and their payout authorization.",
+      "description": "Campaign prize wallet balances for the signed-in character.",
       "name": "wallet"
-    },
-    {
-      "description": "Administrator management of user accounts and their roles.",
-      "name": "users"
     },
     {
       "description": "Operator-only administration. Requires an administrator session.",
       "name": "admin"
     },
     {
-      "description": "The moderation queue and its decisions.",
-      "name": "moderation"
+      "description": "Creating, editing, and archiving site announcements.",
+      "name": "admin-announcements"
     },
     {
-      "description": "Custom-domain killboards: configuration, theming, and assets.",
-      "name": "domains"
+      "description": "Authoring, previewing, and publishing blog posts.",
+      "name": "admin-blog"
+    },
+    {
+      "description": "Campaign approval, actions, and prize payout marking.",
+      "name": "admin-campaigns"
+    },
+    {
+      "description": "Comment moderation: the queue, reports, hiding, and restoring.",
+      "name": "admin-comments"
+    },
+    {
+      "description": "Custom-domain configuration, theming, and asset management.",
+      "name": "admin-domains"
+    },
+    {
+      "description": "ESI integration health: entity coverage and request logs.",
+      "name": "admin-esi"
+    },
+    {
+      "description": "The moderation queue and its decisions.",
+      "name": "admin-moderation"
+    },
+    {
+      "description": "User accounts, roles, and Discord links.",
+      "name": "admin-users"
+    },
+    {
+      "description": "Campaign prize wallets and payout authorization.",
+      "name": "admin-wallet"
     },
     {
       "description": "Liveness probe. Checks that the API can reach Postgres.",
@@ -26653,6 +26677,10 @@
     {
       "description": "Character, corporation, alliance, and type images, plus social cards.",
       "name": "images"
+    },
+    {
+      "description": "Assets served for custom-domain killboards.",
+      "name": "domains"
     },
     {
       "description": "Sitemap sources consumed by the frontend.",
@@ -26688,7 +26716,8 @@
         "stats",
         "history",
         "items",
-        "ships"
+        "ships",
+        "custom"
       ]
     },
     {
@@ -26734,17 +26763,22 @@
         "auth",
         "announcements",
         "notifications",
-        "esi",
-        "wallet",
-        "users"
+        "wallet"
       ]
     },
     {
       "name": "Administration",
       "tags": [
         "admin",
-        "moderation",
-        "domains"
+        "admin-announcements",
+        "admin-blog",
+        "admin-campaigns",
+        "admin-comments",
+        "admin-domains",
+        "admin-esi",
+        "admin-moderation",
+        "admin-users",
+        "admin-wallet"
       ]
     },
     {
@@ -26753,6 +26787,7 @@
         "health",
         "feed",
         "images",
+        "domains",
         "sitemap",
         "site",
         "search",

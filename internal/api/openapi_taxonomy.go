@@ -26,6 +26,10 @@ import (
 const (
 	tagAdmin   = "admin"
 	tagAccount = "account"
+
+	// adminTagPrefix namespaces the administrative half of a resource so it
+	// can sit under Administration while the public half stays with its peers.
+	adminTagPrefix = "admin-"
 )
 
 // resourceAliases folds a raw first segment onto the tag that owns it.
@@ -44,7 +48,6 @@ var resourceAliases = map[string]string{
 	"campaign-prizes": "campaigns",
 	"comment-reports": "comments",
 	"conflicts":       "battles",
-	"custom":          "domains",
 	"esi-entities":    "esi",
 	"esi-logs":        "esi",
 	"faction":         "faction-war",
@@ -80,7 +83,15 @@ func classifyOperation(path string) (resource string, access string) {
 		if len(segments) == 1 {
 			return tagAdmin, tagAdmin
 		}
-		return resourceTag(segments[1]), tagAdmin
+		// Administrative routes get their own tag rather than joining the
+		// public tag for the same resource. A tag belongs to exactly one
+		// group, so sharing "campaigns" would have dragged /admin/campaigns
+		// into Conflicts alongside the endpoints anyone can read.
+		resource := resourceTag(segments[1])
+		if resource == tagAdmin {
+			return tagAdmin, tagAdmin
+		}
+		return adminTagPrefix + resource, tagAdmin
 	case "me", "user":
 		// Every /me and /user route is one surface: the signed-in character's
 		// own settings, boards, tokens, and notifications. Splitting it by
