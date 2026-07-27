@@ -7252,7 +7252,12 @@ export type AdminCommentsLiveQueueAliasResponses = {
 export type AdminCommentsLiveQueueAliasResponse = AdminCommentsLiveQueueAliasResponses[keyof AdminCommentsLiveQueueAliasResponses];
 
 export type AdminCommentReportResolutionLiveAliasData = {
-    body?: never;
+    body: {
+        /**
+         * How the report was resolved.
+         */
+        resolution?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/comments/reports/{id}/resolve';
@@ -7293,7 +7298,12 @@ export type AdminCommentModerationResponses = {
 export type AdminCommentModerationResponse = AdminCommentModerationResponses[keyof AdminCommentModerationResponses];
 
 export type AdminCommentHideLiveAliasData = {
-    body?: never;
+    body: {
+        /**
+         * Moderation action to apply.
+         */
+        action?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/comments/{id}/hide';
@@ -7311,7 +7321,12 @@ export type AdminCommentHideLiveAliasResponses = {
 export type AdminCommentHideLiveAliasResponse = AdminCommentHideLiveAliasResponses[keyof AdminCommentHideLiveAliasResponses];
 
 export type AdminCommentRestoreLiveAliasData = {
-    body?: never;
+    body: {
+        /**
+         * Moderation action to apply.
+         */
+        action?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/comments/{id}/restore';
@@ -7383,7 +7398,16 @@ export type AdminDomainAssetPreviewResponses = {
 export type AdminDomainAssetPreviewResponse = AdminDomainAssetPreviewResponses[keyof AdminDomainAssetPreviewResponses];
 
 export type AdminDomainAssetReviewData = {
-    body?: never;
+    body: {
+        /**
+         * Review outcome for the uploaded asset.
+         */
+        action?: string;
+        /**
+         * Operator note recorded with the decision.
+         */
+        reason?: string;
+    };
     path?: never;
     query?: never;
     url: '/admin/domains/{id}/assets/{assetId}/review';
@@ -7536,7 +7560,16 @@ export type AdminModerationReviewResponses = {
 export type AdminModerationReviewResponse = AdminModerationReviewResponses[keyof AdminModerationReviewResponses];
 
 export type AdminModerationApproveLiveAliasData = {
-    body?: never;
+    body: {
+        /**
+         * Moderator decision for the queued item.
+         */
+        decision?: unknown;
+        /**
+         * Operator note, at most 1000 characters.
+         */
+        notes?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/moderation/{id}/approve';
@@ -7554,7 +7587,16 @@ export type AdminModerationApproveLiveAliasResponses = {
 export type AdminModerationApproveLiveAliasResponse = AdminModerationApproveLiveAliasResponses[keyof AdminModerationApproveLiveAliasResponses];
 
 export type AdminModerationRejectLiveAliasData = {
-    body?: never;
+    body: {
+        /**
+         * Moderator decision for the queued item.
+         */
+        decision?: unknown;
+        /**
+         * Operator note, at most 1000 characters.
+         */
+        notes?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/moderation/{id}/reject';
@@ -7626,7 +7668,12 @@ export type AdminUsersDetailResponses = {
 export type AdminUsersDetailResponse = AdminUsersDetailResponses[keyof AdminUsersDetailResponses];
 
 export type AdminUsersSetDiscordData = {
-    body?: never;
+    body: {
+        /**
+         * Discord user identifier, or null to unlink.
+         */
+        discord_user_id?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/admin/users/{id}/set-discord';
@@ -12377,7 +12424,48 @@ export type KillmailsCountResponses = {
 export type KillmailsCountResponse2 = KillmailsCountResponses[keyof KillmailsCountResponses];
 
 export type KillmailSearchData = {
-    body?: never;
+    body: {
+        /**
+         * Cursor: return killmails after this identifier.
+         */
+        after?: unknown;
+        /**
+         * Restrict to killmails involving these alliances.
+         */
+        alliance_ids?: unknown;
+        /**
+         * Restrict to killmails involving these characters.
+         */
+        character_ids?: unknown;
+        /**
+         * Restrict to these constellations.
+         */
+        constellation_ids?: unknown;
+        /**
+         * Restrict to killmails involving these corporations.
+         */
+        corporation_ids?: unknown;
+        /**
+         * Window start. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string.
+         */
+        from: unknown;
+        /**
+         * Maximum killmails to return, capped at 100.
+         */
+        limit?: unknown;
+        /**
+         * Restrict to these regions.
+         */
+        region_ids?: unknown;
+        /**
+         * Restrict to these solar systems.
+         */
+        system_ids?: unknown;
+        /**
+         * Window end. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string.
+         */
+        to: unknown;
+    };
     path?: never;
     query?: never;
     url: '/killmails/search';
@@ -12917,7 +13005,20 @@ export type AccountDescriptionsResponses = {
 export type AccountDescriptionsResponse = AccountDescriptionsResponses[keyof AccountDescriptionsResponses];
 
 export type AccountDescriptionUpdateData = {
-    body?: never;
+    body: {
+        /**
+         * Description text.
+         */
+        description: string;
+        /**
+         * Which description to write: character, corporation or alliance.
+         */
+        entity: string;
+        /**
+         * How to interpret the text.
+         */
+        format?: string;
+    };
     path?: never;
     query?: never;
     url: '/me/descriptions';
@@ -12953,7 +13054,52 @@ export type DomainsMineResponses = {
 export type DomainsMineResponse = DomainsMineResponses[keyof DomainsMineResponses];
 
 export type DomainCreateData = {
-    body?: never;
+    body: {
+        /**
+         * Whether the board serves traffic.
+         */
+        active?: unknown;
+        /**
+         * Campaigns featured on the board.
+         */
+        campaign_ids?: unknown;
+        /**
+         * How campaigns are selected for the board.
+         */
+        campaign_policy?: unknown;
+        /**
+         * Public identifiers of those campaigns.
+         */
+        campaign_public_ids?: unknown;
+        /**
+         * Characters, corporations and alliances the board covers.
+         */
+        entities?: unknown;
+        /**
+         * Custom navigation entries.
+         */
+        navbar_links?: unknown;
+        /**
+         * Short description for the board.
+         */
+        site_description?: unknown;
+        /**
+         * Board name shown in the title and header.
+         */
+        site_name?: unknown;
+        /**
+         * Subdomain the board answers on.
+         */
+        subdomain?: unknown;
+        /**
+         * Theme overrides: colors, fonts and background.
+         */
+        theme?: unknown;
+        /**
+         * Widgets shown on the board, in order.
+         */
+        widgets?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/me/domains';
@@ -13007,7 +13153,52 @@ export type DomainDeleteResponses = {
 export type DomainDeleteResponse = DomainDeleteResponses[keyof DomainDeleteResponses];
 
 export type DomainUpdateData = {
-    body?: never;
+    body: {
+        /**
+         * Whether the board serves traffic.
+         */
+        active?: unknown;
+        /**
+         * Campaigns featured on the board.
+         */
+        campaign_ids?: unknown;
+        /**
+         * How campaigns are selected for the board.
+         */
+        campaign_policy?: unknown;
+        /**
+         * Public identifiers of those campaigns.
+         */
+        campaign_public_ids?: unknown;
+        /**
+         * Characters, corporations and alliances the board covers.
+         */
+        entities?: unknown;
+        /**
+         * Custom navigation entries.
+         */
+        navbar_links?: unknown;
+        /**
+         * Short description for the board.
+         */
+        site_description?: unknown;
+        /**
+         * Board name shown in the title and header.
+         */
+        site_name?: unknown;
+        /**
+         * Subdomain the board answers on.
+         */
+        subdomain?: unknown;
+        /**
+         * Theme overrides: colors, fonts and background.
+         */
+        theme?: unknown;
+        /**
+         * Widgets shown on the board, in order.
+         */
+        widgets?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/me/domains/{id}';
@@ -13025,7 +13216,12 @@ export type DomainUpdateResponses = {
 export type DomainUpdateResponse = DomainUpdateResponses[keyof DomainUpdateResponses];
 
 export type DomainAssetsDeleteTypeData = {
-    body?: never;
+    body: {
+        /**
+         * Asset slot to clear: background, preview or icon.
+         */
+        type?: string;
+    };
     path?: never;
     query?: never;
     url: '/me/domains/{id}/assets';
@@ -13133,7 +13329,12 @@ export type AccountEsiLogsResponses = {
 export type AccountEsiLogsResponse = AccountEsiLogsResponses[keyof AccountEsiLogsResponses];
 
 export type AccountNotificationReadCursorData = {
-    body?: never;
+    body: {
+        /**
+         * Read cursor. Marks every notification up to this identifier.
+         */
+        id?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/me/notifications/read-cursor';
@@ -13151,7 +13352,12 @@ export type AccountNotificationReadCursorResponses = {
 export type AccountNotificationReadCursorResponse = AccountNotificationReadCursorResponses[keyof AccountNotificationReadCursorResponses];
 
 export type AccountNotificationRepliesData = {
-    body?: never;
+    body: {
+        /**
+         * Read cursor. Marks every notification up to this identifier.
+         */
+        id?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/me/notifications/replies';
@@ -13205,7 +13411,20 @@ export type AccountPreferencesResponses = {
 export type AccountPreferencesResponse = AccountPreferencesResponses[keyof AccountPreferencesResponses];
 
 export type AccountPreferencesUpdateData = {
-    body?: never;
+    body: {
+        /**
+         * Killboards pinned in the navigation.
+         */
+        boards?: unknown;
+        /**
+         * Default tab per entity page.
+         */
+        defaultTabs?: unknown;
+        /**
+         * Preferred site theme.
+         */
+        theme?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/me/preferences';
@@ -13349,7 +13568,12 @@ export type WalletAccountBalanceResponses = {
 export type WalletAccountBalanceResponse = WalletAccountBalanceResponses[keyof WalletAccountBalanceResponses];
 
 export type NotificationMarkReadCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Read cursor. Marks every notification up to this identifier.
+         */
+        id?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/notifications/mark-read';
@@ -14883,7 +15107,20 @@ export type UniverseTypeKillmailsResponses = {
 export type UniverseTypeKillmailsResponse = UniverseTypeKillmailsResponses[keyof UniverseTypeKillmailsResponses];
 
 export type UserBoardsUpdateCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Killboards pinned in the navigation.
+         */
+        boards?: unknown;
+        /**
+         * Default tab per entity page.
+         */
+        defaultTabs?: unknown;
+        /**
+         * Preferred site theme.
+         */
+        theme?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/user/boards';
@@ -14937,7 +15174,20 @@ export type MyCommentDeleteLiveAliasResponses = {
 export type MyCommentDeleteLiveAliasResponse = MyCommentDeleteLiveAliasResponses[keyof MyCommentDeleteLiveAliasResponses];
 
 export type UserDescriptionUpdateCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Description text.
+         */
+        description: string;
+        /**
+         * Which description to write: character, corporation or alliance.
+         */
+        entity: string;
+        /**
+         * How to interpret the text.
+         */
+        format?: string;
+    };
     path?: never;
     query?: never;
     url: '/user/descriptions';
@@ -14973,7 +15223,52 @@ export type DomainsMineCompatResponses = {
 export type DomainsMineCompatResponse = DomainsMineCompatResponses[keyof DomainsMineCompatResponses];
 
 export type DomainCreateCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Whether the board serves traffic.
+         */
+        active?: unknown;
+        /**
+         * Campaigns featured on the board.
+         */
+        campaign_ids?: unknown;
+        /**
+         * How campaigns are selected for the board.
+         */
+        campaign_policy?: unknown;
+        /**
+         * Public identifiers of those campaigns.
+         */
+        campaign_public_ids?: unknown;
+        /**
+         * Characters, corporations and alliances the board covers.
+         */
+        entities?: unknown;
+        /**
+         * Custom navigation entries.
+         */
+        navbar_links?: unknown;
+        /**
+         * Short description for the board.
+         */
+        site_description?: unknown;
+        /**
+         * Board name shown in the title and header.
+         */
+        site_name?: unknown;
+        /**
+         * Subdomain the board answers on.
+         */
+        subdomain?: unknown;
+        /**
+         * Theme overrides: colors, fonts and background.
+         */
+        theme?: unknown;
+        /**
+         * Widgets shown on the board, in order.
+         */
+        widgets?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/user/domains';
@@ -15027,7 +15322,52 @@ export type DomainDeleteCompatResponses = {
 export type DomainDeleteCompatResponse = DomainDeleteCompatResponses[keyof DomainDeleteCompatResponses];
 
 export type DomainUpdatePatchCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Whether the board serves traffic.
+         */
+        active?: unknown;
+        /**
+         * Campaigns featured on the board.
+         */
+        campaign_ids?: unknown;
+        /**
+         * How campaigns are selected for the board.
+         */
+        campaign_policy?: unknown;
+        /**
+         * Public identifiers of those campaigns.
+         */
+        campaign_public_ids?: unknown;
+        /**
+         * Characters, corporations and alliances the board covers.
+         */
+        entities?: unknown;
+        /**
+         * Custom navigation entries.
+         */
+        navbar_links?: unknown;
+        /**
+         * Short description for the board.
+         */
+        site_description?: unknown;
+        /**
+         * Board name shown in the title and header.
+         */
+        site_name?: unknown;
+        /**
+         * Subdomain the board answers on.
+         */
+        subdomain?: unknown;
+        /**
+         * Theme overrides: colors, fonts and background.
+         */
+        theme?: unknown;
+        /**
+         * Widgets shown on the board, in order.
+         */
+        widgets?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/user/domains/{id}';
@@ -15045,7 +15385,52 @@ export type DomainUpdatePatchCompatResponses = {
 export type DomainUpdatePatchCompatResponse = DomainUpdatePatchCompatResponses[keyof DomainUpdatePatchCompatResponses];
 
 export type DomainUpdatePutCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Whether the board serves traffic.
+         */
+        active?: unknown;
+        /**
+         * Campaigns featured on the board.
+         */
+        campaign_ids?: unknown;
+        /**
+         * How campaigns are selected for the board.
+         */
+        campaign_policy?: unknown;
+        /**
+         * Public identifiers of those campaigns.
+         */
+        campaign_public_ids?: unknown;
+        /**
+         * Characters, corporations and alliances the board covers.
+         */
+        entities?: unknown;
+        /**
+         * Custom navigation entries.
+         */
+        navbar_links?: unknown;
+        /**
+         * Short description for the board.
+         */
+        site_description?: unknown;
+        /**
+         * Board name shown in the title and header.
+         */
+        site_name?: unknown;
+        /**
+         * Subdomain the board answers on.
+         */
+        subdomain?: unknown;
+        /**
+         * Theme overrides: colors, fonts and background.
+         */
+        theme?: unknown;
+        /**
+         * Widgets shown on the board, in order.
+         */
+        widgets?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/user/domains/{id}';
@@ -15099,7 +15484,12 @@ export type DomainCampaignSearchCompatResponses = {
 export type DomainCampaignSearchCompatResponse = DomainCampaignSearchCompatResponses[keyof DomainCampaignSearchCompatResponses];
 
 export type DomainAssetsDeleteTypeCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Asset slot to clear: background, preview or icon.
+         */
+        type?: string;
+    };
     path?: never;
     query?: never;
     url: '/user/domains/{id}/upload';
@@ -15225,7 +15615,20 @@ export type UserPreferencesCompatResponses = {
 export type UserPreferencesCompatResponse = UserPreferencesCompatResponses[keyof UserPreferencesCompatResponses];
 
 export type UserPreferencesUpdateCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Killboards pinned in the navigation.
+         */
+        boards?: unknown;
+        /**
+         * Default tab per entity page.
+         */
+        defaultTabs?: unknown;
+        /**
+         * Preferred site theme.
+         */
+        theme?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/user/preferences';
@@ -15297,7 +15700,20 @@ export type UserSessionRevokeLegacyResponses = {
 export type UserSessionRevokeLegacyResponse = UserSessionRevokeLegacyResponses[keyof UserSessionRevokeLegacyResponses];
 
 export type UserThemeUpdateCompatData = {
-    body?: never;
+    body: {
+        /**
+         * Killboards pinned in the navigation.
+         */
+        boards?: unknown;
+        /**
+         * Default tab per entity page.
+         */
+        defaultTabs?: unknown;
+        /**
+         * Preferred site theme.
+         */
+        theme?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/user/theme';

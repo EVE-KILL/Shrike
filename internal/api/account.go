@@ -2,9 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 	"time"
 
@@ -320,29 +317,6 @@ func (s *accountService) principal(
 		return nil, err
 	}
 	return s.auth.requirePrincipal(ctx, req)
-}
-
-func decodeAccountBody(req *legacyRequest) (map[string]any, error) {
-	limited := io.LimitReader(req.Body, accountBodyLimit+1)
-	decoder := json.NewDecoder(limited)
-	decoder.UseNumber()
-	var body map[string]any
-	if err := decoder.Decode(&body); err != nil {
-		return nil, apiError(http.StatusBadRequest, "Body must be a JSON object")
-	}
-	if body == nil {
-		return nil, apiError(http.StatusBadRequest, "Body must be a JSON object")
-	}
-	var extra any
-	err := decoder.Decode(&extra)
-	switch {
-	case errors.Is(err, io.EOF):
-		return body, nil
-	case err == nil:
-		return nil, apiError(http.StatusBadRequest, "Body must contain one JSON value")
-	default:
-		return nil, apiError(http.StatusBadRequest, "Invalid JSON body")
-	}
 }
 
 type discordBioEventArgs struct {

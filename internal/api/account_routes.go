@@ -42,7 +42,7 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}, preferences)
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
 		OperationID: "account-preferences-update",
 		Method:      http.MethodPut,
 		Path:        "/me/preferences",
@@ -50,7 +50,7 @@ func registerAccountServiceRoutes(
 		Description: "Updates default tabs, theme colors, and board preferences in one request.",
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
-	}, service.savePreferencesHandler(preferenceWriteCombined))
+	}), service.savePreferencesHandler(preferenceWriteCombined))
 
 	boards := service.boardsHandler()
 	registerLegacy(a, huma.Operation{
@@ -81,14 +81,14 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}, descriptions)
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountDescriptionBody](a, huma.Operation{
 		OperationID: "account-description-update",
 		Method:      http.MethodPut,
 		Path:        "/me/descriptions",
 		Summary:     "Submit or clear an entity description",
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
-	}, service.saveDescriptionHandler())
+	}), service.saveDescriptionHandler())
 
 	esiMetrics := service.esiMetricsHandler()
 	registerLegacy(a, huma.Operation{
@@ -123,23 +123,23 @@ func registerAccountServiceRoutes(
 	dismissAnnouncement := service.dismissAnnouncementHandler()
 
 	notificationReplies := service.notificationRepliesHandler()
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountNotificationsReadBody](a, huma.Operation{
 		OperationID: "account-notification-replies",
 		Method:      http.MethodGet,
 		Path:        "/me/notifications/replies",
 		Summary:     "Replies to this account's comments",
 		Tags:        []string{"account", "notifications"},
 		Security:    requiredSession,
-	}, notificationReplies)
+	}), notificationReplies)
 	markNotificationsRead := service.markNotificationsReadHandler()
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountNotificationsReadBody](a, huma.Operation{
 		OperationID: "account-notification-read-cursor",
 		Method:      http.MethodPut,
 		Path:        "/me/notifications/read-cursor",
 		Summary:     "Advance the reply notification read cursor",
 		Tags:        []string{"account", "notifications"},
 		Security:    requiredSession,
-	}, markNotificationsRead)
+	}), markNotificationsRead)
 
 	// Compatibility aliases are limited to routes the current Nuxt application
 	// actually calls. The copied frontend can move to the canonical paths
@@ -152,30 +152,30 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}, preferences)
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
 		OperationID: "user-preferences-update-compat",
 		Method:      http.MethodPut,
 		Path:        "/user/preferences",
 		Summary:     "Update default tabs",
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
-	}, service.savePreferencesHandler(preferenceWriteDefaultTabs))
-	registerLegacy(a, huma.Operation{
+	}), service.savePreferencesHandler(preferenceWriteDefaultTabs))
+	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
 		OperationID: "user-theme-update-compat",
 		Method:      http.MethodPut,
 		Path:        "/user/theme",
 		Summary:     "Update account theme",
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
-	}, service.savePreferencesHandler(preferenceWriteTheme))
-	registerLegacy(a, huma.Operation{
+	}), service.savePreferencesHandler(preferenceWriteTheme))
+	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
 		OperationID: "user-boards-update-compat",
 		Method:      http.MethodPut,
 		Path:        "/user/boards",
 		Summary:     "Update board preferences",
 		Tags:        []string{"account", "boards"},
 		Security:    requiredSession,
-	}, service.savePreferencesHandler(preferenceWriteBoards))
+	}), service.savePreferencesHandler(preferenceWriteBoards))
 	registerLegacy(a, huma.Operation{
 		OperationID: "boards-mine-compat",
 		Method:      http.MethodGet,
@@ -200,14 +200,14 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}, descriptions)
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountDescriptionBody](a, huma.Operation{
 		OperationID: "user-description-update-compat",
 		Method:      http.MethodPut,
 		Path:        "/user/descriptions",
 		Summary:     "Submit or clear an entity description",
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
-	}, service.saveDescriptionHandler())
+	}), service.saveDescriptionHandler())
 	registerLegacy(a, huma.Operation{
 		OperationID: "user-esi-compat",
 		Method:      http.MethodGet,
@@ -255,12 +255,12 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "notifications"},
 		Security:    requiredSession,
 	}, notificationReplies)
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountNotificationsReadBody](a, huma.Operation{
 		OperationID: "notification-mark-read-compat",
 		Method:      http.MethodPost,
 		Path:        "/notifications/mark-read",
 		Summary:     "Advance the reply notification read cursor",
 		Tags:        []string{"account", "notifications"},
 		Security:    requiredSession,
-	}, markNotificationsRead)
+	}), markNotificationsRead)
 }

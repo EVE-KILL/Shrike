@@ -194,6 +194,16 @@ func (s *domainService) uploadHandler() legacyHandler {
 	}
 }
 
+// Wire types for the domain asset routes.
+type domainAssetTypeBody struct {
+	Type string `json:"type,omitempty" doc:"Asset slot to clear: background, preview or icon."`
+}
+
+type domainAssetReviewBody struct {
+	Action string `json:"action,omitempty" doc:"Review outcome for the uploaded asset."`
+	Reason string `json:"reason,omitempty" doc:"Operator note recorded with the decision."`
+}
+
 func (s *domainService) deleteAssetTypeHandler(
 	legacyBody bool,
 ) legacyHandler {
@@ -208,11 +218,11 @@ func (s *domainService) deleteAssetTypeHandler(
 		}
 		assetType := strings.TrimSpace(req.Query.Get("type"))
 		if legacyBody {
-			body, bodyErr := decodeDomainBody(req)
+			body, bodyErr := decodeJSONBody[domainAssetTypeBody](req, domainBodyLimit)
 			if bodyErr != nil {
 				return legacyPayload{}, bodyErr
 			}
-			assetType, _ = body["type"].(string)
+			assetType = body.Type
 		}
 		if assetType != "banner" && assetType != "logo" {
 			return legacyPayload{}, apiError(
@@ -270,11 +280,11 @@ func (s *domainService) reviewAssetHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeDomainBody(req)
+		body, err := decodeJSONBody[domainAssetReviewBody](req, domainBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		action, _ := body["action"].(string)
+		action := body.Action
 		if action != "approve" && action != "reject" {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,
@@ -283,7 +293,7 @@ func (s *domainService) reviewAssetHandler() legacyHandler {
 		}
 		var reason *string
 		if action == "reject" {
-			if raw, ok := body["reason"].(string); ok {
+			if raw := body.Reason; raw != "" {
 				raw = strings.TrimSpace(raw)
 				runes := []rune(raw)
 				if len(runes) > 500 {

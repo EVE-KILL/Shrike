@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"math"
 	"net/http"
 	"regexp"
@@ -204,6 +203,11 @@ func parseAdminCharacterID(raw string) (int32, error) {
 	return int32(value), nil
 }
 
+// adminSetDiscordBody carries the Discord link for a user.
+type adminSetDiscordBody struct {
+	DiscordUserID json.RawMessage `json:"discord_user_id,omitempty" doc:"Discord user identifier, or null to unlink."`
+}
+
 func (s *adminService) setDiscordHandler() legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		if _, err := s.requireAdmin(ctx, req, true); err != nil {
@@ -213,12 +217,12 @@ func (s *adminService) setDiscordHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeAdminObject(req)
+		body, err := decodeJSONBody[adminSetDiscordBody](req, 64<<10)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		var discordID *string
-		if raw, exists := body["discord_user_id"]; exists && raw != nil {
+		if raw, exists := rawJSONField(body.DiscordUserID); exists && raw != nil {
 			text := strings.TrimSpace(adminStringValue(raw))
 			if text != "" {
 				if !discordSnowflakePattern.MatchString(text) {
@@ -270,27 +274,6 @@ func adminStringValue(value any) string {
 		// These fail the numeric-snowflake regex, matching String(object).
 		return "[object Object]"
 	}
-}
-
-func decodeAdminObject(req *legacyRequest) (map[string]any, error) {
-	decoder := json.NewDecoder(io.LimitReader(req.Body, 64<<10))
-	decoder.UseNumber()
-	var decoded any
-	if err := decoder.Decode(&decoded); err != nil {
-		return nil, apiError(http.StatusBadRequest, "Invalid JSON body")
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return nil, apiError(http.StatusBadRequest, "Invalid JSON body")
-	}
-	body, _ := decoded.(map[string]any)
-	if body == nil {
-		// The TypeScript body uses optional property access, so any valid JSON
-		// primitive (including null) behaves like an object with no field and
-		// therefore clears the link.
-		body = map[string]any{}
-	}
-	return body, nil
 }
 
 func (s *adminService) toggleAdminHandler() legacyHandler {

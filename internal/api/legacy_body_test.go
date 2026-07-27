@@ -1,8 +1,11 @@
 package api
 
 import (
+	"sort"
 	"strings"
 	"testing"
+
+	"github.com/danielgtaylor/huma/v2"
 )
 
 type probeBody struct {
@@ -87,5 +90,48 @@ func TestTypedRouteCarriesAGeneratedRequestSchema(t *testing.T) {
 	}
 	if _, ok := schema.Properties["names"]; !ok {
 		t.Errorf("schema does not describe names: %+v", schema.Properties)
+	}
+}
+
+// Every write route that reads a JSON body must document one. The routes that
+// stay undocumented are the action endpoints that read no body at all and the
+// two multipart uploads; anything else appearing here is a route whose schema
+// was forgotten, which the reference page shows as an untyped Try it form.
+func TestEveryJSONWriteRouteDocumentsItsBody(t *testing.T) {
+	bodyless := map[string]bool{
+		"announcement-admin-archive-compat": true,
+		"admin-domain-toggle":               true,
+		"admin-users-toggle-admin":          true,
+		"wallet-admin-sync":                 true,
+		"announcement-dismiss-compat":       true,
+		"auth-logout-legacy":                true,
+		"campaign-prize-claim":              true,
+		"campaign-prize-claim-legacy":       true,
+		"account-announcement-dismissal":    true,
+		"other-sessions-revoke-legacy":      true,
+		"user-session-revoke-legacy":        true,
+		"domain-asset-upload":               true, // multipart
+		"domain-asset-upload-compat":        true, // multipart
+	}
+
+	document := New(Options{}).document
+	var undocumented []string
+	for _, item := range document.Paths {
+		for _, operation := range []*huma.Operation{item.Post, item.Put, item.Patch} {
+			if operation == nil || bodyless[operation.OperationID] {
+				continue
+			}
+			media := (*huma.MediaType)(nil)
+			if operation.RequestBody != nil {
+				media = operation.RequestBody.Content["application/json"]
+			}
+			if media == nil || media.Schema == nil {
+				undocumented = append(undocumented, operation.OperationID)
+			}
+		}
+	}
+	sort.Strings(undocumented)
+	if len(undocumented) > 0 {
+		t.Errorf("write routes with no documented body: %v", undocumented)
 	}
 }

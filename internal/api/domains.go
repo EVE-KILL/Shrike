@@ -3,9 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
 	"net/url"
@@ -180,6 +178,27 @@ func (s *domainService) requireAdmin(
 // registerDomainRoutes installs domain ownership, administration, campaign
 // selection, and image delivery into the shared API catalogue. The /me paths
 // are canonical; /user paths remain while the copied Nuxt frontend migrates.
+// documentDomainBody attaches the right request schema for a domain route.
+// The routes are registered from tables, so the operation ID is what
+// identifies which body a route takes.
+func documentDomainBody(
+	a huma.API,
+	id string,
+	op huma.Operation,
+) huma.Operation {
+	switch id {
+	case "domain-create", "domain-create-compat",
+		"domain-update", "domain-update-patch-compat",
+		"domain-update-put-compat":
+		return documentJSONBody[domainWriteBody](a, op)
+	case "domain-assets-delete-type", "domain-assets-delete-type-compat":
+		return documentJSONBody[domainAssetTypeBody](a, op)
+	case "admin-domain-asset-review":
+		return documentJSONBody[domainAssetReviewBody](a, op)
+	}
+	return op
+}
+
 func registerDomainRoutes(a huma.API, opts Options) {
 	registerDomainServiceRoutes(a, newDomainService(opts))
 }
@@ -296,14 +315,14 @@ func registerDomainServiceRoutes(
 		},
 	}
 	for _, route := range accountRoutes {
-		registerLegacy(a, huma.Operation{
+		registerLegacy(a, documentDomainBody(a, route.id, huma.Operation{
 			OperationID: route.id,
 			Method:      route.method,
 			Path:        route.path,
 			Summary:     route.summary,
 			Tags:        []string{"account", "domains"},
 			Security:    required,
-		}, route.handler)
+		}), route.handler)
 	}
 
 	adminRoutes := []struct {
@@ -336,14 +355,14 @@ func registerDomainServiceRoutes(
 		},
 	}
 	for _, route := range adminRoutes {
-		registerLegacy(a, huma.Operation{
+		registerLegacy(a, documentDomainBody(a, route.id, huma.Operation{
 			OperationID: route.id,
 			Method:      route.method,
 			Path:        route.path,
 			Summary:     route.summary,
 			Tags:        []string{"admin", "domains"},
 			Security:    required,
-		}, route.handler)
+		}), route.handler)
 	}
 
 	for _, route := range []struct {
@@ -439,17 +458,56 @@ func (s *domainService) checkSubdomainHandler() legacyHandler {
 	}
 }
 
+// Wire type for the custom-domain write routes.
+//
+// Every field is json.RawMessage: parseDomainCreate and parseDomainUpdate walk
+// nested theme, widget, navbar and entity structures whose parsers coerce the
+// way the TypeScript API did. Naming the fields documents the request without
+// rewriting that tree, and presence still reads correctly for the patch path.
+type domainWriteBody struct {
+	Subdomain         json.RawMessage `json:"subdomain,omitempty" doc:"Subdomain the board answers on."`
+	SiteName          json.RawMessage `json:"site_name,omitempty" doc:"Board name shown in the title and header."`
+	SiteDescription   json.RawMessage `json:"site_description,omitempty" doc:"Short description for the board."`
+	Active            json.RawMessage `json:"active,omitempty" doc:"Whether the board serves traffic."`
+	Entities          json.RawMessage `json:"entities,omitempty" doc:"Characters, corporations and alliances the board covers."`
+	CampaignIDs       json.RawMessage `json:"campaign_ids,omitempty" doc:"Campaigns featured on the board."`
+	CampaignPublicIDs json.RawMessage `json:"campaign_public_ids,omitempty" doc:"Public identifiers of those campaigns."`
+	CampaignPolicy    json.RawMessage `json:"campaign_policy,omitempty" doc:"How campaigns are selected for the board."`
+	Theme             json.RawMessage `json:"theme,omitempty" doc:"Theme overrides: colors, fonts and background."`
+	Widgets           json.RawMessage `json:"widgets,omitempty" doc:"Widgets shown on the board, in order."`
+	NavbarLinks       json.RawMessage `json:"navbar_links,omitempty" doc:"Custom navigation entries."`
+}
+
+// asMap rebuilds the untyped view the domain parsers expect. Only keys the
+// caller actually sent appear, so presence checks behave as they did.
+func (b *domainWriteBody) asMap() map[string]any {
+	out := map[string]any{}
+	for key, raw := range map[string]json.RawMessage{
+		"subdomain": b.Subdomain, "site_name": b.SiteName,
+		"site_description": b.SiteDescription, "active": b.Active,
+		"entities": b.Entities, "campaign_ids": b.CampaignIDs,
+		"campaign_public_ids": b.CampaignPublicIDs,
+		"campaign_policy":     b.CampaignPolicy, "theme": b.Theme,
+		"widgets": b.Widgets, "navbar_links": b.NavbarLinks,
+	} {
+		if value, found := rawJSONField(raw); found {
+			out[key] = value
+		}
+	}
+	return out
+}
+
 func (s *domainService) createHandler() legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		principal, err := s.requireAccount(ctx, req, true)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeDomainBody(req)
+		body, err := decodeJSONBody[domainWriteBody](req, domainBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		input, err := parseDomainCreate(body)
+		input, err := parseDomainCreate(body.asMap())
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -471,11 +529,11 @@ func (s *domainService) updateHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeDomainBody(req)
+		body, err := decodeJSONBody[domainWriteBody](req, domainBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		input, err := parseDomainUpdate(body)
+		input, err := parseDomainUpdate(body.asMap())
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -598,24 +656,6 @@ func (s *domainService) adminToggleHandler() legacyHandler {
 		}
 		return jsonPayload(map[string]any{"domain": row}), nil
 	}
-}
-
-func decodeDomainBody(req *legacyRequest) (map[string]any, error) {
-	decoder := json.NewDecoder(io.LimitReader(req.Body, domainBodyLimit+1))
-	decoder.UseNumber()
-	var body map[string]any
-	if err := decoder.Decode(&body); err != nil || body == nil {
-		return nil, apiError(
-			http.StatusBadRequest, "Body must be a JSON object",
-		)
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return nil, apiError(
-			http.StatusBadRequest, "Body must contain one JSON value",
-		)
-	}
-	return body, nil
 }
 
 func parseDomainCreate(body map[string]any) (domainCreateInput, error) {

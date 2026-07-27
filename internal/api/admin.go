@@ -57,14 +57,18 @@ func registerAdminRoutes(a huma.API, opts Options) {
 			"Search entities with ESI request logs", service.esiEntitiesHandler(),
 		},
 	} {
-		registerLegacy(a, huma.Operation{
+		operation := huma.Operation{
 			OperationID: route.id,
 			Method:      route.method,
 			Path:        route.path,
 			Summary:     route.summary,
 			Tags:        []string{"admin"},
 			Security:    requiredSession,
-		}, route.handler)
+		}
+		if route.id == "admin-users-set-discord" {
+			operation = documentJSONBody[adminSetDiscordBody](a, operation)
+		}
+		registerLegacy(a, operation, route.handler)
 	}
 }
 

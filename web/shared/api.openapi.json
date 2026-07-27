@@ -14720,6 +14720,22 @@
     "/admin/comments/reports/{id}/resolve": {
       "post": {
         "operationId": "admin-comment-report-resolution-live-alias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "resolution": {
+                    "description": "How the report was resolved."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14794,6 +14810,22 @@
     "/admin/comments/{id}/hide": {
       "post": {
         "operationId": "admin-comment-hide-live-alias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Moderation action to apply."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14823,6 +14855,22 @@
     "/admin/comments/{id}/restore": {
       "post": {
         "operationId": "admin-comment-restore-live-alias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Moderation action to apply."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14939,6 +14987,27 @@
     "/admin/domains/{id}/assets/{assetId}/review": {
       "post": {
         "operationId": "admin-domain-asset-review",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Review outcome for the uploaded asset.",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "description": "Operator note recorded with the decision.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -15190,6 +15259,25 @@
     "/admin/moderation/{id}/approve": {
       "post": {
         "operationId": "admin-moderation-approve-live-alias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "decision": {
+                    "description": "Moderator decision for the queued item."
+                  },
+                  "notes": {
+                    "description": "Operator note, at most 1000 characters."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -15219,6 +15307,25 @@
     "/admin/moderation/{id}/reject": {
       "post": {
         "operationId": "admin-moderation-reject-live-alias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "decision": {
+                    "description": "Moderator decision for the queued item."
+                  },
+                  "notes": {
+                    "description": "Operator note, at most 1000 characters."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -15334,6 +15441,22 @@
     "/admin/users/{id}/set-discord": {
       "post": {
         "operationId": "admin-users-set-discord",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "discord_user_id": {
+                    "description": "Discord user identifier, or null to unlink."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -23325,6 +23448,53 @@
       "post": {
         "description": "Returns killmails in ESI format within a time window, optionally filtered by location and/or entity. Filter categories are AND-ed together, IDs within a category are OR-ed, and entity filters (character/corporation/alliance) match either attackers OR the victim. Each filter field is capped at 15 IDs and at most 3 filter categories may be combined per request to keep query plans tight. Cursor-paginated on killmail_id: pass the previous response's pagination.cursor as `after` to walk backwards in time through the window.",
         "operationId": "killmail-search",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "after": {
+                    "description": "Cursor: return killmails after this identifier."
+                  },
+                  "alliance_ids": {
+                    "description": "Restrict to killmails involving these alliances."
+                  },
+                  "character_ids": {
+                    "description": "Restrict to killmails involving these characters."
+                  },
+                  "constellation_ids": {
+                    "description": "Restrict to these constellations."
+                  },
+                  "corporation_ids": {
+                    "description": "Restrict to killmails involving these corporations."
+                  },
+                  "from": {
+                    "description": "Window start. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string."
+                  },
+                  "limit": {
+                    "description": "Maximum killmails to return, capped at 100."
+                  },
+                  "region_ids": {
+                    "description": "Restrict to these regions."
+                  },
+                  "system_ids": {
+                    "description": "Restrict to these solar systems."
+                  },
+                  "to": {
+                    "description": "Window end. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string."
+                  }
+                },
+                "required": [
+                  "from",
+                  "to"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24139,6 +24309,35 @@
       },
       "put": {
         "operationId": "account-description-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "description": "Description text.",
+                    "type": "string"
+                  },
+                  "entity": {
+                    "description": "Which description to write: character, corporation or alliance.",
+                    "type": "string"
+                  },
+                  "format": {
+                    "description": "How to interpret the text.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "entity",
+                  "description"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24193,6 +24392,52 @@
       },
       "post": {
         "operationId": "domain-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "description": "Whether the board serves traffic."
+                  },
+                  "campaign_ids": {
+                    "description": "Campaigns featured on the board."
+                  },
+                  "campaign_policy": {
+                    "description": "How campaigns are selected for the board."
+                  },
+                  "campaign_public_ids": {
+                    "description": "Public identifiers of those campaigns."
+                  },
+                  "entities": {
+                    "description": "Characters, corporations and alliances the board covers."
+                  },
+                  "navbar_links": {
+                    "description": "Custom navigation entries."
+                  },
+                  "site_description": {
+                    "description": "Short description for the board."
+                  },
+                  "site_name": {
+                    "description": "Board name shown in the title and header."
+                  },
+                  "subdomain": {
+                    "description": "Subdomain the board answers on."
+                  },
+                  "theme": {
+                    "description": "Theme overrides: colors, fonts and background."
+                  },
+                  "widgets": {
+                    "description": "Widgets shown on the board, in order."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24275,6 +24520,52 @@
       },
       "patch": {
         "operationId": "domain-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "description": "Whether the board serves traffic."
+                  },
+                  "campaign_ids": {
+                    "description": "Campaigns featured on the board."
+                  },
+                  "campaign_policy": {
+                    "description": "How campaigns are selected for the board."
+                  },
+                  "campaign_public_ids": {
+                    "description": "Public identifiers of those campaigns."
+                  },
+                  "entities": {
+                    "description": "Characters, corporations and alliances the board covers."
+                  },
+                  "navbar_links": {
+                    "description": "Custom navigation entries."
+                  },
+                  "site_description": {
+                    "description": "Short description for the board."
+                  },
+                  "site_name": {
+                    "description": "Board name shown in the title and header."
+                  },
+                  "subdomain": {
+                    "description": "Subdomain the board answers on."
+                  },
+                  "theme": {
+                    "description": "Theme overrides: colors, fonts and background."
+                  },
+                  "widgets": {
+                    "description": "Widgets shown on the board, in order."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24303,6 +24594,23 @@
     "/me/domains/{id}/assets": {
       "delete": {
         "operationId": "domain-assets-delete-type",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "description": "Asset slot to clear: background, preview or icon.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24469,6 +24777,22 @@
     "/me/notifications/read-cursor": {
       "put": {
         "operationId": "account-notification-read-cursor",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "description": "Read cursor. Marks every notification up to this identifier."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24497,6 +24821,22 @@
     "/me/notifications/replies": {
       "get": {
         "operationId": "account-notification-replies",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "description": "Read cursor. Marks every notification up to this identifier."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24580,6 +24920,28 @@
       "put": {
         "description": "Updates default tabs, theme colors, and board preferences in one request.",
         "operationId": "account-preferences-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "boards": {
+                    "description": "Killboards pinned in the navigation."
+                  },
+                  "defaultTabs": {
+                    "description": "Default tab per entity page."
+                  },
+                  "theme": {
+                    "description": "Preferred site theme."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24802,6 +25164,22 @@
     "/notifications/mark-read": {
       "post": {
         "operationId": "notification-mark-read-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "description": "Read cursor. Marks every notification up to this identifier."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27274,6 +27652,28 @@
     "/user/boards": {
       "put": {
         "operationId": "user-boards-update-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "boards": {
+                    "description": "Killboards pinned in the navigation."
+                  },
+                  "defaultTabs": {
+                    "description": "Default tab per entity page."
+                  },
+                  "theme": {
+                    "description": "Preferred site theme."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27358,6 +27758,35 @@
     "/user/descriptions": {
       "put": {
         "operationId": "user-description-update-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "description": "Description text.",
+                    "type": "string"
+                  },
+                  "entity": {
+                    "description": "Which description to write: character, corporation or alliance.",
+                    "type": "string"
+                  },
+                  "format": {
+                    "description": "How to interpret the text.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "entity",
+                  "description"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27412,6 +27841,52 @@
       },
       "post": {
         "operationId": "domain-create-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "description": "Whether the board serves traffic."
+                  },
+                  "campaign_ids": {
+                    "description": "Campaigns featured on the board."
+                  },
+                  "campaign_policy": {
+                    "description": "How campaigns are selected for the board."
+                  },
+                  "campaign_public_ids": {
+                    "description": "Public identifiers of those campaigns."
+                  },
+                  "entities": {
+                    "description": "Characters, corporations and alliances the board covers."
+                  },
+                  "navbar_links": {
+                    "description": "Custom navigation entries."
+                  },
+                  "site_description": {
+                    "description": "Short description for the board."
+                  },
+                  "site_name": {
+                    "description": "Board name shown in the title and header."
+                  },
+                  "subdomain": {
+                    "description": "Subdomain the board answers on."
+                  },
+                  "theme": {
+                    "description": "Theme overrides: colors, fonts and background."
+                  },
+                  "widgets": {
+                    "description": "Widgets shown on the board, in order."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27494,6 +27969,52 @@
       },
       "patch": {
         "operationId": "domain-update-patch-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "description": "Whether the board serves traffic."
+                  },
+                  "campaign_ids": {
+                    "description": "Campaigns featured on the board."
+                  },
+                  "campaign_policy": {
+                    "description": "How campaigns are selected for the board."
+                  },
+                  "campaign_public_ids": {
+                    "description": "Public identifiers of those campaigns."
+                  },
+                  "entities": {
+                    "description": "Characters, corporations and alliances the board covers."
+                  },
+                  "navbar_links": {
+                    "description": "Custom navigation entries."
+                  },
+                  "site_description": {
+                    "description": "Short description for the board."
+                  },
+                  "site_name": {
+                    "description": "Board name shown in the title and header."
+                  },
+                  "subdomain": {
+                    "description": "Subdomain the board answers on."
+                  },
+                  "theme": {
+                    "description": "Theme overrides: colors, fonts and background."
+                  },
+                  "widgets": {
+                    "description": "Widgets shown on the board, in order."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27520,6 +28041,52 @@
       },
       "put": {
         "operationId": "domain-update-put-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "description": "Whether the board serves traffic."
+                  },
+                  "campaign_ids": {
+                    "description": "Campaigns featured on the board."
+                  },
+                  "campaign_policy": {
+                    "description": "How campaigns are selected for the board."
+                  },
+                  "campaign_public_ids": {
+                    "description": "Public identifiers of those campaigns."
+                  },
+                  "entities": {
+                    "description": "Characters, corporations and alliances the board covers."
+                  },
+                  "navbar_links": {
+                    "description": "Custom navigation entries."
+                  },
+                  "site_description": {
+                    "description": "Short description for the board."
+                  },
+                  "site_name": {
+                    "description": "Board name shown in the title and header."
+                  },
+                  "subdomain": {
+                    "description": "Subdomain the board answers on."
+                  },
+                  "theme": {
+                    "description": "Theme overrides: colors, fonts and background."
+                  },
+                  "widgets": {
+                    "description": "Widgets shown on the board, in order."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27604,6 +28171,23 @@
     "/user/domains/{id}/upload": {
       "delete": {
         "operationId": "domain-assets-delete-type-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "description": "Asset slot to clear: background, preview or icon.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27796,6 +28380,28 @@
       },
       "put": {
         "operationId": "user-preferences-update-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "boards": {
+                    "description": "Killboards pinned in the navigation."
+                  },
+                  "defaultTabs": {
+                    "description": "Default tab per entity page."
+                  },
+                  "theme": {
+                    "description": "Preferred site theme."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -27908,6 +28514,28 @@
     "/user/theme": {
       "put": {
         "operationId": "user-theme-update-compat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "boards": {
+                    "description": "Killboards pinned in the navigation."
+                  },
+                  "defaultTabs": {
+                    "description": "Default tab per entity page."
+                  },
+                  "theme": {
+                    "description": "Preferred site theme."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

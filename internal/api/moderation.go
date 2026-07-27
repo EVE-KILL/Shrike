@@ -104,22 +104,22 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
 	}), service.commentVisibilityHandler(""))
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationActionBody](a, huma.Operation{
 		OperationID: "admin-comment-hide-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/comments/{id}/hide",
 		Summary:     "Hide a comment (live frontend alias)",
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
-	}, service.commentVisibilityHandler("hide"))
-	registerLegacy(a, huma.Operation{
+	}), service.commentVisibilityHandler("hide"))
+	registerLegacy(a, documentJSONBody[moderationActionBody](a, huma.Operation{
 		OperationID: "admin-comment-restore-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/comments/{id}/restore",
 		Summary:     "Restore a comment (live frontend alias)",
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
-	}, service.commentVisibilityHandler("restore"))
+	}), service.commentVisibilityHandler("restore"))
 	registerLegacy(a, documentJSONBody[moderationResolutionBody](a, huma.Operation{
 		OperationID: "admin-comment-report-resolution",
 		Method:      http.MethodPatch,
@@ -128,14 +128,14 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
 	}), service.reportResolutionHandler())
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationResolutionBody](a, huma.Operation{
 		OperationID: "admin-comment-report-resolution-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/comments/reports/{id}/resolve",
 		Summary:     "Resolve a comment report (live frontend alias)",
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
-	}, service.reportResolutionHandler())
+	}), service.reportResolutionHandler())
 
 	queueList := service.queueHandler()
 	registerLegacy(a, huma.Operation{
@@ -162,22 +162,22 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
 	}), service.reviewHandler("", false))
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationDecisionBody](a, huma.Operation{
 		OperationID: "admin-moderation-approve-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/moderation/{id}/approve",
 		Summary:     "Approve a moderation item (live frontend alias)",
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
-	}, service.reviewHandler("approve", false))
-	registerLegacy(a, huma.Operation{
+	}), service.reviewHandler("approve", false))
+	registerLegacy(a, documentJSONBody[moderationDecisionBody](a, huma.Operation{
 		OperationID: "admin-moderation-reject-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/moderation/{id}/reject",
 		Summary:     "Reject a moderation item (live frontend alias)",
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
-	}, service.reviewHandler("reject", true))
+	}), service.reviewHandler("reject", true))
 }
 
 func (s *moderationService) authorize(

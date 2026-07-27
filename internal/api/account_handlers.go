@@ -34,6 +34,39 @@ func (s *accountService) preferencesHandler() legacyHandler {
 	}
 }
 
+// Wire types for the account write routes.
+type accountPreferencesBody struct {
+	Theme       json.RawMessage `json:"theme,omitempty" doc:"Preferred site theme."`
+	DefaultTabs json.RawMessage `json:"defaultTabs,omitempty" doc:"Default tab per entity page."`
+	Boards      json.RawMessage `json:"boards,omitempty" doc:"Killboards pinned in the navigation."`
+
+	// whole is the untouched object. The boards-only route treats the entire
+	// body as the board state rather than reading a boards key, so that shape
+	// has to survive decoding into the combined type.
+	whole json.RawMessage `json:"-"`
+}
+
+func (b *accountPreferencesBody) UnmarshalJSON(data []byte) error {
+	type alias accountPreferencesBody
+	var decoded alias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*b = accountPreferencesBody(decoded)
+	b.whole = append(json.RawMessage(nil), data...)
+	return nil
+}
+
+type accountDescriptionBody struct {
+	Entity      string `json:"entity" doc:"Which description to write: character, corporation or alliance."`
+	Description string `json:"description" doc:"Description text."`
+	Format      string `json:"format,omitempty" doc:"How to interpret the text."`
+}
+
+type accountNotificationsReadBody struct {
+	ID json.RawMessage `json:"id,omitempty" doc:"Read cursor. Marks every notification up to this identifier."`
+}
+
 func (s *accountService) savePreferencesHandler(
 	mode preferenceWriteMode,
 ) legacyHandler {
@@ -46,14 +79,14 @@ func (s *accountService) savePreferencesHandler(
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeAccountBody(req)
+		body, err := decodeJSONBody[accountPreferencesBody](req, accountBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 
 		updates := make(map[string]any)
 		if mode == preferenceWriteCombined || mode == preferenceWriteDefaultTabs {
-			if raw, present := body["defaultTabs"]; present {
+			if raw, present := rawJSONField(body.DefaultTabs); present {
 				tabs, valid := sanitizeDefaultTabs(raw)
 				if !valid {
 					return legacyPayload{}, apiError(
@@ -68,7 +101,7 @@ func (s *accountService) savePreferencesHandler(
 			}
 		}
 		if mode == preferenceWriteCombined || mode == preferenceWriteTheme {
-			if raw, present := body["theme"]; present {
+			if raw, present := rawJSONField(body.Theme); present {
 				theme, valid := sanitizeTheme(raw)
 				if !valid {
 					return legacyPayload{}, apiError(
@@ -83,10 +116,10 @@ func (s *accountService) savePreferencesHandler(
 			}
 		}
 		if mode == preferenceWriteCombined || mode == preferenceWriteBoards {
-			if raw, present := body["boards"]; present && mode == preferenceWriteCombined {
+			if raw, present := rawJSONField(body.Boards); present && mode == preferenceWriteCombined {
 				updates["boards"] = sanitizeBoardState(raw)
 			} else if mode == preferenceWriteBoards {
-				updates["boards"] = sanitizeBoardState(body)
+				updates["boards"] = sanitizeBoardState(rawJSONValue(body.whole))
 			}
 		}
 		if len(updates) == 0 {
@@ -371,13 +404,13 @@ func (s *accountService) saveDescriptionHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeAccountBody(req)
+		body, err := decodeJSONBody[accountDescriptionBody](req, accountBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		entity, entityOK := body["entity"].(string)
-		description, descriptionOK := body["description"].(string)
-		format, formatOK := body["format"].(string)
+		entity, entityOK := body.Entity, true
+		description, descriptionOK := body.Description, true
+		format, formatOK := body.Format, body.Format != ""
 		if !entityOK || (entity != "character" &&
 			entity != "corporation" && entity != "alliance") {
 			return legacyPayload{}, apiError(
@@ -672,11 +705,11 @@ func (s *accountService) markNotificationsReadHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeAccountBody(req)
+		body, err := decodeJSONBody[accountNotificationsReadBody](req, accountBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		id, ok := nonNegativeJSONInt64(body["id"])
+		id, ok := nonNegativeJSONInt64(rawJSONValue(body.ID))
 		if !ok {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,

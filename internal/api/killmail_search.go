@@ -33,13 +33,13 @@ type killmailSearchInput struct {
 }
 
 func registerKillmailSearchRoute(a huma.API, opts Options) {
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[killmailSearchBody](a, huma.Operation{
 		OperationID: "killmail-search",
 		Method:      http.MethodPost,
 		Path:        "/killmails/search",
 		Summary:     "Bulk killmail search",
 		Tags:        []string{"killmails"},
-	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+	}), func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		input, err := parseKillmailSearch(req)
 		if err != nil {
 			return legacyPayload{}, err
@@ -77,11 +77,46 @@ func registerKillmailSearchRoute(a huma.API, opts Options) {
 	})
 }
 
+// killmailSearchBody is the documented request schema. Fields stay raw
+// because the parser coerces the way the TypeScript API did. from and to are
+// strings: searchTimestamp has always rejected a numeric timestamp.
+type killmailSearchBody struct {
+	From  json.RawMessage `json:"from" doc:"Window start. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string."`
+	To    json.RawMessage `json:"to" doc:"Window end. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string."`
+	Limit json.RawMessage `json:"limit,omitempty" doc:"Maximum killmails to return, capped at 100."`
+	After json.RawMessage `json:"after,omitempty" doc:"Cursor: return killmails after this identifier."`
+
+	SystemIDs        json.RawMessage `json:"system_ids,omitempty" doc:"Restrict to these solar systems."`
+	ConstellationIDs json.RawMessage `json:"constellation_ids,omitempty" doc:"Restrict to these constellations."`
+	RegionIDs        json.RawMessage `json:"region_ids,omitempty" doc:"Restrict to these regions."`
+	CharacterIDs     json.RawMessage `json:"character_ids,omitempty" doc:"Restrict to killmails involving these characters."`
+	CorporationIDs   json.RawMessage `json:"corporation_ids,omitempty" doc:"Restrict to killmails involving these corporations."`
+	AllianceIDs      json.RawMessage `json:"alliance_ids,omitempty" doc:"Restrict to killmails involving these alliances."`
+}
+
+// idField resolves a filter name to its raw value so the loop below can stay
+// table-driven.
+func (b *killmailSearchBody) idField(name string) json.RawMessage {
+	switch name {
+	case "system_ids":
+		return b.SystemIDs
+	case "constellation_ids":
+		return b.ConstellationIDs
+	case "region_ids":
+		return b.RegionIDs
+	case "character_ids":
+		return b.CharacterIDs
+	case "corporation_ids":
+		return b.CorporationIDs
+	case "alliance_ids":
+		return b.AllianceIDs
+	}
+	return nil
+}
+
 func parseKillmailSearch(req *legacyRequest) (killmailSearchInput, error) {
-	var body map[string]any
-	decoder := json.NewDecoder(req.Body)
-	decoder.UseNumber()
-	if err := decoder.Decode(&body); err != nil {
+	body, decodeErr := decodeJSONBody[killmailSearchBody](req, defaultBodyLimit)
+	if err := decodeErr; err != nil {
 		return killmailSearchInput{}, apiError(
 			http.StatusBadRequest, "Invalid JSON body",
 		)
@@ -89,8 +124,8 @@ func parseKillmailSearch(req *legacyRequest) (killmailSearchInput, error) {
 	if body == nil {
 		return killmailSearchInput{}, apiError(http.StatusBadRequest, "Body required")
 	}
-	fromRaw, fromOK := body["from"]
-	toRaw, toOK := body["to"]
+	fromRaw, fromOK := rawJSONField(body.From)
+	toRaw, toOK := rawJSONField(body.To)
 	if !fromOK || !toOK || !jsTruthy(fromRaw) || !jsTruthy(toRaw) {
 		return killmailSearchInput{}, apiError(
 			http.StatusBadRequest, "from and to are required",
@@ -115,12 +150,12 @@ func parseKillmailSearch(req *legacyRequest) (killmailSearchInput, error) {
 		)
 	}
 	input := killmailSearchInput{From: from, To: to, Limit: 100}
-	if raw, exists := body["limit"]; exists {
+	if raw, exists := rawJSONField(body.Limit); exists {
 		if n, ok := jsNumber(raw); ok && n > 0 {
 			input.Limit = min(100, int(math.Floor(n)))
 		}
 	}
-	if raw, exists := body["after"]; exists && raw != nil {
+	if raw, exists := rawJSONField(body.After); exists && raw != nil {
 		id, err := searchPositiveID(raw, "after")
 		if err != nil {
 			return killmailSearchInput{}, err
@@ -138,7 +173,7 @@ func parseKillmailSearch(req *legacyRequest) (killmailSearchInput, error) {
 		{"corporation_ids", &input.CorporationIDs},
 		{"alliance_ids", &input.AllianceIDs},
 	} {
-		ids, err := searchIDArray(body[field.name], field.name)
+		ids, err := searchIDArray(rawJSONValue(body.idField(field.name)), field.name)
 		if err != nil {
 			return killmailSearchInput{}, err
 		}
