@@ -1,0 +1,83 @@
+version: 2
+
+# Weekly, not daily: this repository carries a large Go dependency tree, and a
+# daily cadence produces more review work than it prevents risk.
+#
+# Minor and patch updates are grouped into one pull request per ecosystem.
+# Majors stay separate, because a major is a decision and deserves its own
+# review rather than a place in a list.
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      go:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Caddy 2.11.4 does not compile against cel-go 0.30, which changed
+      # interpreter.NewCall to take []InterpretableV2. This has to move with
+      # Caddy. See the matching note in go.mod.
+      - dependency-name: github.com/google/cel-go
+
+  # Bun reads the text-based bun.lock only. Both directories have one.
+  # web/packages/dogma is deliberately absent: it is a local file: dependency,
+  # and the manifests under its dist/upstream/ are vendored third-party data
+  # that must keep the versions they were vendored at.
+  - package-ecosystem: bun
+    directories:
+      - /web
+      - /web/tools/api-codegen
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      bun:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # TypeScript 7 is the native port. vue-tsc 3.3.8 bundles
+      # @vue/language-core and @volar/typescript builds that target 5 and 6,
+      # and @hey-api/openapi-ts peers on ">=5.5.3 || >=6.0.0". Remove this
+      # entry once both declare support.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+
+  # Base images in the root Dockerfile: golang and oven/bun.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "build(deps)"
+
+  # Local service images: postgres, valkey, memgraph. A separate ecosystem
+  # from `docker`, which reads Dockerfiles only.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "build(deps)"
+
+  # Reads .github/workflows from the repository root.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        update-types:
+          - minor
+          - patch
