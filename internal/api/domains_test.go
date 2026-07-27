@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
@@ -71,6 +72,17 @@ func TestDomainRoutesRegisterCanonicalAndFrontendContracts(t *testing.T) {
 			"/admin/domains/{id}/assets/{assetId}/review",
 			true,
 		},
+		{http.MethodGet, "/images/domains/{id}/{type}", false},
+		{
+			http.MethodGet,
+			"/images/domains/background/{assetId}",
+			false,
+		},
+		{
+			http.MethodGet,
+			"/images/domains/preview/{assetId}",
+			false,
+		},
 		{http.MethodGet, "/domains/asset/{id}/{type}", false},
 		{http.MethodGet, "/domains/bg/{assetId}", false},
 		{http.MethodGet, "/domains/preview/{assetId}", false},
@@ -99,6 +111,200 @@ func TestDomainRoutesRegisterCanonicalAndFrontendContracts(t *testing.T) {
 				route.method, route.path,
 			)
 		}
+	}
+}
+
+func TestSiteConfigurationUsesHostAndConcreteContract(t *testing.T) {
+	handler := Site(Options{
+		Version: "test-version",
+		Commit:  "test-commit",
+		DB:      stubDatabase{},
+	})
+	for _, test := range []struct {
+		host         string
+		isDomainHost bool
+	}{
+		{host: "eve-kill.com", isDomainHost: false},
+		{host: "www.eve-kill.com", isDomainHost: false},
+		{host: "127.0.0.1:4000", isDomainHost: false},
+		{host: "nested.board.eve-kill.com", isDomainHost: true},
+	} {
+		request := httptest.NewRequest(
+			http.MethodGet,
+			"http://"+test.host+"/api/site",
+			nil,
+		)
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf(
+				"%s returned %d: %s",
+				test.host, response.Code, response.Body.String(),
+			)
+		}
+		var body SiteConfigurationResponse
+		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Domain != nil || body.IsDomainHost != test.isDomainHost {
+			t.Errorf("%s response = %#v", test.host, body)
+		}
+		if response.Header().Get("Vary") != "Host" ||
+			response.Header().Get("X-Cache") != "BYPASS" ||
+			response.Header().Get("Cache-Control") != siteConfigurationCache {
+			t.Errorf("%s headers = %#v", test.host, response.Header())
+		}
+	}
+
+	document := New(Options{Version: "test"}).OpenAPI()
+	operation := document.Paths["/site"].Get
+	if operation == nil {
+		t.Fatal("GET /site is not registered")
+	}
+	response := operation.Responses["200"]
+	media := response.Content["application/json"]
+	if media == nil || media.Schema == nil ||
+		media.Schema.Ref == "" {
+		t.Fatalf("/site response schema = %#v", media)
+	}
+	schema := document.Components.Schemas.Map()[strings.TrimPrefix(media.Schema.Ref, "#/components/schemas/")]
+	if schema == nil {
+		t.Fatalf("missing schema for %s", media.Schema.Ref)
+	}
+	allowsAdditional, _ := schema.AdditionalProperties.(bool)
+	domainSchema := schema.Properties["domain"]
+	if schema.Properties["domain"] == nil ||
+		schema.Properties["isDomainHost"] == nil ||
+		allowsAdditional ||
+		len(domainSchema.OneOf) != 2 ||
+		domainSchema.OneOf[0].Ref !=
+			"#/components/schemas/SiteDomainConfiguration" ||
+		domainSchema.OneOf[1].Type != "null" {
+		encoded, _ := json.Marshal(schema)
+		t.Fatalf("/site response is not concrete: %s", encoded)
+	}
+}
+
+func TestCustomDomainHostQuery(t *testing.T) {
+	for _, test := range []struct {
+		host, predicate, value string
+		domainHost             bool
+	}{
+		{"eve-kill.com", "", "", false},
+		{"localhost", "", "", false},
+		{"10.0.0.1", "", "", false},
+		{
+			"board.eve-kill.com",
+			"domain.subdomain = $1",
+			"board",
+			true,
+		},
+		{
+			"board.localhost",
+			"domain.subdomain = $1",
+			"board",
+			true,
+		},
+		{"nested.board.eve-kill.com", "", "", true},
+		{
+			"killboard.example.com",
+			"LOWER(domain.custom_hostname) = $1",
+			"killboard.example.com",
+			true,
+		},
+	} {
+		predicate, value, domainHost := customDomainHostQuery(test.host)
+		if predicate != test.predicate ||
+			value != test.value ||
+			domainHost != test.domainHost {
+			t.Errorf(
+				"%q = %q, %q, %v; want %q, %q, %v",
+				test.host, predicate, value, domainHost,
+				test.predicate, test.value, test.domainHost,
+			)
+		}
+	}
+}
+
+func TestSiteDomainConfigurationMapsStoredPresentation(t *testing.T) {
+	config := siteDomainConfiguration(map[string]any{
+		"id":              int32(7),
+		"subdomain":       "my-board",
+		"custom_hostname": "kills.example.com",
+		"user_id":         int32(90000001),
+		"entities": []any{
+			map[string]any{
+				"type": "character", "id": float64(90000001),
+				"name": "Pilot",
+			},
+			map[string]any{
+				"type": "corporation", "id": float64(98000001),
+				"name": "Corporation",
+			},
+		},
+		"theme": map[string]any{
+			"bannerUrl":         "/api/domains/asset/7/banner",
+			"transparentBanner": true,
+			"contentOpacity":    float64(80),
+			"defaultThemeOverrides": map[string]any{
+				"brandPrimary": "#123456",
+			},
+		},
+		"navbar_links": []any{map[string]any{
+			"label": "Kills", "href": "/kills/latest",
+			"children": []any{map[string]any{
+				"label": "Activity",
+				"items": []any{map[string]any{
+					"label": "Latest", "href": "/kills/latest",
+				}},
+			}},
+		}},
+		"widgets":             nil,
+		"site_name":           "My Board",
+		"site_description":    "Board description",
+		"campaign_policy":     int16(1),
+		"campaign_ids":        []any{"one", "two"},
+		"public_campaign_ids": []any{"two"},
+		"background_ids":      []any{float64(11), float64(12)},
+	})
+	if config.Theme.BannerURL == nil ||
+		*config.Theme.BannerURL != "/images/domains/7/banner" {
+		t.Fatalf("banner URL = %#v", config.Theme.BannerURL)
+	}
+	if config.Theme.ContentOpacity == nil ||
+		*config.Theme.ContentOpacity != 80 ||
+		config.Theme.TransparentBanner == nil ||
+		!*config.Theme.TransparentBanner {
+		t.Fatalf("theme = %#v", config.Theme)
+	}
+	if config.Theme.DefaultThemeOverrides["brandPrimary"] != "#123456" {
+		t.Fatalf("theme overrides = %#v", config.Theme.DefaultThemeOverrides)
+	}
+	if !reflect.DeepEqual(
+		config.EntityIDs,
+		SiteDomainEntityIDs{
+			CharacterIDs:   []int32{90000001},
+			CorporationIDs: []int32{98000001},
+			AllianceIDs:    []int32{},
+		},
+	) {
+		t.Fatalf("entity IDs = %#v", config.EntityIDs)
+	}
+	if !reflect.DeepEqual(config.Backgrounds, []string{
+		"/images/domains/background/11",
+		"/images/domains/background/12",
+	}) {
+		t.Fatalf("backgrounds = %#v", config.Backgrounds)
+	}
+	if len(config.Widgets.Top) != 1 ||
+		len(config.Widgets.Left) != 6 ||
+		len(config.Widgets.Right) != 1 {
+		t.Fatalf("default widgets = %#v", config.Widgets)
+	}
+	if len(config.NavbarLinks) != 1 ||
+		len(config.NavbarLinks[0].Children) != 1 ||
+		len(config.NavbarLinks[0].Children[0].Items) != 1 {
+		t.Fatalf("navbar = %#v", config.NavbarLinks)
 	}
 }
 

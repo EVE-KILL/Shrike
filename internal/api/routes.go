@@ -41,6 +41,7 @@ func registerRoutes(a huma.API, opts Options) *responseSchemaResolver {
 	registerAnnouncementAdminRoutes(a, opts)
 	registerCommentRoutes(a, opts)
 	registerModerationRoutes(a, opts)
+	registerSiteConfigurationRoute(a, opts)
 	registerDomainRoutes(a, opts)
 	registerDomainKillboardRoutes(a, opts)
 	registerSitemapRoutes(a, opts)

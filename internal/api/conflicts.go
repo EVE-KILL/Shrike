@@ -128,7 +128,11 @@ func conflictCacheKey(req *legacyRequest) string {
 }
 
 func conflictRequestHost(req *legacyRequest) string {
-	host := legacyRequestHost(req)
+	return normalizeRequestHost(legacyRequestHost(req))
+}
+
+func normalizeRequestHost(raw string) string {
+	host := raw
 	host = strings.ToLower(strings.TrimSpace(host))
 	if parsed, err := netSplitHostPortLoose(host); err == nil {
 		host = parsed
@@ -137,6 +141,38 @@ func conflictRequestHost(req *legacyRequest) string {
 		host = host[:255]
 	}
 	return host
+}
+
+// customDomainHostQuery centralizes the tenant-host interpretation shared by
+// site bootstrap, campaigns, conflict views, and the custom killboard.
+//
+// domainHost remains true for malformed or unknown custom-domain-looking
+// hosts so the renderer can noindex them. An empty predicate means there is
+// intentionally no database lookup to perform.
+func customDomainHostQuery(host string) (
+	predicate string,
+	value string,
+	domainHost bool,
+) {
+	if !isPossibleCustomDomain(host) {
+		return "", "", false
+	}
+	switch {
+	case strings.HasSuffix(host, ".eve-kill.com"):
+		value = strings.TrimSuffix(host, ".eve-kill.com")
+		if value == "" || strings.Contains(value, ".") {
+			return "", "", true
+		}
+		return "domain.subdomain = $1", value, true
+	case strings.HasSuffix(host, ".localhost"):
+		value = strings.TrimSuffix(host, ".localhost")
+		if value == "" || strings.Contains(value, ".") {
+			return "", "", true
+		}
+		return "domain.subdomain = $1", value, true
+	default:
+		return "LOWER(domain.custom_hostname) = $1", host, true
+	}
 }
 
 func netSplitHostPortLoose(host string) (string, error) {
@@ -177,25 +213,12 @@ func loadConflictDomainScope(
 		return nil, nil
 	}
 
+	predicate, key, domainHost := customDomainHostQuery(host)
+	if !domainHost || predicate == "" {
+		return nil, nil
+	}
 	var query string
-	var key string
-	if strings.HasSuffix(host, ".eve-kill.com") {
-		key = strings.TrimSuffix(host, ".eve-kill.com")
-		if key == "" || strings.Contains(key, ".") {
-			return nil, nil
-		}
-		query = `
-			SELECT entity->>'type' AS entity_type,
-			       CASE WHEN entity->>'id' ~ '^[0-9]+$'
-			            THEN (entity->>'id')::bigint END AS entity_id
-			FROM custom_domains domain
-			LEFT JOIN LATERAL jsonb_array_elements(domain.entities) entity ON true
-			WHERE domain.active IS TRUE AND domain.subdomain = $1`
-	} else if strings.HasSuffix(host, ".localhost") {
-		key = strings.TrimSuffix(host, ".localhost")
-		if key == "" || strings.Contains(key, ".") {
-			return nil, nil
-		}
+	if predicate == "domain.subdomain = $1" {
 		query = `
 			SELECT entity->>'type' AS entity_type,
 			       CASE WHEN entity->>'id' ~ '^[0-9]+$'
@@ -204,7 +227,6 @@ func loadConflictDomainScope(
 			LEFT JOIN LATERAL jsonb_array_elements(domain.entities) entity ON true
 			WHERE domain.active IS TRUE AND domain.subdomain = $1`
 	} else {
-		key = host
 		query = `
 			SELECT entity->>'type' AS entity_type,
 			       CASE WHEN entity->>'id' ~ '^[0-9]+$'

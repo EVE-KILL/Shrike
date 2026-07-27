@@ -2,7 +2,7 @@
 // Do not edit by hand; run `make gen-api-client`.
 
 export type ClientOptions = {
-    baseUrl: `${string}://${string}/api` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | (string & {});
+    baseUrl: `${string}://${string}/api` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | (string & {});
 };
 
 export type ErrorDetail = {
@@ -58,6 +58,97 @@ export type ImagesOverviewResponse = {
     readonly $schema?: string;
     routes: Array<string> | null;
     service: string;
+};
+
+export type SiteConfigurationResponse = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    domain: SiteDomainConfiguration | null;
+    isDomainHost: boolean;
+};
+
+export type SiteDomainConfiguration = {
+    backgrounds: Array<string>;
+    campaignIds: Array<string>;
+    campaignPolicy: 0 | 1;
+    customHostname: string | null;
+    entities: Array<SiteDomainEntity>;
+    entityIds: SiteDomainEntityIds;
+    id: number;
+    navbarLinks: Array<SiteDomainNavbarLink>;
+    publicCampaignIds: Array<string>;
+    siteDescription: string | null;
+    siteName: string | null;
+    subdomain: string;
+    theme: SiteDomainTheme;
+    userId: number;
+    widgets: SiteDomainWidgets;
+};
+
+export type SiteDomainEntity = {
+    id: number;
+    name: string;
+    type: 'character' | 'corporation' | 'alliance';
+};
+
+export type SiteDomainEntityIds = {
+    allianceIds: Array<number>;
+    characterIds: Array<number>;
+    corporationIds: Array<number>;
+};
+
+export type SiteDomainNavbarGroup = {
+    items: Array<SiteDomainNavbarItem>;
+    label?: string;
+};
+
+export type SiteDomainNavbarItem = {
+    external?: boolean;
+    href: string;
+    icon?: string;
+    label: string;
+};
+
+export type SiteDomainNavbarLink = {
+    children?: Array<SiteDomainNavbarGroup>;
+    external?: boolean;
+    href: string;
+    icon?: string;
+    label: string;
+};
+
+export type SiteDomainTheme = {
+    accentColor?: string;
+    bannerUrl?: string;
+    bgColor?: string;
+    contentOpacity?: number;
+    defaultThemeOverrides?: {
+        [key: string]: string;
+    };
+    defaultThemePreset?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    showDescriptionInBanner?: boolean;
+    showLogoInBanner?: boolean;
+    showNameInBanner?: boolean;
+    textColor?: string;
+    transparentBanner?: boolean;
+};
+
+export type SiteDomainWidget = {
+    content?: string;
+    enabled: boolean;
+    killlistType?: string;
+    type: 'mostValuable' | 'killList' | 'topCharacters' | 'topCorporations' | 'topAlliances' | 'topShips' | 'topSystems' | 'topRegions' | 'entityInfo' | 'textBlock';
+};
+
+export type SiteDomainWidgets = {
+    columnRatio?: string;
+    left: Array<SiteDomainWidget>;
+    right: Array<SiteDomainWidget>;
+    top: Array<SiteDomainWidget>;
 };
 
 export type AllianceBattlesResponse = {
@@ -3379,6 +3470,11 @@ export type ErrorModelWritable = {
 export type ImagesOverviewResponseWritable = {
     routes: Array<string> | null;
     service: string;
+};
+
+export type SiteConfigurationResponseWritable = {
+    domain: SiteDomainConfiguration | null;
+    isDomainHost: boolean;
 };
 
 export type AllianceBattlesResponseWritable = {
@@ -10804,6 +10900,60 @@ export type ImageCorporationVariantResponses = {
 
 export type ImageCorporationVariantResponse = ImageCorporationVariantResponses[keyof ImageCorporationVariantResponses];
 
+export type ImageDomainBackgroundData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/images/domains/background/{assetId}';
+};
+
+export type ImageDomainBackgroundResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ImageDomainBackgroundResponse = ImageDomainBackgroundResponses[keyof ImageDomainBackgroundResponses];
+
+export type ImageDomainAssetPreviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/images/domains/preview/{assetId}';
+};
+
+export type ImageDomainAssetPreviewResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ImageDomainAssetPreviewResponse = ImageDomainAssetPreviewResponses[keyof ImageDomainAssetPreviewResponses];
+
+export type ImageDomainBannerOrLogoData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/images/domains/{id}/{type}';
+};
+
+export type ImageDomainBannerOrLogoResponses = {
+    /**
+     * OK
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ImageDomainBannerOrLogoResponse = ImageDomainBannerOrLogoResponses[keyof ImageDomainBannerOrLogoResponses];
+
 export type ImageKillmailSocialData = {
     body?: never;
     path: {
@@ -13256,6 +13406,35 @@ export type ShipFittingsResponses = {
 };
 
 export type ShipFittingsResponse2 = ShipFittingsResponses[keyof ShipFittingsResponses];
+
+export type SiteConfigurationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/site';
+};
+
+export type SiteConfigurationErrors = {
+    /**
+     * Internal Server Error
+     */
+    500: ErrorModel;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorModel;
+};
+
+export type SiteConfigurationError = SiteConfigurationErrors[keyof SiteConfigurationErrors];
+
+export type SiteConfigurationResponses = {
+    /**
+     * OK
+     */
+    200: SiteConfigurationResponse;
+};
+
+export type SiteConfigurationResponse2 = SiteConfigurationResponses[keyof SiteConfigurationResponses];
 
 export type SitemapData = {
     body?: never;

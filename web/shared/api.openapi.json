@@ -113,6 +113,378 @@
         ],
         "type": "object"
       },
+      "SiteConfigurationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "/api/schemas/SiteConfigurationResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "domain": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SiteDomainConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isDomainHost": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "domain",
+          "isDomainHost"
+        ],
+        "type": "object"
+      },
+      "SiteDomainConfiguration": {
+        "additionalProperties": false,
+        "properties": {
+          "backgrounds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "campaignIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "campaignPolicy": {
+            "enum": [
+              0,
+              1
+            ],
+            "format": "int32",
+            "type": "integer"
+          },
+          "customHostname": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomainEntity"
+            },
+            "type": "array"
+          },
+          "entityIds": {
+            "$ref": "#/components/schemas/SiteDomainEntityIDs"
+          },
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "navbarLinks": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomainNavbarLink"
+            },
+            "type": "array"
+          },
+          "publicCampaignIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "siteDescription": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "siteName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subdomain": {
+            "type": "string"
+          },
+          "theme": {
+            "$ref": "#/components/schemas/SiteDomainTheme"
+          },
+          "userId": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "widgets": {
+            "$ref": "#/components/schemas/SiteDomainWidgets"
+          }
+        },
+        "required": [
+          "id",
+          "subdomain",
+          "customHostname",
+          "userId",
+          "entities",
+          "entityIds",
+          "theme",
+          "navbarLinks",
+          "widgets",
+          "siteName",
+          "siteDescription",
+          "campaignPolicy",
+          "campaignIds",
+          "publicCampaignIds",
+          "backgrounds"
+        ],
+        "type": "object"
+      },
+      "SiteDomainEntity": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "character",
+              "corporation",
+              "alliance"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "SiteDomainEntityIDs": {
+        "additionalProperties": false,
+        "properties": {
+          "allianceIds": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "characterIds": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "corporationIds": {
+            "items": {
+              "format": "int32",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "characterIds",
+          "corporationIds",
+          "allianceIds"
+        ],
+        "type": "object"
+      },
+      "SiteDomainNavbarGroup": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomainNavbarItem"
+            },
+            "type": "array"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "SiteDomainNavbarItem": {
+        "additionalProperties": false,
+        "properties": {
+          "external": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "href"
+        ],
+        "type": "object"
+      },
+      "SiteDomainNavbarLink": {
+        "additionalProperties": false,
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomainNavbarGroup"
+            },
+            "type": "array"
+          },
+          "external": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "href"
+        ],
+        "type": "object"
+      },
+      "SiteDomainTheme": {
+        "additionalProperties": false,
+        "properties": {
+          "accentColor": {
+            "type": "string"
+          },
+          "bannerUrl": {
+            "type": "string"
+          },
+          "bgColor": {
+            "type": "string"
+          },
+          "contentOpacity": {
+            "format": "double",
+            "type": "number"
+          },
+          "defaultThemeOverrides": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "defaultThemePreset": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "primaryColor": {
+            "type": "string"
+          },
+          "showDescriptionInBanner": {
+            "type": "boolean"
+          },
+          "showLogoInBanner": {
+            "type": "boolean"
+          },
+          "showNameInBanner": {
+            "type": "boolean"
+          },
+          "textColor": {
+            "type": "string"
+          },
+          "transparentBanner": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "SiteDomainWidget": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "killlistType": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "mostValuable",
+              "killList",
+              "topCharacters",
+              "topCorporations",
+              "topAlliances",
+              "topShips",
+              "topSystems",
+              "topRegions",
+              "entityInfo",
+              "textBlock"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "enabled"
+        ],
+        "type": "object"
+      },
+      "SiteDomainWidgets": {
+        "additionalProperties": false,
+        "properties": {
+          "columnRatio": {
+            "type": "string"
+          },
+          "left": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomainWidget"
+            },
+            "type": "array"
+          },
+          "right": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomainWidget"
+            },
+            "type": "array"
+          },
+          "top": {
+            "items": {
+              "$ref": "#/components/schemas/SiteDomainWidget"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "top",
+          "left",
+          "right"
+        ],
+        "type": "object"
+      },
       "alliance-battles-response": {
         "additionalProperties": false,
         "properties": {
@@ -19504,6 +19876,96 @@
         "x-audience": "public"
       }
     },
+    "/images/domains/background/{assetId}": {
+      "get": {
+        "operationId": "image-domain-background",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "servers": [
+          {
+            "description": "EVE-KILL images",
+            "url": "/"
+          }
+        ],
+        "summary": "Approved custom-domain background",
+        "tags": [
+          "domains",
+          "images"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/images/domains/preview/{assetId}": {
+      "get": {
+        "operationId": "image-domain-asset-preview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "servers": [
+          {
+            "description": "EVE-KILL images",
+            "url": "/"
+          }
+        ],
+        "summary": "Domain image preview",
+        "tags": [
+          "domains",
+          "images"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/images/domains/{id}/{type}": {
+      "get": {
+        "operationId": "image-domain-banner-or-logo",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "servers": [
+          {
+            "description": "EVE-KILL images",
+            "url": "/"
+          }
+        ],
+        "summary": "Approved custom-domain banner or logo",
+        "tags": [
+          "domains",
+          "images"
+        ],
+        "x-audience": "public"
+      }
+    },
     "/images/killmail/{id}/social.png": {
       "get": {
         "operationId": "image-killmail-social",
@@ -23410,6 +23872,67 @@
         "summary": "Popular ship fittings",
         "tags": [
           "ships"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/site": {
+      "get": {
+        "description": "Returns the active custom-domain presentation and entity scope selected by the request Host. Apex, development, and IP hosts return domain: null with isDomainHost: false; an unknown custom host returns domain: null with isDomainHost: true.",
+        "operationId": "site-configuration",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteConfigurationResponse"
+                }
+              }
+            },
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Configuration for the current website host",
+        "tags": [
+          "site",
+          "domains"
         ],
         "x-audience": "public"
       }

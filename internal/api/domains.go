@@ -348,21 +348,45 @@ func registerDomainServiceRoutes(
 
 	for _, route := range []struct {
 		id, path, summary string
+		servers           []*huma.Server
 		handler           legacyHandler
 	}{
 		{
+			"image-domain-banner-or-logo",
+			"/images/domains/{id}/{type}",
+			"Approved custom-domain banner or logo",
+			[]*huma.Server{{URL: "/", Description: "EVE-KILL images"}},
+			service.publicSlotAssetHandler(),
+		},
+		{
+			"image-domain-background",
+			"/images/domains/background/{assetId}",
+			"Approved custom-domain background",
+			[]*huma.Server{{URL: "/", Description: "EVE-KILL images"}},
+			service.publicBackgroundHandler(),
+		},
+		{
+			"image-domain-asset-preview",
+			"/images/domains/preview/{assetId}",
+			"Domain image preview",
+			[]*huma.Server{{URL: "/", Description: "EVE-KILL images"}},
+			service.publicPreviewHandler(),
+		},
+		{
 			"domain-banner-or-logo", "/domains/asset/{id}/{type}",
 			"Approved custom-domain banner or logo",
+			nil,
 			service.publicSlotAssetHandler(),
 		},
 		{
 			"domain-background", "/domains/bg/{assetId}",
 			"Approved custom-domain background",
+			nil,
 			service.publicBackgroundHandler(),
 		},
 		{
 			"domain-asset-preview", "/domains/preview/{assetId}",
-			"Domain image preview", service.publicPreviewHandler(),
+			"Domain image preview", nil, service.publicPreviewHandler(),
 		},
 	} {
 		registerLegacy(a, huma.Operation{
@@ -371,6 +395,7 @@ func registerDomainServiceRoutes(
 			Path:        route.path,
 			Summary:     route.summary,
 			Tags:        []string{"domains", "images"},
+			Servers:     route.servers,
 		}, route.handler)
 	}
 }

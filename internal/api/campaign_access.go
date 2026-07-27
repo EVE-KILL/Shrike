@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 )
 
 type campaignDomain struct {
@@ -27,27 +26,9 @@ func loadCampaignDomain(
 	req *legacyRequest,
 ) (*campaignDomain, error) {
 	host := conflictRequestHost(req)
-	if !isPossibleCustomDomain(host) {
+	lookup, value, domainHost := customDomainHostQuery(host)
+	if !domainHost || lookup == "" {
 		return nil, nil
-	}
-	var lookup string
-	var value string
-	switch {
-	case strings.HasSuffix(host, ".eve-kill.com"):
-		value = strings.TrimSuffix(host, ".eve-kill.com")
-		if value == "" || strings.Contains(value, ".") {
-			return nil, nil
-		}
-		lookup = "domain.subdomain = $1"
-	case strings.HasSuffix(host, ".localhost"):
-		value = strings.TrimSuffix(host, ".localhost")
-		if value == "" || strings.Contains(value, ".") {
-			return nil, nil
-		}
-		lookup = "domain.subdomain = $1"
-	default:
-		value = host
-		lookup = "LOWER(domain.custom_hostname) = $1"
 	}
 
 	row, err := queryMap(ctx, db, fmt.Sprintf(`
