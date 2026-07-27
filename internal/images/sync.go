@@ -26,6 +26,7 @@ const (
 	TurtleTypeExportAsset     = "Image.Export.Collection.zip"
 	typeExportManifestKey     = "types/manifest.json"
 	typeExportManifestVersion = 2
+	typeExportObjectPolicy    = 1
 )
 
 var typeExportAssetName = regexp.MustCompile(
@@ -54,6 +55,7 @@ type typeExportManifest struct {
 	Version       int               `json:"version"`
 	Release       string            `json:"release"`
 	ArchiveDigest string            `json:"archive_digest"`
+	ObjectPolicy  int               `json:"object_policy"`
 	UpdatedAt     time.Time         `json:"updated_at"`
 	Images        map[string]string `json:"images"`
 }
@@ -104,6 +106,7 @@ func SyncTypeExport(
 	}
 	if current != nil &&
 		current.Version == typeExportManifestVersion &&
+		current.ObjectPolicy == typeExportObjectPolicy &&
 		((remoteDigest != "" &&
 			current.ArchiveDigest == trimDigest(remoteDigest)) ||
 			(remoteDigest == "" && current.Release == release)) {
@@ -164,14 +167,17 @@ func SyncTypeExport(
 		)
 	}
 	var previous map[string]string
+	forceUpload := false
 	if current != nil {
 		previous = current.Images
+		forceUpload = current.ObjectPolicy != typeExportObjectPolicy
 	}
 	result, hashes, err := importTypeExportImages(
 		ctx,
 		store,
 		archive.File,
 		previous,
+		forceUpload,
 		options.Concurrency,
 		options.Progress,
 	)
@@ -185,7 +191,8 @@ func SyncTypeExport(
 	manifest := typeExportManifest{
 		Version: typeExportManifestVersion,
 		Release: release, ArchiveDigest: digest,
-		UpdatedAt: now().UTC(), Images: hashes,
+		ObjectPolicy: typeExportObjectPolicy,
+		UpdatedAt:    now().UTC(), Images: hashes,
 	}
 	body, err := json.Marshal(manifest)
 	if err != nil {
@@ -217,6 +224,7 @@ func importTypeExportImages(
 	store ObjectStore,
 	files []*zip.File,
 	previous map[string]string,
+	forceUpload bool,
 	concurrency int,
 	progress func(ImportResult),
 ) (ImportResult, map[string]string, error) {
@@ -274,8 +282,8 @@ func importTypeExportImages(
 				hashes[base] = digest
 				hashesMu.Unlock()
 
-				changed := previous[base] != digest
-				if previous == nil {
+				changed := forceUpload || previous[base] != digest
+				if previous == nil && !forceUpload {
 					info, statErr := store.Stat(
 						groupCtx,
 						"types/"+base,
@@ -297,7 +305,7 @@ func importTypeExportImages(
 						body,
 						objectstore.PutOptions{
 							ContentType:  contentType,
-							CacheControl: immutableCacheControl,
+							CacheControl: responseCacheControl,
 							Metadata: map[string]string{
 								"sha256": digest,
 							},

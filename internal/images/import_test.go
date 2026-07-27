@@ -161,6 +161,7 @@ func TestSyncTypeExportVerifiesDigestAndUsesDirectTypeIDKeys(t *testing.T) {
 	iconSum := sha256.Sum256(icon)
 	iconDigest := hex.EncodeToString(iconSum[:])
 	if manifest.Version != typeExportManifestVersion ||
+		manifest.ObjectPolicy != typeExportObjectPolicy ||
 		manifest.Release != "icons-42" ||
 		manifest.ArchiveDigest != digest ||
 		manifest.Images["42_64.png"] != iconDigest ||
@@ -225,7 +226,7 @@ func TestSyncTypeExportRebuildsOlderManifestForNewFilenameRules(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Import.Uploaded != 1 || result.Import.Skipped != 1 ||
+	if result.Import.Uploaded != 2 || result.Import.Skipped != 0 ||
 		store.objects["types/42_bpc_64.png"] == nil {
 		t.Fatalf("result = %+v, objects = %v", result, store.objects)
 	}
@@ -237,6 +238,7 @@ func TestSyncTypeExportRebuildsOlderManifestForNewFilenameRules(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.Version != typeExportManifestVersion ||
+		manifest.ObjectPolicy != typeExportObjectPolicy ||
 		len(manifest.Images) != 2 {
 		t.Fatalf("manifest = %+v", manifest)
 	}
@@ -306,6 +308,7 @@ func TestImportTypeExportImagesUsesManifestHashes(t *testing.T) {
 			"41_64.png": hex.EncodeToString(unchangedSum[:]),
 			"42_64.png": strings.Repeat("0", 64),
 		},
+		false,
 		0,
 		nil,
 	)
@@ -322,6 +325,12 @@ func TestImportTypeExportImagesUsesManifestHashes(t *testing.T) {
 		store.objects["types/42_64.png"] == nil ||
 		store.objects["types/43_64.png"] == nil {
 		t.Fatalf("uploaded objects = %v", store.objects)
+	}
+	if store.objects["types/42_64.png"].CacheControl != responseCacheControl {
+		t.Fatalf(
+			"cache control = %q",
+			store.objects["types/42_64.png"].CacheControl,
+		)
 	}
 }
 
@@ -353,6 +362,7 @@ func TestImportTypeExportImagesResumesWithoutManifest(t *testing.T) {
 		store,
 		archive.File,
 		nil,
+		false,
 		4,
 		nil,
 	)
