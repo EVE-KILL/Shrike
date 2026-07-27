@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/api"
@@ -15,7 +17,9 @@ import (
 	"github.com/eve-kill/shrike/internal/objectstore"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/redisx"
+	"github.com/eve-kill/shrike/internal/renderer"
 	"github.com/eve-kill/shrike/internal/ui"
+	"github.com/eve-kill/shrike/internal/unixhttp"
 	shrikewebsocket "github.com/eve-kill/shrike/internal/websocket"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -44,15 +48,18 @@ Requests are routed by hostname and path to one of Shrike's surfaces:
   /auth, /auth/*                         browser authentication
   /images, /images/*                     the image server
   /ws, /ws/*                             live event streams
-  everything else                        the Nuxt renderer, over NUXT_SOCKET
+  everything else                        the supervised Nuxt renderer
 
 Every Go-owned surface shares the frontend origin, including tenant domains.
-With NUXT_SOCKET unset, unmatched requests get a 404 rather than being proxied
-to a renderer that is not running.
+In a source checkout, serve finds web/.output/server/index.mjs automatically.
+NUXT_ENTRYPOINT can select an explicit build. Caddy talks to Nuxt over
+NUXT_SOCKET, while Nuxt SSR talks back to Go over SHRIKE_API_SOCKET. Neither
+socket is public; browser API calls remain same-origin HTTP.
 
 SIGINT (Ctrl+C) and SIGTERM both trigger a graceful shutdown: the listener
-stops accepting, in-flight requests are given time to finish, then the process
-exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
+stops accepting, in-flight requests are given time to finish, and the
+supervised renderer is drained. Kubernetes needs no special handling beyond
+its default SIGTERM.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := requireConfig(); err != nil {
 			return err
@@ -129,17 +136,74 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 				},
 			}
 			apiService := api.New(opts)
+			siteHandler := apiService.Site()
 			surfaces := map[string]http.Handler{
-				ingress.SurfaceSameOrigin: apiService.Site(),
+				ingress.SurfaceSameOrigin: siteHandler,
 				ingress.SurfaceWS:         wsServer,
 			}
+
+			entrypoint, superviseRenderer, err := renderer.ResolveEntrypoint(cfg.NuxtEntrypoint)
+			if err != nil {
+				return err
+			}
+
+			apiSocket := cfg.APISocket
+			if superviseRenderer && apiSocket == "" {
+				apiSocket = processSocketPath("shrike-api")
+			}
+			var privateAPI *unixhttp.Server
+			var privateAPIDone <-chan struct{}
+			if apiSocket != "" {
+				privateAPI, err = unixhttp.Listen(apiSocket, siteHandler)
+				if err != nil {
+					return fmt.Errorf("start private SSR API: %w", err)
+				}
+				defer func() {
+					if closeErr := privateAPI.Close(); closeErr != nil {
+						log.Warn().Err(closeErr).Msg("private SSR API did not close cleanly")
+					}
+				}()
+				privateAPIDone = privateAPI.Done()
+				log.Info().Str("socket", apiSocket).Msg("private SSR API listening")
+			}
+
+			nuxtSocket := cfg.NuxtSocket
+			var nuxt *renderer.Process
+			var nuxtDone <-chan struct{}
+			if superviseRenderer {
+				if apiSocket == "" {
+					return fmt.Errorf("supervised Nuxt renderer requires a private API socket")
+				}
+				if nuxtSocket == "" {
+					nuxtSocket = processSocketPath("shrike-nuxt")
+				}
+				nuxt, err = renderer.Start(renderer.Options{
+					Entrypoint: entrypoint,
+					Socket:     nuxtSocket,
+					APISocket:  apiSocket,
+				})
+				if err != nil {
+					return err
+				}
+				defer func() {
+					if closeErr := nuxt.Close(); closeErr != nil {
+						log.Warn().Err(closeErr).Msg("Nuxt renderer did not close cleanly")
+					}
+				}()
+				nuxtDone = nuxt.Done()
+				log.Info().
+					Str("entrypoint", entrypoint).
+					Str("socket", nuxtSocket).
+					Msg("Nuxt renderer ready")
+			}
+
 			manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 
 			if err := manager.Start(ctx, ingress.Config{
 				Address:    fmt.Sprintf(":%d", port),
 				DataDir:    cfg.DataDir,
 				LogLevel:   cfg.LogLevel,
-				NuxtSocket: cfg.NuxtSocket,
+				NuxtSocket: nuxtSocket,
 			}); err != nil {
 				return fmt.Errorf("starting embedded Caddy ingress: %w", err)
 			}
@@ -150,13 +214,29 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 			}
 			log.Info().Int("port", port).Msg("http listening")
 
-			// Caddy owns its own accept loops and shutdown, so this only has to
-			// stay alive until RunService cancels and then let the deferred
-			// Close drain. RunService bounds how long that is allowed to take.
-			<-ctx.Done()
-			return nil
+			// All three accept loops are one service. Losing either private
+			// dependency is fatal, so Kubernetes can restart the whole unit
+			// instead of leaving Caddy alive and returning 502s.
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-nuxtDone:
+				if exitErr := nuxt.Err(); exitErr != nil {
+					return fmt.Errorf("Nuxt renderer stopped: %w", exitErr)
+				}
+				return fmt.Errorf("Nuxt renderer stopped unexpectedly")
+			case <-privateAPIDone:
+				if serveErr := privateAPI.Err(); serveErr != nil {
+					return fmt.Errorf("private SSR API stopped: %w", serveErr)
+				}
+				return fmt.Errorf("private SSR API stopped unexpectedly")
+			}
 		})
 	},
+}
+
+func processSocketPath(name string) string {
+	return filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d.sock", name, os.Getpid()))
 }
 
 type imageRefreshDispatcher struct {

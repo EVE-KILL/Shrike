@@ -140,10 +140,11 @@ export default defineNuxtConfig({
   css: ['~/assets/main.css'],
 
   nitro: {
-      // The node-server entrypoint supports NITRO_UNIX_SOCKET, avoiding a
-      // second TCP port between the renderer and Shrike's embedded Caddy
-      // front door.
-      preset: 'node-server',
+      // Bun's stock Nitro entrypoint only binds TCP. Our tiny entrypoint keeps
+      // the Bun preset and its export conditions, but binds NITRO_UNIX_SOCKET
+      // so Caddy never needs a second public or loopback TCP listener.
+      preset: 'bun',
+      entry: './runtime/bun-unix.mjs',
       minify: true,
       compressPublicAssets: true,
       sourceMap: false,
@@ -225,9 +226,12 @@ export default defineNuxtConfig({
 
   // Runtime env vars: use NUXT_ prefix to override at runtime.
   runtimeConfig: {
+      // During SSR Bun reaches Shrike directly over this private Unix socket.
+      // The browser never receives this value and continues using relative
+      // same-origin URLs through Caddy.
+      apiSocket: '',
       // Nitro reaches the same Go/Caddy process over loopback for SSR API
-      // calls. Browsers always use relative same-origin /api and /auth URLs.
-      // Override when Shrike listens somewhere else in local development.
+      // calls only when Nuxt is intentionally run outside `shrike serve`.
       apiOrigin: 'http://127.0.0.1:4000',
       public: {
           // Same-origin WebSocket and API namespaces served by Shrike.

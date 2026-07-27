@@ -13,9 +13,14 @@ LDFLAGS := -s -w \
 .DEFAULT_GOAL := build
 
 .PHONY: build
-build:
+build: build-frontend
 	go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) $(PKG)
 	@ln -sf $(BINARY) bin/$(ALIAS)
+
+.PHONY: build-frontend
+build-frontend:
+	cd web && bun install --frozen-lockfile
+	cd web && bun run build
 
 .PHONY: gen-api-client
 gen-api-client:

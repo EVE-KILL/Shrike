@@ -210,7 +210,7 @@ func clearEnv(t *testing.T) {
 		"B2_ENDPOINT", "B2_MEDIA_BUCKET", "B2_IMAGES_BUCKET",
 		"B2_KEY_ID", "B2_APP_KEY", "IMAGE_CACHE_BYTES",
 		"NODE_ENV", "GIT_SHA", "LOG_LEVEL", "LOG_FORMAT",
-		"NUXT_SOCKET", "DATA_DIR",
+		"NUXT_ENTRYPOINT", "NUXT_SOCKET", "SHRIKE_API_SOCKET", "DATA_DIR",
 	} {
 		t.Setenv(k, "")
 		os.Unsetenv(k)
@@ -218,6 +218,27 @@ func clearEnv(t *testing.T) {
 	// Load walks upward from cwd looking for .env; run from a scratch directory
 	// so the repository's own files are never picked up.
 	t.Chdir(t.TempDir())
+}
+
+func TestRendererSocketConfiguration(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("NUXT_ENTRYPOINT", "/app/web/server/index.mjs")
+	t.Setenv("NUXT_SOCKET", "/tmp/frontend.sock")
+	t.Setenv("SHRIKE_API_SOCKET", "/tmp/api.sock")
+
+	c, err := Load("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.NuxtEntrypoint != "/app/web/server/index.mjs" {
+		t.Fatalf("NuxtEntrypoint = %q", c.NuxtEntrypoint)
+	}
+	if c.NuxtSocket != "/tmp/frontend.sock" {
+		t.Fatalf("NuxtSocket = %q", c.NuxtSocket)
+	}
+	if c.APISocket != "/tmp/api.sock" {
+		t.Fatalf("APISocket = %q", c.APISocket)
+	}
 }
 
 func TestB2BucketsShareCredentialsButConfigureIndependently(t *testing.T) {

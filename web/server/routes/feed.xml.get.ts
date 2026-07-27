@@ -1,4 +1,5 @@
 import type { KillmailsResponse } from '#shared/api'
+import { createServerApiClient } from '#shared/utils/serverApi'
 
 const RSS_USER_AGENT = 'eve-kill-nuxt-rss/1.0 (contact: admin@eve-kill.com)'
 
@@ -37,8 +38,13 @@ export default defineEventHandler(async (event) => {
         headers.set('x-forwarded-proto', incoming['x-forwarded-proto'])
     }
 
-    const response = await $fetch<KillmailsResponse>(
-        `${config.apiOrigin}/api/killmails`,
+    const api = createServerApiClient({
+        socket: config.apiSocket,
+        origin: config.apiOrigin,
+        headers,
+    })
+    const response = await api<KillmailsResponse>(
+        '/api/killmails',
         {
             headers,
             query: {

@@ -26,11 +26,24 @@ docker run evekill work:cron
 docker run evekill work:zkb
 ```
 
-`serve` starts the Nuxt renderer on an internal Unix socket and then starts
-Shrike's embedded Caddy front door. Every other command execs the same Go binary
-directly, so worker and cron pods do not start Node or carry a second application
-image. The image is multi-architecture: Docker's target platform controls both
-the Go binary and Nuxt's native image dependencies.
+`serve` is the supervisor for the whole site. It starts the Bun/Nuxt renderer,
+starts a private Go HTTP listener for SSR, and then starts Shrike's embedded
+Caddy front door. Caddy-to-Nuxt and Nuxt-to-Go use separate Unix sockets.
+Browser API calls remain relative same-origin HTTP. Every other command runs
+only the Go binary, so worker and cron pods do not start Bun or require a second
+application image. The image is multi-architecture: Docker's target platform
+controls both the Go binary and Nuxt's native image dependencies.
+
+In a source checkout, build the renderer once before running the Go command
+directly:
+
+```sh
+make build-frontend
+go run ./cmd/shrike serve
+```
+
+The renderer process is supervised by Go: an early crash fails startup, and a
+later crash shuts down the service instead of leaving Caddy returning 502s.
 
 ## Commands
 

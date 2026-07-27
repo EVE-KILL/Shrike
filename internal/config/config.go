@@ -73,10 +73,17 @@ type Config struct {
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
 
-	// NuxtSocket is where the Nitro renderer listens. Every request matching no
-	// surface is proxied there. Empty disables the fallback, which is how an
-	// API-only deployment avoids proxying to a renderer that is not running.
+	// NuxtEntrypoint is the built Nitro server module supervised by `serve`.
+	// Empty auto-discovers web/.output/server/index.mjs in a source checkout.
+	NuxtEntrypoint string
+
+	// NuxtSocket is where the supervised Nitro renderer listens. Every request
+	// matching no Go-owned surface is proxied there.
 	NuxtSocket string
+
+	// APISocket is the private HTTP listener used by Nuxt SSR. Browser requests
+	// still use relative same-origin HTTP through Caddy.
+	APISocket string
 
 	// DataDir is where the ingress keeps its own state — certificates, once
 	// Shrike terminates TLS.
@@ -167,10 +174,9 @@ func Load(explicitPath string) (*Config, error) {
 	)
 	c.Port = getInt("Port", "PORT", 4000)
 
-	// Defaulted empty: until the renderer is actually wired up, proxying to a
-	// socket that will never exist would turn every frontend request into a
-	// 502 that looks like a bug rather than an unfinished port.
+	c.NuxtEntrypoint = get("NuxtEntrypoint", "NUXT_ENTRYPOINT", "")
 	c.NuxtSocket = get("NuxtSocket", "NUXT_SOCKET", "")
+	c.APISocket = get("APISocket", "SHRIKE_API_SOCKET", "")
 	c.DataDir = get("DataDir", "DATA_DIR", "./data")
 	c.NodeEnv = get("NodeEnv", "NODE_ENV", "development")
 	c.GitSHA = get("GitSHA", "GIT_SHA", "unknown")

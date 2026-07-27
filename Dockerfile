@@ -2,7 +2,6 @@
 
 ARG GO_VERSION=1.26.5
 ARG BUN_VERSION=1.3.14
-ARG NODE_VERSION=24.11.1
 
 FROM oven/bun:${BUN_VERSION}-alpine AS web-build
 
@@ -38,7 +37,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT}" \
     -o /out/shrike ./cmd/shrike
 
-FROM node:${NODE_VERSION}-alpine3.22 AS runtime
+FROM oven/bun:${BUN_VERSION}-alpine AS runtime
 
 RUN apk add --no-cache ca-certificates tini tzdata
 
@@ -47,19 +46,21 @@ WORKDIR /app
 COPY --from=go-build /out/shrike /usr/local/bin/shrike
 RUN ln -s /usr/local/bin/shrike /usr/local/bin/ek
 
-COPY --chown=node:node --from=web-build /src/web/.output /app/web
+COPY --chown=bun:bun --from=web-build /src/web/.output /app/web
 COPY docker/entrypoint.sh /usr/local/bin/shrike-entrypoint
 RUN chmod 0755 /usr/local/bin/shrike-entrypoint \
     && mkdir -p /app/data \
-    && chown node:node /app/data
+    && chown bun:bun /app/data
 
 ARG COMMIT=unknown
 ENV GIT_SHA=${COMMIT} \
     NODE_ENV=production \
     DATA_DIR=/app/data \
-    NUXT_SOCKET=/tmp/shrike-nuxt.sock
+    NUXT_ENTRYPOINT=/app/web/server/index.mjs \
+    NUXT_SOCKET=/tmp/shrike-nuxt.sock \
+    SHRIKE_API_SOCKET=/tmp/shrike-api.sock
 
-USER node
+USER bun
 
 EXPOSE 4000
 

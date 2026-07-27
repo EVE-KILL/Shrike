@@ -1,4 +1,5 @@
 import type { FetchOptions } from 'ofetch'
+import { createServerApiClient } from '#shared/utils/serverApi'
 
 const forwardedHeaderNames = [
     'cookie',
@@ -44,8 +45,9 @@ export function useApiClient(): typeof $fetch {
         )
     }
 
-    return $fetch.create({
-        baseURL: config.apiOrigin,
+    return createServerApiClient({
+        socket: config.apiSocket,
+        origin: config.apiOrigin,
         headers,
     })
 }
