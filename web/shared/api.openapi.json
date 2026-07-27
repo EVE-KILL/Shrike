@@ -420,6 +420,70 @@
         },
         "type": "object"
       },
+      "FittingItemBody": {
+        "additionalProperties": false,
+        "properties": {
+          "charge_type_id": {
+            "description": "Charge loaded into this module, when it takes one.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "ordinal": {
+            "description": "Position within the slot family.",
+            "format": "int64",
+            "maximum": 15,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "quantity": {
+            "description": "Stack size. Must be 1 for module slots. Defaults to 1.",
+            "format": "int64",
+            "maximum": 30000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "slot_group": {
+            "description": "Slot family: 1-5 are module slots, 6 drones, 7 cargo.",
+            "format": "int64",
+            "maximum": 7,
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "state": {
+            "description": "Module state: offline, online, active, overloaded.",
+            "format": "int64",
+            "maximum": 3,
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "type_id": {
+            "description": "Inventory type fitted in this position.",
+            "format": "int64",
+            "minimum": 1,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "slot_group",
+          "ordinal",
+          "type_id",
+          "state"
+        ],
+        "type": "object"
+      },
       "Images-overviewResponse": {
         "additionalProperties": false,
         "properties": {
@@ -19332,6 +19396,69 @@
     "/fit": {
       "post": {
         "operationId": "fitting-create-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "description": "Free text shown with the fitting. Null clears it.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "items": {
+                    "description": "Fitted modules, charges, drones and cargo.",
+                    "items": {
+                      "$ref": "#/components/schemas/FittingItemBody"
+                    },
+                    "maxItems": 200,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "description": "Display name for the fitting.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "ship_type_id": {
+                    "description": "Hull the fitting is for.",
+                    "format": "int64",
+                    "minimum": 1,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "visibility": {
+                    "description": "Who may see the fitting.",
+                    "format": "int64",
+                    "maximum": 3,
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "ship_type_id",
+                  "name",
+                  "visibility",
+                  "items"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -19415,6 +19542,53 @@
       },
       "patch": {
         "operationId": "fitting-update-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "description": "New description. Null clears it.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "items": {
+                    "description": "Replacement item list. Absent leaves the stored items alone.",
+                    "items": {
+                      "$ref": "#/components/schemas/FittingItemBody"
+                    },
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "description": "New display name.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "visibility": {
+                    "description": "New visibility.",
+                    "format": "int64",
+                    "maximum": 3,
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -19471,6 +19645,32 @@
       },
       "put": {
         "operationId": "fitting-rating-put-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "rating": {
+                    "description": "Rating from 1 to 5.",
+                    "format": "int64",
+                    "maximum": 5,
+                    "minimum": 1,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "rating"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -19684,6 +19884,69 @@
     "/fittings": {
       "post": {
         "operationId": "fitting-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "description": "Free text shown with the fitting. Null clears it.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "items": {
+                    "description": "Fitted modules, charges, drones and cargo.",
+                    "items": {
+                      "$ref": "#/components/schemas/FittingItemBody"
+                    },
+                    "maxItems": 200,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "description": "Display name for the fitting.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "ship_type_id": {
+                    "description": "Hull the fitting is for.",
+                    "format": "int64",
+                    "minimum": 1,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "visibility": {
+                    "description": "Who may see the fitting.",
+                    "format": "int64",
+                    "maximum": 3,
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "ship_type_id",
+                  "name",
+                  "visibility",
+                  "items"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -19997,6 +20260,53 @@
       },
       "patch": {
         "operationId": "fitting-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "description": {
+                    "description": "New description. Null clears it.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "items": {
+                    "description": "Replacement item list. Absent leaves the stored items alone.",
+                    "items": {
+                      "$ref": "#/components/schemas/FittingItemBody"
+                    },
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "description": "New display name.",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "visibility": {
+                    "description": "New visibility.",
+                    "format": "int64",
+                    "maximum": 3,
+                    "minimum": 0,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -20053,6 +20363,32 @@
       },
       "put": {
         "operationId": "fitting-rating-put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "rating": {
+                    "description": "Rating from 1 to 5.",
+                    "format": "int64",
+                    "maximum": 5,
+                    "minimum": 1,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "rating"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

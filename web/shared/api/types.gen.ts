@@ -136,6 +136,33 @@ export type ErrorModel = {
     type?: string;
 };
 
+export type FittingItemBody = {
+    /**
+     * Charge loaded into this module, when it takes one.
+     */
+    charge_type_id?: number;
+    /**
+     * Position within the slot family.
+     */
+    ordinal: number | null;
+    /**
+     * Stack size. Must be 1 for module slots. Defaults to 1.
+     */
+    quantity?: number;
+    /**
+     * Slot family: 1-5 are module slots, 6 drones, 7 cargo.
+     */
+    slot_group: number | null;
+    /**
+     * Module state: offline, online, active, overloaded.
+     */
+    state: number | null;
+    /**
+     * Inventory type fitted in this position.
+     */
+    type_id: number | null;
+};
+
 export type ImagesOverviewResponse = {
     /**
      * A URL to the JSON Schema for this object.
@@ -10207,7 +10234,28 @@ export type FeedStreamResponses = {
 export type FeedStreamResponse = FeedStreamResponses[keyof FeedStreamResponses];
 
 export type FittingCreateLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Free text shown with the fitting. Null clears it.
+         */
+        description?: string | null;
+        /**
+         * Fitted modules, charges, drones and cargo.
+         */
+        items: Array<FittingItemBody> | null;
+        /**
+         * Display name for the fitting.
+         */
+        name: string | null;
+        /**
+         * Hull the fitting is for.
+         */
+        ship_type_id: number | null;
+        /**
+         * Who may see the fitting.
+         */
+        visibility: number | null;
+    };
     path?: never;
     query?: never;
     url: '/fit';
@@ -10261,7 +10309,24 @@ export type FittingDetailLegacyResponses = {
 export type FittingDetailLegacyResponse = FittingDetailLegacyResponses[keyof FittingDetailLegacyResponses];
 
 export type FittingUpdateLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * New description. Null clears it.
+         */
+        description?: string | null;
+        /**
+         * Replacement item list. Absent leaves the stored items alone.
+         */
+        items?: Array<FittingItemBody> | null;
+        /**
+         * New display name.
+         */
+        name?: string | null;
+        /**
+         * New visibility.
+         */
+        visibility?: number | null;
+    };
     path?: never;
     query?: never;
     url: '/fit/{fit_id}';
@@ -10297,7 +10362,12 @@ export type FittingRatingDeleteLegacyResponses = {
 export type FittingRatingDeleteLegacyResponse = FittingRatingDeleteLegacyResponses[keyof FittingRatingDeleteLegacyResponses];
 
 export type FittingRatingPutLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Rating from 1 to 5.
+         */
+        rating: number | null;
+    };
     path?: never;
     query?: never;
     url: '/fit/{fit_id}/rating';
@@ -10459,7 +10529,28 @@ export type FittingsCommunityTopRatedLegacyResponses = {
 export type FittingsCommunityTopRatedLegacyResponse = FittingsCommunityTopRatedLegacyResponses[keyof FittingsCommunityTopRatedLegacyResponses];
 
 export type FittingCreateData = {
-    body?: never;
+    body: {
+        /**
+         * Free text shown with the fitting. Null clears it.
+         */
+        description?: string | null;
+        /**
+         * Fitted modules, charges, drones and cargo.
+         */
+        items: Array<FittingItemBody> | null;
+        /**
+         * Display name for the fitting.
+         */
+        name: string | null;
+        /**
+         * Hull the fitting is for.
+         */
+        ship_type_id: number | null;
+        /**
+         * Who may see the fitting.
+         */
+        visibility: number | null;
+    };
     path?: never;
     query?: never;
     url: '/fittings';
@@ -10693,7 +10784,24 @@ export type FittingDetailResponses = {
 export type FittingDetailResponse = FittingDetailResponses[keyof FittingDetailResponses];
 
 export type FittingUpdateData = {
-    body?: never;
+    body: {
+        /**
+         * New description. Null clears it.
+         */
+        description?: string | null;
+        /**
+         * Replacement item list. Absent leaves the stored items alone.
+         */
+        items?: Array<FittingItemBody> | null;
+        /**
+         * New display name.
+         */
+        name?: string | null;
+        /**
+         * New visibility.
+         */
+        visibility?: number | null;
+    };
     path?: never;
     query?: never;
     url: '/fittings/{id}';
@@ -10729,7 +10837,12 @@ export type FittingRatingDeleteResponses = {
 export type FittingRatingDeleteResponse = FittingRatingDeleteResponses[keyof FittingRatingDeleteResponses];
 
 export type FittingRatingPutData = {
-    body?: never;
+    body: {
+        /**
+         * Rating from 1 to 5.
+         */
+        rating: number | null;
+    };
     path?: never;
     query?: never;
     url: '/fittings/{id}/rating';

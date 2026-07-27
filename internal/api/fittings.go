@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -45,20 +44,23 @@ func registerFittingRoutes(a huma.API, opts Options) {
 func registerFittingCRUDRoutes(a huma.API, opts Options, auth *authService) {
 	create := createFittingHandler(opts, auth)
 	for i, path := range []string{"/fittings", "/fit"} {
-		registerLegacy(a, huma.Operation{
+		registerLegacy(a, documentJSONBody[fittingCreateBody](a, huma.Operation{
 			OperationID: fittingOperationID("fitting-create", i),
 			Method:      http.MethodPost,
 			Path:        path,
 			Summary:     "Save a ship fitting",
 			Tags:        []string{"fittings", "account"},
 			Security:    requiredFittingSession,
-		}, create)
+		}), create)
 	}
 
 	for _, route := range []struct {
 		Name, Method, Canonical, Alias, Summary string
 		Security                                []map[string][]string
 		Build                                   func(string) legacyHandler
+		// Document attaches the request schema for routes that take a body.
+		// Reads leave it nil.
+		Document func(huma.Operation) huma.Operation
 	}{
 		{
 			Name: "fitting-detail", Method: http.MethodGet,
@@ -74,6 +76,9 @@ func registerFittingCRUDRoutes(a huma.API, opts Options, auth *authService) {
 			Summary: "Update a saved ship fitting", Security: requiredFittingSession,
 			Build: func(param string) legacyHandler {
 				return updateFittingHandler(opts, auth, param)
+			},
+			Document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[fittingUpdateBody](a, op)
 			},
 		},
 		{
@@ -91,6 +96,9 @@ func registerFittingCRUDRoutes(a huma.API, opts Options, auth *authService) {
 			Build: func(param string) legacyHandler {
 				return putFittingRatingHandler(opts, auth, param)
 			},
+			Document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[fittingRatingBody](a, op)
+			},
 		},
 		{
 			Name: "fitting-rating-delete", Method: http.MethodDelete,
@@ -101,22 +109,26 @@ func registerFittingCRUDRoutes(a huma.API, opts Options, auth *authService) {
 			},
 		},
 	} {
-		registerLegacy(a, huma.Operation{
+		document := route.Document
+		if document == nil {
+			document = func(op huma.Operation) huma.Operation { return op }
+		}
+		registerLegacy(a, document(huma.Operation{
 			OperationID: route.Name,
 			Method:      route.Method,
 			Path:        route.Canonical,
 			Summary:     route.Summary,
 			Tags:        []string{"fittings", "account"},
 			Security:    route.Security,
-		}, route.Build("id"))
-		registerLegacy(a, huma.Operation{
+		}), route.Build("id"))
+		registerLegacy(a, document(huma.Operation{
 			OperationID: route.Name + "-legacy",
 			Method:      route.Method,
 			Path:        route.Alias,
 			Summary:     route.Summary,
 			Tags:        []string{"fittings", "account"},
 			Security:    route.Security,
-		}, route.Build("fit_id"))
+		}), route.Build("fit_id"))
 	}
 }
 
@@ -125,6 +137,45 @@ func fittingOperationID(base string, aliasIndex int) string {
 		return base
 	}
 	return base + "-legacy"
+}
+
+// Wire types for the fitting write routes.
+//
+// Integers are plain int64 rather than jsInt: these routes read through
+// exactJSONInteger, which never accepted numeric strings, so widening them
+// here would document a leniency the handler does not have.
+//
+// Pointers mark a field the caller may omit. The validators below reproduce
+// the same messages and the same 422 status the map-based versions returned,
+// because those are the responses the fitting editor already handles.
+type fittingItemBody struct {
+	SlotGroup    *int64 `json:"slot_group" minimum:"1" maximum:"7" doc:"Slot family: 1-5 are module slots, 6 drones, 7 cargo."`
+	Ordinal      *int64 `json:"ordinal" minimum:"0" maximum:"15" doc:"Position within the slot family."`
+	TypeID       *int64 `json:"type_id" minimum:"1" doc:"Inventory type fitted in this position."`
+	State        *int64 `json:"state" minimum:"0" maximum:"3" doc:"Module state: offline, online, active, overloaded."`
+	ChargeTypeID *int64 `json:"charge_type_id,omitempty" minimum:"1" doc:"Charge loaded into this module, when it takes one."`
+	Quantity     *int64 `json:"quantity,omitempty" minimum:"1" maximum:"30000" doc:"Stack size. Must be 1 for module slots. Defaults to 1."`
+}
+
+type fittingCreateBody struct {
+	ShipTypeID  *int64            `json:"ship_type_id" minimum:"1" doc:"Hull the fitting is for."`
+	Name        *string           `json:"name" doc:"Display name for the fitting."`
+	Description optional[string]  `json:"description,omitempty" doc:"Free text shown with the fitting. Null clears it."`
+	Visibility  *int64            `json:"visibility" minimum:"0" maximum:"3" doc:"Who may see the fitting."`
+	Items       []fittingItemBody `json:"items" maxItems:"200" doc:"Fitted modules, charges, drones and cargo."`
+}
+
+// fittingUpdateBody patches an existing fitting. Every field is optional, and
+// an absent field is left alone rather than cleared.
+type fittingUpdateBody struct {
+	Name        optional[string]            `json:"name,omitempty" doc:"New display name."`
+	Description optional[string]            `json:"description,omitempty" doc:"New description. Null clears it."`
+	Visibility  optional[int64]             `json:"visibility,omitempty" minimum:"0" maximum:"3" doc:"New visibility."`
+	Items       optional[[]fittingItemBody] `json:"items,omitempty" doc:"Replacement item list. Absent leaves the stored items alone."`
+}
+
+type fittingRatingBody struct {
+	Rating *int64 `json:"rating" minimum:"1" maximum:"5" doc:"Rating from 1 to 5."`
 }
 
 type validatedFittingItem struct {
@@ -154,43 +205,28 @@ type validatedFittingBody struct {
 	HasItems       bool
 }
 
-func decodeFittingBody(req *legacyRequest) (map[string]any, error) {
-	decoder := json.NewDecoder(io.LimitReader(req.Body, fittingBodyLimit+1))
-	decoder.UseNumber()
-	var body map[string]any
-	if err := decoder.Decode(&body); err != nil || body == nil {
-		return nil, apiError(http.StatusBadRequest, "Request body must be an object")
-	}
-	var extra any
-	err := decoder.Decode(&extra)
-	switch {
-	case errors.Is(err, io.EOF):
-		return body, nil
-	case err == nil:
-		return nil, apiError(http.StatusBadRequest, "Body must contain one JSON value")
-	default:
-		return nil, apiError(http.StatusBadRequest, "Invalid JSON body")
-	}
-}
-
-func validateCreateFitting(body map[string]any) (validatedFittingBody, error) {
-	ship, err := fittingPositiveInt(body["ship_type_id"], "ship_type_id")
+func validateCreateFitting(body *fittingCreateBody) (validatedFittingBody, error) {
+	ship, err := requiredFittingInt(body.ShipTypeID, "ship_type_id", 1, math.MaxInt32)
 	if err != nil {
 		return validatedFittingBody{}, err
 	}
-	name, err := fittingName(body["name"])
+	if body.Name == nil {
+		return validatedFittingBody{}, apiError(
+			http.StatusUnprocessableEntity, "name must be a string")
+	}
+	name, err := fittingName(*body.Name)
 	if err != nil {
 		return validatedFittingBody{}, err
 	}
-	description, err := fittingDescription(body["description"])
+	description, err := fittingDescription(body.Description)
 	if err != nil {
 		return validatedFittingBody{}, err
 	}
-	visibility, err := fittingRangeInt(body["visibility"], "visibility", 0, 3)
+	visibility, err := requiredFittingInt(body.Visibility, "visibility", 0, 3)
 	if err != nil {
 		return validatedFittingBody{}, err
 	}
-	items, err := validateFittingItems(body["items"])
+	items, err := validateFittingItems(body.Items)
 	if err != nil {
 		return validatedFittingBody{}, err
 	}
@@ -202,32 +238,36 @@ func validateCreateFitting(body map[string]any) (validatedFittingBody, error) {
 	}, nil
 }
 
-func validateUpdateFitting(body map[string]any) (validatedFittingBody, error) {
+func validateUpdateFitting(body *fittingUpdateBody) (validatedFittingBody, error) {
 	var out validatedFittingBody
-	if value, ok := body["name"]; ok {
-		name, err := fittingName(value)
+	if body.Name.present() {
+		if body.Name.Value == nil {
+			return out, apiError(
+				http.StatusUnprocessableEntity, "name must be a string")
+		}
+		name, err := fittingName(*body.Name.Value)
 		if err != nil {
 			return out, err
 		}
 		out.Name = &name
 	}
-	if value, ok := body["description"]; ok {
-		description, err := fittingDescription(value)
+	if body.Description.present() {
+		description, err := fittingDescription(body.Description)
 		if err != nil {
 			return out, err
 		}
 		out.Description, out.HasDescription = description, true
 	}
-	if value, ok := body["visibility"]; ok {
-		visibility, err := fittingRangeInt(value, "visibility", 0, 3)
+	if body.Visibility.present() {
+		visibility, err := requiredFittingInt(body.Visibility.Value, "visibility", 0, 3)
 		if err != nil {
 			return out, err
 		}
 		visibility16 := int16(visibility)
 		out.Visibility = &visibility16
 	}
-	if value, ok := body["items"]; ok {
-		items, err := validateFittingItems(value)
+	if body.Items.present() {
+		items, err := validateFittingItems(body.Items.valueOr(nil))
 		if err != nil {
 			return out, err
 		}
@@ -240,26 +280,14 @@ func validateUpdateFitting(body map[string]any) (validatedFittingBody, error) {
 	return out, nil
 }
 
-func fittingPositiveInt(value any, field string) (int64, error) {
-	number, ok := exactJSONInteger(value)
-	if !ok || number < 1 || number > math.MaxInt32 {
-		return 0, apiError(
-			http.StatusUnprocessableEntity,
-			field+" must be a positive integer",
-		)
+// requiredFittingInt reproduces the message and the 422 the map-based
+// validators returned for a missing or out-of-range integer.
+func requiredFittingInt(value *int64, field string, min, max int64) (int64, error) {
+	if value == nil || *value < min || *value > max {
+		return 0, apiError(http.StatusUnprocessableEntity, fmt.Sprintf(
+			"%s must be an integer in [%d, %d]", field, min, max))
 	}
-	return number, nil
-}
-
-func fittingRangeInt(value any, field string, min, max int64) (int64, error) {
-	number, ok := exactJSONInteger(value)
-	if !ok || number < min || number > max {
-		return 0, apiError(
-			http.StatusUnprocessableEntity,
-			fmt.Sprintf("%s must be an integer in [%d, %d]", field, min, max),
-		)
-	}
-	return number, nil
+	return *value, nil
 }
 
 func exactJSONInteger(value any) (int64, bool) {
@@ -310,17 +338,14 @@ func fittingName(value any) (string, error) {
 	}
 }
 
-func fittingDescription(value any) (any, error) {
-	if value == nil {
+// fittingDescription normalizes the description. An empty string and an
+// explicit null both mean "no description", which is what the editor sends
+// when the field is cleared.
+func fittingDescription(value optional[string]) (any, error) {
+	if value.Value == nil {
 		return nil, nil
 	}
-	text, ok := value.(string)
-	if !ok {
-		return nil, apiError(
-			http.StatusUnprocessableEntity,
-			"description must be a string or null",
-		)
-	}
+	text := *value.Value
 	if text == "" {
 		return nil, nil
 	}
@@ -333,11 +358,7 @@ func fittingDescription(value any) (any, error) {
 	return text, nil
 }
 
-func validateFittingItems(value any) ([]validatedFittingItem, error) {
-	raw, ok := value.([]any)
-	if !ok {
-		return nil, apiError(http.StatusUnprocessableEntity, "items must be an array")
-	}
+func validateFittingItems(raw []fittingItemBody) ([]validatedFittingItem, error) {
 	if len(raw) > fittingItemsMax {
 		return nil, apiError(
 			http.StatusUnprocessableEntity,
@@ -346,43 +367,41 @@ func validateFittingItems(value any) ([]validatedFittingItem, error) {
 	}
 	items := make([]validatedFittingItem, 0, len(raw))
 	seen := make(map[[2]int64]bool, len(raw))
-	for index, value := range raw {
-		row, ok := value.(map[string]any)
-		if !ok || row == nil {
-			return nil, apiError(
-				http.StatusUnprocessableEntity,
-				fmt.Sprintf("items[%d] must be an object", index),
-			)
-		}
+	for index, row := range raw {
 		prefix := fmt.Sprintf("items[%d].", index)
-		slot, err := fittingRangeInt(row["slot_group"], prefix+"slot_group", 1, 7)
+		slot, err := requiredFittingInt(row.SlotGroup, prefix+"slot_group", 1, 7)
 		if err != nil {
 			return nil, err
 		}
-		ordinal, err := fittingRangeInt(row["ordinal"], prefix+"ordinal", 0, 15)
+		ordinal, err := requiredFittingInt(row.Ordinal, prefix+"ordinal", 0, 15)
 		if err != nil {
 			return nil, err
 		}
-		typeID, err := fittingPositiveInt(row["type_id"], prefix+"type_id")
+		typeID, err := requiredFittingInt(
+			row.TypeID, prefix+"type_id", 1, math.MaxInt32)
 		if err != nil {
 			return nil, err
 		}
-		state, err := fittingRangeInt(row["state"], prefix+"state", 0, 3)
+		state, err := requiredFittingInt(row.State, prefix+"state", 0, 3)
 		if err != nil {
 			return nil, err
 		}
+
 		var charge *int32
-		if value := row["charge_type_id"]; value != nil {
-			chargeID, err := fittingPositiveInt(value, prefix+"charge_type_id")
+		if row.ChargeTypeID != nil {
+			chargeID, err := requiredFittingInt(
+				row.ChargeTypeID, prefix+"charge_type_id", 1, math.MaxInt32)
 			if err != nil {
 				return nil, err
 			}
 			charge32 := int32(chargeID)
 			charge = &charge32
 		}
+
 		quantity := int64(1)
-		if value := row["quantity"]; value != nil {
-			quantity, err = fittingRangeInt(value, prefix+"quantity", 1, 30000)
+		if row.Quantity != nil {
+			quantity, err = requiredFittingInt(
+				row.Quantity, prefix+"quantity", 1, 30000)
 			if err != nil {
 				return nil, err
 			}
@@ -396,6 +415,7 @@ func validateFittingItems(value any) ([]validatedFittingItem, error) {
 				),
 			)
 		}
+
 		key := [2]int64{slot, ordinal}
 		if seen[key] {
 			return nil, apiError(
@@ -454,7 +474,7 @@ func createFittingHandler(opts Options, auth *authService) legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		raw, err := decodeFittingBody(req)
+		raw, err := decodeJSONBody[fittingCreateBody](req, fittingBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -650,7 +670,7 @@ func updateFittingHandler(
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		raw, err := decodeFittingBody(req)
+		raw, err := decodeJSONBody[fittingUpdateBody](req, fittingBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -794,11 +814,15 @@ func putFittingRatingHandler(
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeFittingBody(req)
+		body, err := decodeJSONBody[fittingRatingBody](req, fittingBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		rating, ok := exactJSONInteger(body["rating"])
+		rating := int64(0)
+		ok := body.Rating != nil
+		if ok {
+			rating = *body.Rating
+		}
 		if !ok || rating < 1 || rating > 5 {
 			return legacyPayload{}, apiError(
 				http.StatusUnprocessableEntity,

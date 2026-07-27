@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -63,25 +62,31 @@ func TestFittingRoutesRegisterCanonicalAndFrontendAliases(t *testing.T) {
 	}
 }
 
+// Decoding from JSON rather than building the struct by hand keeps the test on
+// the path a request actually takes, so a tag or a field type that stops
+// matching the wire format fails here.
+func decodeFittingCreate(t *testing.T, payload string) (*fittingCreateBody, error) {
+	t.Helper()
+	return decodeJSONBody[fittingCreateBody](
+		&legacyRequest{Body: strings.NewReader(payload)}, fittingBodyLimit,
+	)
+}
+
 func TestValidateCreateFittingNormalizesAndValidatesItems(t *testing.T) {
-	body := map[string]any{
-		"ship_type_id": json.Number("587"),
-		"name":         "  Rifter PvP  ",
-		"description":  "",
-		"visibility":   json.Number("3"),
-		"items": []any{
-			map[string]any{
-				"slot_group": json.Number("1"),
-				"ordinal":    json.Number("0"), "type_id": json.Number("2001"),
-				"state": json.Number("2"), "charge_type_id": nil,
-			},
-			map[string]any{
-				"slot_group": json.Number("6"),
-				"ordinal":    json.Number("0"), "type_id": json.Number("2002"),
-				"state": json.Number("0"), "quantity": json.Number("5"),
-			},
-		},
+	body, err := decodeFittingCreate(t, `{
+		"ship_type_id": 587,
+		"name": "  Rifter PvP  ",
+		"description": "",
+		"visibility": 3,
+		"items": [
+			{"slot_group":1,"ordinal":0,"type_id":2001,"state":2,"charge_type_id":null},
+			{"slot_group":6,"ordinal":0,"type_id":2002,"state":0,"quantity":5}
+		]
+	}`)
+	if err != nil {
+		t.Fatal(err)
 	}
+
 	got, err := validateCreateFitting(body)
 	if err != nil {
 		t.Fatal(err)
@@ -95,14 +100,15 @@ func TestValidateCreateFittingNormalizesAndValidatesItems(t *testing.T) {
 		t.Errorf("validated items = %#v", got.Items)
 	}
 
-	body["items"] = []any{
-		map[string]any{
-			"slot_group": json.Number("1"),
-			"ordinal":    json.Number("0"), "type_id": json.Number("2001"),
-			"state": json.Number("2"), "quantity": json.Number("2"),
-		},
+	// A module slot may only hold one of a thing.
+	modules, err := decodeFittingCreate(t, `{
+		"ship_type_id": 587, "name": "Rifter PvP", "visibility": 3,
+		"items": [{"slot_group":1,"ordinal":0,"type_id":2001,"state":2,"quantity":2}]
+	}`)
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, err = validateCreateFitting(body)
+	_, err = validateCreateFitting(modules)
 	var apiErr *legacyAPIError
 	if !errors.As(err, &apiErr) || apiErr.Status != 422 ||
 		!strings.Contains(apiErr.Message, "must be 1 for module slots") {
@@ -111,18 +117,52 @@ func TestValidateCreateFittingNormalizesAndValidatesItems(t *testing.T) {
 }
 
 func TestValidateFittingItemsRejectsDuplicateSlots(t *testing.T) {
-	item := func(typeID string) map[string]any {
-		return map[string]any{
-			"slot_group": json.Number("2"),
-			"ordinal":    json.Number("3"), "type_id": json.Number(typeID),
-			"state": json.Number("1"),
-		}
+	body, err := decodeFittingCreate(t, `{
+		"ship_type_id": 587, "name": "Dupe", "visibility": 0,
+		"items": [
+			{"slot_group":2,"ordinal":3,"type_id":10,"state":1},
+			{"slot_group":2,"ordinal":3,"type_id":11,"state":1}
+		]
+	}`)
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, err := validateFittingItems([]any{item("10"), item("11")})
+	_, err = validateFittingItems(body.Items)
 	var apiErr *legacyAPIError
 	if !errors.As(err, &apiErr) ||
 		apiErr.Message != "Duplicate slot_group=2 ordinal=3 at items[1]" {
 		t.Fatalf("duplicate error = %#v", err)
+	}
+}
+
+// An absent description leaves the stored text alone; an explicit null clears
+// it. The fitting editor relies on both.
+func TestFittingUpdateSeparatesAbsentFromClearedDescription(t *testing.T) {
+	decode := func(payload string) *fittingUpdateBody {
+		t.Helper()
+		body, err := decodeJSONBody[fittingUpdateBody](
+			&legacyRequest{Body: strings.NewReader(payload)}, fittingBodyLimit,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return body
+	}
+
+	patch, err := validateUpdateFitting(decode(`{"name":"Renamed"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if patch.HasDescription {
+		t.Error("an absent description was treated as an update")
+	}
+
+	patch, err = validateUpdateFitting(decode(`{"description":null}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !patch.HasDescription || patch.Description != nil {
+		t.Errorf("null description = %#v, want a cleared update", patch.Description)
 	}
 }
 
