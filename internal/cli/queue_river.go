@@ -13,11 +13,6 @@ import (
 )
 
 // The River-backed half of the queue commands.
-//
-// queue:list, queue:status and queue:verify still read BullMQ's Redis keys,
-// because during the changeover that is where the live queues are. These read
-// Postgres instead, and the two sets coexist deliberately: seeing both at once
-// is how the cutover gets verified rather than hoped about.
 
 var queueMigrateCmd = &cobra.Command{
 	Use:   "migrate",
@@ -68,14 +63,12 @@ migrates its own database on boot will eventually migrate one you did not mean.`
 	},
 }
 
-var queueJobsCmd = &cobra.Command{
-	Use:   "jobs",
+var queueStatusCmd = &cobra.Command{
+	Use:   "status",
 	Short: "Show River queue depths",
 	Long: `Reads live job counts from Postgres, grouped by queue and state.
 
-This is the Go queue. queue:status reads BullMQ's Redis keys instead, which is
-where the Bun workers' jobs still are — during the changeover both are real and
-both are worth looking at.`,
+River is the only queue backend. Valkey is not consulted.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		pool, err := openPool(cmd)
 		if err != nil {
@@ -175,5 +168,5 @@ written down.`,
 }
 
 func init() {
-	queueCmd.AddCommand(queueMigrateCmd, queueJobsCmd, queuePortedCmd)
+	queueCmd.AddCommand(queueMigrateCmd, queueStatusCmd, queuePortedCmd)
 }

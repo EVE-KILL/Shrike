@@ -166,7 +166,29 @@ func TestLocalTierIsBounded(t *testing.T) {
 	if len(c.local) > localCacheMax {
 		t.Errorf("local tier holds %d entries, above the %d cap", len(c.local), localCacheMax)
 	}
-	if len(c.order) > localCacheMax {
-		t.Errorf("eviction list holds %d keys, above the %d cap", len(c.order), localCacheMax)
+	if c.order.Len() > localCacheMax {
+		t.Errorf("eviction list holds %d keys, above the %d cap", c.order.Len(), localCacheMax)
+	}
+}
+
+func TestLocalTierEvictsLeastRecentlyUsed(t *testing.T) {
+	c := NewCache(nil)
+	entry := &Entry{Status: 200, Expires: time.Now().Add(time.Hour).UnixMilli()}
+
+	for i := 0; i < localCacheMax; i++ {
+		c.putLocal(string(rune(i))+"-url", entry)
+	}
+	oldest := string(rune(0)) + "-url"
+	second := string(rune(1)) + "-url"
+	if got := c.Get(context.Background(), oldest); got == nil {
+		t.Fatal("oldest entry was not present before eviction")
+	}
+	c.putLocal("new-url", entry)
+
+	if got := c.Get(context.Background(), oldest); got == nil {
+		t.Error("recently read entry was evicted")
+	}
+	if got := c.Get(context.Background(), second); got != nil {
+		t.Error("least recently used entry survived eviction")
 	}
 }

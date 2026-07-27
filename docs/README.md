@@ -20,3 +20,8 @@ rules. It favors short, direct, and testable text.
 
 - [Kubernetes](deployment/kubernetes.md): Production deployment gates and
   manifest requirements.
+
+## Architecture
+
+- [Cache architecture](architecture/caching.md): L1, Valkey L2, and queue
+  storage boundaries.

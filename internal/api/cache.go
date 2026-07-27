@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/redis/go-redis/v9"
 )
 
 type responseCachePolicy struct {
@@ -24,7 +22,7 @@ var (
 )
 
 func responseCache(
-	client *redis.Client,
+	cache *ResponseCache,
 	schemas *responseSchemaResolver,
 	build string,
 	next http.Handler,
@@ -45,7 +43,7 @@ func responseCache(
 			return
 		}
 		key := cacheKey(build, r)
-		if entry, ok := cacheLoad(r.Context(), client, key); ok {
+		if entry, ok := cacheLoad(r.Context(), cache, key); ok {
 			writeCacheHit(w, r, entry, policy, schemaPath)
 			return
 		}
@@ -65,7 +63,7 @@ func responseCache(
 			if policy.CacheControl != "" {
 				w.Header().Set("Cache-Control", policy.CacheControl)
 			}
-			cacheStore(context.WithoutCancel(r.Context()), client, key, cachedResponse{
+			cacheStore(context.WithoutCancel(r.Context()), cache, key, cachedResponse{
 				ContentType: recorder.header.Get("Content-Type"),
 				Body:        cachedBody,
 			}, policy.TTL)
@@ -115,50 +113,24 @@ func cacheKey(build string, r *http.Request) string {
 	return key
 }
 
-func cacheLoad(ctx context.Context, client *redis.Client, key string) (cachedResponse, bool) {
-	if client == nil {
+func cacheLoad(ctx context.Context, cache *ResponseCache, key string) (cachedResponse, bool) {
+	if cache == nil {
 		return cachedResponse{}, false
 	}
-	values, err := client.HMGet(ctx, key, "content_type", "body").Result()
-	if err != nil || len(values) != 2 {
-		return cachedResponse{}, false
-	}
-	body, ok := values[1].(string)
-	if !ok {
-		return cachedResponse{}, false
-	}
-	contentType, _ := values[0].(string)
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	return cachedResponse{ContentType: contentType, Body: []byte(body)}, true
+	return cache.Load(ctx, key)
 }
 
-// cacheStore writes the entry and its expiry together.
-//
-// A transaction, so an entry can never end up stored without its TTL — that
-// would be a body pinned in Valkey until eviction, serving a stale response for
-// as long as it survived.
 func cacheStore(
 	ctx context.Context,
-	client *redis.Client,
+	cache *ResponseCache,
 	key string,
 	entry cachedResponse,
 	ttl time.Duration,
 ) {
-	if client == nil {
+	if cache == nil {
 		return
 	}
-	contentType := entry.ContentType
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	pipe := client.TxPipeline()
-	pipe.HSet(ctx, key, "content_type", contentType, "body", entry.Body)
-	pipe.Expire(ctx, key, ttl)
-	// Cache failures must never fail the request; the handler already produced
-	// a correct response and the only cost is recomputing it next time.
-	_, _ = pipe.Exec(ctx)
+	cache.Store(ctx, key, entry, ttl)
 }
 
 func writeUncachedResponse(

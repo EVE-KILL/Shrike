@@ -1,6 +1,7 @@
 package esi
 
 import (
+	"container/list"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -54,28 +55,38 @@ type Cache struct {
 	redis *redis.Client
 
 	mu    sync.Mutex
-	local map[string]*Entry
-	// order is an insertion-ordered ring of keys used to evict. A true LRU
-	// would need a linked list per entry; for a cache this size, evicting the
-	// oldest inserted is close enough and costs one slice.
-	order []string
+	local map[string]*list.Element
+	order list.List
 }
 
-// NewCache builds a cache over the cache instance.
+type localCacheEntry struct {
+	url   string
+	entry *Entry
+}
+
+// NewCache builds a cache over the shared Valkey.
 func NewCache(client *redis.Client) *Cache {
-	return &Cache{redis: client, local: make(map[string]*Entry, 1024)}
+	return &Cache{redis: client, local: make(map[string]*list.Element, 1024)}
 }
 
 // Get returns whatever is known about a URL, fresh or not. A stale entry is
 // still returned so the caller can use its ETag.
 func (c *Cache) Get(ctx context.Context, url string) *Entry {
 	c.mu.Lock()
-	hot := c.local[url]
+	element := c.local[url]
+	var hot *Entry
+	if element != nil {
+		c.order.MoveToFront(element)
+		hot = cloneEntry(element.Value.(*localCacheEntry).entry)
+	}
 	c.mu.Unlock()
 	if hot.Fresh(time.Now()) {
 		return hot
 	}
 
+	if c.redis == nil {
+		return hot
+	}
 	raw, err := c.redis.Get(ctx, cacheKeyPrefix+hashURL(url)).Bytes()
 	if err != nil {
 		// A cache miss and a cache outage are the same thing to the caller:
@@ -88,11 +99,14 @@ func (c *Cache) Get(ctx context.Context, url string) *Entry {
 		return hot
 	}
 	c.putLocal(url, &entry)
-	return &entry
+	return cloneEntry(&entry)
 }
 
 // Set stores a response in both tiers.
 func (c *Cache) Set(ctx context.Context, url string, entry *Entry) {
+	if entry == nil {
+		return
+	}
 	c.putLocal(url, entry)
 
 	ttl := time.Until(time.UnixMilli(entry.Expires))
@@ -104,7 +118,9 @@ func (c *Cache) Set(ctx context.Context, url string, entry *Entry) {
 	}
 	// A failed cache write is not a failed request. The response is already in
 	// hand and the next caller simply pays for its own fetch.
-	_ = c.redis.Set(ctx, cacheKeyPrefix+hashURL(url), payload, ttl).Err()
+	if c.redis != nil {
+		_ = c.redis.Set(ctx, cacheKeyPrefix+hashURL(url), payload, ttl).Err()
+	}
 }
 
 // Touch extends an entry's life after ESI answered 304, keeping the body it
@@ -123,18 +139,36 @@ func (c *Cache) Touch(ctx context.Context, url string, expires int64, etag strin
 }
 
 func (c *Cache) putLocal(url string, entry *Entry) {
+	if entry == nil {
+		return
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if _, exists := c.local[url]; !exists {
-		if len(c.order) >= localCacheMax {
-			oldest := c.order[0]
-			c.order = c.order[1:]
-			delete(c.local, oldest)
-		}
-		c.order = append(c.order, url)
+	if element := c.local[url]; element != nil {
+		element.Value.(*localCacheEntry).entry = cloneEntry(entry)
+		c.order.MoveToFront(element)
+		return
 	}
-	c.local[url] = entry
+	if c.order.Len() >= localCacheMax {
+		oldest := c.order.Back()
+		delete(c.local, oldest.Value.(*localCacheEntry).url)
+		c.order.Remove(oldest)
+	}
+	element := c.order.PushFront(&localCacheEntry{
+		url:   url,
+		entry: cloneEntry(entry),
+	})
+	c.local[url] = element
+}
+
+func cloneEntry(entry *Entry) *Entry {
+	if entry == nil {
+		return nil
+	}
+	cloned := *entry
+	cloned.Data = append(json.RawMessage(nil), entry.Data...)
+	return &cloned
 }
 
 // ParseExpires reads an HTTP Expires header into unix milliseconds, returning

@@ -7,9 +7,7 @@ import (
 	"testing"
 )
 
-func TestLoadDefaultsMatchTypeScriptServices(t *testing.T) {
-	// The Go binary has to be a drop-in for the Bun pods, so these defaults
-	// must not drift from backend/src/database/redis.ts and api/src/db.ts.
+func TestLoadDefaults(t *testing.T) {
 	clearEnv(t)
 
 	c, err := Load("")
@@ -26,6 +24,9 @@ func TestLoadDefaultsMatchTypeScriptServices(t *testing.T) {
 	if c.RedisDB != 0 {
 		t.Errorf("RedisDB = %d, want 0", c.RedisDB)
 	}
+	if c.APICacheBytes != 256<<20 {
+		t.Errorf("APICacheBytes = %d, want %d", c.APICacheBytes, 256<<20)
+	}
 	if c.MemgraphURL != "bolt://memgraph:7687" {
 		t.Errorf("MemgraphURL = %q, want bolt://memgraph:7687", c.MemgraphURL)
 	}
@@ -34,35 +35,26 @@ func TestLoadDefaultsMatchTypeScriptServices(t *testing.T) {
 	}
 }
 
-func TestCacheRedisFallsBackToQueueInstance(t *testing.T) {
-	// getCacheRedis() falls back host-then-port to the queue instance; losing
-	// that would silently split the cache onto the wrong Redis.
+func TestSharedValkeyUsesOneAddress(t *testing.T) {
 	clearEnv(t)
-	t.Setenv("REDIS_HOST", "queue.internal")
+	t.Setenv("REDIS_HOST", "valkey.internal")
 	t.Setenv("REDIS_PORT", "6380")
+	// These transition-era variables must not silently split cache traffic
+	// from coordination traffic again.
+	t.Setenv("REDIS_CACHE_HOST", "ignored-cache.internal")
+	t.Setenv("REDIS_CACHE_PORT", "6381")
+	t.Setenv("VALKEY_QUEUE", "redis://ignored-queue.internal:6382")
+	t.Setenv("VALKEY_CACHE", "redis://ignored-cache.internal:6383")
 
 	c, err := Load("")
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if c.RedisCacheHost != "queue.internal" {
-		t.Errorf("RedisCacheHost = %q, want the queue host", c.RedisCacheHost)
+	if c.RedisHost != "valkey.internal" {
+		t.Errorf("RedisHost = %q, want valkey.internal", c.RedisHost)
 	}
-	if c.RedisCachePort != 6380 {
-		t.Errorf("RedisCachePort = %d, want the queue port", c.RedisCachePort)
-	}
-
-	// An explicit cache host must win, while the port still falls back.
-	t.Setenv("REDIS_CACHE_HOST", "cache.internal")
-	c, err = Load("")
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if c.RedisCacheHost != "cache.internal" {
-		t.Errorf("RedisCacheHost = %q, want cache.internal", c.RedisCacheHost)
-	}
-	if c.RedisCachePort != 6380 {
-		t.Errorf("RedisCachePort = %d, want the queue port fallback", c.RedisCachePort)
+	if c.RedisPort != 6380 {
+		t.Errorf("RedisPort = %d, want 6380", c.RedisPort)
 	}
 }
 
@@ -210,7 +202,7 @@ func clearEnv(t *testing.T) {
 		"OPENAI_API_KEY", "NUXT_OPENAI_API_KEY",
 		"KLIPY_API_KEY", "NUXT_KLIPY_API_KEY",
 		"B2_ENDPOINT", "B2_MEDIA_BUCKET", "B2_IMAGES_BUCKET",
-		"B2_KEY_ID", "B2_APP_KEY", "IMAGE_CACHE_BYTES",
+		"B2_KEY_ID", "B2_APP_KEY", "IMAGE_CACHE_BYTES", "API_CACHE_BYTES",
 		"NODE_ENV", "GIT_SHA", "LOG_LEVEL", "LOG_FORMAT",
 		"NUXT_ENTRYPOINT", "NUXT_SOCKET", "SHRIKE_API_SOCKET", "DATA_DIR",
 	} {

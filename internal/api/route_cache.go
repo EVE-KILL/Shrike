@@ -38,7 +38,7 @@ func routeJSONCacheBy(
 			}
 			key = "shrike:web-api:" + build + ":" + keyFor(req)
 		}
-		if entry, ok := cacheLoad(ctx, opts.Cache, key); ok {
+		if entry, ok := cacheLoad(ctx, opts.responseCache, key); ok {
 			headers := make(http.Header)
 			headers.Set("X-Cache", "HIT")
 			if cacheControl != "" {
@@ -74,7 +74,7 @@ func routeJSONCacheBy(
 		if contentType == "" {
 			contentType = "application/json"
 		}
-		cacheStore(context.WithoutCancel(ctx), opts.Cache, key, cachedResponse{
+		cacheStore(context.WithoutCancel(ctx), opts.responseCache, key, cachedResponse{
 			ContentType: contentType,
 			Body:        body,
 		}, ttl)

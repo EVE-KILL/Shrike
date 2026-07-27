@@ -203,7 +203,7 @@ func (s *accountService) loadCanonicalAnnouncements(
 	opts Options,
 ) (AnnouncementsResponse, string, error) {
 	key := canonicalAnnouncementsCacheKey(opts.Commit)
-	if entry, ok := cacheLoad(ctx, opts.Cache, key); ok {
+	if entry, ok := cacheLoad(ctx, opts.responseCache, key); ok {
 		var cached AnnouncementsResponse
 		if json.Unmarshal(entry.Body, &cached) == nil {
 			if cached.Announcements == nil {
@@ -241,7 +241,7 @@ func (s *accountService) loadCanonicalAnnouncements(
 
 	body := AnnouncementsResponse{Announcements: announcements}
 	if encoded, marshalErr := json.Marshal(body); marshalErr == nil {
-		cacheStore(context.WithoutCancel(ctx), opts.Cache, key, cachedResponse{
+		cacheStore(context.WithoutCancel(ctx), opts.responseCache, key, cachedResponse{
 			ContentType: "application/json",
 			Body:        encoded,
 		}, announcementsCacheTTL)

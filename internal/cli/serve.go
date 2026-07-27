@@ -112,29 +112,28 @@ its default SIGTERM.`,
 				defer func() { _ = graphClient.Close(context.Background()) }()
 			}
 
-			queueRedis := redisx.Coordination(cfg)
-			defer queueRedis.Close() //nolint:errcheck
-			cacheRedis := redisx.Cache(cfg)
-			defer cacheRedis.Close() //nolint:errcheck
+			sharedRedis := redisx.New(cfg)
+			defer sharedRedis.Close() //nolint:errcheck
 
 			wsServer := shrikewebsocket.New(
-				queueRedis,
+				sharedRedis,
 				log.With().Str("subsystem", "websocket").Logger(),
 			)
 			wsServer.Start(ctx)
 			defer wsServer.Close()
 
-			feed := api.NewFeedManager(pool, queueRedis)
+			feed := api.NewFeedManager(pool, sharedRedis)
 			feed.Start(ctx)
 
 			opts := api.Options{
 				Version: ui.Version, Commit: ui.Commit,
-				DB: pool, Graph: graphClient, Feed: feed, Cache: cacheRedis,
-				DomainAssets: domainAssets,
-				Images:       imageService,
-				RequestGuard: api.NewRequestGuard(),
-				OpenAIAPIKey: cfg.OpenAIAPIKey,
-				KlipyAPIKey:  cfg.KlipyAPIKey,
+				DB: pool, Graph: graphClient, Feed: feed, Cache: sharedRedis,
+				ResponseCacheBytes: cfg.APICacheBytes,
+				DomainAssets:       domainAssets,
+				Images:             imageService,
+				RequestGuard:       api.NewRequestGuard(),
+				OpenAIAPIKey:       cfg.OpenAIAPIKey,
+				KlipyAPIKey:        cfg.KlipyAPIKey,
 				Auth: api.AuthOptions{
 					ClientID: cfg.EVEClientID, ClientSecret: cfg.EVEClientSecret,
 					StateSecret: cfg.EVEClientSecret, CallbackURL: cfg.EVECallbackURL,

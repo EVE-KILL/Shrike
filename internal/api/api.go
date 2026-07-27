@@ -33,6 +33,10 @@ type Options struct {
 	Graph   GraphDatabase
 	Feed    *FeedManager
 	Cache   *redis.Client
+	// ResponseCacheBytes bounds the process-local L1. Cache remains the shared
+	// Valkey client used as L2 and by non-response coordination features.
+	ResponseCacheBytes int64
+	responseCache      *ResponseCache
 
 	Auth         AuthOptions
 	DomainAssets DomainAssetStorage
@@ -92,6 +96,7 @@ headers, prefer the live feed for continuous consumption, and back off when a re
 // New builds the shared API once.
 func New(opts Options) *Service {
 	mux := chi.NewRouter()
+	opts.responseCache = NewResponseCache(opts.Cache, opts.ResponseCacheBytes)
 
 	cfg := huma.DefaultConfig("EVE-KILL API", opts.Version)
 	cfg.DocsRenderer = huma.DocsRendererScalar
@@ -111,7 +116,7 @@ func New(opts Options) *Service {
 	mux.HandleFunc("/", legacyFallback)
 	mux.NotFound(legacyFallback)
 
-	cached := responseCache(opts.Cache, schemas, opts.Commit, mux)
+	cached := responseCache(opts.responseCache, schemas, opts.Commit, mux)
 	site := sitePaths(cached)
 	if opts.RequestGuard != nil {
 		site = opts.RequestGuard.Wrap(site)

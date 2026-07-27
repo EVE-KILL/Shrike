@@ -1,7 +1,4 @@
-// Package config loads runtime configuration from the environment, using the
-// exact variable names the existing Bun services already read. The Go binary
-// has to be a drop-in for those pods, so no new names are invented here and
-// no defaults diverge from backend/src/database/redis.ts or api/src/db.ts.
+// Package config loads runtime configuration from the environment.
 package config
 
 import (
@@ -28,19 +25,12 @@ type Config struct {
 	// same default so `doctor` behaves identically to the TS services.
 	DatabaseURL string
 
-	// Queue Redis — REDIS_* is the canonical set (backend/src/database/redis.ts).
-	RedisHost      string
-	RedisPort      int
-	RedisPassword  string
-	RedisDB        int
-	ValkeyQueueURL string
-
-	// Cache Redis. Separate host/port with fallback to the queue instance,
-	// mirroring getCacheRedis(). Password and DB are deliberately shared:
-	// the TS implementation does not override them either.
-	RedisCacheHost string
-	RedisCachePort int
-	ValkeyCacheURL string
+	// Shared Valkey. River stores jobs in Postgres, so one Valkey now owns the
+	// disposable response caches, coordination state, and pub/sub channels.
+	RedisHost     string
+	RedisPort     int
+	RedisPassword string
+	RedisDB       int
 
 	// Memgraph, over Bolt.
 	MemgraphURL string
@@ -74,6 +64,10 @@ type Config struct {
 	// It is a ceiling, not a reservation, and is deliberately not used by
 	// workers or import commands.
 	ImageCacheBytes int64
+
+	// APICacheBytes bounds the process-local L1 for API responses. Valkey is
+	// the shared L2 and remains authoritative across instances.
+	APICacheBytes int64
 
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
@@ -169,13 +163,6 @@ func Load(explicitPath string) (*Config, error) {
 	c.RedisPort = getInt("RedisPort", "REDIS_PORT", 6379)
 	c.RedisPassword = get("RedisPassword", "REDIS_PASSWORD", "")
 	c.RedisDB = getInt("RedisDB", "REDIS_DB", 0)
-	c.ValkeyQueueURL = get("ValkeyQueueURL", "VALKEY_QUEUE", "")
-
-	// Fall back to the queue instance when the cache-specific vars are unset,
-	// exactly as getCacheRedis() does.
-	c.RedisCacheHost = get("RedisCacheHost", "REDIS_CACHE_HOST", c.RedisHost)
-	c.RedisCachePort = getInt("RedisCachePort", "REDIS_CACHE_PORT", c.RedisPort)
-	c.ValkeyCacheURL = get("ValkeyCacheURL", "VALKEY_CACHE", "")
 
 	c.MemgraphURL = get("MemgraphURL", "MEMGRAPH_URL", "bolt://memgraph:7687")
 
@@ -204,6 +191,11 @@ func Load(explicitPath string) (*Config, error) {
 		"ImageCacheBytes",
 		"IMAGE_CACHE_BYTES",
 		1<<30,
+	)
+	c.APICacheBytes = getInt64(
+		"APICacheBytes",
+		"API_CACHE_BYTES",
+		256<<20,
 	)
 	c.Port = getInt("Port", "PORT", 4000)
 
@@ -235,13 +227,9 @@ func (c *Config) DotenvPath() string {
 	return string(c.sources["_dotenvPath"])
 }
 
-// RedisAddr and RedisCacheAddr build host:port pairs for the Redis clients.
+// RedisAddr builds the shared Valkey host:port pair.
 func (c *Config) RedisAddr() string {
 	return fmt.Sprintf("%s:%d", c.RedisHost, c.RedisPort)
-}
-
-func (c *Config) RedisCacheAddr() string {
-	return fmt.Sprintf("%s:%d", c.RedisCacheHost, c.RedisCachePort)
 }
 
 // IsProduction reports whether we are running with production semantics.

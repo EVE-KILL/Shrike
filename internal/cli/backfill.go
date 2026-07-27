@@ -27,7 +27,7 @@ import (
 // They are all the same shape: walk a range of killmails, enqueue one job each.
 // Deliberately enqueuing rather than computing inline — the workers already
 // know how to do the work, they retry, they respect the rate limits, and the
-// progress is visible in `queue:jobs` instead of trapped in a terminal.
+// progress is visible in `queue:status` instead of trapped in a terminal.
 
 var backfillCmd = &cobra.Command{
 	Use:   "backfill",
@@ -35,7 +35,7 @@ var backfillCmd = &cobra.Command{
 	Long: `Rebuilds what is computed from killmails rather than stored on them.
 
 Each backfill enqueues jobs for the workers to run, so progress is visible in
-queue:jobs and the work survives the command exiting. Nothing here recomputes
+queue:status and the work survives the command exiting. Nothing here recomputes
 inline.
 
 Ranges default to everything. Narrow with --from and --to when rebuilding after
@@ -182,7 +182,7 @@ func killmailBackfill(name, short, long string, build func(int64) river.JobArgs)
 			}
 
 			ui.Newline()
-			ui.Success("Enqueued %s jobs. Watch progress with queue:jobs.", fmtCount(n))
+			ui.Success("Enqueued %s jobs. Watch progress with queue:status.", fmtCount(n))
 			ui.Newline()
 			return nil
 		},

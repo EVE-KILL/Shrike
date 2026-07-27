@@ -57,7 +57,7 @@ func deps(ctx context.Context, pool *pgxpool.Pool, withQueue bool) (*workers.Dep
 		return nil, fmt.Errorf("load market paths: %w", err)
 	}
 
-	coordination := redisx.Coordination(cfg)
+	sharedRedis := redisx.New(cfg)
 
 	// Memgraph is optional. The graph is entirely derived from the killmails,
 	// so a worker that cannot reach it runs without the graph rather than
@@ -72,7 +72,7 @@ func deps(ctx context.Context, pool *pgxpool.Pool, withQueue bool) (*workers.Dep
 
 	d := &workers.Deps{
 		Pool:  pool,
-		Redis: coordination,
+		Redis: sharedRedis,
 		ESI:   esi.New(cfg),
 		SSO: &sso.Client{
 			ClientID:     cfg.EVEClientID,
@@ -88,7 +88,7 @@ func deps(ctx context.Context, pool *pgxpool.Pool, withQueue bool) (*workers.Dep
 		UserAgent:   userAgent(),
 		Log:         log.Logger,
 		Relay: &relay.Publisher{
-			Redis: coordination,
+			Redis: sharedRedis,
 			OnError: func(channel string, err error) {
 				log.Warn().Str("channel", channel).Err(err).Msg("relay publish failed")
 			},
@@ -105,12 +105,11 @@ func deps(ctx context.Context, pool *pgxpool.Pool, withQueue bool) (*workers.Dep
 	})
 	d.GitHubToken = os.Getenv("GITHUB_TOKEN")
 
-	// The ticker publishes through the relay and persists to the cache Redis,
-	// which is a different instance from the coordination one: ephemeral
-	// announcements are cache data, and losing them on a cache flush is fine.
+	// The ticker publishes through the relay and persists ephemeral
+	// announcements in the shared Valkey.
 	d.Ticker = &ticker.Emitter{
 		Relay: d.Relay,
-		Redis: redisx.Cache(cfg),
+		Redis: sharedRedis,
 		Cache: cache,
 	}
 

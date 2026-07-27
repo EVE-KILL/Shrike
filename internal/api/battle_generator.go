@@ -622,23 +622,8 @@ func writeConflictBattleTeams(
 }
 
 func invalidateConflictBattleCache(ctx context.Context, opts Options) {
-	if opts.Cache == nil {
+	if opts.responseCache == nil {
 		return
 	}
-	var cursor uint64
-	for {
-		keys, next, err := opts.Cache.Scan(
-			ctx, cursor, "shrike:web-api:*:*battle*", 250,
-		).Result()
-		if err != nil {
-			return
-		}
-		if len(keys) > 0 {
-			_ = opts.Cache.Del(ctx, keys...).Err()
-		}
-		cursor = next
-		if cursor == 0 {
-			return
-		}
-	}
+	opts.responseCache.DeleteMatching(ctx, "shrike:web-api:*:*battle*")
 }

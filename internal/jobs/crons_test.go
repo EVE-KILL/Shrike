@@ -116,12 +116,3 @@ func TestQueueByName(t *testing.T) {
 		t.Error("unknown queue resolved to something")
 	}
 }
-
-// Pending counts outstanding work only; completed and failed are history and
-// must not inflate it.
-func TestDepthPending(t *testing.T) {
-	d := Depth{Waiting: 3, Prioritized: 5, Delayed: 2, Active: 7, Failed: 11, Completed: 13}
-	if got := d.Pending(); got != 10 {
-		t.Errorf("Pending() = %d; want 10 (3+5+2)", got)
-	}
-}

@@ -152,18 +152,17 @@ func (c *Client) waitCapFor(g Group) time.Duration {
 
 // New builds a fully coordinated client from configuration.
 func New(cfg *config.Config) *Client {
-	coordRedis := redisx.Coordination(cfg)
-	cacheRedis := redisx.Cache(cfg)
+	sharedRedis := redisx.New(cfg)
 
 	return &Client{
 		BaseURL:   DefaultBaseURL,
 		UserAgent: UserAgent(cfg),
 		HTTP:      &http.Client{Timeout: httpTimeout},
-		limiter:   NewRateLimiter(coordRedis),
-		coord:     NewCoordination(coordRedis),
-		cache:     NewCache(cacheRedis),
-		coordis:   coordRedis,
-		owned:     []*redis.Client{coordRedis, cacheRedis},
+		limiter:   NewRateLimiter(sharedRedis),
+		coord:     NewCoordination(sharedRedis),
+		cache:     NewCache(sharedRedis),
+		coordis:   sharedRedis,
+		owned:     []*redis.Client{sharedRedis},
 	}
 }
 

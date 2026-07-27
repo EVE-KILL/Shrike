@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 )
 
@@ -118,13 +117,13 @@ type siteConfigurationOutput struct {
 
 type siteConfigurationService struct {
 	db     Database
-	cache  *redis.Client
+	cache  *ResponseCache
 	commit string
 }
 
 func registerSiteConfigurationRoute(a huma.API, opts Options) {
 	service := &siteConfigurationService{
-		db: opts.DB, cache: opts.Cache, commit: opts.Commit,
+		db: opts.DB, cache: opts.responseCache, commit: opts.Commit,
 	}
 	huma.Register(a, huma.Operation{
 		OperationID: "site-configuration",

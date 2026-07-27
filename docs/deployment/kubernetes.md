@@ -4,6 +4,26 @@ This document records the requirements for the new production manifests.
 
 Status: Draft.
 
+## Valkey
+
+Deploy one Valkey service.
+
+Use Valkey for shared caches, coordination, and pub/sub.
+
+Use Postgres for River queue state.
+
+Set a memory limit for Valkey.
+
+Set the Valkey eviction policy to `allkeys-lfu`.
+
+Set `API_CACHE_BYTES` for each `serve` replica.
+
+Copy the old cache Valkey address into `REDIS_HOST` and `REDIS_PORT` during the
+cutover.
+
+Do not configure `REDIS_CACHE_HOST`, `REDIS_CACHE_PORT`, `VALKEY_QUEUE`, or
+`VALKEY_CACHE`.
+
 ## Origin TLS gate
 
 Do not enable Cloudflare `Full (strict)` until every item in this section is

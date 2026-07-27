@@ -1,17 +1,11 @@
 # Local development stack for the Go port.
 #
 # Deliberately mirrors production topology rather than being minimal: Postgres
-# pinned to the same patch release, pg_trgm preinstalled (search depends on it),
-# and two separate Valkey instances because the ESI client genuinely opens two
-# connections — coordination/rate-limit on one, L2 response cache on the other.
-# A single instance would hide a mis-wiring that only shows up in the cluster.
+# is pinned to the same patch release, pg_trgm is preinstalled, and one Valkey
+# provides shared caches, coordination, and pub/sub. River uses Postgres.
 #
 #   docker compose up -d && ./bin/shrike doctor
 #
-# The cache Valkey is expected to be deleted eventually, once caching moves
-# in-process. It is here so the port can be validated against current
-# behaviour first.
-
 name: shrike-go
 
 services:
@@ -61,24 +55,18 @@ services:
       - synchronous_commit=off
 
   valkey:
-    # Queue + pub/sub instance. Prod runs 8.1.x.
+    # Shared L2 cache, coordination, and pub/sub. Prod runs 8.1.x.
     image: valkey/valkey:8.1-alpine
     ports:
       - "6379:6379"
-    volumes:
-      - ./.data/valkey:/data
-    healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-  valkey-cache:
-    # Cache instance. 6381 on the host because 6380 is already in use locally.
-    image: valkey/valkey:8.1-alpine
-    ports:
-      - "6381:6379"
-    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    command:
+      - valkey-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory-policy
+      - allkeys-lfu
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 5s

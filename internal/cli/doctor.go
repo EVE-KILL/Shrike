@@ -57,8 +57,8 @@ type checkResult struct {
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Verify connectivity to every configured dependency",
-	Long: `Probes Postgres, both Redis instances, and Memgraph using the
-currently loaded configuration.
+	Long: `Probes Postgres, Valkey, and Memgraph using the currently loaded
+configuration.
 
 Each dependency is fully validated — connect, authenticate, run a real query —
 and that outcome decides the status. The reported latency is a single round
@@ -78,8 +78,7 @@ Exits non-zero if any check fails, so it works as a readiness gate:
 		// several dependencies are down at once.
 		checks := []func(context.Context, *config.Config) checkResult{
 			checkPostgres,
-			checkRedisQueue,
-			checkRedisCache,
+			checkValkey,
 			checkMemgraph,
 		}
 
@@ -165,15 +164,8 @@ func checkPostgres(ctx context.Context, c *config.Config) checkResult {
 	return r
 }
 
-func checkRedisQueue(ctx context.Context, c *config.Config) checkResult {
-	return pingRedis(ctx, "redis (queue)", c.RedisAddr(), c.RedisPassword, c.RedisDB)
-}
-
-func checkRedisCache(ctx context.Context, c *config.Config) checkResult {
-	// getCacheRedis() reuses the queue password and DB, overriding only host
-	// and port — mirrored here so doctor tests the same connection the
-	// services will actually open.
-	return pingRedis(ctx, "redis (cache)", c.RedisCacheAddr(), c.RedisPassword, c.RedisDB)
+func checkValkey(ctx context.Context, c *config.Config) checkResult {
+	return pingRedis(ctx, "valkey", c.RedisAddr(), c.RedisPassword, c.RedisDB)
 }
 
 func pingRedis(ctx context.Context, name, addr, password string, db int) checkResult {

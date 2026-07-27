@@ -59,8 +59,7 @@ type Client struct {
 //
 // Every queue's concurrency, retry count and backoff comes from
 // internal/jobs.Queues rather than being repeated here, so the declarations
-// stay the single place those numbers are written down and `queue:verify` has
-// something meaningful to diff against.
+// stay the single source for queue behavior.
 func New(opts Options) (*Client, error) {
 	if opts.Pool == nil {
 		return nil, errors.New("queue: a database pool is required")

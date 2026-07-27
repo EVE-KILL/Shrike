@@ -8,7 +8,7 @@ and its vendored dogma engine.
 
 ```sh
 cp .env.example .env
-docker compose up -d          # postgres 18.3, two valkey, memgraph
+docker compose up -d          # postgres 18.3, valkey, memgraph
 make build                    # also symlinks bin/ek
 ./bin/shrike doctor
 ./bin/shrike db:migrate --apply
@@ -57,16 +57,14 @@ uses a practical subset of ASD-STE100 and George Orwell's writing rules.
 Both spellings work: `shrike db:migrate` and `shrike db migrate`.
 
 ```
-doctor              check postgres, both valkey, memgraph
+doctor              check postgres, valkey, memgraph
 serve               run the HTTP server (Ctrl+C drains and exits)
 config:show         resolved config, with the origin of each value
 db:status           migration state
 db:migrate          apply pending migrations
 db:baseline         stamp the baseline as applied without executing it
 queue:list          declared queues with concurrency and retry policy
-queue:status        live BullMQ queue depths (the Bun workers' queues)
-queue:jobs          live River queue depths (the Go queues)
-queue:verify        diff the registry against live Redis
+queue:status        live River queue depths
 queue:ported        which queues have a Go worker
 queue:migrate       apply River's own schema migrations
 cron:list           scheduled jobs (--by-frequency to sort by load)
