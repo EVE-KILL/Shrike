@@ -38,8 +38,9 @@ type Options struct {
 	// declared queue that is not marked as consumed elsewhere.
 	Queues []string
 
-	// PeriodicJobs are the scheduled jobs this client will run if elected
-	// leader. Only the cron process supplies these.
+	// PeriodicJobs are the scheduled jobs this client inserts if elected
+	// leader. Every started worker client must supply the same set because
+	// River elects one leader across the whole schema, not only cron workers.
 	PeriodicJobs []*river.PeriodicJob
 
 	Logger *slog.Logger

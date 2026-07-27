@@ -21,6 +21,7 @@ import (
 	"github.com/eve-kill/shrike/internal/workers"
 	"github.com/eve-kill/shrike/internal/zkb"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -35,10 +36,10 @@ var workCmd = &cobra.Command{
   work:cron    schedules and runs the recurring jobs
 
 They are separate processes deliberately. The feed reader must never be blocked
-by a slow job, and the cron process holds a leader election that only one of any
-number of replicas wins — so queues can be scaled out while scheduling stays
-singular. Scheduled jobs run on their own queue, so a twenty-minute nightly
-rebuild cannot occupy a worker slot that killmails need.`,
+by a slow job. Every River worker carries the same recurring schedule because
+any worker may win River's cluster-wide leader election. Only work:cron consumes
+the cron queue, so queue workers can scale out without running scheduled jobs.
+A twenty-minute nightly rebuild cannot occupy a slot that killmails need.`,
 }
 
 // deps builds the dependency bundle the workers need.
@@ -234,7 +235,7 @@ shared by everything else and outlasts the downtime itself.`,
 			return err
 		}
 
-		riverWorkers, _, err := workers.Register(d)
+		riverWorkers, registry, err := workers.Register(d)
 		if err != nil {
 			return err
 		}
@@ -244,11 +245,11 @@ shared by everything else and outlasts the downtime itself.`,
 			consume = workers.ConsumableQueues()
 		}
 
-		client, err := queue.New(queue.Options{
-			Pool:    pool,
-			Workers: riverWorkers,
-			Queues:  consume,
-		})
+		options, err := riverWorkerOptions(pool, riverWorkers, registry, consume)
+		if err != nil {
+			return err
+		}
+		client, err := queue.New(options)
 		if err != nil {
 			return err
 		}
@@ -324,17 +325,16 @@ its own interval does not stack copies of itself.`,
 			return err
 		}
 
-		periodic, err := registry.PeriodicJobs()
+		options, err := riverWorkerOptions(
+			pool,
+			riverWorkers,
+			registry,
+			workers.CronQueues(),
+		)
 		if err != nil {
 			return err
 		}
-
-		client, err := queue.New(queue.Options{
-			Pool:         pool,
-			Workers:      riverWorkers,
-			Queues:       workers.CronQueues(),
-			PeriodicJobs: periodic,
-		})
+		client, err := queue.New(options)
 		if err != nil {
 			return err
 		}
@@ -355,6 +355,31 @@ its own interval does not stack copies of itself.`,
 			return client.Stop(stopCtx)
 		})
 	},
+}
+
+// riverWorkerOptions gives every started River client the same periodic jobs.
+//
+// River elects one leader across every client in the schema, not one leader
+// from the clients that happen to configure periodic jobs. If work:queues wins
+// while only work:cron knows the schedule, the elected leader schedules
+// nothing and the cron queue remains empty. Every worker may schedule; only
+// work:cron consumes queue.CronQueue and executes the resulting jobs.
+func riverWorkerOptions(
+	pool *pgxpool.Pool,
+	riverWorkers *river.Workers,
+	registry *cron.Registry,
+	queues []string,
+) (queue.Options, error) {
+	periodic, err := registry.PeriodicJobs()
+	if err != nil {
+		return queue.Options{}, err
+	}
+	return queue.Options{
+		Pool:         pool,
+		Workers:      riverWorkers,
+		Queues:       queues,
+		PeriodicJobs: periodic,
+	}, nil
 }
 
 // reportSchedule prints what will be scheduled.
