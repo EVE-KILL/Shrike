@@ -214,16 +214,7 @@ func writeLegacyError(ctx huma.Context, err error) {
 // other origins, including for cache hits, errors, and conditional requests.
 func crossOriginAPI(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set(
-			"Access-Control-Allow-Methods",
-			"GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
-		)
-		w.Header().Set(
-			"Access-Control-Allow-Headers",
-			"Content-Type, If-None-Match, Last-Event-ID",
-		)
-		w.Header().Set("Access-Control-Expose-Headers", "ETag, Link, X-Cache")
+		setCrossOriginAPIHeaders(w.Header())
 		if r.Method == http.MethodOptions {
 			w.Header().Set("Access-Control-Max-Age", "86400")
 			w.WriteHeader(http.StatusNoContent)
@@ -231,6 +222,24 @@ func crossOriginAPI(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func setCrossOriginAPIHeaders(header http.Header) {
+	header.Set("Access-Control-Allow-Origin", "*")
+	header.Set(
+		"Access-Control-Allow-Methods",
+		"GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
+	)
+	header.Set(
+		"Access-Control-Allow-Headers",
+		"Content-Type, If-None-Match, Last-Event-ID",
+	)
+	header.Set(
+		"Access-Control-Expose-Headers",
+		"ETag, Link, X-Cache, RateLimit-Limit, RateLimit-Remaining, "+
+			"RateLimit-Reset, Retry-After, X-RateLimit-Limit, "+
+			"X-RateLimit-Remaining, X-RateLimit-Reset",
+	)
 }
 
 func jsonPayload(body any) legacyPayload {

@@ -121,6 +121,7 @@ exits. Kubernetes needs no special handling beyond its default SIGTERM.`,
 				DB: pool, Graph: graphClient, Feed: feed, Cache: cacheRedis,
 				DomainAssets: domainAssets,
 				Images:       imageService,
+				RequestGuard: api.NewRequestGuard(),
 				Auth: api.AuthOptions{
 					ClientID: cfg.EVEClientID, ClientSecret: cfg.EVEClientSecret,
 					StateSecret: cfg.EVEClientSecret, CallbackURL: cfg.EVECallbackURL,
