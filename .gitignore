@@ -13,6 +13,7 @@ bin/
 # `docker compose up` plus the SDE importer, so it is never committed.
 .data/
 
-# Local notes and handoff logs kept at the repository root. Tracked Markdown,
-# such as README.md, remains tracked; Markdown in subdirectories is unaffected.
+# Local notes, rollout runbooks (including the deferred Cloudflare image
+# Snippet), and handoff logs kept at the repository root. Tracked Markdown such
+# as README.md remains tracked; Markdown in subdirectories is unaffected.
 /*.md
