@@ -17,6 +17,18 @@ build:
 	go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) $(PKG)
 	@ln -sf $(BINARY) bin/$(ALIAS)
 
+.PHONY: gen-api-client
+gen-api-client:
+	go run $(PKG) openapi-spec --format json -o web/shared/api.openapi.json
+	cd web/tools/api-codegen && bun install --frozen-lockfile
+	cd web/tools/api-codegen && bun run generate
+
+.PHONY: check-api-client
+check-api-client: gen-api-client
+	git diff --exit-code -- web/shared/api.openapi.json web/shared/api/
+	@test -z "$$(git ls-files --others --exclude-standard -- web/shared/api.openapi.json web/shared/api/)" || \
+		(echo "Untracked generated API contract files found; stage them." >&2; exit 1)
+
 .PHONY: run
 run:
 	go run $(PKG) $(ARGS)

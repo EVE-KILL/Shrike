@@ -39,6 +39,23 @@ pre-commit:
         - "migrations/*.sql"
       run: go test ./...
 
+    # The Nuxt renderer imports the generated Huma contract directly. Any API
+    # registration or schema change must therefore regenerate and stage both
+    # the OpenAPI document and its TypeScript types in the same commit.
+    - name: openapi contract up to date
+      glob:
+        - "internal/api/*.go"
+        - "internal/cli/openapi.go"
+        - "web/tools/api-codegen/*"
+      run: |
+        make gen-api-client >/dev/null
+        if ! git diff --quiet -- web/shared/api.openapi.json web/shared/api/; then
+          echo "OpenAPI spec or generated TypeScript contract is stale." >&2
+          echo "Run 'make gen-api-client' and stage the generated files." >&2
+          git diff --stat -- web/shared/api.openapi.json web/shared/api/ >&2
+          exit 1
+        fi
+
     # sqlc generates internal/dbgen from migrations/. If a migration lands
     # without regenerating, the structs silently describe a schema that no
     # longer exists — the failure then shows up as a scan error at runtime.

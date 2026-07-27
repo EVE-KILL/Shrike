@@ -25,6 +25,8 @@ var (
 	flagConfig  string
 )
 
+const skipConfigAnnotation = "shrike.eve-kill.com/skip-config"
+
 var rootCmd = &cobra.Command{
 	Use:           "shrike",
 	Short:         "Shrike — the EVE-KILL backend",
@@ -33,8 +35,15 @@ var rootCmd = &cobra.Command{
 	// PersistentPreRunE rather than PersistentPreRun: a bad --config path or an
 	// unparseable .env must fail here with a clear message, not surface later as
 	// a nil dereference inside a command.
-	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 		ui.Init(flagJSON, flagNoColor)
+
+		// Some commands only inspect compile-time registrations. Keeping them
+		// independent of .env means code generation works in fresh checkouts
+		// and CI even when no runtime services have been configured yet.
+		if cmd.Annotations[skipConfigAnnotation] == "true" {
+			return nil
+		}
 
 		var err error
 		cfg, err = config.Load(flagConfig)
@@ -126,6 +135,7 @@ func init() {
 		esiCmd,
 		killmailCmd,
 		imagesCmd,
+		openAPICmd,
 		completionCmd,
 	)
 }

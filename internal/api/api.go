@@ -46,7 +46,8 @@ type GraphDatabase interface {
 
 // Service is one API registry exposed through the main-site transport.
 type Service struct {
-	site http.Handler
+	site     http.Handler
+	document *huma.OpenAPI
 }
 
 type sameOriginPrefixContextKey struct{}
@@ -113,7 +114,7 @@ func New(opts Options) *Service {
 	if opts.RequestGuard != nil {
 		site = opts.RequestGuard.Wrap(site)
 	}
-	return &Service{site: site}
+	return &Service{site: site, document: a.OpenAPI()}
 }
 
 func setRootNamespaceServers(document *huma.OpenAPI) {
@@ -144,6 +145,15 @@ func setRootNamespaceServers(document *huma.OpenAPI) {
 // Site serves /api, /auth, /images, and /health on the frontend origin.
 func (s *Service) Site() http.Handler {
 	return s.site
+}
+
+// OpenAPI returns the generated contract owned by this service.
+//
+// The document is complete immediately after New returns: route registration
+// never invokes a handler or touches its database dependencies, which lets the
+// CLI emit the frontend contract without starting the server.
+func (s *Service) OpenAPI() *huma.OpenAPI {
+	return s.document
 }
 
 // Site constructs the main-origin handler.
