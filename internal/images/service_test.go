@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"image"
 	"image/color"
 	"net/http"
 	"net/http/httptest"
@@ -87,6 +88,66 @@ func TestTypeExportSourceKeysMatchCollectionNames(t *testing.T) {
 		if got := typeExportSourceKey(983, test.variant); got != test.want {
 			t.Errorf("%s key = %q, want %q", test.variant, got, test.want)
 		}
+	}
+}
+
+func TestOldCharacterStoresSizedWebPVariant(t *testing.T) {
+	source, _, err := transformImage(
+		solidPNG(t, 256, 256, colorValue(20, 120, 210)),
+		"png",
+		transformSpec{Format: "jpeg"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := newMemoryStore()
+	store.objects["oldcharacters/0/7/7_256.jpg"] = &objectstore.Object{
+		Body: source,
+		ObjectInfo: objectstore.ObjectInfo{
+			Key:         "oldcharacters/0/7/7_256.jpg",
+			ContentType: "image/jpeg",
+		},
+	}
+	service := New(Options{Store: store})
+	result, err := service.OldCharacter(
+		context.Background(),
+		7,
+		64,
+		"webp",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, format, err := image.DecodeConfig(bytes.NewReader(result.Body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if format != "webp" || config.Width != 64 || config.Height != 64 {
+		t.Fatalf(
+			"variant = %s %dx%d",
+			format,
+			config.Width,
+			config.Height,
+		)
+	}
+	if len(store.puts) != 1 ||
+		!strings.HasPrefix(store.puts[0], "oldcharacters/derived/") {
+		t.Fatalf("stored variants = %v", store.puts)
+	}
+
+	// A new service instance proves the derived object is durable rather than
+	// only present in the in-process LRU.
+	service = New(Options{Store: store})
+	if _, err := service.OldCharacter(
+		context.Background(),
+		7,
+		64,
+		"webp",
+	); err != nil {
+		t.Fatal(err)
+	}
+	if len(store.puts) != 1 {
+		t.Fatalf("variant was encoded again: %v", store.puts)
 	}
 }
 

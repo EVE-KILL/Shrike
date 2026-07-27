@@ -20643,6 +20643,22 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Legacy portraits are never upscaled beyond their 256px source.",
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256
+              ],
+              "type": "integer"
+            }
+          },
+          {
             "description": "Output format. Auto uses WebP when the request Accept header supports it.",
             "in": "query",
             "name": "format",

@@ -436,12 +436,16 @@ func (s *Service) Static(
 func (s *Service) OldCharacter(
 	ctx context.Context,
 	id int64,
+	size int,
 	format string,
 ) (Result, error) {
 	if !s.Available() {
 		return Result{}, unavailable()
 	}
 	if err := validateID(id); err != nil {
+		return Result{}, err
+	}
+	if err := validateOldCharacterSize(size); err != nil {
 		return Result{}, err
 	}
 	if format == "" {
@@ -454,7 +458,7 @@ func (s *Service) OldCharacter(
 			nil,
 		)
 	}
-	cacheKey := fmt.Sprintf("oldcharacter/%d/%s", id, format)
+	cacheKey := fmt.Sprintf("oldcharacter/%d/%d/%s", id, size, format)
 	return s.cacheResult(cacheKey, func() (Result, error) {
 		source, err := s.loadOldCharacterSource(ctx, id, true)
 		if err != nil {
@@ -467,10 +471,34 @@ func (s *Service) OldCharacter(
 				nil,
 			)
 		}
+		modified := source.LastModified
+		if modified.IsZero() {
+			modified = s.now()
+		}
+		sum := sha256.Sum256(source.Body)
+		derivedKey := fmt.Sprintf(
+			"oldcharacters/derived/%s/%d.%s",
+			hex.EncodeToString(sum[:]),
+			size,
+			extensionForFormat(format),
+		)
+		if size != 0 || format != "jpeg" {
+			derived, getErr := s.store.GetObject(ctx, derivedKey)
+			if getErr != nil {
+				return Result{}, fmt.Errorf("read old character variant: %w", getErr)
+			}
+			if derived != nil {
+				contentType := derived.ContentType
+				if contentType == "" {
+					contentType = contentTypeForFormat(format)
+				}
+				return newResult(derived.Body, contentType, modified), nil
+			}
+		}
 		body, contentType, err := transformImage(
 			source.Body,
 			"jpeg",
-			transformSpec{Format: format},
+			transformSpec{Size: size, Format: format},
 		)
 		if err != nil {
 			return Result{}, statusError(
@@ -479,12 +507,37 @@ func (s *Service) OldCharacter(
 				err,
 			)
 		}
-		modified := source.LastModified
-		if modified.IsZero() {
-			modified = s.now()
+		if size != 0 || format != "jpeg" {
+			if putErr := s.store.PutWithOptions(
+				context.WithoutCancel(ctx),
+				derivedKey,
+				body,
+				objectstore.PutOptions{
+					ContentType:  contentType,
+					CacheControl: immutableCacheControl,
+					Metadata: map[string]string{
+						"source-key": source.Key,
+					},
+				},
+			); putErr != nil {
+				return Result{}, fmt.Errorf("store old character variant: %w", putErr)
+			}
 		}
 		return newResult(body, contentType, modified), nil
 	})
+}
+
+func validateOldCharacterSize(size int) error {
+	for _, allowed := range []int{0, 8, 16, 32, 64, 128, 256} {
+		if size == allowed {
+			return nil
+		}
+	}
+	return statusError(
+		http.StatusBadRequest,
+		"Legacy portrait size must be one of 8, 16, 32, 64, 128, or 256",
+		nil,
+	)
 }
 
 func (s *Service) loadOldCharacterSource(

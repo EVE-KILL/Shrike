@@ -11172,6 +11172,10 @@ export type ImageOldCharacterData = {
     };
     query?: {
         /**
+         * Maximum width and height in pixels. Legacy portraits are never upscaled beyond their 256px source.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256;
+        /**
          * Output format. Auto uses WebP when the request Accept header supports it.
          */
         format?: 'auto' | 'source' | 'webp';

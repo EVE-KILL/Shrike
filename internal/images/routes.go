@@ -209,6 +209,7 @@ func registerOldCharacterRoute(a huma.API, service *Service) {
 		Parameters: []*huma.Param{
 			{Name: "id", In: "path", Required: true,
 				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
+			oldCharacterSizeParam(),
 			imageFormatParam(),
 			legacyImageTypeParam(),
 		},
@@ -224,6 +225,7 @@ func registerOldCharacterRoute(a huma.API, service *Service) {
 		return service.OldCharacter(
 			ctx.Context(),
 			id,
+			parseSize(ctx.Query("size")),
 			format,
 		)
 	})
@@ -312,6 +314,18 @@ func imageSizeParam(mapAsset bool) *huma.Param {
 		Schema: &huma.Schema{
 			Type: huma.TypeInteger,
 			Enum: values,
+		},
+	}
+}
+
+func oldCharacterSizeParam() *huma.Param {
+	return &huma.Param{
+		Name:        "size",
+		In:          "query",
+		Description: "Maximum width and height in pixels. Legacy portraits are never upscaled beyond their 256px source.",
+		Schema: &huma.Schema{
+			Type: huma.TypeInteger,
+			Enum: []any{8, 16, 32, 64, 128, 256},
 		},
 	}
 }
