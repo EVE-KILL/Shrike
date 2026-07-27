@@ -22,13 +22,14 @@ import (
 )
 
 const (
-	TurtleToolsRepository = "SentientTurtle/EVE-TurtleTools"
-	TurtleTypeExportAsset = "Image.Export.Collection.zip"
-	typeExportManifestKey = "types/manifest.json"
+	TurtleToolsRepository     = "SentientTurtle/EVE-TurtleTools"
+	TurtleTypeExportAsset     = "Image.Export.Collection.zip"
+	typeExportManifestKey     = "types/manifest.json"
+	typeExportManifestVersion = 2
 )
 
 var typeExportAssetName = regexp.MustCompile(
-	`^[1-9][0-9]*_(?:64(?:_bpc)?\.png|512\.jpg)$`,
+	`^[1-9][0-9]*_(?:64|bpc_64)\.png$|^[1-9][0-9]*_512\.jpg$`,
 )
 
 type TypeExportSyncOptions struct {
@@ -102,6 +103,7 @@ func SyncTypeExport(
 		return TypeExportSyncResult{}, err
 	}
 	if current != nil &&
+		current.Version == typeExportManifestVersion &&
 		((remoteDigest != "" &&
 			current.ArchiveDigest == trimDigest(remoteDigest)) ||
 			(remoteDigest == "" && current.Release == release)) {
@@ -181,7 +183,8 @@ func SyncTypeExport(
 		now = time.Now
 	}
 	manifest := typeExportManifest{
-		Version: 1, Release: release, ArchiveDigest: digest,
+		Version: typeExportManifestVersion,
+		Release: release, ArchiveDigest: digest,
 		UpdatedAt: now().UTC(), Images: hashes,
 	}
 	body, err := json.Marshal(manifest)
@@ -501,12 +504,6 @@ func loadTypeExportManifest(
 	var manifest typeExportManifest
 	if err := json.Unmarshal(object.Body, &manifest); err != nil {
 		return nil, fmt.Errorf("decode current type export manifest: %w", err)
-	}
-	if manifest.Version != 1 {
-		return nil, fmt.Errorf(
-			"unsupported type export manifest version %d",
-			manifest.Version,
-		)
 	}
 	if manifest.Images == nil {
 		manifest.Images = map[string]string{}

@@ -214,7 +214,7 @@ func typeExportSourceKey(id int64, variant string) string {
 	case "render":
 		return fmt.Sprintf("types/%d_512.jpg", id)
 	case "bpc":
-		return fmt.Sprintf("types/%d_64_bpc.png", id)
+		return fmt.Sprintf("types/%d_bpc_64.png", id)
 	default:
 		// Image Export Collection uses the ordinary 64px icon for both the
 		// "icon" and blueprint-original ("bp") variants.

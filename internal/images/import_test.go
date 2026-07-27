@@ -104,8 +104,9 @@ func TestImportOldCharactersPreservesShardContract(t *testing.T) {
 func TestSyncTypeExportVerifiesDigestAndUsesDirectTypeIDKeys(t *testing.T) {
 	icon := solidPNG(t, 8, 8, colorValue(20, 30, 40))
 	archive := makeZip(t, map[string][]byte{
-		"Image Export Collection/42_64.png": icon,
-		"README.txt":                        []byte("ignored"),
+		"Image Export Collection/42_64.png":     icon,
+		"Image Export Collection/42_bpc_64.png": icon,
+		"README.txt":                            []byte("ignored"),
 	})
 	sum := sha256.Sum256(archive)
 	digest := hex.EncodeToString(sum[:])
@@ -145,7 +146,8 @@ func TestSyncTypeExportVerifiesDigestAndUsesDirectTypeIDKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !first.Changed || first.Digest != digest ||
-		store.objects["types/42_64.png"] == nil {
+		store.objects["types/42_64.png"] == nil ||
+		store.objects["types/42_bpc_64.png"] == nil {
 		t.Fatalf("first sync = %+v, objects %v", first, store.objects)
 	}
 	manifestObject := store.objects[typeExportManifestKey]
@@ -158,9 +160,11 @@ func TestSyncTypeExportVerifiesDigestAndUsesDirectTypeIDKeys(t *testing.T) {
 	}
 	iconSum := sha256.Sum256(icon)
 	iconDigest := hex.EncodeToString(iconSum[:])
-	if manifest.Release != "icons-42" ||
+	if manifest.Version != typeExportManifestVersion ||
+		manifest.Release != "icons-42" ||
 		manifest.ArchiveDigest != digest ||
-		manifest.Images["42_64.png"] != iconDigest {
+		manifest.Images["42_64.png"] != iconDigest ||
+		manifest.Images["42_bpc_64.png"] != iconDigest {
 		t.Fatalf("manifest = %+v", manifest)
 	}
 
@@ -170,6 +174,71 @@ func TestSyncTypeExportVerifiesDigestAndUsesDirectTypeIDKeys(t *testing.T) {
 	}
 	if second.Changed || downloads.Load() != 1 {
 		t.Fatalf("second sync = %+v, downloads %d", second, downloads.Load())
+	}
+}
+
+func TestSyncTypeExportRebuildsOlderManifestForNewFilenameRules(t *testing.T) {
+	icon := solidPNG(t, 8, 8, colorValue(20, 30, 40))
+	archive := makeZip(t, map[string][]byte{
+		"42_64.png":     icon,
+		"42_bpc_64.png": icon,
+	})
+	archiveSum := sha256.Sum256(archive)
+	archiveDigest := hex.EncodeToString(archiveSum[:])
+	iconSum := sha256.Sum256(icon)
+	iconDigest := hex.EncodeToString(iconSum[:])
+
+	server := httptest.NewServer(http.HandlerFunc(func(
+		w http.ResponseWriter,
+		r *http.Request,
+	) {
+		if r.URL.Path == "/latest" {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"tag_name": "icons-42",
+				"assets": []map[string]any{{
+					"name":                 TurtleTypeExportAsset,
+					"browser_download_url": "http://" + r.Host + "/bundle",
+					"digest":               "sha256:" + archiveDigest,
+				}},
+			})
+			return
+		}
+		_, _ = w.Write(archive)
+	}))
+	defer server.Close()
+
+	store := newMemoryStore()
+	oldManifest, _ := json.Marshal(typeExportManifest{
+		Version: 1, Release: "icons-42", ArchiveDigest: archiveDigest,
+		Images: map[string]string{"42_64.png": iconDigest},
+	})
+	store.objects[typeExportManifestKey] = &objectstore.Object{Body: oldManifest}
+	store.objects["types/42_64.png"] = &objectstore.Object{Body: icon}
+
+	result, err := SyncTypeExport(
+		context.Background(),
+		store,
+		TypeExportSyncOptions{
+			HTTPClient: server.Client(), APIURL: server.URL + "/latest",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Import.Uploaded != 1 || result.Import.Skipped != 1 ||
+		store.objects["types/42_bpc_64.png"] == nil {
+		t.Fatalf("result = %+v, objects = %v", result, store.objects)
+	}
+	var manifest typeExportManifest
+	if err := json.Unmarshal(
+		store.objects[typeExportManifestKey].Body,
+		&manifest,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Version != typeExportManifestVersion ||
+		len(manifest.Images) != 2 {
+		t.Fatalf("manifest = %+v", manifest)
 	}
 }
 

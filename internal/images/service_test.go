@@ -81,7 +81,7 @@ func TestTypeExportSourceKeysMatchCollectionNames(t *testing.T) {
 	}{
 		{variant: "icon", want: "types/983_64.png"},
 		{variant: "bp", want: "types/983_64.png"},
-		{variant: "bpc", want: "types/983_64_bpc.png"},
+		{variant: "bpc", want: "types/983_bpc_64.png"},
 		{variant: "render", want: "types/983_512.jpg"},
 	} {
 		if got := typeExportSourceKey(983, test.variant); got != test.want {
