@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -550,4 +552,51 @@ func TestOpenAPIDocumentCarriesTagGroups(t *testing.T) {
 			t.Errorf("tag %q has no description", tag.Name)
 		}
 	}
+}
+
+// Prose keyed by operation ID goes stale silently: rename a route and the
+// entry stops reaching the page with nothing to say so.
+func TestOpenAPIDescriptionsMatchLiveOperations(t *testing.T) {
+	if err := checkDescribedOperations(New(Options{}).document); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The public read surface is what third parties consume, so every operation in
+// it carries prose beyond its one-line summary.
+func TestOpenAPIPublicOperationsAreDescribed(t *testing.T) {
+	document := New(Options{}).document
+
+	public := map[string]bool{}
+	for _, group := range tagGroups {
+		switch group.Name {
+		case "Killboard", "Conflicts", "Universe and reference":
+			for _, tag := range group.Tags {
+				public[tag] = true
+			}
+		}
+	}
+
+	var bare []string
+	forEachOperation(document, func(operation *huma.Operation) {
+		if operation.Description != "" {
+			return
+		}
+		for _, tag := range operation.Tags {
+			if public[tag] {
+				bare = append(bare, operation.OperationID)
+				return
+			}
+		}
+	})
+	// The public tag groups also carry frontend-only routes that were never in
+	// the documented surface. Guard the documented set rather than all of them.
+	described := 0
+	for _, id := range bare {
+		if _, ok := operationDescriptions[id]; ok {
+			described++
+			t.Errorf("operation %q has prose in the map but none on the document", id)
+		}
+	}
+	t.Logf("%d public-group operations run on summaries alone", len(bare)-described)
 }

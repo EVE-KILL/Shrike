@@ -15064,6 +15064,7 @@
     },
     "/alliances": {
       "get": {
+        "description": "Cursor-paginated list of every known alliance. Pass limit (1-100, default 50) and cursor from the previous response.",
         "operationId": "alliances",
         "responses": {
           "200": {
@@ -15086,6 +15087,7 @@
     },
     "/alliances/count": {
       "get": {
+        "description": "Fast pg_class.reltuples estimate. Not exact.",
         "operationId": "alliances-count",
         "responses": {
           "200": {
@@ -15108,6 +15110,7 @@
     },
     "/alliances/stats": {
       "post": {
+        "description": "Resolve stats for up to 100 alliances in a single call. Prefer this over looping the single-alliance endpoint.",
         "operationId": "alliances-batch-stats",
         "responses": {
           "200": {
@@ -15130,6 +15133,7 @@
     },
     "/alliances/{id}": {
       "get": {
+        "description": "Profile with all-time stats and top members.",
         "operationId": "alliance",
         "parameters": [
           {
@@ -15162,6 +15166,7 @@
     },
     "/alliances/{id}/corporations": {
       "get": {
+        "description": "Corporations currently recorded in this alliance, with their individual kill and loss counts.",
         "operationId": "alliance-corporations",
         "parameters": [
           {
@@ -15194,6 +15199,7 @@
     },
     "/alliances/{id}/kills": {
       "get": {
+        "description": "Killmails where a member of this alliance was an attacker, newest first. Cursor-paginated.",
         "operationId": "alliance-kills",
         "parameters": [
           {
@@ -15226,6 +15232,7 @@
     },
     "/alliances/{id}/losses": {
       "get": {
+        "description": "Killmails where a member of this alliance was the victim, newest first. Cursor-paginated.",
         "operationId": "alliance-losses",
         "parameters": [
           {
@@ -15258,6 +15265,7 @@
     },
     "/alliances/{id}/members": {
       "get": {
+        "description": "Characters across every member corporation. Large for major alliances; paginate rather than fetching in one call.",
         "operationId": "alliance-members",
         "parameters": [
           {
@@ -15290,6 +15298,7 @@
     },
     "/alliances/{id}/stats/alltime": {
       "get": {
+        "description": "Every kill and loss on record, aggregated across all member corporations. Heavier than the weekly variant.",
         "operationId": "alliance-stats-alltime",
         "parameters": [
           {
@@ -15322,6 +15331,7 @@
     },
     "/alliances/{id}/stats/weekly": {
       "get": {
+        "description": "The same aggregation restricted to the last seven days. Cheaper than all-time and the better default for activity views.",
         "operationId": "alliance-stats-weekly",
         "parameters": [
           {
@@ -16074,6 +16084,7 @@
     },
     "/battles": {
       "get": {
+        "description": "Offset-paginated battle list with sort and date filters. Default order is newest-first (battle_id DESC).",
         "operationId": "battles",
         "responses": {
           "200": {
@@ -16096,6 +16107,7 @@
     },
     "/battles/alliance/{id}": {
       "get": {
+        "description": "Offset-paginated. `total_isk_destroyed`, `kill_count`, `losses` sort by this alliance's own contribution in each battle (SUM over battle_team_members).",
         "operationId": "alliance-battles",
         "parameters": [
           {
@@ -16128,6 +16140,7 @@
     },
     "/battles/corporation/{id}": {
       "get": {
+        "description": "Offset-paginated. `total_isk_destroyed`, `kill_count`, `losses` sort by this corporation's own contribution in each battle (SUM over battle_team_members).",
         "operationId": "corporation-battles",
         "parameters": [
           {
@@ -16160,6 +16173,7 @@
     },
     "/battles/{id}": {
       "get": {
+        "description": "Teams, members, timeline, and kill totals.",
         "operationId": "battle",
         "parameters": [
           {
@@ -16844,6 +16858,7 @@
     },
     "/characters": {
       "get": {
+        "description": "Cursor-paginated list of every known character. Pass limit (1-100, default 50) and cursor from the previous response.",
         "operationId": "characters",
         "responses": {
           "200": {
@@ -16866,6 +16881,7 @@
     },
     "/characters/analyze": {
       "post": {
+        "description": "Batch intel endpoint for fleet analysis and awoxer detection. Returns per-character 90-day stats: total_kills, total_losses, efficiency (%), gang_probability (% of kills that are gang), average_gang_size, cyno_probability (% of recent losses with a cyno fitted), and last_5_ships (each with ship_type_id, ship_name, kill_count, and last_loss { killmail_id, killmail_time } or null).",
         "operationId": "character-analyze",
         "responses": {
           "200": {
@@ -16888,6 +16904,7 @@
     },
     "/characters/count": {
       "get": {
+        "description": "Fast pg_class.reltuples estimate. Not exact.",
         "operationId": "characters-count",
         "responses": {
           "200": {
@@ -16910,6 +16927,7 @@
     },
     "/characters/stats": {
       "post": {
+        "description": "Resolve stats for up to 100 characters in a single call.",
         "operationId": "characters-batch-stats",
         "responses": {
           "200": {
@@ -16932,6 +16950,7 @@
     },
     "/characters/{id}": {
       "get": {
+        "description": "Character profile with all-time stats, recent stats, top ships, top systems, and corporation history with per-stint kill/loss counts.",
         "operationId": "character",
         "parameters": [
           {
@@ -16964,6 +16983,7 @@
     },
     "/characters/{id}/intel": {
       "get": {
+        "description": "Intelligence profile derived from killmail activity: playstyle breakdown (solo/gang/fleet/blob), FC likelihood, capital pilot flag, logi pilot flag, cyno alt detection, bait detection, awox history, top ships flown \u0026 lost, target alliances, fleet partners with corp/alliance info, and groups flown with.",
         "operationId": "character-intel",
         "parameters": [
           {
@@ -16996,6 +17016,7 @@
     },
     "/characters/{id}/kills": {
       "get": {
+        "description": "Killmails where this character was an attacker, newest first. Cursor-paginated.",
         "operationId": "character-kills",
         "parameters": [
           {
@@ -17028,6 +17049,7 @@
     },
     "/characters/{id}/losses": {
       "get": {
+        "description": "Killmails where this character was the victim, newest first. Cursor-paginated.",
         "operationId": "character-losses",
         "parameters": [
           {
@@ -17060,6 +17082,7 @@
     },
     "/characters/{id}/stats": {
       "get": {
+        "description": "Kills, losses, ISK, efficiency, top ships, top systems for the chosen period.",
         "operationId": "character-stats",
         "parameters": [
           {
@@ -17092,6 +17115,7 @@
     },
     "/coalitions/stats": {
       "post": {
+        "description": "Aggregated A-vs-B stats for two coalitions. Returns exact pairwise kills/losses/ISK, per-side overall activity (not opponent-filtered), and per-side top ships used plus active systems \u0026 regions — all computed from raw killmails. Also returns a daily pairwise timeseries and an intersection of 'clashed systems' where both sides were active. Corps listed inside a side that are already members of a listed alliance on that side are dropped to prevent double counting. Window capped at 90 days.",
         "operationId": "coalition-stats",
         "responses": {
           "200": {
@@ -17624,6 +17648,7 @@
     },
     "/corporations": {
       "get": {
+        "description": "Cursor-paginated list of every known corporation. Pass limit (1-100, default 50) and cursor from the previous response.",
         "operationId": "corporations",
         "responses": {
           "200": {
@@ -17646,6 +17671,7 @@
     },
     "/corporations/count": {
       "get": {
+        "description": "Fast pg_class.reltuples estimate. Not exact.",
         "operationId": "corporations-count",
         "responses": {
           "200": {
@@ -17668,6 +17694,7 @@
     },
     "/corporations/stats": {
       "post": {
+        "description": "Resolve stats for up to 100 corporations in a single call. Prefer this over looping the single-corporation endpoint.",
         "operationId": "corporations-batch-stats",
         "responses": {
           "200": {
@@ -17690,6 +17717,7 @@
     },
     "/corporations/{id}": {
       "get": {
+        "description": "Profile with all-time stats, top members, top ships, top systems, and alliance history.",
         "operationId": "corporation",
         "parameters": [
           {
@@ -17722,6 +17750,7 @@
     },
     "/corporations/{id}/kills": {
       "get": {
+        "description": "Killmails where a member of this corporation was an attacker, newest first. Cursor-paginated.",
         "operationId": "corporation-kills",
         "parameters": [
           {
@@ -17754,6 +17783,7 @@
     },
     "/corporations/{id}/losses": {
       "get": {
+        "description": "Killmails where a member of this corporation was the victim, newest first. Cursor-paginated.",
         "operationId": "corporation-losses",
         "parameters": [
           {
@@ -17786,6 +17816,7 @@
     },
     "/corporations/{id}/members": {
       "get": {
+        "description": "Characters currently recorded in this corporation, with their individual kill and loss counts.",
         "operationId": "corporation-members",
         "parameters": [
           {
@@ -17818,6 +17849,7 @@
     },
     "/corporations/{id}/stats/alltime": {
       "get": {
+        "description": "Every kill and loss on record, aggregated. Heavier than the weekly variant; prefer weekly for dashboards that refresh often.",
         "operationId": "corporation-stats-alltime",
         "parameters": [
           {
@@ -17850,6 +17882,7 @@
     },
     "/corporations/{id}/stats/weekly": {
       "get": {
+        "description": "The same aggregation restricted to the last seven days. Cheaper than all-time and the better default for activity views.",
         "operationId": "corporation-stats-weekly",
         "parameters": [
           {
@@ -18680,6 +18713,7 @@
     },
     "/feed": {
       "get": {
+        "description": "Self-describing document with topic list, usage examples, and sequence-ID semantics.",
         "operationId": "feed-index",
         "responses": {
           "200": {
@@ -18702,6 +18736,7 @@
     },
     "/feed/poll": {
       "get": {
+        "description": "Long-poll alternative to SSE. Pass after=0 to discover the current head, then loop with after=\u003clatest\u003e.",
         "operationId": "feed-poll",
         "responses": {
           "200": {
@@ -18724,6 +18759,7 @@
     },
     "/feed/status": {
       "get": {
+        "description": "Connected SSE clients and the latest sequence ID.",
         "operationId": "feed-status",
         "responses": {
           "200": {
@@ -18746,6 +18782,7 @@
     },
     "/feed/stream": {
       "get": {
+        "description": "Server-Sent Events stream. Send Last-Event-ID header (or ?lastEventId=) on reconnect to resume exactly where you left off.",
         "operationId": "feed-stream",
         "responses": {
           "200": {
@@ -19566,6 +19603,7 @@
     },
     "/history": {
       "get": {
+        "description": "One row per day with the number of killmails recorded. Use it to find days worth fetching before calling /history/{date}.",
         "operationId": "history",
         "responses": {
           "200": {
@@ -19588,6 +19626,7 @@
     },
     "/history/latest": {
       "get": {
+        "description": "Returns { killmail_id: hash } for the 10,000 most recently ingested killmails in insertion order. Pair with /killmails/:killmailId or CCP's ESI to catch up on recent activity without polling the feed stream. Cached 60s.",
         "operationId": "history-latest",
         "responses": {
           "200": {
@@ -19610,6 +19649,7 @@
     },
     "/history/{date}": {
       "get": {
+        "description": "Returns { killmail_id: hash } for every killmail on the given day. Use this with /killmails/:killmailId or CCP's ESI to rebuild a day's archive.",
         "operationId": "history-date",
         "parameters": [
           {
@@ -21729,6 +21769,7 @@
     },
     "/killmails": {
       "get": {
+        "description": "Cursor-paginated killmail feed with type filters (security, ship class, solo, NPC, etc.) and optional victim faction filter.",
         "operationId": "killmails",
         "responses": {
           "200": {
@@ -21751,6 +21792,7 @@
     },
     "/killmails/count": {
       "get": {
+        "description": "Fast estimated row count from pg_class.reltuples. Not exact — use for dashboards and scale indicators, not for anything that requires precision.",
         "operationId": "killmails-count",
         "responses": {
           "200": {
@@ -21773,6 +21815,7 @@
     },
     "/killmails/search": {
       "post": {
+        "description": "Returns killmails in ESI format within a time window, optionally filtered by location and/or entity. Filter categories are AND-ed together, IDs within a category are OR-ed, and entity filters (character/corporation/alliance) match either attackers OR the victim. Each filter field is capped at 15 IDs and at most 3 filter categories may be combined per request to keep query plans tight. Cursor-paginated on killmail_id: pass the previous response's pagination.cursor as `after` to walk backwards in time through the window.",
         "operationId": "killmail-search",
         "responses": {
           "200": {
@@ -21795,6 +21838,7 @@
     },
     "/killmails/{id}": {
       "get": {
+        "description": "Victim, attackers, items, prices, and sibling kills from the same fight.",
         "operationId": "killmail",
         "parameters": [
           {
@@ -21860,6 +21904,7 @@
     },
     "/killmails/{id}/eft": {
       "get": {
+        "description": "Returns an EFT-compatible fitting block for pasting into Pyfa / EFT / the in-game fitting tool.",
         "operationId": "killmail-eft",
         "parameters": [
           {
@@ -21892,6 +21937,7 @@
     },
     "/killmails/{id}/esi": {
       "get": {
+        "description": "Killmail in the exact shape CCP's /killmails/{id}/{hash}/ endpoint returns. No resolved names.",
         "operationId": "killmail-esi",
         "parameters": [
           {
@@ -21957,6 +22003,7 @@
     },
     "/killmails/{id}/fitting": {
       "get": {
+        "description": "Items organised by slot (high, mid, low, rig, drone, cargo, etc.) with resolved type names and quantities.",
         "operationId": "killmail-fitting",
         "parameters": [
           {
@@ -22187,6 +22234,7 @@
     },
     "/location": {
       "get": {
+        "description": "Given a solar system and in-system xyz coordinates, returns the nearest named celestial (planet, moon, stargate, station, belt, POCO, etc.). Uses Euclidean 3D distance — same approach used to label killmail locations.",
         "operationId": "location",
         "responses": {
           "200": {
@@ -23431,6 +23479,7 @@
     },
     "/resolve": {
       "post": {
+        "description": "Takes up to 100 entity names and returns their IDs. Similar to CCP's /universe/ids/ but scoped to the entity types EVE-KILL tracks.",
         "operationId": "resolve",
         "responses": {
           "200": {
@@ -23607,6 +23656,7 @@
     },
     "/sde/bloodlines": {
       "get": {
+        "description": "Every character bloodline. Small and unpaginated.",
         "operationId": "sde-bloodlines",
         "responses": {
           "200": {
@@ -23629,6 +23679,7 @@
     },
     "/sde/bloodlines/{id}": {
       "get": {
+        "description": "One character bloodline and the race it belongs to.",
         "operationId": "sde-bloodline",
         "parameters": [
           {
@@ -23661,6 +23712,7 @@
     },
     "/sde/categories": {
       "get": {
+        "description": "Cursor-paginated inventory categories, the broadest classification (Ship, Module, Charge, and so on).",
         "operationId": "sde-categories",
         "responses": {
           "200": {
@@ -23683,6 +23735,7 @@
     },
     "/sde/categories/{id}": {
       "get": {
+        "description": "One inventory category.",
         "operationId": "sde-category",
         "parameters": [
           {
@@ -23715,6 +23768,7 @@
     },
     "/sde/celestials/{id}": {
       "get": {
+        "description": "Look up any celestial (station, gate, moon, planet, etc.) by its in-game item_id.",
         "operationId": "sde-celestial",
         "parameters": [
           {
@@ -23747,6 +23801,7 @@
     },
     "/sde/constellations": {
       "get": {
+        "description": "Cursor-paginated constellations, ordered by constellation_id. Filterable by region.",
         "operationId": "sde-constellations",
         "responses": {
           "200": {
@@ -23769,6 +23824,7 @@
     },
     "/sde/constellations/{id}": {
       "get": {
+        "description": "One constellation and the region containing it.",
         "operationId": "sde-constellation",
         "parameters": [
           {
@@ -23801,6 +23857,7 @@
     },
     "/sde/custom-prices": {
       "get": {
+        "description": "Every price EVE-KILL applies on top of market data, in one unpaginated response. Market history is unusable for items that rarely or never trade — titans, faction capitals, officer modules — so killmail values use these overrides where they exist. `valid_until` is the last date an override applies to; open-ended ones carry the 9999-12-31 sentinel, and a type may have several rows if its override changed over time.",
         "operationId": "sde-custom-prices",
         "responses": {
           "200": {
@@ -23823,6 +23880,7 @@
     },
     "/sde/factions": {
       "get": {
+        "description": "Every NPC faction. Small and unpaginated.",
         "operationId": "sde-factions",
         "responses": {
           "200": {
@@ -23845,6 +23903,7 @@
     },
     "/sde/factions/{id}": {
       "get": {
+        "description": "One NPC faction.",
         "operationId": "sde-faction",
         "parameters": [
           {
@@ -23877,6 +23936,7 @@
     },
     "/sde/flags": {
       "get": {
+        "description": "Inventory flags — the slot and container identifiers that place an item on a fitting. Small and unpaginated.",
         "operationId": "sde-flags",
         "responses": {
           "200": {
@@ -23899,6 +23959,7 @@
     },
     "/sde/groups": {
       "get": {
+        "description": "Cursor-paginated inventory groups, the level between category and type. Filterable by category.",
         "operationId": "sde-groups",
         "responses": {
           "200": {
@@ -23921,6 +23982,7 @@
     },
     "/sde/groups/{id}": {
       "get": {
+        "description": "One inventory group and the category containing it.",
         "operationId": "sde-group",
         "parameters": [
           {
@@ -23953,6 +24015,7 @@
     },
     "/sde/market-groups": {
       "get": {
+        "description": "Cursor-paginated market groups, matching the in-game market tree.",
         "operationId": "sde-market-groups",
         "responses": {
           "200": {
@@ -23975,6 +24038,7 @@
     },
     "/sde/market-groups/{id}": {
       "get": {
+        "description": "One market group and its position in the tree.",
         "operationId": "sde-market-group",
         "parameters": [
           {
@@ -24007,6 +24071,7 @@
     },
     "/sde/meta-groups": {
       "get": {
+        "description": "Meta groups (Tech I, Tech II, Faction, Officer, and so on). Small and unpaginated.",
         "operationId": "sde-meta-groups",
         "responses": {
           "200": {
@@ -24029,6 +24094,7 @@
     },
     "/sde/npc-corporations": {
       "get": {
+        "description": "Cursor-paginated NPC corporations, including the starter and faction corporations.",
         "operationId": "sde-npc-corporations",
         "responses": {
           "200": {
@@ -24051,6 +24117,7 @@
     },
     "/sde/npc-corporations/{id}": {
       "get": {
+        "description": "One NPC corporation.",
         "operationId": "sde-npc-corporation",
         "parameters": [
           {
@@ -24083,6 +24150,7 @@
     },
     "/sde/prices/{id}": {
       "get": {
+        "description": "Daily price snapshot history for an item in a region. Defaults to The Forge (Jita).",
         "operationId": "sde-prices",
         "parameters": [
           {
@@ -24115,6 +24183,7 @@
     },
     "/sde/races": {
       "get": {
+        "description": "Every playable race. Small and unpaginated.",
         "operationId": "sde-races",
         "responses": {
           "200": {
@@ -24137,6 +24206,7 @@
     },
     "/sde/races/{id}": {
       "get": {
+        "description": "One playable race.",
         "operationId": "sde-race",
         "parameters": [
           {
@@ -24169,6 +24239,7 @@
     },
     "/sde/regions": {
       "get": {
+        "description": "Cursor-paginated regions, ordered by region_id.",
         "operationId": "sde-regions",
         "responses": {
           "200": {
@@ -24191,6 +24262,7 @@
     },
     "/sde/regions/{id}": {
       "get": {
+        "description": "One region, with its name and identifiers.",
         "operationId": "sde-region",
         "parameters": [
           {
@@ -24223,6 +24295,7 @@
     },
     "/sde/regions/{id}/kills": {
       "get": {
+        "description": "Killmails recorded anywhere in this region, newest first. Killboard data rather than static data.",
         "operationId": "sde-region-kills",
         "parameters": [
           {
@@ -24255,6 +24328,7 @@
     },
     "/sde/sovereignty": {
       "get": {
+        "description": "Current sovereignty holder for every claimed system. Refreshed from ESI rather than shipped with the SDE.",
         "operationId": "sde-sovereignty",
         "responses": {
           "200": {
@@ -24277,6 +24351,7 @@
     },
     "/sde/sovereignty/{id}": {
       "get": {
+        "description": "Current sovereignty holder for one system.",
         "operationId": "sde-sovereignty-system",
         "parameters": [
           {
@@ -24309,6 +24384,7 @@
     },
     "/sde/sovereignty/{id}/history": {
       "get": {
+        "description": "Every recorded sovereignty change for this system, newest first. Every row under history; not paginated.",
         "operationId": "sde-sovereignty-history",
         "parameters": [
           {
@@ -24341,6 +24417,7 @@
     },
     "/sde/station-operations": {
       "get": {
+        "description": "Station operation types, which determine the services a station offers. Small and unpaginated.",
         "operationId": "sde-station-operations",
         "responses": {
           "200": {
@@ -24363,6 +24440,7 @@
     },
     "/sde/station-operations/{id}": {
       "get": {
+        "description": "One station operation type.",
         "operationId": "sde-station-operation",
         "parameters": [
           {
@@ -24395,6 +24473,7 @@
     },
     "/sde/stations": {
       "get": {
+        "description": "Cursor-paginated NPC stations. Player structures are separate; see /sde/structures.",
         "operationId": "sde-stations",
         "responses": {
           "200": {
@@ -24417,6 +24496,7 @@
     },
     "/sde/stations/{id}": {
       "get": {
+        "description": "One NPC station, its services, and the system holding it.",
         "operationId": "sde-station",
         "parameters": [
           {
@@ -24449,6 +24529,7 @@
     },
     "/sde/structures": {
       "get": {
+        "description": "Cursor-paginated player-owned structures known to the killboard. Unlike the rest of the SDE this is observed rather than shipped by CCP, so coverage depends on what has been seen.",
         "operationId": "sde-structures",
         "responses": {
           "200": {
@@ -24471,6 +24552,7 @@
     },
     "/sde/structures/{id}": {
       "get": {
+        "description": "One player-owned structure, as last observed.",
         "operationId": "sde-structure",
         "parameters": [
           {
@@ -24503,6 +24585,7 @@
     },
     "/sde/systems": {
       "get": {
+        "description": "Cursor-paginated solar systems, ordered by solar_system_id. Filterable by region and constellation.",
         "operationId": "sde-systems",
         "responses": {
           "200": {
@@ -24525,6 +24608,7 @@
     },
     "/sde/systems/{id}": {
       "get": {
+        "description": "One solar system: security status, position, and its region and constellation.",
         "operationId": "sde-system",
         "parameters": [
           {
@@ -24557,6 +24641,7 @@
     },
     "/sde/systems/{id}/celestials": {
       "get": {
+        "description": "Planets, moons, belts, stations, and gates in this system, in celestial_index order. Every row under celestials; not paginated.",
         "operationId": "sde-system-celestials",
         "parameters": [
           {
@@ -24589,6 +24674,7 @@
     },
     "/sde/systems/{id}/jumps": {
       "get": {
+        "description": "Stargate connections leading out of this system. Every row under jumps; not paginated.",
         "operationId": "sde-system-jumps",
         "parameters": [
           {
@@ -24621,6 +24707,7 @@
     },
     "/sde/systems/{id}/kills": {
       "get": {
+        "description": "Killmails recorded in this system, newest first. This reads killboard data, not static data, so it moves independently of the rest of the SDE.",
         "operationId": "sde-system-kills",
         "parameters": [
           {
@@ -24653,6 +24740,7 @@
     },
     "/sde/types": {
       "get": {
+        "description": "Cursor-paginated inventory types — every ship, module, charge, and item in the game. Filterable by group and category.",
         "operationId": "sde-types",
         "responses": {
           "200": {
@@ -24675,6 +24763,7 @@
     },
     "/sde/types/{id}": {
       "get": {
+        "description": "One inventory type: name, description, volume, mass, and its group and category.",
         "operationId": "sde-type",
         "parameters": [
           {
@@ -24707,6 +24796,7 @@
     },
     "/sde/types/{id}/dogma": {
       "get": {
+        "description": "Dogma attributes and effects for this type. These drive fitting calculations. Every row under dogma; not paginated.",
         "operationId": "sde-type-dogma",
         "parameters": [
           {
@@ -24739,6 +24829,7 @@
     },
     "/sde/types/{id}/insurance": {
       "get": {
+        "description": "Insurance payout levels for this hull. Every row under levels; not paginated.",
         "operationId": "sde-type-insurance",
         "parameters": [
           {
@@ -24771,6 +24862,7 @@
     },
     "/sde/types/{id}/materials": {
       "get": {
+        "description": "Materials this type manufactures into, for build-cost calculations. Every row under materials; not paginated.",
         "operationId": "sde-type-materials",
         "parameters": [
           {
@@ -24803,6 +24895,7 @@
     },
     "/search": {
       "get": {
+        "description": "Trigram + ILIKE search across characters, corporations, alliances, ships, items, systems, regions, constellations, and factions. Results are ranked by a combination of similarity score, entity type, and weight (member_count, etc.).",
         "operationId": "search",
         "responses": {
           "200": {
@@ -24849,6 +24942,7 @@
     },
     "/ships/{id}/fittings": {
       "get": {
+        "description": "Popular fits for a hull over the last 90 days, grouped by meta-variant family. Returns top families with canonical module list, variant count, and per-alliance doctrine-share percentages. Ships in custom_prices bypass the min-samples threshold to surface rare-hull data. Optional `modules` query filters down to fits that contain ALL listed module/charge/drone type IDs (family-aware: T1/T2/meta variants of the same item count as a hit).",
         "operationId": "ship-fittings",
         "parameters": [
           {
@@ -24965,6 +25059,7 @@
     },
     "/stats": {
       "get": {
+        "description": "Top-N leaderboards across characters, corps, alliances, ships, systems, regions, and more. The time window is controlled by 'days' (default 7).",
         "operationId": "global-stats",
         "responses": {
           "200": {
@@ -26401,6 +26496,7 @@
     },
     "/wars": {
       "get": {
+        "description": "Wars known to the killboard, newest first. Use /wars/{id} for participants and kill totals.",
         "operationId": "wars",
         "responses": {
           "200": {
@@ -26469,6 +26565,7 @@
     },
     "/wars/{id}": {
       "get": {
+        "description": "Aggressor, defender, allies, and kill stats.",
         "operationId": "war",
         "parameters": [
           {
