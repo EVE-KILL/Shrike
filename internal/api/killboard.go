@@ -32,6 +32,16 @@ func registerKillboardRoutes(a huma.API, opts Options) {
 		Path:        "/killlist",
 		Summary:     "Killboard kill list",
 		Tags:        []string{"killboard", "killmails"},
+		Responses: map[string]*huma.Response{
+			"200": {
+				Description: "OK",
+				Content: map[string]*huma.MediaType{
+					"application/json": {
+						Schema: killlistFrontendResponseSchema(),
+					},
+				},
+			},
+		},
 	}, routeJSONCache(
 		opts,
 		killlistCacheTTL,
@@ -90,6 +100,15 @@ func registerKillboardRoutes(a huma.API, opts Options) {
 		"public, max-age=30, s-maxage=120, stale-while-revalidate=120",
 		graphHandler(opts),
 	))
+}
+
+func killlistFrontendResponseSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"kills":      arraySchema(killlistRowSchema()),
+		"hasMore":    boolSchema(),
+		"cursor":     nullable(intSchema()),
+		"totalPages": intSchema(),
+	}, "kills", "hasMore", "cursor")
 }
 
 func killlistHandler(opts Options) legacyHandler {

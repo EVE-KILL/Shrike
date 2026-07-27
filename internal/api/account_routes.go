@@ -109,6 +109,9 @@ func registerAccountServiceRoutes(
 		Security:    requiredSession,
 	}, esiLogs)
 
+	registerCanonicalAnnouncementsRoute(a, opts, service)
+	registerCanonicalAnnouncementAccountRoutes(a, service, requiredSession)
+
 	activeAnnouncements := routeJSONCacheBy(
 		opts,
 		30*time.Second,
@@ -116,31 +119,8 @@ func registerAccountServiceRoutes(
 		func(*legacyRequest) string { return "announcements:active" },
 		service.activeAnnouncementsHandler(),
 	)
-	registerLegacy(a, huma.Operation{
-		OperationID: "announcements",
-		Method:      http.MethodGet,
-		Path:        "/announcements",
-		Summary:     "Active site announcements",
-		Tags:        []string{"announcements"},
-	}, activeAnnouncements)
 	dismissedAnnouncements := service.dismissedAnnouncementsHandler()
-	registerLegacy(a, huma.Operation{
-		OperationID: "account-dismissed-announcements",
-		Method:      http.MethodGet,
-		Path:        "/me/announcements/dismissed",
-		Summary:     "Announcements dismissed by this account",
-		Tags:        []string{"account", "announcements"},
-		Security:    requiredSession,
-	}, dismissedAnnouncements)
 	dismissAnnouncement := service.dismissAnnouncementHandler()
-	registerLegacy(a, huma.Operation{
-		OperationID: "account-announcement-dismissal",
-		Method:      http.MethodPut,
-		Path:        "/me/announcements/{id}/dismissal",
-		Summary:     "Dismiss an announcement",
-		Tags:        []string{"account", "announcements"},
-		Security:    requiredSession,
-	}, dismissAnnouncement)
 
 	notificationReplies := service.notificationRepliesHandler()
 	registerLegacy(a, huma.Operation{

@@ -1,6 +1,157 @@
 {
   "components": {
     "schemas": {
+      "Announcement": {
+        "additionalProperties": false,
+        "properties": {
+          "body_html": {
+            "type": "string"
+          },
+          "body_md": {
+            "type": "string"
+          },
+          "color": {
+            "enum": [
+              "info",
+              "warning",
+              "danger",
+              "success"
+            ],
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "link_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "link_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "starts_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              1,
+              2,
+              3
+            ],
+            "format": "int32",
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tier",
+          "title",
+          "body_md",
+          "body_html",
+          "color",
+          "icon",
+          "link_url",
+          "link_label",
+          "starts_at",
+          "expires_at",
+          "created_at"
+        ],
+        "type": "object"
+      },
+      "AnnouncementDismissalResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "/api/schemas/AnnouncementDismissalResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "type": "object"
+      },
+      "AnnouncementsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "/api/schemas/AnnouncementsResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "announcements": {
+            "items": {
+              "$ref": "#/components/schemas/Announcement"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "announcements"
+        ],
+        "type": "object"
+      },
+      "DismissedAnnouncementIDsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this object.",
+            "examples": [
+              "/api/schemas/DismissedAnnouncementIDsResponse.json"
+            ],
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "dismissedIds": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "dismissedIds"
+        ],
+        "type": "object"
+      },
       "ErrorDetail": {
         "additionalProperties": false,
         "properties": {
@@ -6468,6 +6619,19 @@
                     "null"
                   ]
                 },
+                "final_blow_ship_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "final_blow_ship_type_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "is_npc": {
                   "type": "boolean"
                 },
@@ -6486,6 +6650,13 @@
                   "format": "date-time",
                   "type": "string"
                 },
+                "meta_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "region_id": {
                   "format": "int64",
                   "type": [
@@ -6500,6 +6671,12 @@
                   ]
                 },
                 "ship_group_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "ship_market_path": {
                   "type": [
                     "string",
                     "null"
@@ -6579,6 +6756,39 @@
                   ]
                 }
               },
+              "required": [
+                "killmail_id",
+                "killmail_hash",
+                "killmail_time",
+                "total_value",
+                "attacker_count",
+                "is_npc",
+                "is_solo",
+                "ship_type_id",
+                "ship_name",
+                "ship_group_name",
+                "ship_market_path",
+                "meta_group_id",
+                "victim_character_id",
+                "victim_character_name",
+                "victim_corporation_id",
+                "victim_corporation_name",
+                "victim_alliance_id",
+                "victim_alliance_name",
+                "final_blow_character_id",
+                "final_blow_character_name",
+                "final_blow_corporation_id",
+                "final_blow_corporation_name",
+                "final_blow_alliance_id",
+                "final_blow_alliance_name",
+                "final_blow_ship_type_id",
+                "final_blow_ship_name",
+                "solar_system_id",
+                "solar_system_name",
+                "solar_system_security",
+                "region_id",
+                "region_name"
+              ],
               "type": "object"
             },
             "type": "array"
@@ -6687,6 +6897,19 @@
                     "null"
                   ]
                 },
+                "final_blow_ship_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "final_blow_ship_type_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "is_npc": {
                   "type": "boolean"
                 },
@@ -6705,6 +6928,13 @@
                   "format": "date-time",
                   "type": "string"
                 },
+                "meta_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "region_id": {
                   "format": "int64",
                   "type": [
@@ -6719,6 +6949,12 @@
                   ]
                 },
                 "ship_group_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "ship_market_path": {
                   "type": [
                     "string",
                     "null"
@@ -6798,6 +7034,39 @@
                   ]
                 }
               },
+              "required": [
+                "killmail_id",
+                "killmail_hash",
+                "killmail_time",
+                "total_value",
+                "attacker_count",
+                "is_npc",
+                "is_solo",
+                "ship_type_id",
+                "ship_name",
+                "ship_group_name",
+                "ship_market_path",
+                "meta_group_id",
+                "victim_character_id",
+                "victim_character_name",
+                "victim_corporation_id",
+                "victim_corporation_name",
+                "victim_alliance_id",
+                "victim_alliance_name",
+                "final_blow_character_id",
+                "final_blow_character_name",
+                "final_blow_corporation_id",
+                "final_blow_corporation_name",
+                "final_blow_alliance_id",
+                "final_blow_alliance_name",
+                "final_blow_ship_type_id",
+                "final_blow_ship_name",
+                "solar_system_id",
+                "solar_system_name",
+                "solar_system_security",
+                "region_id",
+                "region_name"
+              ],
               "type": "object"
             },
             "type": "array"
@@ -9698,6 +9967,19 @@
                     "null"
                   ]
                 },
+                "final_blow_ship_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "final_blow_ship_type_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "is_npc": {
                   "type": "boolean"
                 },
@@ -9716,6 +9998,13 @@
                   "format": "date-time",
                   "type": "string"
                 },
+                "meta_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "region_id": {
                   "format": "int64",
                   "type": [
@@ -9730,6 +10019,12 @@
                   ]
                 },
                 "ship_group_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "ship_market_path": {
                   "type": [
                     "string",
                     "null"
@@ -9809,6 +10104,39 @@
                   ]
                 }
               },
+              "required": [
+                "killmail_id",
+                "killmail_hash",
+                "killmail_time",
+                "total_value",
+                "attacker_count",
+                "is_npc",
+                "is_solo",
+                "ship_type_id",
+                "ship_name",
+                "ship_group_name",
+                "ship_market_path",
+                "meta_group_id",
+                "victim_character_id",
+                "victim_character_name",
+                "victim_corporation_id",
+                "victim_corporation_name",
+                "victim_alliance_id",
+                "victim_alliance_name",
+                "final_blow_character_id",
+                "final_blow_character_name",
+                "final_blow_corporation_id",
+                "final_blow_corporation_name",
+                "final_blow_alliance_id",
+                "final_blow_alliance_name",
+                "final_blow_ship_type_id",
+                "final_blow_ship_name",
+                "solar_system_id",
+                "solar_system_name",
+                "solar_system_security",
+                "region_id",
+                "region_name"
+              ],
               "type": "object"
             },
             "type": "array"
@@ -11347,6 +11675,19 @@
                     "null"
                   ]
                 },
+                "final_blow_ship_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "final_blow_ship_type_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "is_npc": {
                   "type": "boolean"
                 },
@@ -11365,6 +11706,13 @@
                   "format": "date-time",
                   "type": "string"
                 },
+                "meta_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "region_id": {
                   "format": "int64",
                   "type": [
@@ -11379,6 +11727,12 @@
                   ]
                 },
                 "ship_group_name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "ship_market_path": {
                   "type": [
                     "string",
                     "null"
@@ -11458,6 +11812,39 @@
                   ]
                 }
               },
+              "required": [
+                "killmail_id",
+                "killmail_hash",
+                "killmail_time",
+                "total_value",
+                "attacker_count",
+                "is_npc",
+                "is_solo",
+                "ship_type_id",
+                "ship_name",
+                "ship_group_name",
+                "ship_market_path",
+                "meta_group_id",
+                "victim_character_id",
+                "victim_character_name",
+                "victim_corporation_id",
+                "victim_corporation_name",
+                "victim_alliance_id",
+                "victim_alliance_name",
+                "final_blow_character_id",
+                "final_blow_character_name",
+                "final_blow_corporation_id",
+                "final_blow_corporation_name",
+                "final_blow_alliance_id",
+                "final_blow_alliance_name",
+                "final_blow_ship_type_id",
+                "final_blow_ship_name",
+                "solar_system_id",
+                "solar_system_name",
+                "solar_system_security",
+                "region_id",
+                "region_name"
+              ],
               "type": "object"
             },
             "type": "array"
@@ -14966,18 +15353,40 @@
     },
     "/announcements": {
       "get": {
+        "description": "Returns active editorial announcements and live ticker events using one stable presentation contract.",
         "operationId": "announcements",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnnouncementsResponse"
                 }
               }
             },
-            "description": "OK"
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "X-Cache": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
           }
         },
         "summary": "Active site announcements",
@@ -20570,7 +20979,249 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
+                  "additionalProperties": false,
+                  "properties": {
+                    "cursor": {
+                      "format": "int64",
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "hasMore": {
+                      "type": "boolean"
+                    },
+                    "kills": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "attacker_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "final_blow_alliance_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "final_blow_alliance_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "final_blow_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_corporation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "final_blow_corporation_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_ship_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_ship_type_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "is_npc": {
+                            "type": "boolean"
+                          },
+                          "is_solo": {
+                            "type": "boolean"
+                          },
+                          "killmail_hash": {
+                            "type": "string"
+                          },
+                          "killmail_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "killmail_time": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "meta_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "region_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_group_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_market_path": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_type_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "solar_system_security": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "total_value": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "victim_alliance_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_alliance_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "victim_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "victim_corporation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_corporation_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "killmail_id",
+                          "killmail_hash",
+                          "killmail_time",
+                          "total_value",
+                          "attacker_count",
+                          "is_npc",
+                          "is_solo",
+                          "ship_type_id",
+                          "ship_name",
+                          "ship_group_name",
+                          "ship_market_path",
+                          "meta_group_id",
+                          "victim_character_id",
+                          "victim_character_name",
+                          "victim_corporation_id",
+                          "victim_corporation_name",
+                          "victim_alliance_id",
+                          "victim_alliance_name",
+                          "final_blow_character_id",
+                          "final_blow_character_name",
+                          "final_blow_corporation_id",
+                          "final_blow_corporation_name",
+                          "final_blow_alliance_id",
+                          "final_blow_alliance_name",
+                          "final_blow_ship_type_id",
+                          "final_blow_ship_name",
+                          "solar_system_id",
+                          "solar_system_name",
+                          "solar_system_security",
+                          "region_id",
+                          "region_name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "totalPages": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "kills",
+                    "hasMore",
+                    "cursor"
+                  ],
                   "type": "object"
                 }
               }
@@ -21423,12 +22074,28 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/DismissedAnnouncementIDsResponse"
                 }
               }
             },
-            "description": "OK"
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
           }
         },
         "security": [
@@ -21440,24 +22107,51 @@
         "tags": [
           "account",
           "announcements"
-        ],
-        "x-audience": "account"
+        ]
       }
     },
     "/me/announcements/{id}/dismissal": {
       "put": {
         "operationId": "account-announcement-dismissal",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnnouncementDismissalResponse"
                 }
               }
             },
-            "description": "OK"
+            "description": "OK",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
           }
         },
         "security": [
@@ -21469,8 +22163,7 @@
         "tags": [
           "account",
           "announcements"
-        ],
-        "x-audience": "account"
+        ]
       }
     },
     "/me/boards": {

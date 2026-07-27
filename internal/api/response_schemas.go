@@ -239,7 +239,7 @@ func searchResponseSchema() *huma.Schema {
 }
 
 func killlistRowSchema() *huma.Schema {
-	return recordSchema(map[string]*huma.Schema{
+	schema := recordSchema(map[string]*huma.Schema{
 		"killmail_id":                 intSchema(),
 		"killmail_hash":               stringSchema(),
 		"killmail_time":               timestampSchema(),
@@ -250,6 +250,8 @@ func killlistRowSchema() *huma.Schema {
 		"ship_type_id":                nullable(intSchema()),
 		"ship_name":                   nullable(stringSchema()),
 		"ship_group_name":             nullable(stringSchema()),
+		"ship_market_path":            nullable(stringSchema()),
+		"meta_group_id":               nullable(intSchema()),
 		"victim_character_id":         nullable(intSchema()),
 		"victim_character_name":       nullable(stringSchema()),
 		"victim_corporation_id":       nullable(intSchema()),
@@ -262,12 +264,29 @@ func killlistRowSchema() *huma.Schema {
 		"final_blow_corporation_name": nullable(stringSchema()),
 		"final_blow_alliance_id":      nullable(intSchema()),
 		"final_blow_alliance_name":    nullable(stringSchema()),
+		"final_blow_ship_type_id":     nullable(intSchema()),
+		"final_blow_ship_name":        nullable(stringSchema()),
 		"solar_system_id":             intSchema(),
 		"solar_system_name":           nullable(stringSchema()),
 		"solar_system_security":       nullable(numberSchema()),
 		"region_id":                   nullable(intSchema()),
 		"region_name":                 nullable(stringSchema()),
 	})
+	schema.Required = []string{
+		"killmail_id", "killmail_hash", "killmail_time", "total_value",
+		"attacker_count", "is_npc", "is_solo", "ship_type_id",
+		"ship_name", "ship_group_name", "ship_market_path", "meta_group_id",
+		"victim_character_id", "victim_character_name",
+		"victim_corporation_id", "victim_corporation_name",
+		"victim_alliance_id", "victim_alliance_name",
+		"final_blow_character_id", "final_blow_character_name",
+		"final_blow_corporation_id", "final_blow_corporation_name",
+		"final_blow_alliance_id", "final_blow_alliance_name",
+		"final_blow_ship_type_id", "final_blow_ship_name",
+		"solar_system_id", "solar_system_name", "solar_system_security",
+		"region_id", "region_name",
+	}
+	return schema
 }
 
 func killmailESISchema() *huma.Schema {

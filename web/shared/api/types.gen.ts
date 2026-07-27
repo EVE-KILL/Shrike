@@ -5,6 +5,45 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}/api` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | (string & {});
 };
 
+export type Announcement = {
+    body_html: string;
+    body_md: string;
+    color: 'info' | 'warning' | 'danger' | 'success';
+    created_at: string;
+    expires_at: string;
+    icon: string | null;
+    id: number;
+    link_label: string | null;
+    link_url: string | null;
+    starts_at: string;
+    tier: 1 | 2 | 3;
+    title: string;
+};
+
+export type AnnouncementDismissalResponse = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    ok: boolean;
+};
+
+export type AnnouncementsResponse = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    announcements: Array<Announcement>;
+};
+
+export type DismissedAnnouncementIdsResponse = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    dismissedIds: Array<number>;
+};
+
 export type ErrorDetail = {
     /**
      * Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
@@ -1857,36 +1896,40 @@ export type KillmailSearchResponse = {
      */
     readonly $schema: string;
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -1909,36 +1952,40 @@ export type KillmailsResponse = {
      */
     readonly $schema: string;
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -2631,36 +2678,40 @@ export type SdeRegionKillsResponse = {
      */
     readonly $schema: string;
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -3027,36 +3078,40 @@ export type SdeSystemKillsResponse = {
      */
     readonly $schema: string;
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -3438,6 +3493,18 @@ export type WarsResponse = {
         cursor: number | null;
         hasMore: boolean;
     };
+};
+
+export type AnnouncementDismissalResponseWritable = {
+    ok: boolean;
+};
+
+export type AnnouncementsResponseWritable = {
+    announcements: Array<Announcement>;
+};
+
+export type DismissedAnnouncementIdsResponseWritable = {
+    dismissedIds: Array<number>;
 };
 
 export type ErrorModelWritable = {
@@ -5003,36 +5070,40 @@ export type KillmailResponseWritable = {
 
 export type KillmailSearchResponseWritable = {
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -5047,36 +5118,40 @@ export type KillmailsCountResponseWritable = {
 
 export type KillmailsResponseWritable = {
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -5673,36 +5748,40 @@ export type SdeRacesResponseWritable = {
 
 export type SdeRegionKillsResponseWritable = {
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -6013,36 +6092,40 @@ export type SdeSystemJumpsResponseWritable = {
 
 export type SdeSystemKillsResponseWritable = {
     data: Array<{
-        attacker_count?: number;
-        final_blow_alliance_id?: number | null;
-        final_blow_alliance_name?: string | null;
-        final_blow_character_id?: number | null;
-        final_blow_character_name?: string | null;
-        final_blow_corporation_id?: number | null;
-        final_blow_corporation_name?: string | null;
-        is_npc?: boolean;
-        is_solo?: boolean;
-        killmail_hash?: string;
-        killmail_id?: number;
+        attacker_count: number;
+        final_blow_alliance_id: number | null;
+        final_blow_alliance_name: string | null;
+        final_blow_character_id: number | null;
+        final_blow_character_name: string | null;
+        final_blow_corporation_id: number | null;
+        final_blow_corporation_name: string | null;
+        final_blow_ship_name: string | null;
+        final_blow_ship_type_id: number | null;
+        is_npc: boolean;
+        is_solo: boolean;
+        killmail_hash: string;
+        killmail_id: number;
         /**
          * UTC timestamp with millisecond precision.
          */
-        killmail_time?: string;
-        region_id?: number | null;
-        region_name?: string | null;
-        ship_group_name?: string | null;
-        ship_name?: string | null;
-        ship_type_id?: number | null;
-        solar_system_id?: number;
-        solar_system_name?: string | null;
-        solar_system_security?: number | null;
-        total_value?: number;
-        victim_alliance_id?: number | null;
-        victim_alliance_name?: string | null;
-        victim_character_id?: number | null;
-        victim_character_name?: string | null;
-        victim_corporation_id?: number | null;
-        victim_corporation_name?: string | null;
+        killmail_time: string;
+        meta_group_id: number | null;
+        region_id: number | null;
+        region_name: string | null;
+        ship_group_name: string | null;
+        ship_market_path: string | null;
+        ship_name: string | null;
+        ship_type_id: number | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        total_value: number;
+        victim_alliance_id: number | null;
+        victim_alliance_name: string | null;
+        victim_character_id: number | null;
+        victim_character_name: string | null;
+        victim_corporation_id: number | null;
+        victim_corporation_name: string | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -7661,16 +7744,23 @@ export type AnnouncementsData = {
     url: '/announcements';
 };
 
+export type AnnouncementsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type AnnouncementsError = AnnouncementsErrors[keyof AnnouncementsErrors];
+
 export type AnnouncementsResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: AnnouncementsResponse;
 };
 
-export type AnnouncementsResponse = AnnouncementsResponses[keyof AnnouncementsResponses];
+export type AnnouncementsResponse2 = AnnouncementsResponses[keyof AnnouncementsResponses];
 
 export type AnnouncementsActiveCompatData = {
     body?: never;
@@ -11275,7 +11365,46 @@ export type KilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -11852,31 +11981,47 @@ export type AccountDismissedAnnouncementsData = {
     url: '/me/announcements/dismissed';
 };
 
+export type AccountDismissedAnnouncementsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type AccountDismissedAnnouncementsError = AccountDismissedAnnouncementsErrors[keyof AccountDismissedAnnouncementsErrors];
+
 export type AccountDismissedAnnouncementsResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: DismissedAnnouncementIdsResponse;
 };
 
 export type AccountDismissedAnnouncementsResponse = AccountDismissedAnnouncementsResponses[keyof AccountDismissedAnnouncementsResponses];
 
 export type AccountAnnouncementDismissalData = {
     body?: never;
-    path?: never;
+    path: {
+        id: number;
+    };
     query?: never;
     url: '/me/announcements/{id}/dismissal';
 };
+
+export type AccountAnnouncementDismissalErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type AccountAnnouncementDismissalError = AccountAnnouncementDismissalErrors[keyof AccountAnnouncementDismissalErrors];
 
 export type AccountAnnouncementDismissalResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: AnnouncementDismissalResponse;
 };
 
 export type AccountAnnouncementDismissalResponse = AccountAnnouncementDismissalResponses[keyof AccountAnnouncementDismissalResponses];

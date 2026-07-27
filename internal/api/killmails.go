@@ -12,47 +12,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-const killlistSelect = `
-	SELECT
-		k.killmail_id, k.killmail_hash, k.killmail_time,
-		COALESCE(k.total_value, 0) AS total_value,
-		COALESCE(k.attacker_count, 0) AS attacker_count,
-		COALESCE(k.is_npc, false) AS is_npc,
-		COALESCE(k.is_solo, false) AS is_solo,
-		k.victim_ship_type_id AS ship_type_id,
-		ship.name AS ship_name,
-		ship_group.name AS ship_group_name,
-		k.victim_character_id, victim_character.name AS victim_character_name,
-		k.victim_corporation_id, victim_corporation.name AS victim_corporation_name,
-		k.victim_alliance_id, victim_alliance.name AS victim_alliance_name,
-		final_blow.character_id AS final_blow_character_id,
-		final_character.name AS final_blow_character_name,
-		final_blow.corporation_id AS final_blow_corporation_id,
-		final_corporation.name AS final_blow_corporation_name,
-		final_blow.alliance_id AS final_blow_alliance_id,
-		final_alliance.name AS final_blow_alliance_name,
-		k.solar_system_id, system.system_name AS solar_system_name,
-		system.security AS solar_system_security,
-		k.region_id, region.name AS region_name
-	FROM killmails k
-	LEFT JOIN LATERAL (
-		SELECT character_id, corporation_id, alliance_id
-		FROM killmail_attackers
-		WHERE killmail_id = k.killmail_id AND final_blow = true
-		ORDER BY attacker_index
-		LIMIT 1
-	) final_blow ON true
-	LEFT JOIN inv_types ship ON ship.type_id = k.victim_ship_type_id
-	LEFT JOIN inv_groups ship_group ON ship_group.group_id = k.victim_ship_group_id
-	LEFT JOIN characters victim_character ON victim_character.character_id = k.victim_character_id
-	LEFT JOIN corporations victim_corporation ON victim_corporation.corporation_id = k.victim_corporation_id
-	LEFT JOIN alliances victim_alliance ON victim_alliance.alliance_id = k.victim_alliance_id
-	LEFT JOIN characters final_character ON final_character.character_id = final_blow.character_id
-	LEFT JOIN corporations final_corporation ON final_corporation.corporation_id = final_blow.corporation_id
-	LEFT JOIN alliances final_alliance ON final_alliance.alliance_id = final_blow.alliance_id
-	LEFT JOIN solar_systems system ON system.solar_system_id = k.solar_system_id
-	LEFT JOIN regions region ON region.region_id = k.region_id`
-
 func registerKillmailRoutes(a huma.API, opts Options) {
 	registerLegacy(a, huma.Operation{
 		OperationID: "killmails",
@@ -231,7 +190,7 @@ func loadKilllistPage(
 		where = append(where, fmt.Sprintf("k.killmail_id < $%d", len(args)))
 	}
 
-	query := killlistSelect
+	query := campaignKilllistSelect
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
 	}
@@ -243,6 +202,9 @@ func loadKilllistPage(
 	query += fmt.Sprintf(" ORDER BY k.killmail_id %s LIMIT $%d", order, len(args))
 	rows, err := queryMaps(ctx, db, query, args...)
 	if err != nil {
+		return legacyPayload{}, err
+	}
+	if err := enrichUniverseKilllist(ctx, db, rows); err != nil {
 		return legacyPayload{}, err
 	}
 	return paginatedRows(rows, page.Limit, "killmail_id"), nil

@@ -192,6 +192,27 @@ type accountAnnouncement struct {
 	ArchivedAt *time.Time `json:"archived_at"`
 }
 
+// Announcement is the stable public shape shared by editorial announcements
+// stored in Postgres and ephemeral ticker announcements stored in Valkey.
+//
+// Database-only bookkeeping such as created_by, updated_at, and archived_at is
+// intentionally not part of the public contract. Ephemeral announcements never
+// had those fields, and the frontend only consumes the presentation fields.
+type Announcement struct {
+	ID        int64     `json:"id"`
+	Tier      int16     `json:"tier" enum:"1,2,3"`
+	Title     string    `json:"title"`
+	BodyMD    string    `json:"body_md"`
+	BodyHTML  string    `json:"body_html"`
+	Color     string    `json:"color" enum:"info,warning,danger,success"`
+	Icon      *string   `json:"icon"`
+	LinkURL   *string   `json:"link_url"`
+	LinkLabel *string   `json:"link_label"`
+	StartsAt  time.Time `json:"starts_at"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type accountNotificationQuery struct {
 	CharacterID int32
 	DomainID    *int32
