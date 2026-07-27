@@ -1,0 +1,22 @@
+{
+  "name": "@evekill/dogma",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "browser": "./src/index.browser.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "fetch-upstream": "bash scripts/fetch-upstream.sh",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "protobufjs": "^7.4.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

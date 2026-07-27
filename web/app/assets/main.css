@@ -1,0 +1,215 @@
+@import "tailwindcss";
+@import "./css/variables.css";
+@import "./css/body.css";
+@import "./css/layout.css";
+@import "./css/components.css";
+
+@theme {
+    --font-sans: 'Exo 2', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /*
+     * Themeable Color Overrides
+     *
+     * These override Tailwind's built-in color palette to reference CSS custom
+     * properties from variables.css. This allows the theme system (useTheme
+     * composable + ek_theme cookie) to change colors site-wide by updating
+     * the underlying CSS variables at runtime.
+     *
+     * Chain: @theme --color-blue-500 → var(--color-brand-primary)
+     *        variables.css defines default: --color-brand-primary: #3b82f6
+     *        useTheme composable overrides: documentElement.style.setProperty(...)
+     *
+     * Opacity modifiers (e.g. bg-blue-500/20) work via CSS color-mix().
+     */
+
+    /* Brand / accent — overrides Tailwind blue */
+    --color-blue-400: var(--color-brand-primary);
+    --color-blue-500: var(--color-brand-primary);
+    --color-blue-600: var(--color-brand-primary-hover);
+
+    /* Danger / error — overrides Tailwind red */
+    --color-red-400: var(--color-error);
+    --color-red-500: var(--color-error);
+    --color-red-600: color-mix(in srgb, var(--color-error) 80%, black);
+
+    /* Success — overrides Tailwind green */
+    --color-green-400: var(--color-success);
+    --color-green-500: var(--color-success);
+
+    /* Brand secondary — overrides Tailwind emerald */
+    --color-emerald-400: var(--color-brand-secondary);
+    --color-emerald-500: var(--color-brand-secondary);
+
+    /* Warning — overrides Tailwind yellow */
+    --color-yellow-400: var(--color-warning);
+    --color-yellow-500: var(--color-warning);
+
+    /* Custom semantic utilities — creates text-isk, text-npc, bg-isk, etc. */
+    --color-isk: var(--color-isk-value);
+    --color-npc: var(--color-npc-text);
+}
+
+/* Dark mode variant — always active via class on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Triglavian font for Pochven locations */
+@font-face {
+    font-family: 'Triglavian';
+    src: url('/fonts/Triglavian-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Exo 2 — geometric/tech font similar to EVE's Shentox */
+@font-face {
+    font-family: 'Exo 2';
+    src: url('/fonts/Exo2-Variable.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+.font-triglavian {
+    font-family: 'Triglavian', sans-serif;
+}
+
+/*
+ * Typography scale — 4 tiers for content text
+ *
+ *   text-fine   12px  — badges, minor metadata, timestamps
+ *   text-xs     14px  — labels, table headers, secondary info
+ *   text-sm     16px  — body text, names, descriptions
+ *   text-base   18px  — emphasized content, intro text
+ *
+ * Headings (text-lg … text-3xl) are unchanged.
+ */
+@utility text-fine {
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+/* Loss row styling — references themeable CSS variables */
+@utility loss-row {
+    background-color: var(--color-loss-bg);
+    border-left: 2px solid var(--color-loss-border);
+}
+
+@utility loss-row-hover {
+    &:hover {
+        background-color: var(--color-loss-hover);
+    }
+}
+
+@utility scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+}
+
+.text-xs {
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+}
+.text-sm {
+    font-size: 1rem !important;
+    line-height: 1.5rem !important;
+}
+.text-base {
+    font-size: 1.125rem !important;
+    line-height: 1.75rem !important;
+}
+
+/* Font rendering */
+* {
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+html,
+body {
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+}
+
+#__nuxt {
+    min-height: 100vh;
+    background-color: transparent !important;
+}
+
+body,
+html {
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    color-scheme: dark;
+}
+
+html {
+    background-color: black !important;
+}
+
+/* Text selection — uses themeable selection colors */
+::selection {
+    background-color: color-mix(in srgb, var(--color-selection-bg) 40%, transparent);
+    color: var(--color-selection-text);
+}
+
+/* Loading skeletons — subtle brand tint instead of neutral gray */
+.animate-pulse {
+    background-color: color-mix(in srgb, var(--color-brand-primary) 4%, rgba(255, 255, 255, 0.04)) !important;
+}
+
+/* Cursor rules */
+a, button, [role="button"], .cursor-pointer, select, summary,
+input[type="submit"], input[type="button"], input[type="reset"],
+input[type="checkbox"], input[type="radio"] {
+    cursor: pointer;
+}
+
+input:disabled, button:disabled, select:disabled, textarea:disabled {
+    cursor: not-allowed !important;
+}
+
+/* Scrollbar styling */
+html {
+    scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color) !important;
+    border-radius: var(--scrollbar-border-radius);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-color) transparent !important;
+}
+
+html {
+    scrollbar-gutter: stable !important;
+    background-color: black !important;
+}
+
+/* Prevent iOS zoom on inputs */
+input[type="text"], input[type="search"], input[type="email"],
+input[type="password"], input[type="number"], input[type="tel"],
+input[type="url"], textarea {
+    font-size: 16px !important;
+    touch-action: auto;
+}
+
+button, a, input, select, textarea {
+    touch-action: manipulation;
+}

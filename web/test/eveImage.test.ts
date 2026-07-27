@@ -1,0 +1,55 @@
+import { describe, expect, test } from 'bun:test'
+import {
+    eveImageSizeFromURL,
+    eveImageSrcset,
+    eveImageURL,
+} from '../shared/utils/eveImage'
+
+describe('EVE image URLs', () => {
+    test('sets a supported size without losing existing query parameters', () => {
+        expect(eveImageURL(
+            '/images/characters/7/portrait?foo=bar',
+            { size: 64 },
+        )).toBe('/images/characters/7/portrait?foo=bar&size=64')
+    })
+
+    test('builds a retina source set backed by Go variants', () => {
+        expect(eveImageSrcset(
+            '/images/types/670/icon?size=64',
+            64,
+        )).toBe(
+            '/images/types/670/icon?size=64 1x, ' +
+            '/images/types/670/icon?size=128 2x',
+        )
+    })
+
+    test('does not request unsupported map sizes', () => {
+        expect(eveImageSrcset('/images/systems/30000142', 128)).toBe(
+            '/images/systems/30000142?size=128',
+        )
+    })
+
+    test('sizes and converts legacy portraits through Go', () => {
+        expect(eveImageSrcset(
+            '/images/oldcharacters/7',
+            64,
+            'webp',
+        )).toBe(
+            '/images/oldcharacters/7?size=64&format=webp 1x, ' +
+            '/images/oldcharacters/7?size=128&format=webp 2x',
+        )
+    })
+
+    test('leaves non-image-service URLs untouched', () => {
+        expect(eveImageURL('https://example.com/image.png', {
+            size: 64,
+            format: 'webp',
+        })).toBe('https://example.com/image.png')
+    })
+
+    test('reads an existing supported size', () => {
+        expect(eveImageSizeFromURL(
+            '/images/alliances/99000001/logo?size=256',
+        )).toBe(256)
+    })
+})
