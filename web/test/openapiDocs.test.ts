@@ -53,15 +53,26 @@ describe('OpenAPI to docs model', () => {
         expect(enums.every(p => (p.values?.length ?? 0) > 0)).toBe(true)
     })
 
-    // No write operation currently declares a JSON body schema: the handlers
-    // read req.Body directly, so Huma has no input struct to describe. The
-    // converter must therefore degrade to a body-less card rather than throw,
-    // and this pins that until the handlers grow typed inputs.
-    test('survives write operations that declare no body schema', () => {
+    // Write endpoints now carry generated schemas, so the card renders real
+    // fields instead of an empty textarea.
+    test('exposes request bodies as editable fields', () => {
         const all = model.groups.flatMap(g => g.tags.flatMap(t => t.endpoints))
-        const writes = all.filter(e => e.method !== 'GET')
-        expect(writes.length).toBeGreaterThan(0)
-        expect(writes.every(e => e.body === undefined)).toBe(true)
+        const withBody = all.filter(e => e.method !== 'GET' && e.body)
+        expect(withBody.length).toBeGreaterThan(50)
+
+        const resolve = all.find(e => e.path === '/resolve' && e.method === 'POST')
+        expect(Object.keys(resolve!.body!.fields)).toContain('names')
+        expect(resolve!.body!.fields.names!.required).toBe(true)
+    })
+
+    // The action endpoints read no body at all, and the two uploads are
+    // multipart. The converter must leave those as body-less cards rather
+    // than inventing an empty form.
+    test('leaves body-less write endpoints without a form', () => {
+        const all = model.groups.flatMap(g => g.tags.flatMap(t => t.endpoints))
+        const logout = all.find(e => e.path === '/auth/logout' && e.method === 'POST')
+        expect(logout).toBeDefined()
+        expect(logout!.body).toBeUndefined()
     })
 
     test('surfaces every method the API registers, not just GET and POST', () => {
