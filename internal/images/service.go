@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"sync"
 	"time"
 
@@ -93,6 +94,7 @@ func (e *Error) Error() string {
 func (e *Error) Unwrap() error { return e.Err }
 
 func New(options Options) *Service {
+	store := normalizeObjectStore(options.Store)
 	client := options.HTTPClient
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
@@ -106,11 +108,30 @@ func New(options Options) *Service {
 		upstream = "https://images.evetech.net"
 	}
 	return &Service{
-		store: options.Store, client: client, userAgent: options.UserAgent,
+		store: store, client: client, userAgent: options.UserAgent,
 		cache:   NewCache(options.CacheBytes, options.CacheTTL),
 		refresh: options.Refresh, now: now, upstream: upstream,
 		maximum: defaultMaximumObject, social: options.Social,
 	}
+}
+
+// ObjectStore is an interface, so assigning a typed nil pointer to it produces
+// a non-nil interface. Normalize that state at the service boundary: disabled
+// image storage must return 503 rather than reaching a method with a nil
+// receiver and panicking.
+func normalizeObjectStore(store ObjectStore) ObjectStore {
+	if store == nil {
+		return nil
+	}
+	value := reflect.ValueOf(store)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map,
+		reflect.Pointer, reflect.Slice:
+		if value.IsNil() {
+			return nil
+		}
+	}
+	return store
 }
 
 func (s *Service) Available() bool { return s != nil && s.store != nil }

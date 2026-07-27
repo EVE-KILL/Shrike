@@ -207,6 +207,8 @@ func clearEnv(t *testing.T) {
 		"REDIS_CACHE_HOST", "REDIS_CACHE_PORT", "VALKEY_QUEUE", "VALKEY_CACHE",
 		"MEMGRAPH_URL", "PORT",
 		"EVE_CLIENT_ID", "EVE_CLIENT_SECRET", "EVE_CALLBACK_URL", "ESI_USER_AGENT",
+		"OPENAI_API_KEY", "NUXT_OPENAI_API_KEY",
+		"KLIPY_API_KEY", "NUXT_KLIPY_API_KEY",
 		"B2_ENDPOINT", "B2_MEDIA_BUCKET", "B2_IMAGES_BUCKET",
 		"B2_KEY_ID", "B2_APP_KEY", "IMAGE_CACHE_BYTES",
 		"NODE_ENV", "GIT_SHA", "LOG_LEVEL", "LOG_FORMAT",
@@ -218,6 +220,38 @@ func clearEnv(t *testing.T) {
 	// Load walks upward from cwd looking for .env; run from a scratch directory
 	// so the repository's own files are never picked up.
 	t.Chdir(t.TempDir())
+}
+
+func TestThirdPartyAPIKeysLoadFromCanonicalAndLegacyNames(t *testing.T) {
+	clearEnv(t)
+	path := writeDotenv(t, "NUXT_OPENAI_API_KEY=legacy-openai\nNUXT_KLIPY_API_KEY=legacy-klipy\n")
+
+	c, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.OpenAIAPIKey != "legacy-openai" || c.KlipyAPIKey != "legacy-klipy" {
+		t.Fatalf(
+			"legacy keys = OpenAI %q, Klipy %q",
+			c.OpenAIAPIKey,
+			c.KlipyAPIKey,
+		)
+	}
+
+	t.Setenv("OPENAI_API_KEY", "canonical-openai")
+	t.Setenv("KLIPY_API_KEY", "canonical-klipy")
+	c, err = Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.OpenAIAPIKey != "canonical-openai" ||
+		c.KlipyAPIKey != "canonical-klipy" {
+		t.Fatalf(
+			"canonical keys = OpenAI %q, Klipy %q",
+			c.OpenAIAPIKey,
+			c.KlipyAPIKey,
+		)
+	}
 }
 
 func TestRendererSocketConfiguration(t *testing.T) {

@@ -129,6 +129,8 @@ its default SIGTERM.`,
 				DomainAssets: domainAssets,
 				Images:       imageService,
 				RequestGuard: api.NewRequestGuard(),
+				OpenAIAPIKey: cfg.OpenAIAPIKey,
+				KlipyAPIKey:  cfg.KlipyAPIKey,
 				Auth: api.AuthOptions{
 					ClientID: cfg.EVEClientID, ClientSecret: cfg.EVEClientSecret,
 					StateSecret: cfg.EVEClientSecret, CallbackURL: cfg.EVECallbackURL,
@@ -255,7 +257,7 @@ func (d imageRefreshDispatcher) EnqueueImageRefresh(
 	return err
 }
 
-func newImageStorage(cfg *config.Config) (*objectstore.S3Store, error) {
+func newImageStorage(cfg *config.Config) (images.ObjectStore, error) {
 	if cfg.B2ImagesPartiallyConfigured() {
 		return nil, fmt.Errorf(
 			"configure B2_ENDPOINT, B2_IMAGES_BUCKET, B2_KEY_ID, and B2_APP_KEY together",

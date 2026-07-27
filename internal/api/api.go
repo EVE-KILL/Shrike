@@ -38,6 +38,8 @@ type Options struct {
 	DomainAssets DomainAssetStorage
 	Images       *images.Service
 	RequestGuard *RequestGuard
+	OpenAIAPIKey string
+	KlipyAPIKey  string
 }
 
 type GraphDatabase interface {

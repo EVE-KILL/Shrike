@@ -13,7 +13,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -565,16 +564,14 @@ type openAICommentModerator struct {
 func newOpenAICommentModerator(
 	cache *redis.Client,
 	client *http.Client,
+	apiKey string,
 ) commentModerator {
 	if client == nil {
 		client = &http.Client{Timeout: 8 * time.Second}
 	}
 	return &openAICommentModerator{
 		cache: cache, client: client,
-		apiKey: strings.TrimSpace(firstNonEmpty(
-			os.Getenv("OPENAI_API_KEY"),
-			os.Getenv("NUXT_OPENAI_API_KEY"),
-		)),
+		apiKey: strings.TrimSpace(apiKey),
 	}
 }
 
@@ -946,16 +943,14 @@ type klipyClient struct {
 func newKlipyClient(
 	cache *redis.Client,
 	client *http.Client,
+	apiKey string,
 ) *klipyClient {
 	if client == nil {
 		client = &http.Client{Timeout: 5 * time.Second}
 	}
 	return &klipyClient{
 		cache: cache, client: client,
-		apiKey: strings.TrimSpace(firstNonEmpty(
-			os.Getenv("KLIPY_API_KEY"),
-			os.Getenv("NUXT_KLIPY_API_KEY"),
-		)),
+		apiKey: strings.TrimSpace(apiKey),
 	}
 }
 

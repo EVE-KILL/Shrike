@@ -173,8 +173,12 @@ func newCommentService(opts Options) *commentService {
 	}
 	httpClient := opts.Auth.HTTPClient
 	service.renderer = newCommentRenderer(opts.Cache, httpClient)
-	service.moderator = newOpenAICommentModerator(opts.Cache, httpClient)
-	service.klipy = newKlipyClient(opts.Cache, httpClient)
+	service.moderator = newOpenAICommentModerator(
+		opts.Cache,
+		httpClient,
+		opts.OpenAIAPIKey,
+	)
+	service.klipy = newKlipyClient(opts.Cache, httpClient, opts.KlipyAPIKey)
 	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
 		if client, queueErr := queue.New(queue.Options{Pool: pool}); queueErr == nil {
 			service.dispatcher = &riverCommentEventDispatcher{client: client}

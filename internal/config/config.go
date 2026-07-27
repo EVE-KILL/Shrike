@@ -56,6 +56,11 @@ type Config struct {
 	// policy, and the static-data endpoints may throttle requests without it.
 	ESIUserAgent string
 
+	// Optional third-party API keys used by the comments surface. The NUXT_*
+	// aliases are accepted during migration, but Go owns these integrations.
+	OpenAIAPIKey string
+	KlipyAPIKey  string
+
 	// S3-compatible Backblaze B2 storage used for custom-domain images.
 	// Names match frontend/server/utils/storage.ts so the Go process can take
 	// over without changing deployment secrets.
@@ -121,6 +126,22 @@ func Load(explicitPath string) (*Config, error) {
 		c.sources[field] = SourceDefault
 		return def
 	}
+	getAliases := func(field, def string, keys ...string) string {
+		for _, key := range keys {
+			if value, ok := os.LookupEnv(key); ok && value != "" {
+				c.sources[field] = SourceEnv
+				return value
+			}
+		}
+		for _, key := range keys {
+			if value, ok := dotenv[key]; ok && value != "" {
+				c.sources[field] = SourceDotenv
+				return value
+			}
+		}
+		c.sources[field] = SourceDefault
+		return def
+	}
 	getInt := func(field, key string, def int) int {
 		raw := get(field, key, strconv.Itoa(def))
 		n, convErr := strconv.Atoi(raw)
@@ -162,6 +183,18 @@ func Load(explicitPath string) (*Config, error) {
 	c.EVEClientSecret = get("EVEClientSecret", "EVE_CLIENT_SECRET", "")
 	c.EVECallbackURL = get("EVECallbackURL", "EVE_CALLBACK_URL", "")
 	c.ESIUserAgent = get("ESIUserAgent", "ESI_USER_AGENT", "")
+	c.OpenAIAPIKey = getAliases(
+		"OpenAIAPIKey",
+		"",
+		"OPENAI_API_KEY",
+		"NUXT_OPENAI_API_KEY",
+	)
+	c.KlipyAPIKey = getAliases(
+		"KlipyAPIKey",
+		"",
+		"KLIPY_API_KEY",
+		"NUXT_KLIPY_API_KEY",
+	)
 	c.B2Endpoint = get("B2Endpoint", "B2_ENDPOINT", "")
 	c.B2MediaBucket = get("B2MediaBucket", "B2_MEDIA_BUCKET", "")
 	c.B2ImagesBucket = get("B2ImagesBucket", "B2_IMAGES_BUCKET", "")

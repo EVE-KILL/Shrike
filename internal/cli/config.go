@@ -42,6 +42,8 @@ Credentials are redacted. The SOURCE column is the point of this command:
 			{"RedisCachePort", "REDIS_CACHE_PORT", strconv.Itoa(cfg.RedisCachePort)},
 			{"ValkeyCacheURL", "VALKEY_CACHE", config.RedactURL(cfg.ValkeyCacheURL)},
 			{"MemgraphURL", "MEMGRAPH_URL", cfg.MemgraphURL},
+			{"OpenAIAPIKey", "OPENAI_API_KEY", config.RedactSecret(cfg.OpenAIAPIKey)},
+			{"KlipyAPIKey", "KLIPY_API_KEY", config.RedactSecret(cfg.KlipyAPIKey)},
 			{"B2Endpoint", "B2_ENDPOINT", cfg.B2Endpoint},
 			{"B2MediaBucket", "B2_MEDIA_BUCKET", cfg.B2MediaBucket},
 			{"B2ImagesBucket", "B2_IMAGES_BUCKET", cfg.B2ImagesBucket},

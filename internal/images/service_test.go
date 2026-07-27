@@ -31,6 +31,26 @@ func newMemoryStore() *memoryStore {
 	return &memoryStore{objects: make(map[string]*objectstore.Object)}
 }
 
+func TestNewTreatsTypedNilObjectStoreAsUnavailable(t *testing.T) {
+	var store *objectstore.S3Store
+	service := New(Options{Store: store})
+
+	if service.Available() {
+		t.Fatal("service is available with a typed nil object store")
+	}
+	_, err := service.Entity(
+		context.Background(),
+		Character,
+		2_116_802_917,
+		64,
+		"webp",
+	)
+	status, _ := asStatus(err)
+	if status != http.StatusServiceUnavailable {
+		t.Fatalf("Entity error = %v (status %d), want 503", err, status)
+	}
+}
+
 func (s *memoryStore) GetObject(
 	_ context.Context,
 	key string,

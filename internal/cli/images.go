@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/images"
-	"github.com/eve-kill/shrike/internal/objectstore"
 	"github.com/eve-kill/shrike/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -134,7 +133,7 @@ var imagesSyncTypesCmd = &cobra.Command{
 	},
 }
 
-func openImageStore() (*objectstore.S3Store, error) {
+func openImageStore() (images.ObjectStore, error) {
 	if err := requireConfig(); err != nil {
 		return nil, err
 	}
