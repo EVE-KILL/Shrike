@@ -112,6 +112,7 @@ func New(opts Options) *Service {
 	}
 	schemas := registerRoutes(a, opts)
 	setRootNamespaceServers(a.OpenAPI())
+	applyTagMetadata(a.OpenAPI())
 	registerLegacyMethodGuards(mux)
 	mux.HandleFunc("/", legacyFallback)
 	mux.NotFound(legacyFallback)

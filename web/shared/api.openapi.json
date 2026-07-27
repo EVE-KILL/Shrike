@@ -26505,5 +26505,259 @@
       "description": "EVE-KILL API",
       "url": "/api"
     }
+  ],
+  "tags": [
+    {
+      "description": "Killmails: listings, detail, ESI form, and the fitting they carried.",
+      "name": "killmails"
+    },
+    {
+      "description": "Character, corporation, and alliance profile pages, and the panels on them.",
+      "name": "entities"
+    },
+    {
+      "description": "Character listings, detail, statistics, and kill and loss pages.",
+      "name": "characters"
+    },
+    {
+      "description": "Corporation listings, detail, members, and kill and loss pages.",
+      "name": "corporations"
+    },
+    {
+      "description": "Alliance listings, detail, member corporations, and kill and loss pages.",
+      "name": "alliances"
+    },
+    {
+      "description": "Kill lists, top lists, and most-valuable lists.",
+      "name": "killboard"
+    },
+    {
+      "description": "Top-list statistics for a single entity.",
+      "name": "statistics"
+    },
+    {
+      "description": "Batch statistics for several entities in one request.",
+      "name": "stats"
+    },
+    {
+      "description": "Daily killmail totals, by date.",
+      "name": "history"
+    },
+    {
+      "description": "Time-series data behind the killboard charts.",
+      "name": "graph"
+    },
+    {
+      "description": "Detected battles, their reports, compositions, timelines, and killmails.",
+      "name": "battles"
+    },
+    {
+      "description": "Wars, their dashboards, participants, and killmails.",
+      "name": "wars"
+    },
+    {
+      "description": "Faction warfare matchups, systems, members, and intelligence.",
+      "name": "faction-war"
+    },
+    {
+      "description": "Systems, constellations, and regions, and the kills inside them.",
+      "name": "universe"
+    },
+    {
+      "description": "Region and constellation map data.",
+      "name": "map"
+    },
+    {
+      "description": "The EVE Static Data Export: types, groups, systems, stations, and more.",
+      "name": "sde"
+    },
+    {
+      "description": "Market groups and bulk type prices.",
+      "name": "market"
+    },
+    {
+      "description": "Ship-level data: matchups and the fittings flown.",
+      "name": "ships"
+    },
+    {
+      "description": "Full-text entity search, and exact name resolution.",
+      "name": "search"
+    },
+    {
+      "description": "Ship fittings: the catalog, search, ratings, and trends.",
+      "name": "fittings"
+    },
+    {
+      "description": "Campaign definitions, their killmails, standings, and prize payouts.",
+      "name": "campaigns"
+    },
+    {
+      "description": "Comment threads, reactions, and the report queue.",
+      "name": "comments"
+    },
+    {
+      "description": "Blog posts, and the drafting and preview endpoints behind them.",
+      "name": "blog"
+    },
+    {
+      "description": "Directional and local scan parsing and analysis.",
+      "name": "scans"
+    },
+    {
+      "description": "Pilot tools built on the scan endpoints.",
+      "name": "tools"
+    },
+    {
+      "description": "Background images used by the site chrome.",
+      "name": "backgrounds"
+    },
+    {
+      "description": "EVE Single Sign-On: the login flow, the session, and token inspection.",
+      "name": "auth"
+    },
+    {
+      "description": "The signed-in character: preferences, boards, saved descriptions, and dismissals.",
+      "name": "account"
+    },
+    {
+      "description": "Per-character site settings.",
+      "name": "settings"
+    },
+    {
+      "description": "Killboards a character can manage.",
+      "name": "boards"
+    },
+    {
+      "description": "Comment replies addressed to the signed-in character.",
+      "name": "notifications"
+    },
+    {
+      "description": "EVE Swagger Interface (ESI) token state and request logs for the signed-in character.",
+      "name": "esi"
+    },
+    {
+      "description": "Campaign prize wallets and their payout authorization.",
+      "name": "wallet"
+    },
+    {
+      "description": "Site announcements, and the per-character record of which were dismissed.",
+      "name": "announcements"
+    },
+    {
+      "description": "Operator-only administration. Requires an administrator session.",
+      "name": "admin"
+    },
+    {
+      "description": "The moderation queue and its decisions.",
+      "name": "moderation"
+    },
+    {
+      "description": "Custom-domain killboards: configuration, theming, and assets.",
+      "name": "domains"
+    },
+    {
+      "description": "Liveness probe. Checks that the API can reach Postgres.",
+      "name": "health"
+    },
+    {
+      "description": "The live killmail feed, by poll or by server-sent events.",
+      "name": "feed"
+    },
+    {
+      "description": "Character, corporation, alliance, and type images, plus social cards.",
+      "name": "images"
+    },
+    {
+      "description": "Sitemap sources consumed by the frontend.",
+      "name": "sitemap"
+    },
+    {
+      "description": "Runtime site configuration served to the frontend.",
+      "name": "site"
+    },
+    {
+      "description": "Compatibility endpoints for the previous EVE-KILL site.",
+      "name": "legacy archive"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Killboard",
+      "tags": [
+        "killmails",
+        "entities",
+        "characters",
+        "corporations",
+        "alliances",
+        "killboard",
+        "statistics",
+        "stats",
+        "history",
+        "graph"
+      ]
+    },
+    {
+      "name": "Conflicts",
+      "tags": [
+        "battles",
+        "wars",
+        "faction-war"
+      ]
+    },
+    {
+      "name": "Universe and reference",
+      "tags": [
+        "universe",
+        "map",
+        "sde",
+        "market",
+        "ships",
+        "search"
+      ]
+    },
+    {
+      "name": "Community",
+      "tags": [
+        "fittings",
+        "campaigns",
+        "comments",
+        "blog",
+        "scans",
+        "tools",
+        "backgrounds"
+      ]
+    },
+    {
+      "name": "Account",
+      "tags": [
+        "auth",
+        "account",
+        "settings",
+        "boards",
+        "notifications",
+        "esi",
+        "wallet",
+        "announcements"
+      ]
+    },
+    {
+      "name": "Administration",
+      "tags": [
+        "admin",
+        "moderation",
+        "domains"
+      ]
+    },
+    {
+      "name": "Platform",
+      "tags": [
+        "health",
+        "feed",
+        "images",
+        "sitemap",
+        "site",
+        "legacy archive"
+      ]
+    }
   ]
 }

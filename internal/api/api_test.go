@@ -503,3 +503,51 @@ func TestNormalizeJSONUsesJavaScriptMillisecondTimestamps(t *testing.T) {
 		t.Errorf("fractional timestamp = %q", got)
 	}
 }
+
+// A tag that no group lists does not fall back to the flat sidebar — Scalar
+// drops it, and every operation under it becomes unreachable by navigation.
+// Adding a route with a new tag must therefore fail here rather than quietly
+// remove endpoints from the published reference.
+func TestOpenAPITagGroupsCoverEveryTag(t *testing.T) {
+	document := New(Options{}).document
+	if err := checkTagGroups(documentTags(document)); err != nil {
+		t.Fatalf("tag grouping is inconsistent: %v", err)
+	}
+}
+
+// Scalar reads the section headings from x-tagGroups and the per-tag prose
+// from the top-level tags array. Both have to survive marshaling.
+func TestOpenAPIDocumentCarriesTagGroups(t *testing.T) {
+	document := New(Options{}).document
+
+	raw, err := document.MarshalJSON()
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var decoded struct {
+		Tags []struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"tags"`
+		TagGroups []struct {
+			Name string   `json:"name"`
+			Tags []string `json:"tags"`
+		} `json:"x-tagGroups"`
+	}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if len(decoded.TagGroups) != len(tagGroups) {
+		t.Errorf("x-tagGroups has %d groups, want %d",
+			len(decoded.TagGroups), len(tagGroups))
+	}
+	if len(decoded.Tags) == 0 {
+		t.Fatal("document declares no top-level tags")
+	}
+	for _, tag := range decoded.Tags {
+		if tag.Description == "" {
+			t.Errorf("tag %q has no description", tag.Name)
+		}
+	}
+}
