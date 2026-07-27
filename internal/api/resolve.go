@@ -2,30 +2,28 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 )
 
+// resolveBody is both the decode target and the documented request schema.
 type resolveBody struct {
-	Names []string `json:"names"`
-	Type  string   `json:"type"`
+	Names []string `json:"names" minItems:"1" maxItems:"100" doc:"Exact entity names to resolve. Matching is case-sensitive and exact; use /search for fuzzy lookup."`
+	Type  string   `json:"type,omitempty" enum:"character,corporation,alliance" default:"character" doc:"Which entity table to resolve against."`
 }
 
 func registerResolveRoute(a huma.API, opts Options) {
-	registerLegacy(a, huma.Operation{
+	registerLegacyJSON(a, huma.Operation{
 		OperationID: "resolve",
 		Method:      http.MethodPost,
 		Path:        "/resolve",
 		Summary:     "Resolve exact entity names to IDs",
 		Tags:        []string{"search"},
-	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-		var body resolveBody
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			return legacyPayload{}, err
-		}
+	}, defaultBodyLimit, func(
+		ctx context.Context, req *legacyRequest, body *resolveBody,
+	) (legacyPayload, error) {
 		if len(body.Names) == 0 {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Missing names array")
 		}

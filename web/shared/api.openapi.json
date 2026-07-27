@@ -23421,6 +23421,44 @@
       "post": {
         "description": "Takes up to 100 entity names and returns their IDs. Similar to CCP's /universe/ids/ but scoped to the entity types EVE-KILL tracks.",
         "operationId": "resolve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "names": {
+                    "description": "Exact entity names to resolve. Matching is case-sensitive and exact; use /search for fuzzy lookup.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "type": {
+                    "default": "character",
+                    "description": "Which entity table to resolve against.",
+                    "enum": [
+                      "character",
+                      "corporation",
+                      "alliance"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "names"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

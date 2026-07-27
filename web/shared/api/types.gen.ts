@@ -12784,7 +12784,16 @@ export type RegionMostValuableCompatResponses = {
 export type RegionMostValuableCompatResponse = RegionMostValuableCompatResponses[keyof RegionMostValuableCompatResponses];
 
 export type ResolveData = {
-    body?: never;
+    body: {
+        /**
+         * Exact entity names to resolve. Matching is case-sensitive and exact; use /search for fuzzy lookup.
+         */
+        names: Array<string> | null;
+        /**
+         * Which entity table to resolve against.
+         */
+        type?: 'character' | 'corporation' | 'alliance';
+    };
     path?: never;
     query?: never;
     url: '/resolve';
