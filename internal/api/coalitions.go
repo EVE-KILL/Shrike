@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
@@ -12,6 +11,25 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"golang.org/x/sync/errgroup"
 )
+
+// coalitionSideBody is the wire shape of one side. jsInt keeps the numeric
+// strings the previous API accepted while the parsed result is a proper int32,
+// which is what the alliance and corporation columns hold.
+var coalitionDatePattern = regexp.MustCompile(`^\\d{4}-\\d{2}-\\d{2}$`)
+
+type coalitionSideBody struct {
+	Label        string  `json:"label,omitempty" maxLength:"120" doc:"Display name for this side. Truncated at 120 characters."`
+	Alliances    []jsInt `json:"alliances,omitempty" doc:"Alliance IDs on this side."`
+	Corporations []jsInt `json:"corporations,omitempty" doc:"Corporation IDs on this side."`
+}
+
+// coalitionRequestBody is the documented request schema.
+type coalitionRequestBody struct {
+	SideA coalitionSideBody `json:"sideA" doc:"First coalition. Needs at least one alliance or corporation."`
+	SideB coalitionSideBody `json:"sideB" doc:"Second coalition. Needs at least one alliance or corporation."`
+	Date  string            `json:"date,omitempty" pattern:"^\\d{4}-\\d{2}-\\d{2}$" doc:"Restrict to a single day. Takes precedence over days."`
+	Days  *jsInt            `json:"days,omitempty" doc:"Lookback window ending today, clamped to 1-90. Defaults to 30."`
+}
 
 type coalitionSide struct {
 	Label        string
@@ -38,14 +56,16 @@ type coalitionPairwise struct {
 }
 
 func registerCoalitionRoute(a huma.API, opts Options) {
-	registerLegacy(a, huma.Operation{
+	registerLegacyJSON(a, huma.Operation{
 		OperationID: "coalition-stats",
 		Method:      http.MethodPost,
 		Path:        "/coalitions/stats",
 		Summary:     "Coalition versus coalition statistics",
 		Tags:        []string{"stats"},
-	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-		body, err := parseCoalitionBody(req)
+	}, defaultBodyLimit, func(
+		ctx context.Context, req *legacyRequest, wire *coalitionRequestBody,
+	) (legacyPayload, error) {
+		body, err := parseCoalitionBody(wire)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -80,38 +100,35 @@ type coalitionRequest struct {
 	To         string
 }
 
-func parseCoalitionBody(req *legacyRequest) (coalitionRequest, error) {
-	var body map[string]any
-	decoder := json.NewDecoder(req.Body)
-	decoder.UseNumber()
-	if err := decoder.Decode(&body); err != nil {
-		return coalitionRequest{}, apiError(http.StatusBadRequest, "Invalid JSON body")
-	}
-	sideA, err := parseCoalitionSide(body["sideA"], "sideA")
+func parseCoalitionBody(wire *coalitionRequestBody) (coalitionRequest, error) {
+	sideA, err := parseCoalitionSide(wire.SideA, "sideA")
 	if err != nil {
 		return coalitionRequest{}, err
 	}
-	sideB, err := parseCoalitionSide(body["sideB"], "sideB")
+	sideB, err := parseCoalitionSide(wire.SideB, "sideB")
 	if err != nil {
 		return coalitionRequest{}, err
 	}
 	result := coalitionRequest{SideA: sideA, SideB: sideB}
-	if raw, ok := body["date"]; ok && jsTruthy(raw) {
-		date, ok := raw.(string)
-		if !ok || !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).MatchString(date) {
+
+	// A date pins the window to one day and wins over days, matching the
+	// original precedence.
+	if wire.Date != "" {
+		if !coalitionDatePattern.MatchString(wire.Date) {
 			return coalitionRequest{}, apiError(
 				http.StatusBadRequest, "date must be YYYY-MM-DD",
 			)
 		}
 		result.Mode, result.PeriodDays = "daily", 1
-		result.From, result.To = date, date
+		result.From, result.To = wire.Date, wire.Date
 		return result, nil
 	}
+
+	// Zero was previously indistinguishable from absent, because the check was
+	// `value != 0`. Keeping that means a caller sending 0 still gets 30.
 	days := 30
-	if raw, ok := body["days"]; ok {
-		if value, valid := jsNumber(raw); valid && value != 0 {
-			days = int(value)
-		}
+	if wire.Days != nil && int64(*wire.Days) != 0 {
+		days = int(*wire.Days)
 	}
 	days = max(1, min(90, days))
 	now := time.Now().UTC()
@@ -121,16 +138,12 @@ func parseCoalitionBody(req *legacyRequest) (coalitionRequest, error) {
 	return result, nil
 }
 
-func parseCoalitionSide(raw any, name string) (coalitionSide, error) {
-	value, ok := raw.(map[string]any)
-	if !ok {
-		return coalitionSide{}, apiError(http.StatusBadRequest, name+" required")
-	}
-	alliances, err := coalitionIDs(value["alliances"], name+".alliances")
+func parseCoalitionSide(side coalitionSideBody, name string) (coalitionSide, error) {
+	alliances, err := coalitionIDs(side.Alliances, name+".alliances")
 	if err != nil {
 		return coalitionSide{}, err
 	}
-	corporations, err := coalitionIDs(value["corporations"], name+".corporations")
+	corporations, err := coalitionIDs(side.Corporations, name+".corporations")
 	if err != nil {
 		return coalitionSide{}, err
 	}
@@ -146,37 +159,30 @@ func parseCoalitionSide(raw any, name string) (coalitionSide, error) {
 		)
 	}
 	label := name
-	if text, ok := value["label"].(string); ok {
-		if len(text) > 120 {
-			text = text[:120]
+	if side.Label != "" {
+		label = side.Label
+		if len(label) > 120 {
+			label = label[:120]
 		}
-		label = text
 	}
 	return coalitionSide{
 		Label: label, Alliances: alliances, Corporations: corporations,
 	}, nil
 }
 
-func coalitionIDs(raw any, field string) ([]int32, error) {
-	if raw == nil {
-		return []int32{}, nil
-	}
-	values, ok := raw.([]any)
-	if !ok {
-		return nil, apiError(http.StatusBadRequest, field+" must be an array")
-	}
+func coalitionIDs(values []jsInt, field string) ([]int32, error) {
 	result := []int32{}
 	seen := map[int32]struct{}{}
-	for _, rawID := range values {
-		number, valid := jsNumber(rawID)
-		if !valid || number <= 0 || math.Trunc(number) != number {
+	for _, value := range values {
+		id := int64(value)
+		if id <= 0 || id > math.MaxInt32 {
 			return nil, apiError(http.StatusBadRequest,
-				fmt.Sprintf("%s contains invalid id: %v", field, rawID))
+				fmt.Sprintf("%s contains invalid id: %d", field, id))
 		}
-		id := int32(number)
-		if _, exists := seen[id]; !exists {
-			seen[id] = struct{}{}
-			result = append(result, id)
+		narrowed := int32(id)
+		if _, exists := seen[narrowed]; !exists {
+			seen[narrowed] = struct{}{}
+			result = append(result, narrowed)
 		}
 	}
 	return result, nil

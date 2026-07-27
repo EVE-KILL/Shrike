@@ -36,6 +36,21 @@ export type AnnouncementsResponse = {
     announcements: Array<Announcement>;
 };
 
+export type CoalitionSideBody = {
+    /**
+     * Alliance IDs on this side.
+     */
+    alliances?: Array<number | string> | null;
+    /**
+     * Corporation IDs on this side.
+     */
+    corporations?: Array<number | string> | null;
+    /**
+     * Display name for this side. Truncated at 120 characters.
+     */
+    label?: string;
+};
+
 export type ConflictBattleGeneratorEntity = {
     id: number;
     type: string;
@@ -8950,7 +8965,24 @@ export type CharacterStatsResponses = {
 export type CharacterStatsResponse2 = CharacterStatsResponses[keyof CharacterStatsResponses];
 
 export type CoalitionStatsData = {
-    body?: never;
+    body: {
+        /**
+         * Restrict to a single day. Takes precedence over days.
+         */
+        date?: string;
+        /**
+         * Lookback window ending today, clamped to 1-90. Defaults to 30.
+         */
+        days?: number | string;
+        /**
+         * First coalition. Needs at least one alliance or corporation.
+         */
+        sideA: CoalitionSideBody;
+        /**
+         * Second coalition. Needs at least one alliance or corporation.
+         */
+        sideB: CoalitionSideBody;
+    };
     path?: never;
     query?: never;
     url: '/coalitions/stats';

@@ -127,6 +127,57 @@
         ],
         "type": "object"
       },
+      "CoalitionSideBody": {
+        "additionalProperties": false,
+        "properties": {
+          "alliances": {
+            "description": "Alliance IDs on this side.",
+            "items": {
+              "description": "An integer. A numeric string is accepted for compatibility.",
+              "oneOf": [
+                {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                {
+                  "pattern": "^-?\\d+$",
+                  "type": "string"
+                }
+              ]
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "corporations": {
+            "description": "Corporation IDs on this side.",
+            "items": {
+              "description": "An integer. A numeric string is accepted for compatibility.",
+              "oneOf": [
+                {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                {
+                  "pattern": "^-?\\d+$",
+                  "type": "string"
+                }
+              ]
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "label": {
+            "description": "Display name for this side. Truncated at 120 characters.",
+            "maxLength": 120,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "ConflictBattleGeneratorEntity": {
         "additionalProperties": false,
         "properties": {
@@ -17512,6 +17563,49 @@
       "post": {
         "description": "Aggregated A-vs-B stats for two coalitions. Returns exact pairwise kills/losses/ISK, per-side overall activity (not opponent-filtered), and per-side top ships used plus active systems \u0026 regions — all computed from raw killmails. Also returns a daily pairwise timeseries and an intersection of 'clashed systems' where both sides were active. Corps listed inside a side that are already members of a listed alliance on that side are dropped to prevent double counting. Window capped at 90 days.",
         "operationId": "coalition-stats",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "date": {
+                    "description": "Restrict to a single day. Takes precedence over days.",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "type": "string"
+                  },
+                  "days": {
+                    "description": "Lookback window ending today, clamped to 1-90. Defaults to 30.",
+                    "oneOf": [
+                      {
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      {
+                        "pattern": "^-?\\d+$",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "sideA": {
+                    "$ref": "#/components/schemas/CoalitionSideBody",
+                    "description": "First coalition. Needs at least one alliance or corporation."
+                  },
+                  "sideB": {
+                    "$ref": "#/components/schemas/CoalitionSideBody",
+                    "description": "Second coalition. Needs at least one alliance or corporation."
+                  }
+                },
+                "required": [
+                  "sideA",
+                  "sideB"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
