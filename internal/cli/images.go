@@ -22,9 +22,11 @@ allocate its large in-memory response cache.`,
 }
 
 var (
-	flagImagesSource      string
-	flagImagesArchive     string
-	flagImagesConcurrency int
+	flagImagesSource        string
+	flagImagesArchive       string
+	flagImagesConcurrency   int
+	flagTypeSyncArchive     string
+	flagTypeSyncConcurrency int
 )
 
 var imagesImportStaticCmd = &cobra.Command{
@@ -95,7 +97,9 @@ var imagesSyncTypesCmd = &cobra.Command{
 			store,
 			images.TypeExportSyncOptions{
 				Token: os.Getenv("GITHUB_TOKEN"), UserAgent: userAgent(),
-				Progress: reportImageProgress,
+				Archive:     flagTypeSyncArchive,
+				Concurrency: flagTypeSyncConcurrency,
+				Progress:    reportImageProgress,
 			},
 		)
 		if err != nil {
@@ -212,6 +216,18 @@ func init() {
 		&flagImagesConcurrency,
 		"concurrency",
 		8,
+		"Concurrent B2 uploads",
+	)
+	imagesSyncTypesCmd.Flags().StringVar(
+		&flagTypeSyncArchive,
+		"archive",
+		"",
+		"Use an existing Image Export Collection archive instead of downloading",
+	)
+	imagesSyncTypesCmd.Flags().IntVar(
+		&flagTypeSyncConcurrency,
+		"concurrency",
+		32,
 		"Concurrent B2 uploads",
 	)
 	imagesCmd.AddCommand(

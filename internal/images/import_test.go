@@ -15,6 +15,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/eve-kill/shrike/internal/objectstore"
 )
 
 func TestImportStaticTreeMapsAssetsAndSkipsMatchingHashes(t *testing.T) {
@@ -235,6 +237,7 @@ func TestImportTypeExportImagesUsesManifestHashes(t *testing.T) {
 			"41_64.png": hex.EncodeToString(unchangedSum[:]),
 			"42_64.png": strings.Repeat("0", 64),
 		},
+		0,
 		nil,
 	)
 	if err != nil {
@@ -250,6 +253,78 @@ func TestImportTypeExportImagesUsesManifestHashes(t *testing.T) {
 		store.objects["types/42_64.png"] == nil ||
 		store.objects["types/43_64.png"] == nil {
 		t.Fatalf("uploaded objects = %v", store.objects)
+	}
+}
+
+func TestImportTypeExportImagesResumesWithoutManifest(t *testing.T) {
+	icon := solidPNG(t, 8, 8, colorValue(10, 20, 30))
+	sum := sha256.Sum256(icon)
+	digest := hex.EncodeToString(sum[:])
+	archiveBody := makeZip(t, map[string][]byte{"41_64.png": icon})
+	archivePath := filepath.Join(t.TempDir(), "types.zip")
+	writeTestFile(t, archivePath, archiveBody)
+	archive, err := zip.OpenReader(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer archive.Close()
+
+	store := newMemoryStore()
+	store.objects["types/41_64.png"] = &objectstore.Object{
+		Body: icon,
+		ObjectInfo: objectstore.ObjectInfo{
+			Key: "types/41_64.png",
+			Metadata: map[string]string{
+				"sha256": digest,
+			},
+		},
+	}
+	result, hashes, err := importTypeExportImages(
+		context.Background(),
+		store,
+		archive.File,
+		nil,
+		4,
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Uploaded != 0 || result.Skipped != 1 ||
+		hashes["41_64.png"] != digest {
+		t.Fatalf("result = %+v, hashes = %v", result, hashes)
+	}
+	if len(store.puts) != 0 {
+		t.Fatalf("unexpected uploads = %v", store.puts)
+	}
+}
+
+func TestUseTypeExportArchiveVerifiesDigestWithoutRemovingFile(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "types.zip")
+	body := []byte("archive")
+	writeTestFile(t, archivePath, body)
+	sum := sha256.Sum256(body)
+	digest := hex.EncodeToString(sum[:])
+
+	name, got, cleanup, err := useTypeExportArchive(
+		archivePath,
+		"sha256:"+digest,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanup()
+	if name != archivePath || got != digest {
+		t.Fatalf("archive = %q, digest = %q", name, got)
+	}
+	if _, err := os.Stat(archivePath); err != nil {
+		t.Fatalf("local archive was removed: %v", err)
+	}
+	if _, _, _, err := useTypeExportArchive(
+		archivePath,
+		"sha256:"+strings.Repeat("0", 64),
+	); err == nil {
+		t.Fatal("digest mismatch was accepted")
 	}
 }
 

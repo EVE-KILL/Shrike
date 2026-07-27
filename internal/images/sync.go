@@ -32,12 +32,14 @@ var typeExportAssetName = regexp.MustCompile(
 )
 
 type TypeExportSyncOptions struct {
-	HTTPClient *http.Client
-	Token      string
-	UserAgent  string
-	APIURL     string
-	Progress   func(ImportResult)
-	Now        func() time.Time
+	HTTPClient  *http.Client
+	Token       string
+	UserAgent   string
+	APIURL      string
+	Archive     string
+	Concurrency int
+	Progress    func(ImportResult)
+	Now         func() time.Time
 }
 
 type TypeExportSyncResult struct {
@@ -108,13 +110,22 @@ func SyncTypeExport(
 		}, nil
 	}
 
-	archivePath, digest, cleanup, err := downloadTypeExport(
-		ctx,
-		client,
-		assetURL,
-		userAgent,
-		remoteDigest,
-	)
+	var archivePath, digest string
+	var cleanup func()
+	if options.Archive == "" {
+		archivePath, digest, cleanup, err = downloadTypeExport(
+			ctx,
+			client,
+			assetURL,
+			userAgent,
+			remoteDigest,
+		)
+	} else {
+		archivePath, digest, cleanup, err = useTypeExportArchive(
+			options.Archive,
+			remoteDigest,
+		)
+	}
 	if err != nil {
 		return TypeExportSyncResult{}, err
 	}
@@ -159,6 +170,7 @@ func SyncTypeExport(
 		store,
 		archive.File,
 		previous,
+		options.Concurrency,
 		options.Progress,
 	)
 	if err != nil {
@@ -202,6 +214,7 @@ func importTypeExportImages(
 	store ObjectStore,
 	files []*zip.File,
 	previous map[string]string,
+	concurrency int,
 	progress func(ImportResult),
 ) (ImportResult, map[string]string, error) {
 	unique := make(map[string]*zip.File)
@@ -229,12 +242,15 @@ func importTypeExportImages(
 		unique[base] = file
 	}
 
+	if concurrency <= 0 {
+		concurrency = 32
+	}
 	group, groupCtx := errgroup.WithContext(ctx)
-	input := make(chan *zip.File, 8)
+	input := make(chan *zip.File, concurrency)
 	var scanned, uploaded, skipped, uploadedBytes atomic.Int64
 	hashes := make(map[string]string, len(unique))
 	var hashesMu sync.Mutex
-	for range 8 {
+	for range concurrency {
 		group.Go(func() error {
 			for file := range input {
 				base := filepath.Base(filepath.ToSlash(file.Name))
@@ -256,6 +272,21 @@ func importTypeExportImages(
 				hashesMu.Unlock()
 
 				changed := previous[base] != digest
+				if previous == nil {
+					info, statErr := store.Stat(
+						groupCtx,
+						"types/"+base,
+					)
+					if statErr != nil {
+						return fmt.Errorf(
+							"stat types/%s: %w",
+							base,
+							statErr,
+						)
+					}
+					changed = info == nil ||
+						info.Metadata["sha256"] != digest
+				}
 				if changed {
 					err := store.PutWithOptions(
 						groupCtx,
@@ -419,6 +450,44 @@ func downloadTypeExport(
 		)
 	}
 	return name, digest, cleanup, nil
+}
+
+func useTypeExportArchive(
+	name string,
+	expectedDigest string,
+) (string, string, func(), error) {
+	name, err := filepath.Abs(name)
+	if err != nil {
+		return "", "", func() {}, err
+	}
+	file, err := os.Open(name)
+	if err != nil {
+		return "", "", func() {}, fmt.Errorf(
+			"open TurtleTools image export: %w",
+			err,
+		)
+	}
+	hash := sha256.New()
+	_, copyErr := io.Copy(hash, file)
+	closeErr := file.Close()
+	if copyErr != nil {
+		return "", "", func() {}, fmt.Errorf(
+			"hash TurtleTools image export: %w",
+			copyErr,
+		)
+	}
+	if closeErr != nil {
+		return "", "", func() {}, closeErr
+	}
+	digest := hex.EncodeToString(hash.Sum(nil))
+	if expected := trimDigest(expectedDigest); expected != "" && expected != digest {
+		return "", "", func() {}, fmt.Errorf(
+			"TurtleTools digest mismatch: got %s, want %s",
+			digest,
+			expected,
+		)
+	}
+	return name, digest, func() {}, nil
 }
 
 func loadTypeExportManifest(
