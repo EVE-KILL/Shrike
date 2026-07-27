@@ -29,7 +29,7 @@ docker run evekill work:zkb
 `serve` is the supervisor for the whole site. It starts the Bun/Nuxt renderer,
 starts a private Go HTTP listener for SSR, and then starts Shrike's embedded
 Caddy front door. Caddy-to-Nuxt and Nuxt-to-Go use separate Unix sockets.
-Browser API calls remain relative same-origin HTTP. Every other command runs
+Browser API calls remain relative and same-origin. Every other command runs
 only the Go binary, so worker and cron pods do not start Bun or require a second
 application image. The image is multi-architecture: Docker's target platform
 controls both the Go binary and Nuxt's native image dependencies.
@@ -44,6 +44,13 @@ go run ./cmd/shrike serve
 
 The renderer process is supervised by Go: an early crash fails startup, and a
 later crash shuts down the service instead of leaving Caddy returning 502s.
+
+## Documentation
+
+Read the [documentation index](docs/README.md) for operational guides.
+
+All new documents follow the [documentation style](docs/STYLE.md). The style
+uses a practical subset of ASD-STE100 and George Orwell's writing rules.
 
 ## Commands
 

@@ -38,10 +38,14 @@ fi
 # paths, a Memgraph bolt:// URL. Scanning it for those made every edit to it
 # unlandable, which is a check that trains you to reach for --no-verify.
 #
-#   values      — every KEY=value. Not scanned in .env.example.
+#   values      — every private KEY=value. Not scanned in .env.example.
 #   credentials — the password field of a URL-style value. Scanned everywhere,
 #                 including .env.example, because a real password there is
 #                 wrong no matter what the file is for.
+#
+# A value already present in .env.example is public configuration. Remove those
+# values from the private list so documentation can name public buckets, hosts,
+# and paths without weakening the credential scan.
 env_files=()
 for f in .env .env.*; do
   [ -f "$f" ] || continue
@@ -56,6 +60,17 @@ collect() {
 }
 
 values=$(collect 's/^[A-Z_0-9]+=(.*)$/\1/p')
+if [ -f .env.example ]; then
+  documented_values=$(
+    sed -nE 's/^[# ]*[A-Z_0-9]+=(.*)$/\1/p' .env.example \
+      | sed 's/^"//; s/"$//' \
+      | awk 'length($0) >= 12' \
+      | sort -u
+  )
+  values=$(comm -23 \
+    <(printf '%s\n' "$values" | sort -u) \
+    <(printf '%s\n' "$documented_values" | sort -u))
+fi
 credentials=$(collect 's#^[A-Z_0-9]+=[a-z]+://[^:/@]+:([^@]+)@.*#\1#p')
 
 diff_all=$(git diff --cached --diff-filter=ACM -U0 || true)

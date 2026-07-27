@@ -20,3 +20,4 @@ bin/
 # Snippet), and handoff logs kept at the repository root. Tracked Markdown such
 # as README.md remains tracked; Markdown in subdirectories is unaffected.
 /*.md
+!CLAUDE.md
