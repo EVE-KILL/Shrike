@@ -108,22 +108,25 @@ func registerEntityRoute(
 		Parameters: []*huma.Param{
 			{Name: "id", In: "path", Required: true,
 				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
-			{Name: "size", In: "query",
-				Schema: &huma.Schema{Type: huma.TypeInteger}},
-			{Name: "imagetype", In: "query",
-				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+			imageSizeParam(false),
+			imageFormatParam(),
+			legacyImageTypeParam(),
 		},
 	}, func(ctx huma.Context) (Result, error) {
 		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 		if err != nil {
 			return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
 		}
+		format, err := requestedFormat(ctx, "")
+		if err != nil {
+			return Result{}, err
+		}
 		return service.Entity(
 			ctx.Context(),
 			kind,
 			id,
 			parseSize(ctx.Query("size")),
-			requestedFormat(ctx, ""),
+			format,
 		)
 	})
 }
@@ -140,22 +143,25 @@ func registerTypeRoute(a huma.API, service *Service) {
 				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
 			{Name: "variant", In: "path", Required: true,
 				Schema: &huma.Schema{Type: huma.TypeString}},
-			{Name: "size", In: "query",
-				Schema: &huma.Schema{Type: huma.TypeInteger}},
-			{Name: "imagetype", In: "query",
-				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+			imageSizeParam(false),
+			imageFormatParam(),
+			legacyImageTypeParam(),
 		},
 	}, func(ctx huma.Context) (Result, error) {
 		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 		if err != nil {
 			return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
 		}
+		format, err := requestedFormat(ctx, "")
+		if err != nil {
+			return Result{}, err
+		}
 		return service.Type(
 			ctx.Context(),
 			id,
 			ctx.Param("variant"),
 			parseSize(ctx.Query("size")),
-			requestedFormat(ctx, ""),
+			format,
 		)
 	})
 }
@@ -174,18 +180,21 @@ func registerStaticRoute(a huma.API, service *Service, category string) {
 		Parameters: []*huma.Param{
 			{Name: parameter, In: "path", Required: true,
 				Schema: &huma.Schema{Type: huma.TypeString}},
-			{Name: "size", In: "query",
-				Schema: &huma.Schema{Type: huma.TypeInteger}},
-			{Name: "imagetype", In: "query",
-				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+			imageSizeParam(true),
+			imageFormatParam(),
+			legacyImageTypeParam(),
 		},
 	}, func(ctx huma.Context) (Result, error) {
+		format, err := requestedFormat(ctx, "png")
+		if err != nil {
+			return Result{}, err
+		}
 		return service.Static(
 			ctx.Context(),
 			category,
 			ctx.Param(parameter),
 			parseSize(ctx.Query("size")),
-			requestedFormat(ctx, "png"),
+			format,
 		)
 	})
 }
@@ -200,18 +209,22 @@ func registerOldCharacterRoute(a huma.API, service *Service) {
 		Parameters: []*huma.Param{
 			{Name: "id", In: "path", Required: true,
 				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
-			{Name: "imagetype", In: "query",
-				Schema: &huma.Schema{Type: huma.TypeString, Enum: []any{"webp"}}},
+			imageFormatParam(),
+			legacyImageTypeParam(),
 		},
 	}, func(ctx huma.Context) (Result, error) {
 		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 		if err != nil {
 			return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
 		}
+		format, err := requestedFormat(ctx, "jpeg")
+		if err != nil {
+			return Result{}, err
+		}
 		return service.OldCharacter(
 			ctx.Context(),
 			id,
-			requestedFormat(ctx, "jpeg"),
+			format,
 		)
 	})
 }
@@ -287,17 +300,103 @@ func writeError(ctx huma.Context, err error) {
 	_, _ = ctx.BodyWriter().Write(body)
 }
 
-func requestedFormat(ctx huma.Context, fallback string) string {
+func imageSizeParam(mapAsset bool) *huma.Param {
+	values := []any{8, 16, 32, 64, 128, 256, 512, 1024}
+	if mapAsset {
+		values = []any{32, 64, 128}
+	}
+	return &huma.Param{
+		Name:        "size",
+		In:          "query",
+		Description: "Maximum width and height in pixels. Images are never upscaled.",
+		Schema: &huma.Schema{
+			Type: huma.TypeInteger,
+			Enum: values,
+		},
+	}
+}
+
+func imageFormatParam() *huma.Param {
+	return &huma.Param{
+		Name:        "format",
+		In:          "query",
+		Description: "Output format. Auto uses WebP when the request Accept header supports it.",
+		Schema: &huma.Schema{
+			Type:    huma.TypeString,
+			Enum:    []any{"auto", "source", "webp"},
+			Default: "auto",
+		},
+	}
+}
+
+func legacyImageTypeParam() *huma.Param {
+	return &huma.Param{
+		Name:        "imagetype",
+		In:          "query",
+		Description: "Deprecated alias for format=webp.",
+		Deprecated:  true,
+		Schema: &huma.Schema{
+			Type: huma.TypeString,
+			Enum: []any{"webp"},
+		},
+	}
+}
+
+func requestedFormat(ctx huma.Context, fallback string) (string, error) {
+	switch strings.ToLower(ctx.Query("format")) {
+	case "webp":
+		return "webp", nil
+	case "source":
+		return fallback, nil
+	case "", "auto":
+		// Negotiate below.
+	default:
+		return "", statusError(
+			http.StatusBadRequest,
+			"Image format must be auto, source, or webp",
+			nil,
+		)
+	}
 	if raw := strings.ToLower(ctx.Query("imagetype")); raw != "" {
 		if raw == "webp" {
-			return "webp"
+			return "webp", nil
 		}
-		return fallback
+		return "", statusError(
+			http.StatusBadRequest,
+			"Image type must be webp",
+			nil,
+		)
 	}
-	if strings.Contains(strings.ToLower(ctx.Header("Accept")), "image/webp") {
-		return "webp"
+	if acceptsWebP(ctx.Header("Accept")) {
+		return "webp", nil
 	}
-	return fallback
+	return fallback, nil
+}
+
+func acceptsWebP(header string) bool {
+	for _, mediaRange := range strings.Split(strings.ToLower(header), ",") {
+		parts := strings.Split(mediaRange, ";")
+		if strings.TrimSpace(parts[0]) != "image/webp" {
+			continue
+		}
+		quality := 1.0
+		for _, parameter := range parts[1:] {
+			name, value, found := strings.Cut(strings.TrimSpace(parameter), "=")
+			if !found || strings.TrimSpace(name) != "q" {
+				continue
+			}
+			parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+			if err != nil {
+				quality = 0
+			} else {
+				quality = parsed
+			}
+		}
+		if quality > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func parseSize(raw string) int {

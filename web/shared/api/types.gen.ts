@@ -10716,7 +10716,19 @@ export type ImageAllianceData = {
         id: number;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/alliances/{id}';
@@ -10756,7 +10768,19 @@ export type ImageAllianceVariantData = {
         id: number;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/alliances/{id}/{variant}';
@@ -10796,7 +10820,19 @@ export type ImageCharacterData = {
         id: number;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/characters/{id}';
@@ -10836,7 +10872,19 @@ export type ImageCharacterVariantData = {
         id: number;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/characters/{id}/{variant}';
@@ -10876,7 +10924,19 @@ export type ImageConstellationData = {
         id: string;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 32 | 64 | 128;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/constellations/{id}';
@@ -10916,7 +10976,19 @@ export type ImageCorporationData = {
         id: number;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/corporations/{id}';
@@ -10956,7 +11028,19 @@ export type ImageCorporationVariantData = {
         id: number;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/corporations/{id}/{variant}';
@@ -11087,6 +11171,15 @@ export type ImageOldCharacterData = {
         id: number;
     };
     query?: {
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/oldcharacters/{id}';
@@ -11126,7 +11219,19 @@ export type ImageRegionData = {
         id: string;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 32 | 64 | 128;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/regions/{id}';
@@ -11166,7 +11271,19 @@ export type ImageSystemData = {
         id: string;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 32 | 64 | 128;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/systems/{id}';
@@ -11207,7 +11324,19 @@ export type ImageTypeData = {
         variant: string;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 8 | 16 | 32 | 64 | 128 | 256 | 512 | 1024;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/types/{id}/{variant}';
@@ -11247,7 +11376,19 @@ export type ImageUiData = {
         name: string;
     };
     query?: {
-        size?: number;
+        /**
+         * Maximum width and height in pixels. Images are never upscaled.
+         */
+        size?: 32 | 64 | 128;
+        /**
+         * Output format. Auto uses WebP when the request Accept header supports it.
+         */
+        format?: 'auto' | 'source' | 'webp';
+        /**
+         * Deprecated alias for format=webp.
+         *
+         * @deprecated
+         */
         imagetype?: 'webp';
     };
     url: '/images/ui/{name}';

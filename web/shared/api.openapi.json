@@ -19691,13 +19691,40 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -19778,13 +19805,40 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -19865,13 +19919,40 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -19952,13 +20033,40 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20038,13 +20146,35 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                32,
+                64,
+                128
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20125,13 +20255,40 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20212,13 +20369,40 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20459,6 +20643,22 @@
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20538,13 +20738,35 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                32,
+                64,
+                128
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20624,13 +20846,35 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                32,
+                64,
+                128
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20719,13 +20963,40 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {
@@ -20805,13 +21076,35 @@
             }
           },
           {
+            "description": "Maximum width and height in pixels. Images are never upscaled.",
             "in": "query",
             "name": "size",
             "schema": {
+              "enum": [
+                32,
+                64,
+                128
+              ],
               "type": "integer"
             }
           },
           {
+            "description": "Output format. Auto uses WebP when the request Accept header supports it.",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "source",
+                "webp"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "deprecated": true,
+            "description": "Deprecated alias for format=webp.",
             "in": "query",
             "name": "imagetype",
             "schema": {

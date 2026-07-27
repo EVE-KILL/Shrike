@@ -334,6 +334,40 @@ func TestHumaImageNamespaceServesConditionalWebP(t *testing.T) {
 		t.Fatalf("conditional response = %d, body %d",
 			recorder.Code, recorder.Body.Len())
 	}
+
+	request = httptest.NewRequest(
+		http.MethodGet,
+		path+"&format=source",
+		nil,
+	)
+	request.Header.Set("Accept", "image/webp")
+	recorder = httptest.NewRecorder()
+	mux.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK ||
+		recorder.Header().Get("Content-Type") != "image/png" {
+		t.Fatalf(
+			"source override response = %d %s: %s",
+			recorder.Code,
+			recorder.Header().Get("Content-Type"),
+			recorder.Body.String(),
+		)
+	}
+
+	request = httptest.NewRequest(
+		http.MethodGet,
+		path+"&format=gif",
+		nil,
+	)
+	recorder = httptest.NewRecorder()
+	mux.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusBadRequest ||
+		!strings.Contains(recorder.Body.String(), "auto, source, or webp") {
+		t.Fatalf(
+			"invalid format response = %d: %s",
+			recorder.Code,
+			recorder.Body.String(),
+		)
+	}
 	if api.OpenAPI().Paths["/images/corporations/{id}/{variant}"] == nil {
 		t.Fatal("image operation is missing from OpenAPI")
 	}
