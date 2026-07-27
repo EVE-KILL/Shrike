@@ -523,6 +523,16 @@ func saveScanHandler(
 	}
 }
 
+// rawJSONField mirrors a map lookup on a typed body: the second result is
+// whether the caller sent the key at all, which the patch handlers branch on.
+// An absent field leaves json.RawMessage nil; an explicit null does not.
+func rawJSONField(raw json.RawMessage) (any, bool) {
+	if raw == nil {
+		return nil, false
+	}
+	return rawJSONValue(raw), true
+}
+
 // rawJSONValue re-reads a stored fragment so jsonTruthy can judge it the way
 // it judged the decoded map before the body was typed.
 func rawJSONValue(raw json.RawMessage) any {

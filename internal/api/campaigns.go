@@ -98,22 +98,22 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		Security:    optionalSession,
 	}, service.campaignListHandler())
 
-	registerLegacy(a, huma.Operation{
+	registerLegacy(a, documentJSONBody[campaignCreateBody](a, huma.Operation{
 		OperationID: "campaign-create",
 		Method:      http.MethodPost,
 		Path:        "/campaigns",
 		Summary:     "Create a campaign",
 		Tags:        []string{"account", "campaigns"},
 		Security:    requiredSession,
-	}, service.campaignCreateHandler())
-	registerLegacy(a, huma.Operation{
+	}), service.campaignCreateHandler())
+	registerLegacy(a, documentJSONBody[campaignCreateBody](a, huma.Operation{
 		OperationID: "campaign-create-legacy",
 		Method:      http.MethodPost,
 		Path:        "/campaign/create",
 		Summary:     "Create a campaign",
 		Tags:        []string{"account", "campaigns"},
 		Security:    requiredSession,
-	}, service.campaignCreateHandler())
+	}), service.campaignCreateHandler())
 
 	detail := service.campaignDetailHandler()
 	for _, route := range []struct{ id, path string }{
@@ -136,14 +136,14 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		{"campaign-update-legacy", http.MethodPatch, "/campaign/{id}"},
 		{"campaign-update-browser-legacy", http.MethodPost, "/campaign/{id}/update"},
 	} {
-		registerLegacy(a, huma.Operation{
+		registerLegacy(a, documentJSONBody[campaignUpdateBody](a, huma.Operation{
 			OperationID: route.id,
 			Method:      route.method,
 			Path:        route.path,
 			Summary:     "Update a campaign",
 			Tags:        []string{"account", "campaigns"},
 			Security:    requiredSession,
-		}, update)
+		}), update)
 	}
 
 	remove := service.campaignDeleteHandler()
@@ -181,14 +181,14 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		{"campaign-prize-contribute", "/campaigns/{id}/prizes/contributions"},
 		{"campaign-prize-contribute-legacy", "/campaign/{id}/prize/contribute"},
 	} {
-		registerLegacy(a, huma.Operation{
+		registerLegacy(a, documentJSONBody[campaignContributeBody](a, huma.Operation{
 			OperationID: route.id,
 			Method:      http.MethodPost,
 			Path:        route.path,
 			Summary:     "Fund a campaign prize pool from EK Wallet",
 			Tags:        []string{"account", "campaigns", "wallet"},
 			Security:    requiredSession,
-		}, contribute)
+		}), contribute)
 	}
 
 	claim := service.campaignClaimHandler()
@@ -220,14 +220,14 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		{"campaign-admin-action", "/admin/campaigns/{id}/actions"},
 		{"campaign-admin-action-legacy", "/admin/campaigns/{id}/action"},
 	} {
-		registerLegacy(a, huma.Operation{
+		registerLegacy(a, documentJSONBody[campaignActionBody](a, huma.Operation{
 			OperationID: route.id,
 			Method:      http.MethodPost,
 			Path:        route.path,
 			Summary:     "Apply an administrative campaign action",
 			Tags:        []string{"admin", "campaigns"},
 			Security:    requiredSession,
-		}, adminAction)
+		}), adminAction)
 	}
 
 	markPaid := service.adminCampaignPrizePaidHandler()
@@ -241,14 +241,14 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 			"/admin/campaign-prizes/{id}/{rank}/paid",
 		},
 	} {
-		registerLegacy(a, huma.Operation{
+		registerLegacy(a, documentJSONBody[campaignPrizePaidBody](a, huma.Operation{
 			OperationID: route.id,
 			Method:      http.MethodPost,
 			Path:        route.path,
 			Summary:     "Mark a claimed campaign prize paid",
 			Tags:        []string{"admin", "campaigns", "wallet"},
 			Security:    requiredSession,
-		}, markPaid)
+		}), markPaid)
 	}
 }
 
@@ -952,19 +952,6 @@ func generateCampaignID() (string, error) {
 		result[index] = campaignIDAlphabet[int(value)%len(campaignIDAlphabet)]
 	}
 	return string(result), nil
-}
-
-func decodeCampaignBody(req *legacyRequest) (map[string]any, error) {
-	decoder := json.NewDecoder(io.LimitReader(req.Body, campaignBodyLimit+1))
-	decoder.UseNumber()
-	var body map[string]any
-	if err := decoder.Decode(&body); err != nil || body == nil {
-		return nil, apiError(http.StatusBadRequest, "Body must be a JSON object")
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return nil, apiError(http.StatusBadRequest, "Body must contain one JSON value")
-	}
-	return body, nil
 }
 
 func escapeLike(value string) string {

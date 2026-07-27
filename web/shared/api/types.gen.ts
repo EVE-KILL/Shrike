@@ -6935,7 +6935,12 @@ export type BlogAdminUpdateResponses = {
 export type BlogAdminUpdateResponse = BlogAdminUpdateResponses[keyof BlogAdminUpdateResponses];
 
 export type CampaignPrizePaidLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Operator note recorded with the payout.
+         */
+        note?: string;
+    };
     path?: never;
     query?: never;
     url: '/admin/campaign-prizes/{id}/{rank}/paid';
@@ -6971,7 +6976,16 @@ export type CampaignAdminListResponses = {
 export type CampaignAdminListResponse = CampaignAdminListResponses[keyof CampaignAdminListResponses];
 
 export type CampaignAdminActionLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Administrative action to apply to the campaign.
+         */
+        action: string;
+        /**
+         * Operator note recorded with the action.
+         */
+        reason?: string;
+    };
     path?: never;
     query?: never;
     url: '/admin/campaigns/{id}/action';
@@ -6989,7 +7003,16 @@ export type CampaignAdminActionLegacyResponses = {
 export type CampaignAdminActionLegacyResponse = CampaignAdminActionLegacyResponses[keyof CampaignAdminActionLegacyResponses];
 
 export type CampaignAdminActionData = {
-    body?: never;
+    body: {
+        /**
+         * Administrative action to apply to the campaign.
+         */
+        action: string;
+        /**
+         * Operator note recorded with the action.
+         */
+        reason?: string;
+    };
     path?: never;
     query?: never;
     url: '/admin/campaigns/{id}/actions';
@@ -7007,7 +7030,12 @@ export type CampaignAdminActionResponses = {
 export type CampaignAdminActionResponse = CampaignAdminActionResponses[keyof CampaignAdminActionResponses];
 
 export type CampaignPrizePaidData = {
-    body?: never;
+    body: {
+        /**
+         * Operator note recorded with the payout.
+         */
+        note?: string;
+    };
     path?: never;
     query?: never;
     url: '/admin/campaigns/{id}/prizes/{rank}/payment';
@@ -8438,7 +8466,44 @@ export type BoardsMineCompatResponses = {
 export type BoardsMineCompatResponse = BoardsMineCompatResponses[keyof BoardsMineCompatResponses];
 
 export type CampaignCreateLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Entities permitted to view a restricted campaign.
+         */
+        allowedEntities?: unknown;
+        /**
+         * Free text shown on the campaign page.
+         */
+        description?: string;
+        /**
+         * Campaign end. Omit for an open-ended campaign.
+         */
+        endTime?: unknown;
+        /**
+         * Location filter: system, constellation or region identifiers.
+         */
+        location?: unknown;
+        /**
+         * Campaign name.
+         */
+        name: string;
+        /**
+         * Prize pool definition, including any initial contribution.
+         */
+        prizePool?: unknown;
+        /**
+         * Participating sides, each naming its entities.
+         */
+        sides?: unknown;
+        /**
+         * Campaign start, as a timestamp or ISO 8601 string.
+         */
+        startTime: unknown;
+        /**
+         * Who may see the campaign.
+         */
+        visibility?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/campaign/create';
@@ -8492,7 +8557,36 @@ export type CampaignDetailLegacyResponses = {
 export type CampaignDetailLegacyResponse = CampaignDetailLegacyResponses[keyof CampaignDetailLegacyResponses];
 
 export type CampaignUpdateLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Replacement viewer list.
+         */
+        allowedEntities?: unknown;
+        /**
+         * Archive or restore the campaign.
+         */
+        archived?: unknown;
+        /**
+         * New description. An empty string clears it.
+         */
+        description?: unknown;
+        /**
+         * New end time.
+         */
+        endTime?: unknown;
+        /**
+         * New campaign name.
+         */
+        name?: unknown;
+        /**
+         * Resume killmail processing after an edit.
+         */
+        resumeProcessing?: unknown;
+        /**
+         * New visibility.
+         */
+        visibility?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/campaign/{id}';
@@ -8546,7 +8640,16 @@ export type CampaignPrizeClaimLegacyResponses = {
 export type CampaignPrizeClaimLegacyResponse = CampaignPrizeClaimLegacyResponses[keyof CampaignPrizeClaimLegacyResponses];
 
 export type CampaignPrizeContributeLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * ISK amount to contribute.
+         */
+        amount: unknown;
+        /**
+         * Caller-supplied idempotency key for the contribution.
+         */
+        requestId: string;
+    };
     path?: never;
     query?: never;
     url: '/campaign/{id}/prize/contribute';
@@ -8564,7 +8667,36 @@ export type CampaignPrizeContributeLegacyResponses = {
 export type CampaignPrizeContributeLegacyResponse = CampaignPrizeContributeLegacyResponses[keyof CampaignPrizeContributeLegacyResponses];
 
 export type CampaignUpdateBrowserLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Replacement viewer list.
+         */
+        allowedEntities?: unknown;
+        /**
+         * Archive or restore the campaign.
+         */
+        archived?: unknown;
+        /**
+         * New description. An empty string clears it.
+         */
+        description?: unknown;
+        /**
+         * New end time.
+         */
+        endTime?: unknown;
+        /**
+         * New campaign name.
+         */
+        name?: unknown;
+        /**
+         * Resume killmail processing after an edit.
+         */
+        resumeProcessing?: unknown;
+        /**
+         * New visibility.
+         */
+        visibility?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/campaign/{id}/update';
@@ -8600,7 +8732,44 @@ export type CampaignsResponses = {
 export type CampaignsResponse = CampaignsResponses[keyof CampaignsResponses];
 
 export type CampaignCreateData = {
-    body?: never;
+    body: {
+        /**
+         * Entities permitted to view a restricted campaign.
+         */
+        allowedEntities?: unknown;
+        /**
+         * Free text shown on the campaign page.
+         */
+        description?: string;
+        /**
+         * Campaign end. Omit for an open-ended campaign.
+         */
+        endTime?: unknown;
+        /**
+         * Location filter: system, constellation or region identifiers.
+         */
+        location?: unknown;
+        /**
+         * Campaign name.
+         */
+        name: string;
+        /**
+         * Prize pool definition, including any initial contribution.
+         */
+        prizePool?: unknown;
+        /**
+         * Participating sides, each naming its entities.
+         */
+        sides?: unknown;
+        /**
+         * Campaign start, as a timestamp or ISO 8601 string.
+         */
+        startTime: unknown;
+        /**
+         * Who may see the campaign.
+         */
+        visibility?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/campaigns';
@@ -8654,7 +8823,36 @@ export type CampaignDetailResponses = {
 export type CampaignDetailResponse = CampaignDetailResponses[keyof CampaignDetailResponses];
 
 export type CampaignUpdateData = {
-    body?: never;
+    body: {
+        /**
+         * Replacement viewer list.
+         */
+        allowedEntities?: unknown;
+        /**
+         * Archive or restore the campaign.
+         */
+        archived?: unknown;
+        /**
+         * New description. An empty string clears it.
+         */
+        description?: unknown;
+        /**
+         * New end time.
+         */
+        endTime?: unknown;
+        /**
+         * New campaign name.
+         */
+        name?: unknown;
+        /**
+         * Resume killmail processing after an edit.
+         */
+        resumeProcessing?: unknown;
+        /**
+         * New visibility.
+         */
+        visibility?: unknown;
+    };
     path?: never;
     query?: never;
     url: '/campaigns/{id}';
@@ -8708,7 +8906,16 @@ export type CampaignPrizeClaimResponses = {
 export type CampaignPrizeClaimResponse = CampaignPrizeClaimResponses[keyof CampaignPrizeClaimResponses];
 
 export type CampaignPrizeContributeData = {
-    body?: never;
+    body: {
+        /**
+         * ISK amount to contribute.
+         */
+        amount: unknown;
+        /**
+         * Caller-supplied idempotency key for the contribution.
+         */
+        requestId: string;
+    };
     path?: never;
     query?: never;
     url: '/campaigns/{id}/prizes/contributions';

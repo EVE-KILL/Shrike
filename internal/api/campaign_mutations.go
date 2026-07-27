@@ -36,6 +36,50 @@ type campaignPrizeInput struct {
 	Percentages []int16
 }
 
+// Wire types for the campaign write routes.
+//
+// The scalar fields are typed directly. The four structured fields keep
+// json.RawMessage and are handed to the existing parsers unchanged: sides,
+// location filters, allowed entities and the prize pool are nested shapes
+// whose parsers coerce the way the TypeScript API did, and rewriting that
+// tree is a larger change than documenting these endpoints needs. The doc
+// strings describe them so the reference is still useful.
+type campaignCreateBody struct {
+	Name            string          `json:"name" doc:"Campaign name."`
+	Description     *string         `json:"description,omitempty" doc:"Free text shown on the campaign page."`
+	Visibility      json.RawMessage `json:"visibility,omitempty" doc:"Who may see the campaign."`
+	StartTime       json.RawMessage `json:"startTime" doc:"Campaign start, as a timestamp or ISO 8601 string."`
+	EndTime         json.RawMessage `json:"endTime,omitempty" doc:"Campaign end. Omit for an open-ended campaign."`
+	Location        json.RawMessage `json:"location,omitempty" doc:"Location filter: system, constellation or region identifiers."`
+	Sides           json.RawMessage `json:"sides,omitempty" doc:"Participating sides, each naming its entities."`
+	AllowedEntities json.RawMessage `json:"allowedEntities,omitempty" doc:"Entities permitted to view a restricted campaign."`
+	PrizePool       json.RawMessage `json:"prizePool,omitempty" doc:"Prize pool definition, including any initial contribution."`
+}
+
+type campaignUpdateBody struct {
+	Name             json.RawMessage `json:"name,omitempty" doc:"New campaign name."`
+	Description      json.RawMessage `json:"description,omitempty" doc:"New description. An empty string clears it."`
+	Visibility       json.RawMessage `json:"visibility,omitempty" doc:"New visibility."`
+	EndTime          json.RawMessage `json:"endTime,omitempty" doc:"New end time."`
+	AllowedEntities  json.RawMessage `json:"allowedEntities,omitempty" doc:"Replacement viewer list."`
+	Archived         json.RawMessage `json:"archived,omitempty" doc:"Archive or restore the campaign."`
+	ResumeProcessing json.RawMessage `json:"resumeProcessing,omitempty" doc:"Resume killmail processing after an edit."`
+}
+
+type campaignContributeBody struct {
+	RequestID string          `json:"requestId" doc:"Caller-supplied idempotency key for the contribution."`
+	Amount    json.RawMessage `json:"amount" doc:"ISK amount to contribute."`
+}
+
+type campaignActionBody struct {
+	Action string `json:"action" doc:"Administrative action to apply to the campaign."`
+	Reason string `json:"reason,omitempty" maxLength:"500" doc:"Operator note recorded with the action."`
+}
+
+type campaignPrizePaidBody struct {
+	Note string `json:"note,omitempty" maxLength:"500" doc:"Operator note recorded with the payout."`
+}
+
 func (s *campaignService) campaignCreateHandler() legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		setAccountNoStore(req.Huma)
@@ -49,11 +93,11 @@ func (s *campaignService) campaignCreateHandler() legacyHandler {
 		if s.storeErr != nil {
 			return legacyPayload{}, s.storeErr
 		}
-		body, err := decodeCampaignBody(req)
+		body, err := decodeJSONBody[campaignCreateBody](req, campaignBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		name := strings.TrimSpace(jsonString(body["name"]))
+		name := strings.TrimSpace(body.Name)
 		if runeLength(name) < 3 || runeLength(name) > campaignMaximumNameLength {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,
@@ -61,8 +105,8 @@ func (s *campaignService) campaignCreateHandler() legacyHandler {
 			)
 		}
 		var description *string
-		if body["description"] != nil {
-			value := strings.TrimSpace(jsonString(body["description"]))
+		if body.Description != nil {
+			value := strings.TrimSpace(*body.Description)
 			if runeLength(value) > campaignMaximumDescription {
 				return legacyPayload{}, apiError(
 					http.StatusBadRequest,
@@ -76,11 +120,11 @@ func (s *campaignService) campaignCreateHandler() legacyHandler {
 				description = &value
 			}
 		}
-		visibility, err := parseCampaignVisibility(body["visibility"])
+		visibility, err := parseCampaignVisibility(rawJSONValue(body.Visibility))
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		start, err := parseCampaignTime(body["startTime"])
+		start, err := parseCampaignTime(rawJSONValue(body.StartTime))
 		if err != nil || start.Before(time.Date(
 			2003, 5, 6, 0, 0, 0, 0, time.UTC,
 		)) {
@@ -95,7 +139,7 @@ func (s *campaignService) campaignCreateHandler() legacyHandler {
 				"Start time cannot be more than 30 days in the future",
 			)
 		}
-		end, err := parseOptionalCampaignTime(body["endTime"])
+		end, err := parseOptionalCampaignTime(rawJSONValue(body.EndTime))
 		if err != nil || end != nil && !end.After(start) {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest, "End time must be after start time",
@@ -106,19 +150,19 @@ func (s *campaignService) campaignCreateHandler() legacyHandler {
 		); err != nil {
 			return legacyPayload{}, err
 		}
-		location := campaignLocationFrom(body["location"])
-		sides, err := parseCampaignSides(body["sides"], location.HasFilter())
+		location := campaignLocationFrom(rawJSONValue(body.Location))
+		sides, err := parseCampaignSides(rawJSONValue(body.Sides), location.HasFilter())
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		allowed, err := parseCampaignAllowedEntities(
-			body["allowedEntities"], visibility,
+			rawJSONValue(body.AllowedEntities), visibility,
 		)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		prize, initialContribution, requestID, err := parseCampaignPrizeInput(
-			body["prizePool"], end, now,
+			rawJSONValue(body.PrizePool), end, now,
 		)
 		if err != nil {
 			return legacyPayload{}, err
@@ -344,7 +388,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeCampaignBody(req)
+		body, err := decodeJSONBody[campaignUpdateBody](req, campaignBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -375,7 +419,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 		hasPrize := boolFrom(campaign["has_prize_pool"])
 		updates := map[string]any{}
 		needsRecompute := false
-		if value, found := body["name"]; found {
+		if value, found := rawJSONField(body.Name); found {
 			name := strings.TrimSpace(jsonString(value))
 			if runeLength(name) < 3 || runeLength(name) > campaignMaximumNameLength {
 				return legacyPayload{}, apiError(
@@ -388,7 +432,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 			}
 			updates["name"] = name
 		}
-		if value, found := body["description"]; found {
+		if value, found := rawJSONField(body.Description); found {
 			description := strings.TrimSpace(jsonString(value))
 			if runeLength(description) > campaignMaximumDescription {
 				return legacyPayload{}, apiError(
@@ -407,7 +451,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 		}
 		start, _ := timeFrom(campaign["start_time"])
 		nextEnd, _ := optionalTimeFrom(campaign["end_time"])
-		if raw, found := body["endTime"]; found {
+		if raw, found := rawJSONField(body.EndTime); found {
 			parsed, parseErr := parseOptionalCampaignTime(raw)
 			if parseErr != nil || parsed != nil && !parsed.After(start) {
 				return legacyPayload{}, apiError(
@@ -433,8 +477,8 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 			}
 		}
 		nextVisibility := int16From(campaign["visibility"])
-		visibilityRaw, visibilityFound := body["visibility"]
-		allowedRaw, allowedFound := body["allowedEntities"]
+		visibilityRaw, visibilityFound := rawJSONField(body.Visibility)
+		allowedRaw, allowedFound := rawJSONField(body.AllowedEntities)
 		if visibilityFound || allowedFound {
 			if visibilityFound {
 				nextVisibility, err = parseCampaignVisibility(visibilityRaw)
@@ -455,7 +499,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 			encoded, _ := json.Marshal(allowed)
 			updates["allowed_entities"] = encoded
 		}
-		if raw, found := body["archived"]; found {
+		if raw, found := rawJSONField(body.Archived); found {
 			archived, _ := raw.(bool)
 			if hasPrize {
 				return legacyPayload{}, apiError(
@@ -470,7 +514,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 				needsRecompute = true
 			}
 		}
-		resume, _ := body["resumeProcessing"].(bool)
+		resume, _ := rawJSONValue(body.ResumeProcessing).(bool)
 		if resume && boolFrom(campaign["processing_paused"]) {
 			updates["processing_paused"] = false
 			updates["processing_note"] = nil
@@ -480,7 +524,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 		if needsRecompute {
 			updates["status"] = campaignengine.StatusPending
 			updates["estimated_killmails"] = 0
-			resumeExplicitlyFalse := body["resumeProcessing"] == false
+			resumeExplicitlyFalse := rawJSONValue(body.ResumeProcessing) == false
 			if boolFrom(campaign["processing_paused"]) && !resumeExplicitlyFalse {
 				updates["processing_paused"] = false
 				updates["processing_note"] = nil
@@ -651,11 +695,11 @@ func (s *campaignService) campaignContributeHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeCampaignBody(req)
+		body, err := decodeJSONBody[campaignContributeBody](req, campaignBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		requestID := strings.TrimSpace(jsonString(body["requestId"]))
+		requestID := strings.TrimSpace(body.RequestID)
 		if parsed, parseErr := uuid.Parse(requestID); parseErr != nil ||
 			parsed.Version() < 1 || parsed.Version() > 8 {
 			return legacyPayload{}, apiError(
@@ -663,7 +707,7 @@ func (s *campaignService) campaignContributeHandler() legacyHandler {
 				"Campaign funding request is missing a valid retry token",
 			)
 		}
-		amount, err := normalizeWalletAmount(body["amount"])
+		amount, err := normalizeWalletAmount(rawJSONValue(body.Amount))
 		if err != nil {
 			return legacyPayload{}, walletAPIError(err)
 		}
@@ -885,12 +929,12 @@ func (s *campaignService) adminCampaignActionHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, err := decodeCampaignBody(req)
+		body, err := decodeJSONBody[campaignActionBody](req, campaignBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		action := jsonString(body["action"])
-		reason := truncateRunes(strings.TrimSpace(jsonString(body["reason"])), 500)
+		action := body.Action
+		reason := truncateRunes(strings.TrimSpace(body.Reason), 500)
 		tx, err := s.mutations.Begin(ctx)
 		if err != nil {
 			return legacyPayload{}, err
@@ -1025,11 +1069,11 @@ func (s *campaignService) adminCampaignPrizePaidHandler() legacyHandler {
 				http.StatusBadRequest, "Invalid prize result",
 			)
 		}
-		body, err := decodeCampaignBody(req)
+		body, err := decodeJSONBody[campaignPrizePaidBody](req, campaignBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		note := truncateRunes(strings.TrimSpace(jsonString(body["note"])), 500)
+		note := truncateRunes(strings.TrimSpace(body.Note), 500)
 		var noteValue any
 		if note != "" {
 			noteValue = note

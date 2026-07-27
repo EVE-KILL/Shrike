@@ -14225,6 +14225,24 @@
     "/admin/campaign-prizes/{id}/{rank}/paid": {
       "post": {
         "operationId": "campaign-prize-paid-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "note": {
+                    "description": "Operator note recorded with the payout.",
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14283,6 +14301,31 @@
     "/admin/campaigns/{id}/action": {
       "post": {
         "operationId": "campaign-admin-action-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Administrative action to apply to the campaign.",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "description": "Operator note recorded with the action.",
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14312,6 +14355,31 @@
     "/admin/campaigns/{id}/actions": {
       "post": {
         "operationId": "campaign-admin-action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Administrative action to apply to the campaign.",
+                    "type": "string"
+                  },
+                  "reason": {
+                    "description": "Operator note recorded with the action.",
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -14341,6 +14409,24 @@
     "/admin/campaigns/{id}/prizes/{rank}/payment": {
       "post": {
         "operationId": "campaign-prize-paid",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "note": {
+                    "description": "Operator note recorded with the payout.",
+                    "maxLength": 500,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16721,6 +16807,52 @@
     "/campaign/create": {
       "post": {
         "operationId": "campaign-create-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "allowedEntities": {
+                    "description": "Entities permitted to view a restricted campaign."
+                  },
+                  "description": {
+                    "description": "Free text shown on the campaign page.",
+                    "type": "string"
+                  },
+                  "endTime": {
+                    "description": "Campaign end. Omit for an open-ended campaign."
+                  },
+                  "location": {
+                    "description": "Location filter: system, constellation or region identifiers."
+                  },
+                  "name": {
+                    "description": "Campaign name.",
+                    "type": "string"
+                  },
+                  "prizePool": {
+                    "description": "Prize pool definition, including any initial contribution."
+                  },
+                  "sides": {
+                    "description": "Participating sides, each naming its entities."
+                  },
+                  "startTime": {
+                    "description": "Campaign start, as a timestamp or ISO 8601 string."
+                  },
+                  "visibility": {
+                    "description": "Who may see the campaign."
+                  }
+                },
+                "required": [
+                  "name",
+                  "startTime"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16804,6 +16936,40 @@
       },
       "patch": {
         "operationId": "campaign-update-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "allowedEntities": {
+                    "description": "Replacement viewer list."
+                  },
+                  "archived": {
+                    "description": "Archive or restore the campaign."
+                  },
+                  "description": {
+                    "description": "New description. An empty string clears it."
+                  },
+                  "endTime": {
+                    "description": "New end time."
+                  },
+                  "name": {
+                    "description": "New campaign name."
+                  },
+                  "resumeProcessing": {
+                    "description": "Resume killmail processing after an edit."
+                  },
+                  "visibility": {
+                    "description": "New visibility."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16891,6 +17057,30 @@
     "/campaign/{id}/prize/contribute": {
       "post": {
         "operationId": "campaign-prize-contribute-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "amount": {
+                    "description": "ISK amount to contribute."
+                  },
+                  "requestId": {
+                    "description": "Caller-supplied idempotency key for the contribution.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "amount"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16920,6 +17110,40 @@
     "/campaign/{id}/update": {
       "post": {
         "operationId": "campaign-update-browser-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "allowedEntities": {
+                    "description": "Replacement viewer list."
+                  },
+                  "archived": {
+                    "description": "Archive or restore the campaign."
+                  },
+                  "description": {
+                    "description": "New description. An empty string clears it."
+                  },
+                  "endTime": {
+                    "description": "New end time."
+                  },
+                  "name": {
+                    "description": "New campaign name."
+                  },
+                  "resumeProcessing": {
+                    "description": "Resume killmail processing after an edit."
+                  },
+                  "visibility": {
+                    "description": "New visibility."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16976,6 +17200,52 @@
       },
       "post": {
         "operationId": "campaign-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "allowedEntities": {
+                    "description": "Entities permitted to view a restricted campaign."
+                  },
+                  "description": {
+                    "description": "Free text shown on the campaign page.",
+                    "type": "string"
+                  },
+                  "endTime": {
+                    "description": "Campaign end. Omit for an open-ended campaign."
+                  },
+                  "location": {
+                    "description": "Location filter: system, constellation or region identifiers."
+                  },
+                  "name": {
+                    "description": "Campaign name.",
+                    "type": "string"
+                  },
+                  "prizePool": {
+                    "description": "Prize pool definition, including any initial contribution."
+                  },
+                  "sides": {
+                    "description": "Participating sides, each naming its entities."
+                  },
+                  "startTime": {
+                    "description": "Campaign start, as a timestamp or ISO 8601 string."
+                  },
+                  "visibility": {
+                    "description": "Who may see the campaign."
+                  }
+                },
+                "required": [
+                  "name",
+                  "startTime"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -17059,6 +17329,40 @@
       },
       "patch": {
         "operationId": "campaign-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "allowedEntities": {
+                    "description": "Replacement viewer list."
+                  },
+                  "archived": {
+                    "description": "Archive or restore the campaign."
+                  },
+                  "description": {
+                    "description": "New description. An empty string clears it."
+                  },
+                  "endTime": {
+                    "description": "New end time."
+                  },
+                  "name": {
+                    "description": "New campaign name."
+                  },
+                  "resumeProcessing": {
+                    "description": "Resume killmail processing after an edit."
+                  },
+                  "visibility": {
+                    "description": "New visibility."
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -17146,6 +17450,30 @@
     "/campaigns/{id}/prizes/contributions": {
       "post": {
         "operationId": "campaign-prize-contribute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "amount": {
+                    "description": "ISK amount to contribute."
+                  },
+                  "requestId": {
+                    "description": "Caller-supplied idempotency key for the contribution.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestId",
+                  "amount"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
