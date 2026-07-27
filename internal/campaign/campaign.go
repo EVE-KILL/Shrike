@@ -140,6 +140,17 @@ func IsAreaCampaign(entities []Entity, loc Location) bool {
 	return len(entities) == 0 && loc.HasFilter()
 }
 
+// PopulatedSideCount counts the sides that actually hold entities. A
+// declared-but-empty side can never kill or lose anything, so it does not make
+// a campaign contested.
+func PopulatedSideCount(entities []Entity) int {
+	seen := make(map[int16]struct{}, len(entities))
+	for _, e := range entities {
+		seen[e.SideIndex] = struct{}{}
+	}
+	return len(seen)
+}
+
 // Load reads a campaign and its sides.
 func Load(ctx context.Context, pool *pgxpool.Pool, id string) (*Campaign, []Entity, error) {
 	var c Campaign

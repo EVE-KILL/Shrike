@@ -95,6 +95,12 @@ func Process(ctx context.Context, pool *pgxpool.Pool, campaignID string) (*Resul
 	if err := attributeSides(ctx, tx, c.ID); err != nil {
 		return nil, err
 	}
+	if PopulatedSideCount(entities) >= 2 {
+		count, err = restrictToContestedKills(ctx, tx, c.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	totals, err := aggregateSides(ctx, tx, c.ID)
 	if err != nil {

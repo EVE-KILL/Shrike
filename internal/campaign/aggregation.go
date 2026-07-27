@@ -178,6 +178,51 @@ func attributeSides(ctx context.Context, tx pgx.Tx, campaignID string) error {
 	return nil
 }
 
+// restrictToContestedKills drops every scratch killmail that does not cross
+// sides — victim on one side, some attacker on a different one.
+//
+// A campaign with two or more populated sides is a scoreboard BETWEEN them.
+// Kills on third parties, losses to third parties and same-side friendly fire
+// are participant activity, not part of the matchup, and leaving them in means
+// side A's isk_destroyed and side B's isk_lost sum over different populations
+// of killmails, so the two can never agree. Filtering the set once here rather
+// than per aggregate keeps every downstream number — side totals, per-entity
+// rows, the daily series, top lists, ship classes, intel and prize scoring —
+// consistently head-to-head off one definition.
+//
+// Callers skip this for one-sided campaigns (activity trackers with no
+// opponent to cross to) and area campaigns (no sides at all). Returns the
+// surviving row count.
+func restrictToContestedKills(ctx context.Context, tx pgx.Tx, campaignID string) (int64, error) {
+	if _, err := tx.Exec(ctx, `
+        DELETE FROM campaign_scratch_killmails killmail
+        WHERE killmail.campaign_id = $1
+          AND (
+                killmail.victim_side IS NULL
+             OR (killmail.attacker_mask & ~(1 << killmail.victim_side::int)) = 0
+          )`,
+		campaignID,
+	); err != nil {
+		return 0, fmt.Errorf("restrict campaign to contested kills: %w", err)
+	}
+
+	// Cardinality just dropped hard — replan the aggregate joins.
+	if _, err := tx.Exec(ctx, `ANALYZE campaign_scratch_killmails`); err != nil {
+		return 0, fmt.Errorf("analyze campaign scratch: %w", err)
+	}
+
+	var count int64
+	if err := tx.QueryRow(ctx, `
+        SELECT count(*)
+        FROM campaign_scratch_killmails
+        WHERE campaign_id = $1`,
+		campaignID,
+	).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func storeEntityTotals(ctx context.Context, tx pgx.Tx, campaignID string) error {
 	// Reset first so an entity whose previous matches disappeared does not keep
 	// stale non-zero totals.

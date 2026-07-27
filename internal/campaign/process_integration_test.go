@@ -31,15 +31,19 @@ func campaignTestPool(t *testing.T) *pgxpool.Pool {
 }
 
 // The integration shape catches the campaign bugs that a query-level unit
-// test cannot: equal-valued kills must both contribute ISK, friendly fire is a
-// loss but not a kill, and a participant campaign's location still narrows the
-// candidate set.
+// test cannot: equal-valued kills must both contribute ISK, a participant
+// campaign's location still narrows the candidate set, and — because this
+// campaign has two populated sides — only kills that cross those sides count,
+// so the scoreboard balances.
 func TestProcessCampaignAggregatesCompleteScopedSet(t *testing.T) {
 	pool := campaignTestPool(t)
 	ctx := context.Background()
 
 	const campaignID = "gotestcmp00001"
-	killmailIDs := []int64{2_000_000_001, 2_000_000_002, 2_000_000_003, 2_000_000_004}
+	killmailIDs := []int64{
+		2_000_000_001, 2_000_000_002, 2_000_000_003,
+		2_000_000_004, 2_000_000_005, 2_000_000_006,
+	}
 	cleanup := func() {
 		_, _ = pool.Exec(ctx, `DELETE FROM campaign_scratch_candidates WHERE campaign_id = $1`, campaignID)
 		_, _ = pool.Exec(ctx, `DELETE FROM campaign_scratch_killmails WHERE campaign_id = $1`, campaignID)
@@ -80,8 +84,10 @@ func TestProcessCampaignAggregatesCompleteScopedSet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Two real kills of exactly the same value, one same-side loss, and one
-	// otherwise-matching kill outside the campaign's system.
+	// Two real cross-side kills of exactly the same value, plus one of every
+	// way a killmail can touch a participant without being part of the
+	// matchup. Only the first two may survive.
+	const neutralCorp = 10000900
 	type fixture struct {
 		id           int64
 		system       int32
@@ -91,10 +97,17 @@ func TestProcessCampaignAggregatesCompleteScopedSet(t *testing.T) {
 		character    int32
 	}
 	fixtures := []fixture{
+		// side 0 kills side 1 — contested, counts.
 		{killmailIDs[0], 30000142, 10000200, 10000100, 100, 91000001},
 		{killmailIDs[1], 30000142, 10000200, 10000100, 100, 91000002},
+		// Friendly fire: a loss for side 0 with no opposing attacker.
 		{killmailIDs[2], 30000142, 10000100, 10000100, 100, 91000003},
+		// Cross-side, but outside the campaign's system.
 		{killmailIDs[3], 30000144, 10000200, 10000100, 500, 91000004},
+		// Side 0 killing a third party who is in no side.
+		{killmailIDs[4], 30000142, neutralCorp, 10000100, 700, 91000005},
+		// Side 1 losing a ship to a third party who is in no side.
+		{killmailIDs[5], 30000142, 10000200, neutralCorp, 900, 91000006},
 	}
 	for i, fixture := range fixtures {
 		at := now.Add(time.Duration(i-10) * time.Minute)
@@ -133,8 +146,8 @@ func TestProcessCampaignAggregatesCompleteScopedSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result == nil || result.Killmails != 3 {
-		t.Fatalf("result = %#v, want 3 in-system killmails", result)
+	if result == nil || result.Killmails != 2 {
+		t.Fatalf("result = %#v, want 2 contested in-system killmails", result)
 	}
 
 	type totals struct {
@@ -170,13 +183,23 @@ func TestProcessCampaignAggregatesCompleteScopedSet(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("side rows = %v, want 2", got)
 	}
-	if got[0].kills != 2 || got[0].losses != 1 ||
-		got[0].destroyed != 200 || got[0].lost != 100 {
-		t.Errorf("side 0 = %+v, want 2/1 kills/losses and 200/100 ISK", got[0])
+	// Friendly fire, the neutral kill and the loss to a neutral are all gone,
+	// so side 0 shows no losses and side 1 no kills.
+	if got[0].kills != 2 || got[0].losses != 0 ||
+		got[0].destroyed != 200 || got[0].lost != 0 {
+		t.Errorf("side 0 = %+v, want 2/0 kills/losses and 200/0 ISK", got[0])
 	}
 	if got[1].kills != 0 || got[1].losses != 2 ||
 		got[1].destroyed != 0 || got[1].lost != 200 {
 		t.Errorf("side 1 = %+v, want 0/2 kills/losses and 0/200 ISK", got[1])
+	}
+	// The property the whole contested filter exists for: in a two-sided
+	// campaign what one side destroyed is exactly what the other side lost.
+	if got[0].destroyed != got[1].lost || got[1].destroyed != got[0].lost {
+		t.Errorf("scoreboard does not balance: %+v vs %+v", got[0], got[1])
+	}
+	if got[0].kills != got[1].losses || got[1].kills != got[0].losses {
+		t.Errorf("kill/loss counts do not balance: %+v vs %+v", got[0], got[1])
 	}
 
 	var raw []byte
@@ -195,7 +218,7 @@ func TestProcessCampaignAggregatesCompleteScopedSet(t *testing.T) {
 	if err := json.Unmarshal(raw, &stats); err != nil {
 		t.Fatal(err)
 	}
-	if stats.Totals.KillCount != 3 || stats.Totals.IskDestroyed != 300 {
-		t.Errorf("stats totals = %+v, want 3 killmails worth 300", stats.Totals)
+	if stats.Totals.KillCount != 2 || stats.Totals.IskDestroyed != 200 {
+		t.Errorf("stats totals = %+v, want 2 killmails worth 200", stats.Totals)
 	}
 }
