@@ -180,7 +180,7 @@ export type SiteDomainWidget = {
     content?: string;
     enabled: boolean;
     killlistType?: string;
-    type: 'mostValuable' | 'killList' | 'topCharacters' | 'topCorporations' | 'topAlliances' | 'topShips' | 'topSystems' | 'topRegions' | 'entityInfo' | 'textBlock';
+    type: 'mostValuable' | 'killList' | 'topCharacters' | 'topCorporations' | 'topAlliances' | 'topShips' | 'topSystems' | 'topRegions' | 'entityInfo' | 'textBlock' | 'campaigns';
 };
 
 export type SiteDomainWidgets = {

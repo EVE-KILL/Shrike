@@ -1,0 +1,26 @@
+{
+  "name": "@eveshipfit/dogma-engine",
+  "type": "module",
+  "collaborators": [
+    "EVEShipFit Team <info@eveship.fit>"
+  ],
+  "description": "Library to calculate statistics for EVE Online ship fits",
+  "version": "7.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EVEShipFit/dogma-engine"
+  },
+  "files": [
+    "esf_dogma_engine_bg.wasm",
+    "esf_dogma_engine.js",
+    "esf_dogma_engine_bg.js",
+    "esf_dogma_engine.d.ts"
+  ],
+  "main": "esf_dogma_engine.js",
+  "types": "esf_dogma_engine.d.ts",
+  "sideEffects": [
+    "./esf_dogma_engine.js",
+    "./snippets/*"
+  ]
+}

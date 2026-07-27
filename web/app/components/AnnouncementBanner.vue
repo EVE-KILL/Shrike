@@ -31,7 +31,7 @@ const colorMap: Record<string, { bg: string; border: string; text: string; icon:
 }
 
 function getStyle(color: string) {
-    return colorMap[color] || colorMap.info
+    return colorMap[color] ?? colorMap.info!
 }
 </script>
 

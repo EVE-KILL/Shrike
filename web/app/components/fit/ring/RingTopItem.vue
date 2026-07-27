@@ -21,7 +21,7 @@ const props = defineProps<{
 
 <template>
     <div
-        :class="[styles.ringTopItem, { [styles.background]: props.background }]"
+        :class="[styles.ringTopItem, props.background && styles.background]"
         :style="{ '--rotation': `${props.rotation}deg` }"
     >
         <slot />

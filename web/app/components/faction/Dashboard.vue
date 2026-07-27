@@ -233,7 +233,7 @@ const fmt = (n: number | null | undefined) => (n ?? 0).toLocaleString('en-US')
                     <div class="space-y-1">
                         <NuxtLink v-for="(c, i) in militiaCorps" :key="c.id" :to="`/corporation/${c.id}`"
                             class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-blue-500/[0.06] transition-colors text-xs">
-                            <span class="text-fine text-gray-600 tabular-nums w-4 flex-shrink-0">{{ i + 1 }}</span>
+                            <span class="text-fine text-gray-600 tabular-nums w-4 flex-shrink-0">{{ Number(i) + 1 }}</span>
                             <img :src="`/images/corporations/${c.id}/logo?size=32`" alt="" class="w-4 h-4 rounded flex-shrink-0" loading="lazy">
                             <span class="text-gray-300 truncate flex-1">{{ c.name }}</span>
                             <span class="text-fine text-gray-500 tabular-nums flex-shrink-0">{{ c.pilots }}</span>
@@ -246,7 +246,7 @@ const fmt = (n: number | null | undefined) => (n ?? 0).toLocaleString('en-US')
                     <div class="space-y-1">
                         <NuxtLink v-for="(p, i) in topPilots" :key="p.id" :to="`/character/${p.id}`"
                             class="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-blue-500/[0.06] transition-colors text-xs">
-                            <span class="text-fine text-gray-600 tabular-nums w-4 flex-shrink-0">{{ i + 1 }}</span>
+                            <span class="text-fine text-gray-600 tabular-nums w-4 flex-shrink-0">{{ Number(i) + 1 }}</span>
                             <img :src="`/images/characters/${p.id}/portrait?size=32`" alt="" class="w-4 h-4 rounded flex-shrink-0" loading="lazy">
                             <span class="text-gray-300 truncate flex-1">{{ p.name }}</span>
                             <span class="text-fine text-isk tabular-nums flex-shrink-0">{{ fmt(p.kills) }}</span>

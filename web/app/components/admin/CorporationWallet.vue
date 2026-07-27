@@ -351,7 +351,7 @@ const referenceStatus = (status: number) =>
                     <button
                         class="flex items-center gap-2 px-3 py-2 rounded-md bg-white/[0.05] text-sm text-gray-400 hover:bg-white/[0.09]"
                         :disabled="pending"
-                        @click="refresh"
+                        @click="() => refresh()"
                     >
                         <Icon name="lucide:rotate-cw" :class="{ 'animate-spin': pending }" />
                         Refresh
@@ -406,7 +406,7 @@ const referenceStatus = (status: number) =>
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs">
                                 <tbody>
-                                    <tr v-for="result in pool.results" :key="result.rank" class="border-t border-white/[0.04]">
+                                    <tr v-for="(result, resultIndex) in pool.results" :key="result.rank ?? resultIndex" class="border-t border-white/[0.04]">
                                         <td class="py-2 pr-3 text-gray-500 w-10">#{{ result.rank }}</td>
                                         <td class="py-2 pr-3">
                                             <NuxtLink :to="`/character/${result.character_id}`" class="text-gray-300 hover:text-blue-300">

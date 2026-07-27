@@ -15,11 +15,11 @@ const MAX_ROWS = 50
  * deactivate/unmount, the settings one forwarded only some filters and left the
  * interval running for the life of the page.
  */
-export function useEsiLogPoll(opts: {
+export function useEsiLogPoll<T extends { rows: EsiLogRow[]; total: number }>(opts: {
     /** Where to fetch from — `/api/admin/esi-logs` or `/api/user/esi-logs`. */
     endpoint: string
     /** The list to prepend into. Mutated in place so the table updates live. */
-    data: Ref<{ rows: EsiLogRow[]; total: number } | null>
+    data: Ref<T | null | undefined>
     /** Current page — polling pauses on anything but the first. */
     page: Ref<number>
     /** User's live on/off toggle. */

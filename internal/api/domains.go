@@ -54,7 +54,7 @@ var (
 		"mostValuable": {}, "killList": {}, "topCharacters": {},
 		"topCorporations": {}, "topAlliances": {}, "topShips": {},
 		"topSystems": {}, "topRegions": {}, "entityInfo": {},
-		"textBlock": {},
+		"textBlock": {}, "campaigns": {},
 	}
 	domainColumnRatios = map[string]struct{}{
 		"250px_1fr": {}, "300px_1fr": {}, "1fr_1fr": {},

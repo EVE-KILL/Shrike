@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sources":["../../src/index.ts"],"sourcesContent":["export const ESF_DATA_VERSION = process.env.VERSION as string;\nexport const ESF_DATA_BUILD_TIME = process.env.BUILD_TIME as string;\n"],"names":[],"mappings":"yCACmC,oDADH"}

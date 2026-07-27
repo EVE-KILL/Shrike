@@ -1157,7 +1157,7 @@ const deleteCampaign = async () => {
                     <div v-if="campaign.prize_pool.contributions.length" class="space-y-1">
                         <div v-for="contribution in campaign.prize_pool.contributions" :key="contribution.id"
                             class="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-white/[0.025]">
-                            <img v-if="prizeContributorImage(contribution)" :src="prizeContributorImage(contribution)"
+                            <img v-if="prizeContributorImage(contribution)" :src="prizeContributorImage(contribution) || undefined"
                                 class="w-8 h-8 rounded bg-gray-900 flex-shrink-0" :alt="contribution.contributor_name" />
                             <div v-else class="w-8 h-8 rounded bg-white/[0.04] flex items-center justify-center flex-shrink-0">
                                 <Icon name="lucide:user-round" class="text-gray-600" />
@@ -1299,7 +1299,7 @@ const deleteCampaign = async () => {
                         :key="mv.killmailId"
                         :to="`/kill/${mv.killmailId}`"
                         class="group relative aspect-square rounded-lg overflow-hidden bg-black/40 border border-white/[0.04] hover:border-blue-500/30 transition-all"
-                        :class="idx >= 6 ? 'hidden sm:block' : ''"
+                        :class="Number(idx) >= 6 ? 'hidden sm:block' : ''"
                         :style="mvTileStyle(mv)"
                     >
                         <img

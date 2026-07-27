@@ -179,7 +179,7 @@ const subsystemSlots = computed(() =>
                     <div
                         :class="[
                             styles.turretLauncherItem,
-                            { [styles.turretLauncherItemUsed]: i < hardpoints.turretUsed },
+                            i < hardpoints.turretUsed && styles.turretLauncherItemUsed,
                         ]"
                     >&nbsp;</div>
                 </RingTopItem>
@@ -199,7 +199,7 @@ const subsystemSlots = computed(() =>
                     <div
                         :class="[
                             styles.turretLauncherItem,
-                            { [styles.turretLauncherItemUsed]: i < hardpoints.launcherUsed },
+                            i < hardpoints.launcherUsed && styles.turretLauncherItemUsed,
                         ]"
                     >&nbsp;</div>
                 </RingTopItem>

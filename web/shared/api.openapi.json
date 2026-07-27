@@ -593,7 +593,8 @@
               "topSystems",
               "topRegions",
               "entityInfo",
-              "textBlock"
+              "textBlock",
+              "campaigns"
             ],
             "type": "string"
           }

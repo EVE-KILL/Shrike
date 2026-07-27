@@ -105,7 +105,7 @@ const secClassColor = (sc: string): string => {
                     <NuxtLink v-for="(s, i) in intel.top_systems" :key="s.system_id"
                         :to="`/system/${s.system_id}`"
                         class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors">
-                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ i + 1 }}</span>
+                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ Number(i) + 1 }}</span>
                         <div class="min-w-0 flex-1">
                             <div class="text-xs truncate">
                                 <span class="tabular-nums mr-1" :class="securityClass(s.security)">{{ formatSecurity(s.security) }}</span>
@@ -127,7 +127,7 @@ const secClassColor = (sc: string): string => {
                 <div class="space-y-px">
                     <div v-for="(c, i) in intel.top_constellations" :key="c.constellation_id"
                         class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400">
-                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ i + 1 }}</span>
+                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ Number(i) + 1 }}</span>
                         <div class="min-w-0 flex-1">
                             <div class="text-xs truncate">{{ c.constellation_name }}</div>
                             <div v-if="c.region_name" class="text-fine text-gray-600 truncate">{{ c.region_name }}</div>
@@ -147,7 +147,7 @@ const secClassColor = (sc: string): string => {
                     <NuxtLink v-for="(r, i) in intel.top_regions" :key="r.region_id"
                         :to="`/region/${r.region_id}`"
                         class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors">
-                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ i + 1 }}</span>
+                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ Number(i) + 1 }}</span>
                         <div class="min-w-0 flex-1">
                             <div class="text-xs truncate">{{ r.region_name }}</div>
                             <div class="text-fine text-isk/60 tabular-nums">{{ formatIsk(r.isk_destroyed) }}</div>
@@ -169,7 +169,7 @@ const secClassColor = (sc: string): string => {
                 <div class="space-y-px">
                     <div v-for="(s, i) in intel.ships_destroyed" :key="s.ship_type_id"
                         class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400">
-                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ i + 1 }}</span>
+                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ Number(i) + 1 }}</span>
                         <img :src="`/images/types/${s.ship_type_id}/icon?size=32`"
                             class="w-5 h-5 rounded flex-shrink-0" loading="lazy">
                         <div class="min-w-0 flex-1">
@@ -190,7 +190,7 @@ const secClassColor = (sc: string): string => {
                 <div class="space-y-px">
                     <div v-for="(s, i) in intel.ships_used" :key="s.ship_type_id"
                         class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400">
-                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ i + 1 }}</span>
+                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ Number(i) + 1 }}</span>
                         <img :src="`/images/types/${s.ship_type_id}/icon?size=32`"
                             class="w-5 h-5 rounded flex-shrink-0" loading="lazy">
                         <div class="min-w-0 flex-1">
@@ -211,7 +211,7 @@ const secClassColor = (sc: string): string => {
                 <div class="space-y-px">
                     <div v-for="(g, i) in intel.ship_groups_destroyed" :key="g.group_id"
                         class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400">
-                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ i + 1 }}</span>
+                        <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ Number(i) + 1 }}</span>
                         <div class="min-w-0 flex-1">
                             <div class="text-xs truncate">{{ g.group_name }}</div>
                             <div class="text-fine text-isk/60 tabular-nums">{{ formatIsk(g.isk_destroyed) }}</div>

@@ -49,7 +49,7 @@ export function useApiClient(): typeof $fetch {
         socket: config.apiSocket,
         origin: config.apiOrigin,
         headers,
-    })
+    }) as unknown as typeof $fetch
 }
 
 /**

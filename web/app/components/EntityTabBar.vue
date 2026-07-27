@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-    tabs: { id: string; label: string; icon: string }[]
+    tabs: readonly { id: string; label: string; icon: string }[]
     activeId: string
     accent?: { accent: string } | null
 }>()

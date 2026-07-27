@@ -801,7 +801,7 @@ onUnmounted(() => {
             <div v-if="hasItem" :class="styles.slotImage">
                 <img
                     :src="itemIconSrc"
-                    :class="{ [styles.preview]: isPreview }"
+                    :class="isPreview && styles.preview"
                     draggable="true"
                     @dragstart="(e: DragEvent) => { onDragStart(e); hideTooltip(); }"
                     @mouseenter="showTooltipSoon"

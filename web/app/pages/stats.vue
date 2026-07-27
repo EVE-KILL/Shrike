@@ -388,9 +388,9 @@ const secColor = (sec: number): string => {
             <!-- ===== LARGEST ===== -->
             <template v-if="show('largest')">
                 <div :id="`stats-largest`" class="md:col-span-2 lg:col-span-3 flex items-center gap-2.5 mb-0.5 scroll-mt-4">
-                    <Icon :name="POPULATION_META['largest'].icon" class="text-sm text-blue-400/70 flex-shrink-0" />
-                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META['largest'].label }}</h2>
-                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META['largest'].blurb }}</span>
+                    <Icon :name="POPULATION_META.largest!.icon" class="text-sm text-blue-400/70 flex-shrink-0" />
+                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META.largest!.label }}</h2>
+                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META.largest!.blurb }}</span>
                 </div>
                 <div v-for="et in ['alliance', 'corporation']" :key="`largest-${et}`" class="glass-panel p-3">
                     <div class="px-1 pb-2 mb-2 text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 border-b border-white/[0.08]">
@@ -426,9 +426,9 @@ const secColor = (sec: number): string => {
             <!-- ===== SECURITY ===== -->
             <template v-if="show('security')">
                 <div :id="`stats-security`" class="md:col-span-2 lg:col-span-3 flex items-center gap-2.5 mb-0.5 scroll-mt-4">
-                    <Icon :name="POPULATION_META['security'].icon" class="text-sm text-blue-400/70 flex-shrink-0" />
-                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META['security'].label }}</h2>
-                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META['security'].blurb }}</span>
+                    <Icon :name="POPULATION_META.security!.icon" class="text-sm text-blue-400/70 flex-shrink-0" />
+                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META.security!.label }}</h2>
+                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META.security!.blurb }}</span>
                 </div>
                 <div v-for="combo in [
                     { et: 'alliance', rank: 'pirate', label: 'Most Pirate Alliances', color: 'text-red-400/80' },
@@ -490,9 +490,9 @@ const secColor = (sec: number): string => {
             <!-- ===== GROWTH ===== -->
             <template v-if="show('growth')">
                 <div :id="`stats-growth`" class="md:col-span-2 lg:col-span-3 flex items-center gap-2.5 mb-0.5 scroll-mt-4">
-                    <Icon :name="POPULATION_META['growth'].icon" class="text-sm text-blue-400/70 flex-shrink-0" />
-                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META['growth'].label }}</h2>
-                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META['growth'].blurb }}</span>
+                    <Icon :name="POPULATION_META.growth!.icon" class="text-sm text-blue-400/70 flex-shrink-0" />
+                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META.growth!.label }}</h2>
+                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META.growth!.blurb }}</span>
                 </div>
                 <div v-for="combo in [
                     { et: 'alliance', dir: 'growing', label: 'Fastest Growing Alliances', color: 'text-isk/80' },
@@ -525,9 +525,9 @@ const secColor = (sec: number): string => {
             <!-- ===== NEWEST ===== -->
             <template v-if="show('newest')">
                 <div :id="`stats-newest`" class="md:col-span-2 lg:col-span-3 flex items-center gap-2.5 mb-0.5 scroll-mt-4">
-                    <Icon :name="POPULATION_META['newest'].icon" class="text-sm text-blue-400/70 flex-shrink-0" />
-                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META['newest'].label }}</h2>
-                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META['newest'].blurb }}</span>
+                    <Icon :name="POPULATION_META.newest!.icon" class="text-sm text-blue-400/70 flex-shrink-0" />
+                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META.newest!.label }}</h2>
+                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META.newest!.blurb }}</span>
                 </div>
                 <div v-for="et in ['alliance', 'corporation', 'character']" :key="`newest-${et}`" class="glass-panel p-3">
                     <div class="px-1 pb-2 mb-2 text-fine font-bold uppercase tracking-[0.15em] text-amber-400/80 border-b border-white/[0.08]">
@@ -556,9 +556,9 @@ const secColor = (sec: number): string => {
             <!-- ===== ACHIEVEMENTS ===== -->
             <template v-if="show('achievements')">
                 <div :id="`stats-achievements`" class="md:col-span-2 lg:col-span-3 flex items-center gap-2.5 mb-0.5 scroll-mt-4">
-                    <Icon :name="POPULATION_META['achievements'].icon" class="text-sm text-blue-400/70 flex-shrink-0" />
-                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META['achievements'].label }}</h2>
-                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META['achievements'].blurb }}</span>
+                    <Icon :name="POPULATION_META.achievements!.icon" class="text-sm text-blue-400/70 flex-shrink-0" />
+                    <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{{ POPULATION_META.achievements!.label }}</h2>
+                    <span class="text-fine text-gray-600 truncate">{{ POPULATION_META.achievements!.blurb }}</span>
                 </div>
                 <div v-for="combo in [
                     { et: 'character', label: 'Top Achievement Characters' },

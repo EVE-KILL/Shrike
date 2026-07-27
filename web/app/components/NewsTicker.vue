@@ -9,7 +9,7 @@ const colorClasses: Record<string, { text: string; bg: string }> = {
 }
 
 function getColor(color: string) {
-    return colorClasses[color] || colorClasses.info
+    return colorClasses[color] ?? colorClasses.info!
 }
 
 // ── Decay ──────────────────────────────────────────────────────────────────

@@ -39,7 +39,7 @@ const newItemIds = computed(() => Array.isArray(props.row?.new_item_ids) ? props
                     <div class="text-xs font-mono text-gray-300 break-all bg-white/[0.04] rounded-lg px-3 py-2">{{ row.endpoint }}</div>
                 </div>
 
-                <div v-if="showEntity && row.endpoint_entity_name" class="flex items-center gap-3">
+                <div v-if="showEntity && row.endpoint_entity_name && row.endpoint_type && row.endpoint_entity_id != null" class="flex items-center gap-3">
                     <AdminEsiEntityAvatar :entity-type="row.endpoint_type" :entity-id="row.endpoint_entity_id" :size="64" class="w-10 h-10 rounded-full" />
                     <div>
                         <div class="text-sm text-white font-medium">{{ row.endpoint_entity_name }}</div>

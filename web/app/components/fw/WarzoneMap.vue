@@ -141,9 +141,11 @@ const layout = computed<{ nodes: LaidNode[]; links: LaidLink[]; cells: VoronoiCe
     }))
 
     const ids = new Set<number>(nodes.map(n => n.id))
-    const links: LaidLink[] = (props.jumps ?? [])
-        .filter(([f, t]) => ids.has(f) && ids.has(t))
-        .map(([from, to]) => ({ from, to }))
+    const links: LaidLink[] = (props.jumps ?? []).flatMap((jump) => {
+        const [from, to] = jump
+        if (from === undefined || to === undefined) return []
+        return ids.has(from) && ids.has(to) ? [{ from, to }] : []
+    })
 
     const pad = 120
     let nMinX = Infinity, nMaxX = -Infinity, nMinY = Infinity, nMaxY = -Infinity

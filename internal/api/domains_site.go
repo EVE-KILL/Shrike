@@ -102,7 +102,7 @@ type SiteDomainWidgets struct {
 }
 
 type SiteDomainWidget struct {
-	Type         string  `json:"type" enum:"mostValuable,killList,topCharacters,topCorporations,topAlliances,topShips,topSystems,topRegions,entityInfo,textBlock"`
+	Type         string  `json:"type" enum:"mostValuable,killList,topCharacters,topCorporations,topAlliances,topShips,topSystems,topRegions,entityInfo,textBlock,campaigns"`
 	Enabled      bool    `json:"enabled"`
 	Content      *string `json:"content,omitempty"`
 	KilllistType *string `json:"killlistType,omitempty"`

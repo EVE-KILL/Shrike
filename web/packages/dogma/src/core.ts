@@ -348,7 +348,7 @@ function computeRemoteStats(sde: SdeData, stats: FitStats): void {
 
     // Write aggregated rates onto the hull's attribute map.
     for (const [attrId, value] of totals) {
-        stats.hull.attributes.set(attrId, { base_value: 0, value });
+        stats.hull.attributes.set(attrId, { base_value: 0, value, effects: [] });
     }
 }
 
@@ -391,7 +391,11 @@ function applyChargeRangeBonuses(sde: SdeData, stats: FitStats): void {
             if (!target) continue;
             const base = target.value ?? target.base_value;
             if (base === undefined || base === null) continue;
-            item.attributes.set(targetId, { base_value: target.base_value, value: base * multiplier });
+            item.attributes.set(targetId, {
+                base_value: target.base_value,
+                value: base * multiplier,
+                effects: target.effects,
+            });
         }
     }
 }
@@ -448,7 +452,9 @@ export async function instantiateEngineFromBytes(
         g.window = globalThis;
     }
 
-    const wasmModule = await WebAssembly.compile(wasmBytes);
+    const ownedBytes = new Uint8Array(wasmBytes.byteLength);
+    ownedBytes.set(wasmBytes instanceof ArrayBuffer ? new Uint8Array(wasmBytes) : wasmBytes);
+    const wasmModule = await WebAssembly.compile(ownedBytes);
 
     const instance = await WebAssembly.instantiate(wasmModule, {
         "./esf_dogma_engine_bg.js": engineBg as unknown as WebAssembly.ModuleImports,

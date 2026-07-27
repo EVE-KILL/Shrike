@@ -47,7 +47,7 @@ const emit = defineEmits<{ select: [row: EsiLogRow] }>()
                         </td>
                         <td class="px-4 py-2 text-gray-300 text-xs">{{ row.endpoint_action || '—' }}</td>
                         <td v-if="showEntity" class="px-4 py-2">
-                            <div v-if="row.endpoint_entity_name" class="flex items-center gap-1.5 text-xs text-gray-300">
+                            <div v-if="row.endpoint_entity_name && row.endpoint_type && row.endpoint_entity_id != null" class="flex items-center gap-1.5 text-xs text-gray-300">
                                 <AdminEsiEntityAvatar :entity-type="row.endpoint_type" :entity-id="row.endpoint_entity_id" :size="32" class="w-4 h-4 rounded-full" />
                                 <span class="truncate max-w-[180px]">{{ row.endpoint_entity_name }}</span>
                             </div>
@@ -86,7 +86,7 @@ const emit = defineEmits<{ select: [row: EsiLogRow] }>()
                     </div>
                     <div class="flex items-center gap-2" :class="showEntity ? 'justify-between' : 'justify-end'">
                         <template v-if="showEntity">
-                            <div v-if="row.endpoint_entity_name" class="flex items-center gap-1.5 min-w-0">
+                            <div v-if="row.endpoint_entity_name && row.endpoint_type && row.endpoint_entity_id != null" class="flex items-center gap-1.5 min-w-0">
                                 <AdminEsiEntityAvatar :entity-type="row.endpoint_type" :entity-id="row.endpoint_entity_id" :size="32" class="w-4 h-4 rounded-full flex-shrink-0" />
                                 <span class="text-fine text-gray-400 truncate">{{ row.endpoint_entity_name }}</span>
                             </div>

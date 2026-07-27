@@ -44,7 +44,7 @@ const { user, logout } = useAuth()
         </div>
 
         <!-- Account details -->
-        <div class="glass-panel p-5">
+        <div v-if="user" class="glass-panel p-5">
             <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Account</h2>
             <div class="space-y-3">
                 <div class="flex justify-between text-sm">
@@ -75,7 +75,7 @@ const { user, logout } = useAuth()
         </div>
 
         <!-- Quick links -->
-        <div class="glass-panel p-5">
+        <div v-if="user" class="glass-panel p-5">
             <h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Quick Links</h2>
             <div class="space-y-1">
                 <NuxtLink :to="`/character/${user.characterId}`" class="flex items-center gap-2 px-3 py-2 -mx-3 rounded-md text-sm text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.04] transition-colors">

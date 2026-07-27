@@ -443,7 +443,7 @@ const tabs = [
                     <thead><tr class="text-left text-gray-500 border-b border-white/[0.06]"><th class="px-4 py-2 w-10">#</th><th class="px-4 py-2">System</th><th class="px-4 py-2 text-right">Active Characters</th></tr></thead>
                     <tbody>
                         <tr v-for="(sys, i) in huntData.systems" :key="sys.id" class="border-b border-white/[0.04] hover:bg-white/[0.04]">
-                            <td class="px-4 py-2 text-gray-600 tabular-nums">{{ i + 1 }}</td>
+                            <td class="px-4 py-2 text-gray-600 tabular-nums">{{ Number(i) + 1 }}</td>
                             <td class="px-4 py-2"><NuxtLink :to="`/system/${sys.id}`" class="text-blue-400 hover:text-blue-300">{{ sys.name }}</NuxtLink></td>
                             <td class="px-4 py-2 text-right tabular-nums text-white">{{ sys.active_characters }}</td>
                         </tr>
@@ -463,7 +463,7 @@ const tabs = [
                     <thead><tr class="text-left text-gray-500 border-b border-white/[0.06]"><th class="px-4 py-2 w-10">#</th><th class="px-4 py-2">System</th><th class="px-4 py-2 text-right">Alliances</th><th class="px-4 py-2 text-right">Characters</th></tr></thead>
                     <tbody>
                         <tr v-for="(sys, i) in hotZoneData.systems" :key="sys.id" class="border-b border-white/[0.04] hover:bg-white/[0.04]">
-                            <td class="px-4 py-2 text-gray-600 tabular-nums">{{ i + 1 }}</td>
+                            <td class="px-4 py-2 text-gray-600 tabular-nums">{{ Number(i) + 1 }}</td>
                             <td class="px-4 py-2"><NuxtLink :to="`/system/${sys.id}`" class="text-blue-400 hover:text-blue-300">{{ sys.name }}</NuxtLink></td>
                             <td class="px-4 py-2 text-right tabular-nums text-yellow-400">{{ sys.alliances }}</td>
                             <td class="px-4 py-2 text-right tabular-nums text-white">{{ sys.characters }}</td>
@@ -704,7 +704,7 @@ const tabs = [
                             :key="i"
                             class="border-b border-white/[0.04] hover:bg-white/[0.04] transition-colors"
                         >
-                            <td class="px-4 py-2 text-gray-600 tabular-nums">{{ i + 1 }}</td>
+                            <td class="px-4 py-2 text-gray-600 tabular-nums">{{ Number(i) + 1 }}</td>
                             <td class="px-4 py-2">
                                 <NuxtLink
                                     :to="rivalryType === 'character' ? `/character/${item.entity_a.id}` : `/alliance/${item.entity_a.id}`"
@@ -793,7 +793,7 @@ const tabs = [
                     </div>
                     <div v-if="intelData.allies?.length" class="divide-y divide-white/[0.04]">
                         <div v-for="(ally, i) in intelData.allies" :key="ally.id" class="flex items-center gap-3 px-4 py-1.5 hover:bg-white/[0.04]">
-                            <span class="text-xs text-gray-600 tabular-nums w-5">{{ i + 1 }}</span>
+                            <span class="text-xs text-gray-600 tabular-nums w-5">{{ Number(i) + 1 }}</span>
                             <NuxtLink
                                 :to="`/${intelEntityType === 'alliance' ? 'alliance' : 'corporation'}/${ally.id}`"
                                 class="text-sm text-blue-400 hover:text-blue-300 flex-1 truncate"
@@ -814,7 +814,7 @@ const tabs = [
                     </div>
                     <div v-if="intelData.enemies?.length" class="divide-y divide-white/[0.04]">
                         <div v-for="(enemy, i) in intelData.enemies" :key="enemy.id" class="flex items-center gap-3 px-4 py-1.5 hover:bg-white/[0.04]">
-                            <span class="text-xs text-gray-600 tabular-nums w-5">{{ i + 1 }}</span>
+                            <span class="text-xs text-gray-600 tabular-nums w-5">{{ Number(i) + 1 }}</span>
                             <NuxtLink
                                 :to="`/${intelEntityType === 'alliance' ? 'alliance' : 'corporation'}/${enemy.id}`"
                                 class="text-sm text-blue-400 hover:text-blue-300 flex-1 truncate"

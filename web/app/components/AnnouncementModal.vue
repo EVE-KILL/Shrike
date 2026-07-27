@@ -22,7 +22,7 @@ const colorMap: Record<string, { accent: string; button: string }> = {
 }
 
 function getColor(color: string) {
-    return colorMap[color] || colorMap.info
+    return colorMap[color] ?? colorMap.info!
 }
 </script>
 

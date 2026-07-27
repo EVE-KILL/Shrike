@@ -84,7 +84,8 @@ const activeTab = computed<TabId>(() => {
     return 'summary'
 })
 
-const setTab = (tabId: TabId) => {
+const setTab = (tabId: string) => {
+    if (!tabIds.value.has(tabId as TabId)) return
     const basePath = tabId === 'summary' ? `/battle/${id}` : `/battle/${id}/${tabId}`
     const query = isKillmailBattle ? `?killmail=${killmailId}` : ''
     useAnalytics().track('tab.change', { entity: 'battle', tab: tabId })

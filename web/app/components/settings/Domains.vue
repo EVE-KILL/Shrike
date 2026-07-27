@@ -577,7 +577,7 @@ const SERVER_MANAGED_THEME_KEYS = new Set(['bannerUrl', 'logoUrl'])
 const cloneEditableValue = <T>(value: T): T =>
     JSON.parse(JSON.stringify(value))
 
-const snapshotEditableDomain = (domain: any) => ({
+const snapshotEditableDomain = (domain: any): Record<string, any> => ({
     entities: cloneEditableValue(domain.entities || []),
     theme: cloneEditableValue(domain.theme || {}),
     navbar_links: cloneEditableValue(

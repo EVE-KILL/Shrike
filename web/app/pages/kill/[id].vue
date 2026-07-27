@@ -202,10 +202,10 @@ const killOgImageMeta = computed(() => {
     const url = killOgImage.value
     if (!url) return undefined
     if (previewMode.value === 'fancy') {
-        return { url, width: 550, height: 200, type: 'image/png' }
+        return { url, width: 550, height: 200, type: 'image/png' as const }
     }
     const size = previewMode.value === 'big' ? 512 : 64
-    return { url, width: size, height: size, type: 'image/png' }
+    return { url, width: size, height: size, type: 'image/png' as const }
 })
 
 useSeoMeta({

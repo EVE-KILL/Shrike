@@ -148,7 +148,7 @@ const commit = (next: Parts) => {
     emit('update:modelValue', toModel(instantFrom(next, displayZone.value)))
 }
 
-const pickDay = (cell: { day: number; y: number; mo: number }) => {
+const pickDay = (cell: { day: number; inMonth: boolean; y: number; mo: number }) => {
     const current = shown.value
     commit({ y: cell.y, mo: cell.mo, d: cell.day, h: current?.h ?? 0, mi: current?.mi ?? 0 })
     if (!cell.inMonth) {

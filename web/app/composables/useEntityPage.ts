@@ -120,7 +120,8 @@ export async function useEntityPage<T extends EntityPageTab>(
         return activeTabLabel.value ? `${base} (${activeTabLabel.value})` : base
     }) })
 
-    const setTab = (tabId: TabId) => {
+    const setTab = (tabId: string) => {
+        if (!tabIds.has(tabId)) return
         useAnalytics().track('tab.change', { entity: kind, tab: tabId })
         const path = tabId === defaultTab ? `/${kind}/${id}` : `/${kind}/${id}/${tabId}`
         navigateTo(path)

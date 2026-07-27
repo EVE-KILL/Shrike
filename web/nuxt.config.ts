@@ -354,8 +354,8 @@ export default defineNuxtConfig({
               { rel: 'preload', href: '/fonts/Exo2-Variable.woff2', as: 'font', type: 'font/woff2', crossorigin: '' },
               // AI-discoverable guides. rel="llms" + rel="mcp" are hints for
               // web-browsing LLMs / MCP-aware agents that land on the site.
-              { rel: 'llms', type: 'text/plain', href: '/llms.txt' },
-              { rel: 'mcp', type: 'text/plain', href: '/mcp.txt' },
+              { rel: 'llms' as any, type: 'text/plain', href: '/llms.txt' },
+              { rel: 'mcp' as any, type: 'text/plain', href: '/mcp.txt' },
           ],
       },
   },

@@ -388,11 +388,11 @@ const memberEntityOptions = computed(() => {
             <!-- Tab bar — sides + views share one row -->
             <div class="flex overflow-x-auto border-b border-white/[0.08] mb-4 scrollbar-hide">
                 <button v-for="tab in [
-                    { id: 'combined', label: 'Both Sides', icon: 'lucide:layers', border: 'border-white' },
+                    { id: 'combined', label: 'Both Sides', icon: 'lucide:layers', color: '', border: 'border-white' },
                     { id: 'aggressor', label: war.aggressor.name, icon: 'lucide:swords', color: 'text-red-400', border: 'border-red-400' },
                     { id: 'defender', label: war.defender.name, icon: 'lucide:shield', color: 'text-blue-400', border: 'border-blue-400' },
-                    { id: 'members', label: 'Members', icon: 'lucide:users', border: 'border-white' },
-                    { id: 'intel', label: 'Intel', icon: 'lucide:radar', border: 'border-white' },
+                    { id: 'members', label: 'Members', icon: 'lucide:users', color: '', border: 'border-white' },
+                    { id: 'intel', label: 'Intel', icon: 'lucide:radar', color: '', border: 'border-white' },
                 ]" :key="tab.id"
                     class="flex items-center gap-2 px-3 md:px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap"
                     :class="activeTab === tab.id

@@ -105,6 +105,13 @@ const { data, pending } = await useApiFetch<CampaignListResponse>('/api/campaign
     })),
     default: () => ({ campaigns: [], hasMore: false, page: 1, total: 0, counts: { active: 0, archived: 0, private: 0 } }),
 })
+const campaignData = computed<CampaignListResponse>(() => data.value ?? {
+    campaigns: [],
+    hasMore: false,
+    page: 1,
+    total: 0,
+    counts: { active: 0, archived: 0, private: 0 },
+})
 
 /** Query patches always drop back to page 1 — the old offset means nothing. */
 const patchQuery = (patch: Record<string, string | undefined>) => {
@@ -159,12 +166,12 @@ const MODES = [
 ] as const
 
 const tabCount = (key: string) =>
-    key === 'archived' ? data.value.counts.archived
-    : key === 'private' ? data.value.counts.private
-    : data.value.counts.active
+    key === 'archived' ? campaignData.value.counts.archived
+    : key === 'private' ? campaignData.value.counts.private
+    : campaignData.value.counts.active
 
 const hasFilters = computed(() => mode.value !== 'all' || !!search.value)
-const lastPage = computed(() => Math.max(1, Math.ceil((data.value.total || 0) / PAGE_SIZE)))
+const lastPage = computed(() => Math.max(1, Math.ceil((campaignData.value.total || 0) / PAGE_SIZE)))
 </script>
 
 <template>
@@ -244,12 +251,12 @@ const lastPage = computed(() => Math.max(1, Math.ceil((data.value.total || 0) / 
         </div>
 
         <!-- Loading -->
-        <div v-if="pending && !data.campaigns.length" class="flex items-center justify-center py-16">
+        <div v-if="pending && !campaignData.campaigns.length" class="flex items-center justify-center py-16">
             <Icon name="lucide:loader-2" class="text-2xl text-gray-500 animate-spin" />
         </div>
 
         <!-- Empty -->
-        <div v-else-if="!data.campaigns.length" class="glass-panel p-12 text-center">
+        <div v-else-if="!campaignData.campaigns.length" class="glass-panel p-12 text-center">
             <Icon name="lucide:flag-off" class="text-3xl text-gray-600 mb-3" />
             <template v-if="hasFilters">
                 <p class="text-sm text-gray-500 mb-1">No campaigns match these filters</p>
@@ -266,17 +273,17 @@ const lastPage = computed(() => Math.max(1, Math.ceil((data.value.total || 0) / 
 
         <!-- Cards -->
         <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4" :class="{ 'opacity-60': pending }">
-            <CampaignCard v-for="c in data.campaigns" :key="c.campaign_id" :campaign="c" />
+            <CampaignCard v-for="c in campaignData.campaigns" :key="c.campaign_id" :campaign="c" />
         </div>
 
         <!-- Pagination -->
-        <div v-if="page > 1 || data.hasMore" class="flex items-center justify-center gap-2 mt-6">
+        <div v-if="page > 1 || campaignData.hasMore" class="flex items-center justify-center gap-2 mt-6">
             <button :disabled="page <= 1" @click="setPage(page - 1)"
                 class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] text-gray-400 border border-white/[0.08] disabled:opacity-40 hover:bg-blue-500/[0.08] transition-colors cursor-pointer disabled:cursor-default">
                 Previous
             </button>
             <span class="text-xs text-gray-500 tabular-nums px-2">Page {{ page }} of {{ lastPage }}</span>
-            <button :disabled="!data.hasMore" @click="setPage(page + 1)"
+            <button :disabled="!campaignData.hasMore" @click="setPage(page + 1)"
                 class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] text-gray-400 border border-white/[0.08] disabled:opacity-40 hover:bg-blue-500/[0.08] transition-colors cursor-pointer disabled:cursor-default">
                 Next
             </button>

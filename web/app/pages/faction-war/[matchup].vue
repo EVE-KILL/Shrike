@@ -58,11 +58,12 @@ const formatFlipDay = (isoDay: string): string => {
     // so labels don't shift across the local/UTC boundary for users near
     // midnight.
     const [y, m, d] = isoDay.split('-').map(Number)
+    if (y === undefined || m === undefined || d === undefined) return isoDay
     const dayDate = new Date(Date.UTC(y, m - 1, d))
     const now = new Date()
     const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
     const diffDays = Math.round((todayUtc.getTime() - dayDate.getTime()) / 86400000)
-    const label = `${d} ${MONTH_SHORT[m - 1]}`
+    const label = `${d} ${MONTH_SHORT[m - 1] ?? ''}`.trim()
     if (diffDays === 0) return `Today — ${label}`
     if (diffDays === 1) return `Yesterday — ${label}`
     return label
@@ -338,13 +339,13 @@ const currentCorps = computed(() => {
             <!-- Tab bar -->
             <div class="flex overflow-x-auto border-b border-white/[0.08] mb-4 scrollbar-hide">
                 <button v-for="tab in [
-                    { id: 'combined', label: 'Both Sides', icon: 'lucide:layers' },
+                    { id: 'combined', label: 'Both Sides', icon: 'lucide:layers', color: '' },
                     { id: 'side1', label: side1.name, icon: 'lucide:swords', color: 'border-red-400' },
                     { id: 'side2', label: side2.name, icon: 'lucide:shield', color: 'border-blue-400' },
-                    { id: 'members', label: 'Members', icon: 'lucide:users' },
-                    { id: 'intel', label: 'Intel', icon: 'lucide:radar' },
-                    { id: 'map', label: 'Warzone Map', icon: 'lucide:map' },
-                    { id: 'systems', label: 'Systems', icon: 'lucide:list' },
+                    { id: 'members', label: 'Members', icon: 'lucide:users', color: '' },
+                    { id: 'intel', label: 'Intel', icon: 'lucide:radar', color: '' },
+                    { id: 'map', label: 'Warzone Map', icon: 'lucide:map', color: '' },
+                    { id: 'systems', label: 'Systems', icon: 'lucide:list', color: '' },
                 ]" :key="tab.id"
                     class="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap"
                     :class="activeTab === tab.id

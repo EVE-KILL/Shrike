@@ -636,7 +636,7 @@ const cycleItemSlot = (idx: number) => {
     const item = filters.value.items[idx]
     if (!item) return
     const order: ItemSlot[] = ['any', 'fitted', 'cargo']
-    const next = order[(order.indexOf(item.slot) + 1) % order.length]
+    const next = order[(order.indexOf(item.slot) + 1) % order.length]!
     item.slot = next
 }
 
@@ -647,7 +647,7 @@ const cycleItemSide = (idx: number) => {
     const item = filters.value.items[idx]
     if (!item) return
     const order: ItemSide[] = ['victim', 'attacker', 'either']
-    const next = order[(order.indexOf(item.side) + 1) % order.length]
+    const next = order[(order.indexOf(item.side) + 1) % order.length]!
     item.side = next
 }
 

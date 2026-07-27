@@ -91,9 +91,11 @@ const hullGroups = computed<GroupEntry[]>(() => {
 
     const result: GroupEntry[] = [];
     for (const groupName of Object.keys(grouped).sort()) {
+        const group = grouped[groupName];
+        if (!group) continue;
         const races: RaceEntry[] = [];
         for (const race of RACE_ORDER) {
-            const hulls = grouped[groupName][race.name];
+            const hulls = group[race.name];
             if (!hulls || hulls.length === 0) continue;
             hulls.sort((a, b) => a.name.localeCompare(b.name));
             races.push({ raceId: race.id, raceName: race.name, hulls });

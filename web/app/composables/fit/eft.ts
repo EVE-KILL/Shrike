@@ -232,7 +232,8 @@ export function importFitFromEft(eft: string, sde: SdeData): Fit | null {
         // Determine slot type from the module's dogma effects /
         // attributes. We fall back to CargoBay if we're past the
         // end-of-modules marker.
-        let slotType = slotTypeForImport(itemTypeId, sde);
+        let slotType: FitSlotType | "DroneBay" | "CargoBay" | undefined =
+            slotTypeForImport(itemTypeId, sde);
         if (inCargoSection && slotType !== "DroneBay") {
             slotType = "CargoBay";
         }

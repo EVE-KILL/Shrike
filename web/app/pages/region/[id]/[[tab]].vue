@@ -119,7 +119,8 @@ useHead({ title: computed(() => {
     return activeTabLabel.value ? `${name} (${activeTabLabel.value})` : name
 }) })
 
-const setTab = (tabId: TabId) => {
+const setTab = (tabId: string) => {
+    if (!tabIds.has(tabId as TabId)) return
     useAnalytics().track('tab.change', { entity: 'region', tab: tabId })
     navigateTo(tabId === 'dashboard' ? `/region/${id}` : `/region/${id}/${tabId}`)
 }

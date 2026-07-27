@@ -3,5 +3,7 @@ node_modules/
 .output/
 .data/
 dist/
+!packages/dogma/dist/
+!packages/dogma/dist/**
 *.log
 .DS_Store

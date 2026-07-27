@@ -403,6 +403,27 @@ func TestDomainCreateSanitizesManagedThemeAndValidatesNestedLinks(
 	}
 }
 
+func TestDomainWidgetsAcceptCampaignListing(t *testing.T) {
+	widgets := map[string]any{
+		"top": []any{},
+		"left": []any{map[string]any{
+			"type": "campaigns", "enabled": true,
+		}},
+		"right": []any{},
+	}
+
+	got, exists, err := parseOptionalDomainWidgets(
+		map[string]any{"widgets": widgets},
+		"widgets",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exists || !reflect.DeepEqual(got, widgets) {
+		t.Fatalf("widgets = %#v, exists = %t", got, exists)
+	}
+}
+
 func TestMergeDomainThemePreservesServerManagedKeys(t *testing.T) {
 	got := mergeDomainTheme(
 		map[string]any{
