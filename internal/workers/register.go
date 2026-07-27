@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/cron"
 	"github.com/eve-kill/shrike/internal/jobs"
@@ -130,16 +132,97 @@ func Register(d *Deps) (*river.Workers, *cron.Registry, error) {
 
 func newCronWorker(d *Deps, registry *cron.Registry) *cron.Worker {
 	cronLog := d.Log.With().Str("component", "cron").Logger()
+	runLog := newCronRunLogger(cronLog)
 	return &cron.Worker{
 		Registry: registry,
 		Redis:    d.Redis,
 		OnStart: func(name string) {
-			cronLog.Info().Str("cron", name).Msg("cron started")
+			runLog.started(name)
 		},
 		OnRun: func(run cron.Run) {
-			logCronRun(cronLog, run)
+			runLog.finished(run)
 		},
 	}
+}
+
+const statusUpdateLogInterval = time.Minute
+
+type cronRunLogger struct {
+	log zerolog.Logger
+	now func() time.Time
+
+	mu             sync.Mutex
+	statusStarted  time.Time
+	statusRuns     int
+	statusDuration time.Duration
+	statusMax      time.Duration
+}
+
+func newCronRunLogger(logger zerolog.Logger) *cronRunLogger {
+	return &cronRunLogger{log: logger, now: time.Now}
+}
+
+// started remains available at debug level for long-running cron diagnosis.
+// The info stream reports one outcome instead of a start and finish pair.
+func (l *cronRunLogger) started(name string) {
+	l.log.Debug().Str("cron", name).Msg("cron started")
+}
+
+func (l *cronRunLogger) finished(run cron.Run) {
+	// Failures and skips are exceptional and must be visible immediately.
+	if run.Name != "status_update" || run.Err != nil || run.Skipped {
+		logCronRun(l.log, run)
+		return
+	}
+	l.statusUpdate(run)
+}
+
+func (l *cronRunLogger) statusUpdate(run cron.Run) {
+	now := l.now()
+
+	l.mu.Lock()
+	var summary statusUpdateSummary
+	if l.statusStarted.IsZero() {
+		l.statusStarted = now
+	} else if now.Sub(l.statusStarted) >= statusUpdateLogInterval && l.statusRuns > 0 {
+		summary = statusUpdateSummary{
+			runs:    l.statusRuns,
+			window:  now.Sub(l.statusStarted),
+			total:   l.statusDuration,
+			maximum: l.statusMax,
+			average: l.statusDuration / time.Duration(l.statusRuns),
+		}
+		l.statusStarted = now
+		l.statusRuns = 0
+		l.statusDuration = 0
+		l.statusMax = 0
+	}
+
+	l.statusRuns++
+	l.statusDuration += run.Elapsed
+	if run.Elapsed > l.statusMax {
+		l.statusMax = run.Elapsed
+	}
+	l.mu.Unlock()
+
+	if summary.runs > 0 {
+		l.log.Info().
+			Str("cron", "status_update").
+			Int("runs", summary.runs).
+			Dur("window", summary.window).
+			Dur("average_duration", summary.average).
+			Dur("max_duration", summary.maximum).
+			Dur("total_duration", summary.total).
+			Msg("cron status updates completed")
+	}
+}
+
+type statusUpdateSummary struct {
+	runs    int
+	window  time.Duration
+	total   time.Duration
+	average time.Duration
+	maximum time.Duration
 }
 
 func logCronRun(logger zerolog.Logger, run cron.Run) {

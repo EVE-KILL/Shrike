@@ -128,6 +128,94 @@ func TestCronRunLogIncludesOutcomeAndReport(t *testing.T) {
 	}
 }
 
+func TestCronRunLoggerEmitsOneInfoOutcomePerNormalRun(t *testing.T) {
+	var output bytes.Buffer
+	runLog := newCronRunLogger(zerolog.New(&output).Level(zerolog.InfoLevel))
+
+	runLog.started("analyze")
+	runLog.finished(cron.Run{
+		Name:    "analyze",
+		Report:  "planner statistics updated",
+		Elapsed: 2 * time.Second,
+	})
+
+	records := decodeWorkerLogs(t, output.String())
+	if len(records) != 1 {
+		t.Fatalf("got %d info logs, want one consolidated outcome: %s", len(records), output.String())
+	}
+	if got := records[0]["message"]; got != "cron completed" {
+		t.Errorf("message = %v, want cron completed", got)
+	}
+}
+
+func TestCronRunLoggerConsolidatesStatusUpdates(t *testing.T) {
+	var output bytes.Buffer
+	runLog := newCronRunLogger(zerolog.New(&output))
+	now := time.Date(2026, time.July, 27, 18, 0, 0, 0, time.UTC)
+	runLog.now = func() time.Time { return now }
+
+	for range 60 {
+		runLog.finished(cron.Run{Name: "status_update", Elapsed: 10 * time.Millisecond})
+		now = now.Add(time.Second)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("status_update logged every run instead of consolidating: %s", output.String())
+	}
+
+	// The next run starts a new window and reports the completed minute.
+	runLog.finished(cron.Run{Name: "status_update", Elapsed: 20 * time.Millisecond})
+
+	records := decodeWorkerLogs(t, output.String())
+	if len(records) != 1 {
+		t.Fatalf("got %d summary logs, want one: %s", len(records), output.String())
+	}
+	record := records[0]
+	if got := record["message"]; got != "cron status updates completed" {
+		t.Errorf("message = %v", got)
+	}
+	if got := record["runs"]; got != float64(60) {
+		t.Errorf("runs = %v, want 60", got)
+	}
+	if got := record["cron"]; got != "status_update" {
+		t.Errorf("cron = %v, want status_update", got)
+	}
+}
+
+func TestCronRunLoggerReportsStatusFailureImmediately(t *testing.T) {
+	var output bytes.Buffer
+	runLog := newCronRunLogger(zerolog.New(&output))
+	boom := errors.New("Valkey unavailable")
+
+	runLog.finished(cron.Run{Name: "status_update", Err: boom})
+
+	records := decodeWorkerLogs(t, output.String())
+	if len(records) != 1 {
+		t.Fatalf("got %d logs, want one immediate failure: %s", len(records), output.String())
+	}
+	if got := records[0]["level"]; got != "error" {
+		t.Errorf("level = %v, want error", got)
+	}
+	if got := records[0]["error"]; got != boom.Error() {
+		t.Errorf("error = %v, want %q", got, boom)
+	}
+}
+
+func decodeWorkerLogs(t *testing.T, output string) []map[string]any {
+	t.Helper()
+	var records []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+		if line == "" {
+			continue
+		}
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
+			t.Fatalf("decode log %q: %v", line, err)
+		}
+		records = append(records, record)
+	}
+	return records
+}
+
 // Implemented and unimplemented together must account for every declared queue
 // that this process could consume. A queue in neither list is invisible.
 func TestQueueAccountingIsComplete(t *testing.T) {
