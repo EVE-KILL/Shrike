@@ -13658,8 +13658,8 @@
         ],
         "summary": "Announcement administration",
         "tags": [
-          "admin",
-          "announcements"
+          "announcements",
+          "admin"
         ],
         "x-audience": "admin"
       },
@@ -13685,8 +13685,8 @@
         ],
         "summary": "Create an announcement",
         "tags": [
-          "admin",
-          "announcements"
+          "announcements",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -13714,8 +13714,8 @@
         ],
         "summary": "Archive an announcement",
         "tags": [
-          "admin",
-          "announcements"
+          "announcements",
+          "admin"
         ],
         "x-audience": "admin"
       },
@@ -13741,8 +13741,8 @@
         ],
         "summary": "Announcement administration detail",
         "tags": [
-          "admin",
-          "announcements"
+          "announcements",
+          "admin"
         ],
         "x-audience": "admin"
       },
@@ -13768,8 +13768,8 @@
         ],
         "summary": "Update an announcement",
         "tags": [
-          "admin",
-          "announcements"
+          "announcements",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -13797,8 +13797,8 @@
         ],
         "summary": "Archive an announcement",
         "tags": [
-          "admin",
-          "announcements"
+          "announcements",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -13826,8 +13826,8 @@
         ],
         "summary": "Blog administration",
         "tags": [
-          "admin",
-          "blog"
+          "blog",
+          "admin"
         ],
         "x-audience": "admin"
       },
@@ -13853,8 +13853,8 @@
         ],
         "summary": "Create a blog post",
         "tags": [
-          "admin",
-          "blog"
+          "blog",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -13882,8 +13882,8 @@
         ],
         "summary": "Preview a blog post in any state",
         "tags": [
-          "admin",
-          "blog"
+          "blog",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -13911,8 +13911,8 @@
         ],
         "summary": "Permanently delete a blog post",
         "tags": [
-          "admin",
-          "blog"
+          "blog",
+          "admin"
         ],
         "x-audience": "admin"
       },
@@ -13938,8 +13938,8 @@
         ],
         "summary": "Blog post administration detail",
         "tags": [
-          "admin",
-          "blog"
+          "blog",
+          "admin"
         ],
         "x-audience": "admin"
       },
@@ -13965,8 +13965,8 @@
         ],
         "summary": "Update a blog post",
         "tags": [
-          "admin",
-          "blog"
+          "blog",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -13994,9 +13994,8 @@
         ],
         "summary": "Mark a claimed campaign prize paid",
         "tags": [
-          "admin",
           "campaigns",
-          "wallet"
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14024,8 +14023,8 @@
         ],
         "summary": "Campaign administration",
         "tags": [
-          "admin",
-          "campaigns"
+          "campaigns",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14053,8 +14052,8 @@
         ],
         "summary": "Apply an administrative campaign action",
         "tags": [
-          "admin",
-          "campaigns"
+          "campaigns",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14082,8 +14081,8 @@
         ],
         "summary": "Apply an administrative campaign action",
         "tags": [
-          "admin",
-          "campaigns"
+          "campaigns",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14111,9 +14110,8 @@
         ],
         "summary": "Mark a claimed campaign prize paid",
         "tags": [
-          "admin",
           "campaigns",
-          "wallet"
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14141,8 +14139,8 @@
         ],
         "summary": "Resolve a comment report",
         "tags": [
-          "admin",
-          "comments"
+          "comments",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14170,8 +14168,8 @@
         ],
         "summary": "Reported and flagged comments",
         "tags": [
-          "admin",
-          "comments"
+          "comments",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14199,8 +14197,8 @@
         ],
         "summary": "Reported and flagged comments (live frontend alias)",
         "tags": [
-          "admin",
-          "comments"
+          "comments",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14228,8 +14226,8 @@
         ],
         "summary": "Resolve a comment report (live frontend alias)",
         "tags": [
-          "admin",
-          "comments"
+          "comments",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14257,8 +14255,8 @@
         ],
         "summary": "Hide or restore a comment",
         "tags": [
-          "admin",
-          "comments"
+          "comments",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14286,8 +14284,8 @@
         ],
         "summary": "Hide a comment (live frontend alias)",
         "tags": [
-          "admin",
-          "comments"
+          "comments",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14315,8 +14313,8 @@
         ],
         "summary": "Restore a comment (live frontend alias)",
         "tags": [
-          "admin",
-          "comments"
+          "comments",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14344,8 +14342,8 @@
         ],
         "summary": "List custom domains",
         "tags": [
-          "admin",
-          "domains"
+          "domains",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14373,8 +14371,8 @@
         ],
         "summary": "Custom domain administration detail",
         "tags": [
-          "admin",
-          "domains"
+          "domains",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14402,8 +14400,8 @@
         ],
         "summary": "Preview a domain image",
         "tags": [
-          "admin",
-          "domains"
+          "domains",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14431,8 +14429,8 @@
         ],
         "summary": "Review a domain image",
         "tags": [
-          "admin",
-          "domains"
+          "domains",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14460,8 +14458,8 @@
         ],
         "summary": "Toggle a custom domain",
         "tags": [
-          "admin",
-          "domains"
+          "domains",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14489,6 +14487,7 @@
         ],
         "summary": "ESI request overview",
         "tags": [
+          "esi",
           "admin"
         ],
         "x-audience": "admin"
@@ -14517,6 +14516,7 @@
         ],
         "summary": "Search entities with ESI request logs",
         "tags": [
+          "esi",
           "admin"
         ],
         "x-audience": "admin"
@@ -14545,6 +14545,7 @@
         ],
         "summary": "Search ESI request logs",
         "tags": [
+          "esi",
           "admin"
         ],
         "x-audience": "admin"
@@ -14573,8 +14574,8 @@
         ],
         "summary": "Unified moderation queue",
         "tags": [
-          "admin",
-          "moderation"
+          "moderation",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14602,8 +14603,8 @@
         ],
         "summary": "Unified moderation queue (live frontend alias)",
         "tags": [
-          "admin",
-          "moderation"
+          "moderation",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14631,8 +14632,8 @@
         ],
         "summary": "Approve or reject a moderation item",
         "tags": [
-          "admin",
-          "moderation"
+          "moderation",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14660,8 +14661,8 @@
         ],
         "summary": "Approve a moderation item (live frontend alias)",
         "tags": [
-          "admin",
-          "moderation"
+          "moderation",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14689,8 +14690,8 @@
         ],
         "summary": "Reject a moderation item (live frontend alias)",
         "tags": [
-          "admin",
-          "moderation"
+          "moderation",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14746,6 +14747,7 @@
         ],
         "summary": "List users",
         "tags": [
+          "users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14774,6 +14776,7 @@
         ],
         "summary": "User administration detail",
         "tags": [
+          "users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14802,6 +14805,7 @@
         ],
         "summary": "Set a user's Discord identity",
         "tags": [
+          "users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14830,6 +14834,7 @@
         ],
         "summary": "Toggle a user's administrator status",
         "tags": [
+          "users",
           "admin"
         ],
         "x-audience": "admin"
@@ -14858,8 +14863,8 @@
         ],
         "summary": "Corporation wallet administration",
         "tags": [
-          "admin",
-          "wallet"
+          "wallet",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14887,9 +14892,8 @@
         ],
         "summary": "Create a corporation-wallet authorization URL",
         "tags": [
-          "admin",
           "wallet",
-          "auth"
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14917,8 +14921,8 @@
         ],
         "summary": "Queue a corporation wallet sync",
         "tags": [
-          "admin",
-          "wallet"
+          "wallet",
+          "admin"
         ],
         "x-audience": "admin"
       }
@@ -14941,7 +14945,7 @@
         },
         "summary": "Entity profile",
         "tags": [
-          "entities"
+          "alliances"
         ],
         "x-audience": "public"
       }
@@ -14964,7 +14968,7 @@
         },
         "summary": "Alliance corporations",
         "tags": [
-          "entities"
+          "alliances"
         ],
         "x-audience": "public"
       }
@@ -14987,7 +14991,7 @@
         },
         "summary": "Entity intelligence",
         "tags": [
-          "entities"
+          "alliances"
         ],
         "x-audience": "public"
       }
@@ -15010,7 +15014,7 @@
         },
         "summary": "Organization members",
         "tags": [
-          "entities"
+          "alliances"
         ],
         "x-audience": "public"
       }
@@ -15033,7 +15037,7 @@
         },
         "summary": "Entity dashboard statistics",
         "tags": [
-          "entities"
+          "alliances"
         ],
         "x-audience": "public"
       }
@@ -15056,8 +15060,7 @@
         },
         "summary": "Entity top activity lists",
         "tags": [
-          "entities",
-          "statistics"
+          "alliances"
         ],
         "x-audience": "public"
       }
@@ -15126,7 +15129,7 @@
         },
         "summary": "Batch alliances statistics",
         "tags": [
-          "stats"
+          "alliances"
         ],
         "x-audience": "public"
       }
@@ -15453,8 +15456,8 @@
         ],
         "summary": "Announcements dismissed by this account",
         "tags": [
-          "account",
-          "announcements"
+          "announcements",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -15482,8 +15485,8 @@
         ],
         "summary": "Dismiss an announcement",
         "tags": [
-          "account",
-          "announcements"
+          "announcements",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -15633,7 +15636,8 @@
         ],
         "summary": "Log out this browser session",
         "tags": [
-          "auth"
+          "auth",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -15703,7 +15707,7 @@
         "summary": "Current ESI token summary",
         "tags": [
           "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -15801,7 +15805,8 @@
         ],
         "summary": "Save a custom battle or corrected sides",
         "tags": [
-          "battles"
+          "battles",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16274,7 +16279,6 @@
         ],
         "summary": "Available custom killboards",
         "tags": [
-          "account",
           "boards"
         ],
         "x-audience": "account"
@@ -16303,8 +16307,8 @@
         ],
         "summary": "Create a campaign",
         "tags": [
-          "account",
-          "campaigns"
+          "campaigns",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16332,8 +16336,8 @@
         ],
         "summary": "Delete an unfunded campaign",
         "tags": [
-          "account",
-          "campaigns"
+          "campaigns",
+          "account"
         ],
         "x-audience": "account"
       },
@@ -16386,8 +16390,8 @@
         ],
         "summary": "Update a campaign",
         "tags": [
-          "account",
-          "campaigns"
+          "campaigns",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16416,8 +16420,7 @@
         ],
         "summary": "Campaign killmail feed",
         "tags": [
-          "campaigns",
-          "killmails"
+          "campaigns"
         ],
         "x-audience": "public"
       }
@@ -16445,9 +16448,8 @@
         ],
         "summary": "Claim a campaign prize",
         "tags": [
-          "account",
           "campaigns",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16475,9 +16477,8 @@
         ],
         "summary": "Fund a campaign prize pool from EK Wallet",
         "tags": [
-          "account",
           "campaigns",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16505,8 +16506,8 @@
         ],
         "summary": "Update a campaign",
         "tags": [
-          "account",
-          "campaigns"
+          "campaigns",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16561,8 +16562,8 @@
         ],
         "summary": "Create a campaign",
         "tags": [
-          "account",
-          "campaigns"
+          "campaigns",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16590,8 +16591,8 @@
         ],
         "summary": "Delete an unfunded campaign",
         "tags": [
-          "account",
-          "campaigns"
+          "campaigns",
+          "account"
         ],
         "x-audience": "account"
       },
@@ -16644,8 +16645,8 @@
         ],
         "summary": "Update a campaign",
         "tags": [
-          "account",
-          "campaigns"
+          "campaigns",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16674,8 +16675,7 @@
         ],
         "summary": "Campaign killmail feed",
         "tags": [
-          "campaigns",
-          "killmails"
+          "campaigns"
         ],
         "x-audience": "public"
       }
@@ -16703,9 +16703,8 @@
         ],
         "summary": "Claim a campaign prize",
         "tags": [
-          "account",
           "campaigns",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16733,9 +16732,8 @@
         ],
         "summary": "Fund a campaign prize pool from EK Wallet",
         "tags": [
-          "account",
           "campaigns",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -16758,7 +16756,7 @@
         },
         "summary": "Entity profile",
         "tags": [
-          "entities"
+          "characters"
         ],
         "x-audience": "public"
       }
@@ -16781,7 +16779,7 @@
         },
         "summary": "Character achievements",
         "tags": [
-          "entities"
+          "characters"
         ],
         "x-audience": "public"
       }
@@ -16804,7 +16802,7 @@
         },
         "summary": "Entity intelligence",
         "tags": [
-          "entities"
+          "characters"
         ],
         "x-audience": "public"
       }
@@ -16827,7 +16825,7 @@
         },
         "summary": "Entity dashboard statistics",
         "tags": [
-          "entities"
+          "characters"
         ],
         "x-audience": "public"
       }
@@ -16850,8 +16848,7 @@
         },
         "summary": "Entity top activity lists",
         "tags": [
-          "entities",
-          "statistics"
+          "characters"
         ],
         "x-audience": "public"
       }
@@ -16943,7 +16940,7 @@
         },
         "summary": "Batch characters statistics",
         "tags": [
-          "stats"
+          "characters"
         ],
         "x-audience": "public"
       }
@@ -17131,7 +17128,7 @@
         },
         "summary": "Coalition versus coalition statistics",
         "tags": [
-          "stats"
+          "coalitions"
         ],
         "x-audience": "public"
       }
@@ -17186,7 +17183,8 @@
         ],
         "summary": "Publish a comment or reply",
         "tags": [
-          "comments"
+          "comments",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -17214,7 +17212,8 @@
         ],
         "summary": "Search comment GIFs",
         "tags": [
-          "comments"
+          "comments",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -17242,7 +17241,8 @@
         ],
         "summary": "Trending comment GIFs",
         "tags": [
-          "comments"
+          "comments",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -17270,7 +17270,8 @@
         ],
         "summary": "Render a comment preview",
         "tags": [
-          "comments"
+          "comments",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -17327,7 +17328,8 @@
         ],
         "summary": "Delete a comment",
         "tags": [
-          "comments"
+          "comments",
+          "account"
         ],
         "x-audience": "account"
       },
@@ -17380,7 +17382,8 @@
         ],
         "summary": "Edit a recent comment",
         "tags": [
-          "comments"
+          "comments",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -17408,7 +17411,8 @@
         ],
         "summary": "Report a published comment",
         "tags": [
-          "comments"
+          "comments",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -17454,7 +17458,7 @@
         },
         "summary": "War dashboard listing",
         "tags": [
-          "wars"
+          "battles"
         ],
         "x-audience": "public"
       }
@@ -17477,7 +17481,7 @@
         },
         "summary": "Constellation page data",
         "tags": [
-          "universe"
+          "constellations"
         ],
         "x-audience": "public"
       }
@@ -17500,8 +17504,7 @@
         },
         "summary": "Killmails in this constellation",
         "tags": [
-          "universe",
-          "killmails"
+          "constellations"
         ],
         "x-audience": "public"
       }
@@ -17524,8 +17527,7 @@
         },
         "summary": "Most valuable kills in this constellation",
         "tags": [
-          "universe",
-          "killmails"
+          "constellations"
         ],
         "x-audience": "public"
       }
@@ -17548,7 +17550,7 @@
         },
         "summary": "Entity profile",
         "tags": [
-          "entities"
+          "corporations"
         ],
         "x-audience": "public"
       }
@@ -17571,7 +17573,7 @@
         },
         "summary": "Entity intelligence",
         "tags": [
-          "entities"
+          "corporations"
         ],
         "x-audience": "public"
       }
@@ -17594,7 +17596,7 @@
         },
         "summary": "Organization members",
         "tags": [
-          "entities"
+          "corporations"
         ],
         "x-audience": "public"
       }
@@ -17617,7 +17619,7 @@
         },
         "summary": "Entity dashboard statistics",
         "tags": [
-          "entities"
+          "corporations"
         ],
         "x-audience": "public"
       }
@@ -17640,8 +17642,7 @@
         },
         "summary": "Entity top activity lists",
         "tags": [
-          "entities",
-          "statistics"
+          "corporations"
         ],
         "x-audience": "public"
       }
@@ -17710,7 +17711,7 @@
         },
         "summary": "Batch corporations statistics",
         "tags": [
-          "stats"
+          "corporations"
         ],
         "x-audience": "public"
       }
@@ -17931,9 +17932,7 @@
         },
         "summary": "Custom-domain killmails in this constellation",
         "tags": [
-          "domains",
-          "universe",
-          "killmails"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -17956,9 +17955,7 @@
         },
         "summary": "Custom-domain killmail list",
         "tags": [
-          "domains",
-          "killboard",
-          "killmails"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -17981,9 +17978,7 @@
         },
         "summary": "Custom-domain most valuable kills",
         "tags": [
-          "domains",
-          "killboard",
-          "statistics"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18006,9 +18001,7 @@
         },
         "summary": "Custom-domain top killers and locations",
         "tags": [
-          "domains",
-          "killboard",
-          "statistics"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18031,9 +18024,7 @@
         },
         "summary": "Custom-domain killmails in this region",
         "tags": [
-          "domains",
-          "universe",
-          "killmails"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18056,8 +18047,7 @@
         },
         "summary": "Custom-domain statistics",
         "tags": [
-          "domains",
-          "statistics"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18080,9 +18070,7 @@
         },
         "summary": "Custom-domain killmails in this system",
         "tags": [
-          "domains",
-          "universe",
-          "killmails"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18105,8 +18093,7 @@
         },
         "summary": "Approved custom-domain banner or logo",
         "tags": [
-          "domains",
-          "images"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18129,8 +18116,7 @@
         },
         "summary": "Approved custom-domain background",
         "tags": [
-          "domains",
-          "images"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18153,8 +18139,7 @@
         },
         "summary": "Domain image preview",
         "tags": [
-          "domains",
-          "images"
+          "domains"
         ],
         "x-audience": "public"
       }
@@ -18706,7 +18691,7 @@
         },
         "summary": "Entity profile",
         "tags": [
-          "entities"
+          "faction-war"
         ],
         "x-audience": "public"
       }
@@ -18882,8 +18867,7 @@
         ],
         "summary": "Get a saved ship fitting",
         "tags": [
-          "fittings",
-          "account"
+          "fittings"
         ],
         "x-audience": "account"
       },
@@ -19465,8 +19449,7 @@
         ],
         "summary": "Get a saved ship fitting",
         "tags": [
-          "fittings",
-          "account"
+          "fittings"
         ],
         "x-audience": "account"
       },
@@ -19572,8 +19555,7 @@
         },
         "summary": "Relationship graph analysis",
         "tags": [
-          "killboard",
-          "graph"
+          "stats"
         ],
         "x-audience": "public"
       }
@@ -20534,7 +20516,6 @@
         ],
         "summary": "Approved custom-domain background",
         "tags": [
-          "domains",
           "images"
         ],
         "x-audience": "public"
@@ -20564,7 +20545,6 @@
         ],
         "summary": "Domain image preview",
         "tags": [
-          "domains",
           "images"
         ],
         "x-audience": "public"
@@ -20594,7 +20574,6 @@
         ],
         "summary": "Approved custom-domain banner or logo",
         "tags": [
-          "domains",
           "images"
         ],
         "x-audience": "public"
@@ -21246,7 +21225,7 @@
         },
         "summary": "Inventory type page data",
         "tags": [
-          "universe"
+          "items"
         ],
         "x-audience": "public"
       }
@@ -21269,7 +21248,7 @@
         },
         "summary": "Module group usage for a ship",
         "tags": [
-          "fittings"
+          "items"
         ],
         "x-audience": "public"
       }
@@ -21292,7 +21271,7 @@
         },
         "summary": "Popular fitting families for a ship",
         "tags": [
-          "fittings"
+          "items"
         ],
         "x-audience": "public"
       }
@@ -21315,8 +21294,7 @@
         },
         "summary": "Killmails involving an inventory type",
         "tags": [
-          "universe",
-          "killmails"
+          "items"
         ],
         "x-audience": "public"
       }
@@ -21581,7 +21559,6 @@
         },
         "summary": "Killboard kill list",
         "tags": [
-          "killboard",
           "killmails"
         ],
         "x-audience": "public"
@@ -21605,7 +21582,6 @@
         },
         "summary": "Advanced killmail search",
         "tags": [
-          "killboard",
           "killmails"
         ],
         "x-audience": "public"
@@ -22085,8 +22061,7 @@
         },
         "summary": "Most valuable recent losses",
         "tags": [
-          "killboard",
-          "statistics"
+          "killmails"
         ],
         "x-audience": "public"
       }
@@ -22109,8 +22084,7 @@
         },
         "summary": "Top killers and locations",
         "tags": [
-          "killboard",
-          "statistics"
+          "killmails"
         ],
         "x-audience": "public"
       }
@@ -22133,7 +22107,7 @@
         },
         "summary": "Search historical killmail names",
         "tags": [
-          "legacy archive"
+          "legacy"
         ],
         "x-audience": "public"
       }
@@ -22156,8 +22130,7 @@
         },
         "summary": "Historical killmail detail",
         "tags": [
-          "legacy archive",
-          "killmails"
+          "legacy"
         ],
         "x-audience": "public"
       }
@@ -22180,8 +22153,7 @@
         },
         "summary": "Historical killmail list",
         "tags": [
-          "legacy archive",
-          "killmails"
+          "legacy"
         ],
         "x-audience": "public"
       }
@@ -22204,7 +22176,7 @@
         },
         "summary": "Historical archive counts",
         "tags": [
-          "legacy archive"
+          "legacy"
         ],
         "x-audience": "public"
       }
@@ -22227,7 +22199,7 @@
         },
         "summary": "Historical archive top lists",
         "tags": [
-          "legacy archive"
+          "legacy"
         ],
         "x-audience": "public"
       }
@@ -22389,8 +22361,7 @@
         },
         "summary": "Solo ship matchup",
         "tags": [
-          "ships",
-          "statistics"
+          "ships"
         ],
         "x-audience": "public"
       }
@@ -22419,7 +22390,7 @@
         ],
         "summary": "Current authenticated identity",
         "tags": [
-          "auth"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22463,8 +22434,7 @@
         ],
         "summary": "Announcements dismissed by this account",
         "tags": [
-          "account",
-          "announcements"
+          "account"
         ]
       }
     },
@@ -22519,8 +22489,7 @@
         ],
         "summary": "Dismiss an announcement",
         "tags": [
-          "account",
-          "announcements"
+          "account"
         ]
       }
     },
@@ -22548,8 +22517,7 @@
         ],
         "summary": "Available custom killboards",
         "tags": [
-          "account",
-          "boards"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22577,8 +22545,7 @@
         ],
         "summary": "Current user's comments",
         "tags": [
-          "account",
-          "comments"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22606,8 +22573,7 @@
         ],
         "summary": "Delete one of the current user's comments",
         "tags": [
-          "account",
-          "comments"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22635,8 +22601,7 @@
         ],
         "summary": "Descriptions managed by this account",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -22662,8 +22627,7 @@
         ],
         "summary": "Submit or clear an entity description",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22691,8 +22655,7 @@
         ],
         "summary": "Domains owned by the current account",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -22718,8 +22681,7 @@
         ],
         "summary": "Create a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22747,8 +22709,7 @@
         ],
         "summary": "Check subdomain availability",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22776,8 +22737,7 @@
         ],
         "summary": "Delete a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -22803,8 +22763,7 @@
         ],
         "summary": "Update a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22832,8 +22791,7 @@
         ],
         "summary": "Delete a banner or logo",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -22859,8 +22817,7 @@
         ],
         "summary": "Upload a domain image",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22888,8 +22845,7 @@
         ],
         "summary": "Delete a domain image",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22917,8 +22873,7 @@
         ],
         "summary": "Find campaigns eligible for a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22946,8 +22901,7 @@
         ],
         "summary": "Account ESI request metrics",
         "tags": [
-          "account",
-          "esi"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -22975,8 +22929,7 @@
         ],
         "summary": "Account ESI request log",
         "tags": [
-          "account",
-          "esi"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23004,8 +22957,7 @@
         ],
         "summary": "Advance the reply notification read cursor",
         "tags": [
-          "account",
-          "notifications"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23033,8 +22985,7 @@
         ],
         "summary": "Replies to this account's comments",
         "tags": [
-          "account",
-          "notifications"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23062,8 +23013,7 @@
         ],
         "summary": "Account and ESI overview",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23091,8 +23041,7 @@
         ],
         "summary": "Current account preferences",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -23119,8 +23068,7 @@
         ],
         "summary": "Update account preferences",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23148,7 +23096,7 @@
         ],
         "summary": "Log out this browser session",
         "tags": [
-          "auth"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23176,8 +23124,7 @@
         ],
         "summary": "Revoke every other browser session",
         "tags": [
-          "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -23203,8 +23150,7 @@
         ],
         "summary": "List logged-in browser sessions",
         "tags": [
-          "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23232,8 +23178,7 @@
         ],
         "summary": "Revoke one browser session",
         "tags": [
-          "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23261,8 +23206,7 @@
         ],
         "summary": "Account settings bootstrap",
         "tags": [
-          "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23290,8 +23234,7 @@
         ],
         "summary": "Current user's EK Wallet",
         "tags": [
-          "account",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23319,8 +23262,7 @@
         ],
         "summary": "Current user's EK Wallet balance",
         "tags": [
-          "account",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23348,8 +23290,8 @@
         ],
         "summary": "Advance the reply notification read cursor",
         "tags": [
-          "account",
-          "notifications"
+          "notifications",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23377,8 +23319,8 @@
         ],
         "summary": "Replies to this account's comments",
         "tags": [
-          "account",
-          "notifications"
+          "notifications",
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23424,7 +23366,7 @@
         },
         "summary": "Region page data",
         "tags": [
-          "universe"
+          "regions"
         ],
         "x-audience": "public"
       }
@@ -23447,8 +23389,7 @@
         },
         "summary": "Killmails in this region",
         "tags": [
-          "universe",
-          "killmails"
+          "regions"
         ],
         "x-audience": "public"
       }
@@ -23471,8 +23412,7 @@
         },
         "summary": "Most valuable kills in this region",
         "tags": [
-          "universe",
-          "killmails"
+          "regions"
         ],
         "x-audience": "public"
       }
@@ -23524,7 +23464,7 @@
         "summary": "Save a directional scan",
         "tags": [
           "scans",
-          "tools"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23547,8 +23487,7 @@
         },
         "summary": "Analyze a directional scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -23571,8 +23510,7 @@
         },
         "summary": "Get a saved directional scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -23601,7 +23539,7 @@
         "summary": "Save a local character scan",
         "tags": [
           "scans",
-          "tools"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -23624,8 +23562,7 @@
         },
         "summary": "Analyze a local character scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -23648,8 +23585,7 @@
         },
         "summary": "Get a saved local character scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -24934,8 +24870,7 @@
         },
         "summary": "Killmails where this ship type was destroyed",
         "tags": [
-          "universe",
-          "killmails"
+          "ships"
         ],
         "x-audience": "public"
       }
@@ -25028,8 +24963,7 @@
         },
         "summary": "Configuration for the current website host",
         "tags": [
-          "site",
-          "domains"
+          "site"
         ],
         "x-audience": "public"
       }
@@ -25121,7 +25055,7 @@
         },
         "summary": "Solar system page data",
         "tags": [
-          "universe"
+          "systems"
         ],
         "x-audience": "public"
       }
@@ -25144,8 +25078,7 @@
         },
         "summary": "Killmails in this system",
         "tags": [
-          "universe",
-          "killmails"
+          "systems"
         ],
         "x-audience": "public"
       }
@@ -25168,8 +25101,7 @@
         },
         "summary": "Most valuable kills in this system",
         "tags": [
-          "universe",
-          "killmails"
+          "systems"
         ],
         "x-audience": "public"
       }
@@ -25192,8 +25124,7 @@
         },
         "summary": "Analyze a directional scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -25222,7 +25153,7 @@
         "summary": "Save a directional scan",
         "tags": [
           "scans",
-          "tools"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25245,8 +25176,7 @@
         },
         "summary": "Get a saved directional scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -25269,8 +25199,7 @@
         },
         "summary": "Analyze a local character scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -25299,7 +25228,7 @@
         "summary": "Save a local character scan",
         "tags": [
           "scans",
-          "tools"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25322,8 +25251,7 @@
         },
         "summary": "Get a saved local character scan",
         "tags": [
-          "scans",
-          "tools"
+          "scans"
         ],
         "x-audience": "public"
       }
@@ -25369,8 +25297,7 @@
         },
         "summary": "Killmails in this constellation",
         "tags": [
-          "universe",
-          "killmails"
+          "universe"
         ],
         "x-audience": "public"
       }
@@ -25393,8 +25320,7 @@
         },
         "summary": "Most valuable kills in this constellation",
         "tags": [
-          "universe",
-          "killmails"
+          "universe"
         ],
         "x-audience": "public"
       }
@@ -25440,8 +25366,7 @@
         },
         "summary": "Killmails in this region",
         "tags": [
-          "universe",
-          "killmails"
+          "universe"
         ],
         "x-audience": "public"
       }
@@ -25464,8 +25389,7 @@
         },
         "summary": "Most valuable kills in this region",
         "tags": [
-          "universe",
-          "killmails"
+          "universe"
         ],
         "x-audience": "public"
       }
@@ -25511,8 +25435,7 @@
         },
         "summary": "Killmails in this system",
         "tags": [
-          "universe",
-          "killmails"
+          "universe"
         ],
         "x-audience": "public"
       }
@@ -25535,8 +25458,7 @@
         },
         "summary": "Most valuable kills in this system",
         "tags": [
-          "universe",
-          "killmails"
+          "universe"
         ],
         "x-audience": "public"
       }
@@ -25582,8 +25504,7 @@
         },
         "summary": "Killmails involving an inventory type",
         "tags": [
-          "universe",
-          "killmails"
+          "universe"
         ],
         "x-audience": "public"
       }
@@ -25611,8 +25532,7 @@
         ],
         "summary": "Update board preferences",
         "tags": [
-          "account",
-          "boards"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25640,8 +25560,7 @@
         ],
         "summary": "Current user's comments (live frontend alias)",
         "tags": [
-          "account",
-          "comments"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25669,8 +25588,7 @@
         ],
         "summary": "Delete one of the current user's comments (live frontend alias)",
         "tags": [
-          "account",
-          "comments"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25698,8 +25616,7 @@
         ],
         "summary": "Submit or clear an entity description",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25727,8 +25644,7 @@
         ],
         "summary": "Domains owned by the current account",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -25754,8 +25670,7 @@
         ],
         "summary": "Create a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25783,8 +25698,7 @@
         ],
         "summary": "Check subdomain availability",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25812,8 +25726,7 @@
         ],
         "summary": "Delete a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -25839,8 +25752,7 @@
         ],
         "summary": "Update a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -25866,8 +25778,7 @@
         ],
         "summary": "Update a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25895,8 +25806,7 @@
         ],
         "summary": "Delete a domain image",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25924,8 +25834,7 @@
         ],
         "summary": "Find campaigns eligible for a custom domain",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -25953,8 +25862,7 @@
         ],
         "summary": "Delete a banner or logo",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -25980,8 +25888,7 @@
         ],
         "summary": "Upload a domain image",
         "tags": [
-          "account",
-          "domains"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26009,8 +25916,7 @@
         ],
         "summary": "Account ESI request metrics",
         "tags": [
-          "account",
-          "esi"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26038,8 +25944,7 @@
         ],
         "summary": "Account ESI request log",
         "tags": [
-          "account",
-          "esi"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26067,8 +25972,7 @@
         ],
         "summary": "Descriptions managed by this account",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26096,8 +26000,7 @@
         ],
         "summary": "Account and ESI overview",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26125,8 +26028,7 @@
         ],
         "summary": "Current account preferences",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       },
@@ -26152,8 +26054,7 @@
         ],
         "summary": "Update default tabs",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26181,8 +26082,7 @@
         ],
         "summary": "List logged-in browser sessions",
         "tags": [
-          "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26210,8 +26110,7 @@
         ],
         "summary": "Revoke every other browser session",
         "tags": [
-          "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26239,8 +26138,7 @@
         ],
         "summary": "Revoke one browser session",
         "tags": [
-          "auth",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26268,8 +26166,7 @@
         ],
         "summary": "Update account theme",
         "tags": [
-          "account",
-          "settings"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26297,8 +26194,7 @@
         ],
         "summary": "Current user's EK Wallet",
         "tags": [
-          "account",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26326,8 +26222,7 @@
         ],
         "summary": "Current user's EK Wallet balance",
         "tags": [
-          "account",
-          "wallet"
+          "account"
         ],
         "x-audience": "account"
       }
@@ -26442,8 +26337,7 @@
         },
         "summary": "War killmails",
         "tags": [
-          "wars",
-          "killmails"
+          "wars"
         ],
         "x-audience": "public"
       }
@@ -26609,10 +26503,6 @@
       "name": "killmails"
     },
     {
-      "description": "Character, corporation, and alliance profile pages, and the panels on them.",
-      "name": "entities"
-    },
-    {
       "description": "Character listings, detail, statistics, and kill and loss pages.",
       "name": "characters"
     },
@@ -26625,12 +26515,12 @@
       "name": "alliances"
     },
     {
-      "description": "Kill lists, top lists, and most-valuable lists.",
-      "name": "killboard"
+      "description": "Character, corporation, and alliance profile pages, and the panels on them.",
+      "name": "entities"
     },
     {
-      "description": "Top-list statistics for a single entity.",
-      "name": "statistics"
+      "description": "Coalition-level aggregates across the alliances that make one up.",
+      "name": "coalitions"
     },
     {
       "description": "Batch statistics for several entities in one request.",
@@ -26641,8 +26531,12 @@
       "name": "history"
     },
     {
-      "description": "Time-series data behind the killboard charts.",
-      "name": "graph"
+      "description": "Item-level killboard views: what a type destroyed and lost.",
+      "name": "items"
+    },
+    {
+      "description": "Ship-level data: matchups and the fittings flown.",
+      "name": "ships"
     },
     {
       "description": "Detected battles, their reports, compositions, timelines, and killmails.",
@@ -26653,12 +26547,28 @@
       "name": "wars"
     },
     {
+      "description": "Campaign definitions, their killmails, standings, and prize payouts.",
+      "name": "campaigns"
+    },
+    {
       "description": "Faction warfare matchups, systems, members, and intelligence.",
       "name": "faction-war"
     },
     {
       "description": "Systems, constellations, and regions, and the kills inside them.",
       "name": "universe"
+    },
+    {
+      "description": "Solar systems, and the killmails recorded inside them.",
+      "name": "systems"
+    },
+    {
+      "description": "Regions, and the killmails recorded inside them.",
+      "name": "regions"
+    },
+    {
+      "description": "Constellations, and the killmails recorded inside them.",
+      "name": "constellations"
     },
     {
       "description": "Region and constellation map data.",
@@ -26673,20 +26583,8 @@
       "name": "market"
     },
     {
-      "description": "Ship-level data: matchups and the fittings flown.",
-      "name": "ships"
-    },
-    {
-      "description": "Full-text entity search, and exact name resolution.",
-      "name": "search"
-    },
-    {
       "description": "Ship fittings: the catalog, search, ratings, and trends.",
       "name": "fittings"
-    },
-    {
-      "description": "Campaign definitions, their killmails, standings, and prize payouts.",
-      "name": "campaigns"
     },
     {
       "description": "Comment threads, reactions, and the report queue.",
@@ -26701,28 +26599,20 @@
       "name": "scans"
     },
     {
-      "description": "Pilot tools built on the scan endpoints.",
-      "name": "tools"
-    },
-    {
-      "description": "Background images used by the site chrome.",
-      "name": "backgrounds"
-    },
-    {
-      "description": "EVE Single Sign-On: the login flow, the session, and token inspection.",
-      "name": "auth"
+      "description": "Killboards a character can manage.",
+      "name": "boards"
     },
     {
       "description": "The signed-in character: preferences, boards, saved descriptions, and dismissals.",
       "name": "account"
     },
     {
-      "description": "Per-character site settings.",
-      "name": "settings"
+      "description": "EVE Single Sign-On: the login flow, the session, and token inspection.",
+      "name": "auth"
     },
     {
-      "description": "Killboards a character can manage.",
-      "name": "boards"
+      "description": "Site announcements, and the per-character record of which were dismissed.",
+      "name": "announcements"
     },
     {
       "description": "Comment replies addressed to the signed-in character.",
@@ -26737,8 +26627,8 @@
       "name": "wallet"
     },
     {
-      "description": "Site announcements, and the per-character record of which were dismissed.",
-      "name": "announcements"
+      "description": "Administrator management of user accounts and their roles.",
+      "name": "users"
     },
     {
       "description": "Operator-only administration. Requires an administrator session.",
@@ -26773,8 +26663,16 @@
       "name": "site"
     },
     {
+      "description": "Full-text entity search, and exact name resolution.",
+      "name": "search"
+    },
+    {
       "description": "Compatibility endpoints for the previous EVE-KILL site.",
-      "name": "legacy archive"
+      "name": "legacy"
+    },
+    {
+      "description": "Background images used by the site chrome.",
+      "name": "backgrounds"
     }
   ],
   "x-tagGroups": [
@@ -26782,15 +26680,15 @@
       "name": "Killboard",
       "tags": [
         "killmails",
-        "entities",
         "characters",
         "corporations",
         "alliances",
-        "killboard",
-        "statistics",
+        "entities",
+        "coalitions",
         "stats",
         "history",
-        "graph"
+        "items",
+        "ships"
       ]
     },
     {
@@ -26798,43 +26696,47 @@
       "tags": [
         "battles",
         "wars",
+        "campaigns",
         "faction-war"
       ]
     },
     {
-      "name": "Universe and reference",
+      "name": "Universe",
       "tags": [
         "universe",
-        "map",
+        "systems",
+        "regions",
+        "constellations",
+        "map"
+      ]
+    },
+    {
+      "name": "Static data",
+      "tags": [
         "sde",
-        "market",
-        "ships",
-        "search"
+        "market"
       ]
     },
     {
       "name": "Community",
       "tags": [
         "fittings",
-        "campaigns",
         "comments",
         "blog",
         "scans",
-        "tools",
-        "backgrounds"
+        "boards"
       ]
     },
     {
       "name": "Account",
       "tags": [
-        "auth",
         "account",
-        "settings",
-        "boards",
+        "auth",
+        "announcements",
         "notifications",
         "esi",
         "wallet",
-        "announcements"
+        "users"
       ]
     },
     {
@@ -26853,7 +26755,9 @@
         "images",
         "sitemap",
         "site",
-        "legacy archive"
+        "search",
+        "legacy",
+        "backgrounds"
       ]
     }
   ]

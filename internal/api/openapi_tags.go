@@ -28,24 +28,23 @@ type tagGroup struct {
 // closest to the top of the page.
 var tagGroups = []tagGroup{
 	{"Killboard", []string{
-		"killmails", "entities", "characters", "corporations", "alliances",
-		"killboard", "statistics", "stats", "history", "graph",
+		"killmails", "characters", "corporations", "alliances", "entities",
+		"coalitions", "stats", "history", "items", "ships",
 	}},
-	{"Conflicts", []string{"battles", "wars", "faction-war"}},
-	{"Universe and reference", []string{
-		"universe", "map", "sde", "market", "ships", "search",
+	{"Conflicts", []string{"battles", "wars", "campaigns", "faction-war"}},
+	{"Universe", []string{
+		"universe", "systems", "regions", "constellations", "map",
 	}},
-	{"Community", []string{
-		"fittings", "campaigns", "comments", "blog", "scans", "tools",
-		"backgrounds",
-	}},
+	{"Static data", []string{"sde", "market"}},
+	{"Community", []string{"fittings", "comments", "blog", "scans", "boards"}},
 	{"Account", []string{
-		"auth", "account", "settings", "boards", "notifications", "esi",
-		"wallet", "announcements",
+		"account", "auth", "announcements", "notifications", "esi", "wallet",
+		"users",
 	}},
 	{"Administration", []string{"admin", "moderation", "domains"}},
 	{"Platform", []string{
-		"health", "feed", "images", "sitemap", "site", "legacy archive",
+		"health", "feed", "images", "sitemap", "site", "search", "legacy",
+		"backgrounds",
 	}},
 }
 
@@ -71,13 +70,10 @@ var tagDescriptions = map[string]string{
 	"faction-war":    "Faction warfare matchups, systems, members, and intelligence.",
 	"feed":           "The live killmail feed, by poll or by server-sent events.",
 	"fittings":       "Ship fittings: the catalog, search, ratings, and trends.",
-	"graph":          "Time-series data behind the killboard charts.",
 	"health":         "Liveness probe. Checks that the API can reach Postgres.",
 	"history":        "Daily killmail totals, by date.",
 	"images":         "Character, corporation, alliance, and type images, plus social cards.",
-	"killboard":      "Kill lists, top lists, and most-valuable lists.",
 	"killmails":      "Killmails: listings, detail, ESI form, and the fitting they carried.",
-	"legacy archive": "Compatibility endpoints for the previous EVE-KILL site.",
 	"map":            "Region and constellation map data.",
 	"market":         "Market groups and bulk type prices.",
 	"moderation":     "The moderation queue and its decisions.",
@@ -85,15 +81,19 @@ var tagDescriptions = map[string]string{
 	"scans":          "Directional and local scan parsing and analysis.",
 	"sde":            "The EVE Static Data Export: types, groups, systems, stations, and more.",
 	"search":         "Full-text entity search, and exact name resolution.",
-	"settings":       "Per-character site settings.",
 	"ships":          "Ship-level data: matchups and the fittings flown.",
 	"site":           "Runtime site configuration served to the frontend.",
 	"sitemap":        "Sitemap sources consumed by the frontend.",
 	"stats":          "Batch statistics for several entities in one request.",
-	"statistics":     "Top-list statistics for a single entity.",
-	"tools":          "Pilot tools built on the scan endpoints.",
 	"universe":       "Systems, constellations, and regions, and the kills inside them.",
 	"wallet":         "Campaign prize wallets and their payout authorization.",
+	"coalitions":     "Coalition-level aggregates across the alliances that make one up.",
+	"constellations": "Constellations, and the killmails recorded inside them.",
+	"items":          "Item-level killboard views: what a type destroyed and lost.",
+	"legacy":         "Compatibility endpoints for the previous EVE-KILL site.",
+	"regions":        "Regions, and the killmails recorded inside them.",
+	"systems":        "Solar systems, and the killmails recorded inside them.",
+	"users":          "Administrator management of user accounts and their roles.",
 	"wars":           "Wars, their dashboards, participants, and killmails.",
 }
 

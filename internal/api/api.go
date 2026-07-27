@@ -112,6 +112,7 @@ func New(opts Options) *Service {
 	}
 	schemas := registerRoutes(a, opts)
 	setRootNamespaceServers(a.OpenAPI())
+	applyOperationTags(a.OpenAPI())
 	applyTagMetadata(a.OpenAPI())
 	applyOperationDescriptions(a.OpenAPI())
 	registerLegacyMethodGuards(mux)
