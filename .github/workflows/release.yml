@@ -13,17 +13,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  verify:
-    name: Run release checks
-    uses: ./.github/workflows/ci.yml
-
   publish:
     name: Publish unified image
-    needs:
-      - verify
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
+      actions: read
       contents: read
       packages: write
 
@@ -44,6 +39,21 @@ jobs:
           git fetch --no-tags origin main
           if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
             echo "Release tags must point to a commit on main."
+            exit 1
+          fi
+
+      - name: Verify tagged commit passed CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          successful_runs=$(
+            gh api \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=completed&per_page=20" \
+              --jq '[.workflow_runs[] | select(.conclusion == "success")] | length'
+          )
+          if [[ "$successful_runs" -lt 1 ]]; then
+            echo "The tagged commit does not have a successful main CI run."
             exit 1
           fi
 
@@ -88,7 +98,9 @@ jobs:
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
-          cache-from: type=gha,scope=shrike-release
+          cache-from: |
+            type=gha,scope=shrike-release
+            type=gha,scope=shrike-ci
           cache-to: type=gha,mode=max,scope=shrike-release
           provenance: mode=max
           sbom: true

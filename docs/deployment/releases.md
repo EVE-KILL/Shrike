@@ -7,20 +7,16 @@ It does not change Helm or deploy production.
 
 Pull requests and pushes to `main` run the `CI` workflow.
 
-The workflow performs these checks:
+The workflow runs three lanes in parallel.
 
-1. Check Go formatting.
-2. Regenerate the OpenAPI contract.
-3. Compare the generated TypeScript client.
-4. Run `go vet`.
-5. Create a fresh Goose schema.
-6. Create a fresh River schema.
-7. Run Go tests with Postgres and Valkey.
-8. Run Nuxt and dogma tests.
-9. Type-check the Nuxt application.
-10. Build the Nuxt application.
-11. Build the unified container.
-12. Run the container version command.
+The Go lane checks formatting and the generated OpenAPI contract. It runs
+`go vet`, creates fresh Goose and River schemas, and runs the Go tests.
+
+The frontend lane runs the Nuxt and dogma tests and type-checks the Nuxt
+application.
+
+The image lane builds the unified container and runs its version command. The
+container build includes the Nuxt production build.
 
 The workflow does not publish an image.
 
@@ -54,7 +50,8 @@ v1.1.0-rc.1
 
 The release commit must exist on `main`.
 
-The workflow reruns CI before it publishes the image.
+The workflow confirms that the tagged commit passed the `main` CI workflow. It
+does not rerun CI.
 
 Stable releases update `latest`. Prereleases do not update `latest`.
 
@@ -86,10 +83,9 @@ Do not make the release workflow contact the production cluster.
 ## Verification
 
 1. Open the tag run in GitHub Actions.
-2. Confirm that the `Run release checks` job passed.
-3. Confirm that the `Publish unified image` job passed.
-4. Read the published digest from the workflow summary.
-5. Inspect both image platforms.
+2. Confirm that the `Publish unified image` job passed.
+3. Read the published digest from the workflow summary.
+4. Inspect both image platforms.
 
 ```bash
 docker buildx imagetools inspect ghcr.io/eve-kill/shrike:v1.0.0

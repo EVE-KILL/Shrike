@@ -39,6 +39,17 @@ pre-commit:
         - "migrations/*.sql"
       run: go test ./...
 
+    # Frontend unit tests and type checking run before a web change can be
+    # committed. CI repeats them because hooks can be bypassed or absent.
+    - name: frontend
+      glob:
+        - "web/**/*.{ts,vue,js,mjs}"
+        - "web/package.json"
+        - "web/bun.lock"
+      run: |
+        bun run --cwd web test
+        bun run --cwd web typecheck
+
     # The Nuxt renderer imports the generated Huma contract directly. Any API
     # registration or schema change must therefore regenerate and stage both
     # the OpenAPI document and its TypeScript types in the same commit.

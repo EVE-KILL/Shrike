@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-  workflow_call:
 
 permissions:
   contents: read
@@ -21,10 +20,10 @@ env:
   TEST_REDIS_ADDR: 127.0.0.1:6379
 
 jobs:
-  verify:
-    name: Verify source and unified image
+  go:
+    name: Go and schemas
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -69,9 +68,6 @@ jobs:
       - name: Download Go modules
         run: go mod download
 
-      - name: Install frontend modules
-        run: bun install --cwd web --frozen-lockfile
-
       - name: Install API generator modules
         run: bun install --cwd web/tools/api-codegen --frozen-lockfile
 
@@ -103,14 +99,37 @@ jobs:
       - name: Run Go tests
         run: go test ./...
 
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install frontend modules
+        run: bun install --cwd web --frozen-lockfile
+
       - name: Run frontend tests
         run: bun run --cwd web test
 
       - name: Type-check frontend
         run: bun run --cwd web typecheck
 
-      - name: Build frontend
-        run: bun run --cwd web build
+  image:
+    name: Unified image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -131,3 +150,30 @@ jobs:
 
       - name: Smoke-test unified container
         run: docker run --rm shrike:ci version
+
+  verify:
+    name: Verify source and unified image
+    if: ${{ always() }}
+    needs:
+      - go
+      - frontend
+      - image
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Require every CI lane
+        env:
+          GO_RESULT: ${{ needs.go.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          IMAGE_RESULT: ${{ needs.image.result }}
+        shell: bash
+        run: |
+          if [[ "$GO_RESULT" != "success" ||
+                "$FRONTEND_RESULT" != "success" ||
+                "$IMAGE_RESULT" != "success" ]]; then
+            echo "Go: $GO_RESULT"
+            echo "Frontend: $FRONTEND_RESULT"
+            echo "Image: $IMAGE_RESULT"
+            exit 1
+          fi
