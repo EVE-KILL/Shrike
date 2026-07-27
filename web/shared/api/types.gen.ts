@@ -36,6 +36,37 @@ export type AnnouncementsResponse = {
     announcements: Array<Announcement>;
 };
 
+export type ConflictBattleGeneratorEntity = {
+    id: number;
+    type: string;
+};
+
+export type ConflictBattleGeneratorSide = {
+    entities: Array<ConflictBattleGeneratorEntity> | null;
+    name: string;
+};
+
+export type ConflictBattleSaveAlliance = {
+    alliance_id: number | null;
+    corporations: Array<ConflictBattleSaveCorporation> | null;
+};
+
+export type ConflictBattleSaveCorporation = {
+    corporation_id: number;
+    isk_destroyed: number;
+    isk_lost: number;
+    kills: number;
+    losses: number;
+};
+
+export type ConflictBattleSaveTeam = {
+    alliances: Array<ConflictBattleSaveAlliance> | null;
+    total_isk_destroyed: number;
+    total_isk_lost: number;
+    total_kills: number;
+    total_losses: number;
+};
+
 export type DismissedAnnouncementIdsResponse = {
     /**
      * A URL to the JSON Schema for this object.
@@ -7596,7 +7627,24 @@ export type AlliancesCountResponses = {
 export type AlliancesCountResponse2 = AlliancesCountResponses[keyof AlliancesCountResponses];
 
 export type AlliancesBatchStatsData = {
-    body?: never;
+    body: {
+        /**
+         * Start of the window, for type=custom.
+         */
+        from?: string;
+        /**
+         * Entity IDs to resolve, at most 100 per request.
+         */
+        ids: Array<number> | null;
+        /**
+         * End of the window, for type=custom.
+         */
+        to?: string;
+        /**
+         * Aggregation period. Falls back to the type query parameter, then alltime.
+         */
+        type?: 'alltime' | 'weekly' | 'monthly' | 'custom';
+    };
     path?: never;
     query?: never;
     url: '/alliances/stats';
@@ -7928,7 +7976,20 @@ export type BackgroundsRedditResponses = {
 export type BackgroundsRedditResponse = BackgroundsRedditResponses[keyof BackgroundsRedditResponses];
 
 export type BattleGeneratorEntitiesData = {
-    body?: never;
+    body: {
+        /**
+         * Window end, as an ISO 8601 timestamp.
+         */
+        endTime: string;
+        /**
+         * Window start, as an ISO 8601 timestamp.
+         */
+        startTime: string;
+        /**
+         * Solar systems to scan for killmails.
+         */
+        systemIds: Array<number> | null;
+    };
     path?: never;
     query?: never;
     url: '/battle/generator/entities';
@@ -7946,7 +8007,9 @@ export type BattleGeneratorEntitiesResponses = {
 export type BattleGeneratorEntitiesResponse = BattleGeneratorEntitiesResponses[keyof BattleGeneratorEntitiesResponses];
 
 export type BattleGeneratorPreviewData = {
-    body?: never;
+    body: {
+        sides: Array<ConflictBattleGeneratorSide> | null;
+    };
     path?: never;
     query?: never;
     url: '/battle/generator/preview';
@@ -7964,7 +8027,18 @@ export type BattleGeneratorPreviewResponses = {
 export type BattleGeneratorPreviewResponse = BattleGeneratorPreviewResponses[keyof BattleGeneratorPreviewResponses];
 
 export type BattleGeneratorSaveData = {
-    body?: never;
+    body: {
+        battle_id: number;
+        duration_minutes: number;
+        end_time: string;
+        is_multi_party: boolean;
+        kill_count: number;
+        region_id: number | null;
+        solar_system_id: number;
+        start_time: string;
+        teams: Array<ConflictBattleSaveTeam> | null;
+        total_isk_destroyed: number;
+    };
     path?: never;
     query?: never;
     url: '/battle/generator/save';
@@ -8716,7 +8790,12 @@ export type CharactersResponses = {
 export type CharactersResponse2 = CharactersResponses[keyof CharactersResponses];
 
 export type CharacterAnalyzeData = {
-    body?: never;
+    body: {
+        /**
+         * Characters to analyze, at most 2500 per request.
+         */
+        character_ids: Array<number> | null;
+    };
     path?: never;
     query?: never;
     url: '/characters/analyze';
@@ -8748,7 +8827,24 @@ export type CharactersCountResponses = {
 export type CharactersCountResponse2 = CharactersCountResponses[keyof CharactersCountResponses];
 
 export type CharactersBatchStatsData = {
-    body?: never;
+    body: {
+        /**
+         * Start of the window, for type=custom.
+         */
+        from?: string;
+        /**
+         * Entity IDs to resolve, at most 100 per request.
+         */
+        ids: Array<number> | null;
+        /**
+         * End of the window, for type=custom.
+         */
+        to?: string;
+        /**
+         * Aggregation period. Falls back to the type query parameter, then alltime.
+         */
+        type?: 'alltime' | 'weekly' | 'monthly' | 'custom';
+    };
     path?: never;
     query?: never;
     url: '/characters/stats';
@@ -9262,7 +9358,24 @@ export type CorporationsCountResponses = {
 export type CorporationsCountResponse2 = CorporationsCountResponses[keyof CorporationsCountResponses];
 
 export type CorporationsBatchStatsData = {
-    body?: never;
+    body: {
+        /**
+         * Start of the window, for type=custom.
+         */
+        from?: string;
+        /**
+         * Entity IDs to resolve, at most 100 per request.
+         */
+        ids: Array<number> | null;
+        /**
+         * End of the window, for type=custom.
+         */
+        to?: string;
+        /**
+         * Aggregation period. Falls back to the type query parameter, then alltime.
+         */
+        type?: 'alltime' | 'weekly' | 'monthly' | 'custom';
+    };
     path?: never;
     query?: never;
     url: '/corporations/stats';

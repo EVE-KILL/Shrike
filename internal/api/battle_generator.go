@@ -15,9 +15,9 @@ import (
 )
 
 type conflictBattleGeneratorWindow struct {
-	SystemIDs []int32 `json:"systemIds"`
-	StartTime string  `json:"startTime"`
-	EndTime   string  `json:"endTime"`
+	SystemIDs []int32 `json:"systemIds" minItems:"1" doc:"Solar systems to scan for killmails."`
+	StartTime string  `json:"startTime" doc:"Window start, as an ISO 8601 timestamp."`
+	EndTime   string  `json:"endTime" doc:"Window end, as an ISO 8601 timestamp."`
 }
 
 type conflictBattleGeneratorEntity struct {
@@ -70,28 +70,28 @@ type conflictBattleSaveBody struct {
 }
 
 func registerBattleGeneratorRoutes(a huma.API, opts Options) {
-	registerLegacy(a, huma.Operation{
+	registerLegacyJSON(a, huma.Operation{
 		OperationID: "battle-generator-entities",
 		Method:      http.MethodPost,
 		Path:        "/battle/generator/entities",
 		Summary:     "Entities present in a custom battle window",
 		Tags:        []string{"battles"},
-	}, battleGeneratorEntitiesHandler(opts))
-	registerLegacy(a, huma.Operation{
+	}, conflictMaximumBodyBytes, battleGeneratorEntitiesHandler(opts))
+	registerLegacyJSON(a, huma.Operation{
 		OperationID: "battle-generator-preview",
 		Method:      http.MethodPost,
 		Path:        "/battle/generator/preview",
 		Summary:     "Preview user-assigned battle sides",
 		Tags:        []string{"battles"},
-	}, battleGeneratorPreviewHandler(opts))
-	registerLegacy(a, huma.Operation{
+	}, conflictMaximumBodyBytes, battleGeneratorPreviewHandler(opts))
+	registerLegacy(a, documentJSONBody[conflictBattleSaveBody](a, huma.Operation{
 		OperationID: "battle-generator-save",
 		Method:      http.MethodPost,
 		Path:        "/battle/generator/save",
 		Summary:     "Save a custom battle or corrected sides",
 		Tags:        []string{"battles"},
 		Security:    []map[string][]string{{"eveSession": {}}},
-	}, battleGeneratorSaveHandler(opts))
+	}), battleGeneratorSaveHandler(opts))
 }
 
 func parseConflictGeneratorWindow(
@@ -133,14 +133,12 @@ func parseConflictGeneratorWindow(
 	return systems, start.UTC(), end.UTC(), nil
 }
 
-func battleGeneratorEntitiesHandler(opts Options) legacyHandler {
-	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+func battleGeneratorEntitiesHandler(opts Options) bodyHandler[conflictBattleGeneratorWindow] {
+	return func(
+		ctx context.Context, req *legacyRequest, body *conflictBattleGeneratorWindow,
+	) (legacyPayload, error) {
 		setConflictNoStore(req.Huma)
-		var body conflictBattleGeneratorWindow
-		if err := decodeConflictBody(req, &body); err != nil {
-			return legacyPayload{}, err
-		}
-		systemIDs, start, end, err := parseConflictGeneratorWindow(body)
+		systemIDs, start, end, err := parseConflictGeneratorWindow(*body)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -229,13 +227,11 @@ func battleGeneratorEntitiesHandler(opts Options) legacyHandler {
 	}
 }
 
-func battleGeneratorPreviewHandler(opts Options) legacyHandler {
-	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+func battleGeneratorPreviewHandler(opts Options) bodyHandler[conflictBattleGeneratorPreview] {
+	return func(
+		ctx context.Context, req *legacyRequest, body *conflictBattleGeneratorPreview,
+	) (legacyPayload, error) {
 		setConflictNoStore(req.Huma)
-		var body conflictBattleGeneratorPreview
-		if err := decodeConflictBody(req, &body); err != nil {
-			return legacyPayload{}, err
-		}
 		systemIDs, start, end, err := parseConflictGeneratorWindow(
 			body.conflictBattleGeneratorWindow,
 		)
@@ -400,8 +396,8 @@ func battleGeneratorSaveHandler(opts Options) legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		var body conflictBattleSaveBody
-		if err := decodeConflictBody(req, &body); err != nil {
+		body, err := decodeJSONBody[conflictBattleSaveBody](req, conflictMaximumBodyBytes)
+		if err != nil {
 			return legacyPayload{}, err
 		}
 		start, err := parseJavaScriptDate(body.StartTime)

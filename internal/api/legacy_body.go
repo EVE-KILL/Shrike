@@ -37,6 +37,30 @@ const defaultBodyLimit = 1 << 20
 // handler keeps its access to query values, path parameters, and the session.
 type bodyHandler[T any] func(context.Context, *legacyRequest, *T) (legacyPayload, error)
 
+// documentJSONBody attaches T's schema to an operation without taking over the
+// decode.
+//
+// Routes that authenticate must check the session before they read the body:
+// decoding first would answer an anonymous caller with 400 for a malformed
+// body instead of 401, which both changes the status they have always seen and
+// tells them the body was parsed before their credentials were. Those handlers
+// call decodeJSONBody themselves, after the auth check.
+func documentJSONBody[T any](a huma.API, op huma.Operation) huma.Operation {
+	if op.RequestBody != nil {
+		return op
+	}
+	var zero T
+	op.RequestBody = &huma.RequestBody{
+		Required: true,
+		Content: map[string]*huma.MediaType{
+			"application/json": {Schema: huma.SchemaFromType(
+				a.OpenAPI().Components.Schemas, reflect.TypeOf(zero),
+			)},
+		},
+	}
+	return op
+}
+
 // registerLegacyJSON mounts a write route whose body is described by T.
 //
 // The generated schema is attached to the operation, so the reference page and

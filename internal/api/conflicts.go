@@ -2,9 +2,7 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
 	"net/url"
@@ -373,17 +371,6 @@ func parseConflictID(req *legacyRequest) (int32, error) {
 		return 0, apiError(http.StatusBadRequest, "Invalid ID")
 	}
 	return int32(id), nil
-}
-
-func decodeConflictBody(req *legacyRequest, destination any) error {
-	decoder := json.NewDecoder(io.LimitReader(req.Body, conflictMaximumBodyBytes+1))
-	if err := decoder.Decode(destination); err != nil {
-		return apiError(http.StatusBadRequest, "Invalid request body")
-	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return apiError(http.StatusBadRequest, "Invalid request body")
-	}
-	return nil
 }
 
 func conflictInt(row map[string]any, key string) int64 {

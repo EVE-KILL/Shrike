@@ -127,6 +127,142 @@
         ],
         "type": "object"
       },
+      "ConflictBattleGeneratorEntity": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "type": "object"
+      },
+      "ConflictBattleGeneratorSide": {
+        "additionalProperties": false,
+        "properties": {
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictBattleGeneratorEntity"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "entities"
+        ],
+        "type": "object"
+      },
+      "ConflictBattleSaveAlliance": {
+        "additionalProperties": false,
+        "properties": {
+          "alliance_id": {
+            "format": "int32",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "corporations": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictBattleSaveCorporation"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "alliance_id",
+          "corporations"
+        ],
+        "type": "object"
+      },
+      "ConflictBattleSaveCorporation": {
+        "additionalProperties": false,
+        "properties": {
+          "corporation_id": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "isk_destroyed": {
+            "format": "double",
+            "type": "number"
+          },
+          "isk_lost": {
+            "format": "double",
+            "type": "number"
+          },
+          "kills": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "losses": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "corporation_id",
+          "kills",
+          "losses",
+          "isk_destroyed",
+          "isk_lost"
+        ],
+        "type": "object"
+      },
+      "ConflictBattleSaveTeam": {
+        "additionalProperties": false,
+        "properties": {
+          "alliances": {
+            "items": {
+              "$ref": "#/components/schemas/ConflictBattleSaveAlliance"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "total_isk_destroyed": {
+            "format": "double",
+            "type": "number"
+          },
+          "total_isk_lost": {
+            "format": "double",
+            "type": "number"
+          },
+          "total_kills": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total_losses": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_kills",
+          "total_losses",
+          "total_isk_destroyed",
+          "total_isk_lost",
+          "alliances"
+        ],
+        "type": "object"
+      },
       "DismissedAnnouncementIDsResponse": {
         "additionalProperties": false,
         "properties": {
@@ -15115,6 +15251,56 @@
       "post": {
         "description": "Resolve stats for up to 100 alliances in a single call. Prefer this over looping the single-alliance endpoint.",
         "operationId": "alliances-batch-stats",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "description": "Start of the window, for type=custom.",
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "ids": {
+                    "description": "Entity IDs to resolve, at most 100 per request.",
+                    "items": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "to": {
+                    "description": "End of the window, for type=custom.",
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "type": {
+                    "default": "alltime",
+                    "description": "Aggregation period. Falls back to the type query parameter, then alltime.",
+                    "enum": [
+                      "alltime",
+                      "weekly",
+                      "monthly",
+                      "custom"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -15739,6 +15925,44 @@
     "/battle/generator/entities": {
       "post": {
         "operationId": "battle-generator-entities",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "endTime": {
+                    "description": "Window end, as an ISO 8601 timestamp.",
+                    "type": "string"
+                  },
+                  "startTime": {
+                    "description": "Window start, as an ISO 8601 timestamp.",
+                    "type": "string"
+                  },
+                  "systemIds": {
+                    "description": "Solar systems to scan for killmails.",
+                    "items": {
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "minItems": 1,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "systemIds",
+                  "startTime",
+                  "endTime"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -15762,6 +15986,31 @@
     "/battle/generator/preview": {
       "post": {
         "operationId": "battle-generator-preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "sides": {
+                    "items": {
+                      "$ref": "#/components/schemas/ConflictBattleGeneratorSide"
+                    },
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "sides"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -15785,6 +16034,76 @@
     "/battle/generator/save": {
       "post": {
         "operationId": "battle-generator-save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "battle_id": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "duration_minutes": {
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "end_time": {
+                    "type": "string"
+                  },
+                  "is_multi_party": {
+                    "type": "boolean"
+                  },
+                  "kill_count": {
+                    "format": "int64",
+                    "type": "integer"
+                  },
+                  "region_id": {
+                    "format": "int32",
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "solar_system_id": {
+                    "format": "int32",
+                    "type": "integer"
+                  },
+                  "start_time": {
+                    "type": "string"
+                  },
+                  "teams": {
+                    "items": {
+                      "$ref": "#/components/schemas/ConflictBattleSaveTeam"
+                    },
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "total_isk_destroyed": {
+                    "format": "double",
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "battle_id",
+                  "solar_system_id",
+                  "region_id",
+                  "start_time",
+                  "end_time",
+                  "duration_minutes",
+                  "kill_count",
+                  "total_isk_destroyed",
+                  "is_multi_party",
+                  "teams"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16880,6 +17199,35 @@
       "post": {
         "description": "Batch intel endpoint for fleet analysis and awoxer detection. Returns per-character 90-day stats: total_kills, total_losses, efficiency (%), gang_probability (% of kills that are gang), average_gang_size, cyno_probability (% of recent losses with a cyno fitted), and last_5_ships (each with ship_type_id, ship_name, kill_count, and last_loss { killmail_id, killmail_time } or null).",
         "operationId": "character-analyze",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "character_ids": {
+                    "description": "Characters to analyze, at most 2500 per request.",
+                    "items": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "maxItems": 2500,
+                    "minItems": 1,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "character_ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -16926,6 +17274,56 @@
       "post": {
         "description": "Resolve stats for up to 100 characters in a single call.",
         "operationId": "characters-batch-stats",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "description": "Start of the window, for type=custom.",
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "ids": {
+                    "description": "Entity IDs to resolve, at most 100 per request.",
+                    "items": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "to": {
+                    "description": "End of the window, for type=custom.",
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "type": {
+                    "default": "alltime",
+                    "description": "Aggregation period. Falls back to the type query parameter, then alltime.",
+                    "enum": [
+                      "alltime",
+                      "weekly",
+                      "monthly",
+                      "custom"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -17697,6 +18095,56 @@
       "post": {
         "description": "Resolve stats for up to 100 corporations in a single call. Prefer this over looping the single-corporation endpoint.",
         "operationId": "corporations-batch-stats",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "description": "Start of the window, for type=custom.",
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "ids": {
+                    "description": "Entity IDs to resolve, at most 100 per request.",
+                    "items": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "to": {
+                    "description": "End of the window, for type=custom.",
+                    "format": "date",
+                    "type": "string"
+                  },
+                  "type": {
+                    "default": "alltime",
+                    "description": "Aggregation period. Falls back to the type query parameter, then alltime.",
+                    "enum": [
+                      "alltime",
+                      "weekly",
+                      "monthly",
+                      "custom"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

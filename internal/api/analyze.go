@@ -2,27 +2,30 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"math"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 )
 
+// analyzeBodyLimit fits the documented 2500 IDs with room for whitespace.
+const analyzeBodyLimit = 64 << 10
+
+// analyzeRequest is both the decode target and the documented schema.
+type analyzeRequest struct {
+	CharacterIDs []int64 `json:"character_ids" minItems:"1" maxItems:"2500" doc:"Characters to analyze, at most 2500 per request."`
+}
+
 func registerAnalyzeRoute(a huma.API, opts Options) {
-	registerLegacy(a, huma.Operation{
+	registerLegacyJSON(a, huma.Operation{
 		OperationID: "character-analyze",
 		Method:      http.MethodPost,
 		Path:        "/characters/analyze",
 		Summary:     "Analyze characters",
 		Tags:        []string{"characters"},
-	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-		var body struct {
-			CharacterIDs []int64 `json:"character_ids"`
-		}
-		if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-			return legacyPayload{}, err
-		}
+	}, analyzeBodyLimit, func(
+		ctx context.Context, req *legacyRequest, body *analyzeRequest,
+	) (legacyPayload, error) {
 		if len(body.CharacterIDs) == 0 {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest,

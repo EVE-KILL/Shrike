@@ -2,18 +2,18 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 )
 
+// batchStatsRequest is both the decode target and the documented schema.
 type batchStatsRequest struct {
-	IDs  []int64 `json:"ids"`
-	Type string  `json:"type"`
-	From string  `json:"from"`
-	To   string  `json:"to"`
+	IDs  []int64 `json:"ids" minItems:"1" maxItems:"100" doc:"Entity IDs to resolve, at most 100 per request."`
+	Type string  `json:"type,omitempty" enum:"alltime,weekly,monthly,custom" default:"alltime" doc:"Aggregation period. Falls back to the type query parameter, then alltime."`
+	From string  `json:"from,omitempty" format:"date" doc:"Start of the window, for type=custom."`
+	To   string  `json:"to,omitempty" format:"date" doc:"End of the window, for type=custom."`
 }
 
 type batchEntityConfig struct {
@@ -29,14 +29,16 @@ func registerBatchStatsRoutes(a huma.API, opts Options) {
 		{key: "alliances", idColumn: "alliance_id", entityType: entityAlliance},
 	} {
 		config := config
-		registerLegacy(a, huma.Operation{
+		registerLegacyJSON(a, huma.Operation{
 			OperationID: config.key + "-batch-stats",
 			Method:      http.MethodPost,
 			Path:        "/" + config.key + "/stats",
 			Summary:     "Batch " + config.key + " statistics",
 			Tags:        []string{"stats"},
-		}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-			return batchStats(ctx, opts.DB, config, req)
+		}, defaultBodyLimit, func(
+			ctx context.Context, req *legacyRequest, body *batchStatsRequest,
+		) (legacyPayload, error) {
+			return batchStats(ctx, opts.DB, config, req, body)
 		})
 	}
 }
@@ -46,11 +48,8 @@ func batchStats(
 	db Database,
 	config batchEntityConfig,
 	req *legacyRequest,
+	body *batchStatsRequest,
 ) (legacyPayload, error) {
-	var body batchStatsRequest
-	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		return legacyPayload{}, err
-	}
 	if len(body.IDs) == 0 {
 		return legacyPayload{}, apiError(http.StatusBadRequest, "Missing ids array")
 	}
