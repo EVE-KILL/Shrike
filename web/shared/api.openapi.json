@@ -24386,6 +24386,36 @@
     "/scans/dscan": {
       "post": {
         "operationId": "dscan-save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "dscan": {
+                    "description": "Raw directional scan text. Used by the dscan routes.",
+                    "type": "string"
+                  },
+                  "names": {
+                    "description": "Character names. Used by the local scan routes.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "result": {
+                    "description": "Analyzed scan output to store alongside the input."
+                  }
+                },
+                "required": [
+                  "result"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24415,6 +24445,26 @@
     "/scans/dscan/analyze": {
       "post": {
         "operationId": "dscan-analyze",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "dscan": {
+                    "description": "Raw directional scan text, one result per line, tab separated.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "dscan"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24461,6 +24511,36 @@
     "/scans/local": {
       "post": {
         "operationId": "localscan-save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "dscan": {
+                    "description": "Raw directional scan text. Used by the dscan routes.",
+                    "type": "string"
+                  },
+                  "names": {
+                    "description": "Character names. Used by the local scan routes.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "result": {
+                    "description": "Analyzed scan output to store alongside the input."
+                  }
+                },
+                "required": [
+                  "result"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -24490,6 +24570,22 @@
     "/scans/local/analyze": {
       "post": {
         "operationId": "localscan-analyze",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -26052,6 +26148,26 @@
     "/tools/dscan": {
       "post": {
         "operationId": "dscan-analyze-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "dscan": {
+                    "description": "Raw directional scan text, one result per line, tab separated.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "dscan"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -26075,6 +26191,36 @@
     "/tools/dscan/save": {
       "post": {
         "operationId": "dscan-save-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "dscan": {
+                    "description": "Raw directional scan text. Used by the dscan routes.",
+                    "type": "string"
+                  },
+                  "names": {
+                    "description": "Character names. Used by the local scan routes.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "result": {
+                    "description": "Analyzed scan output to store alongside the input."
+                  }
+                },
+                "required": [
+                  "result"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -26127,6 +26273,22 @@
     "/tools/localscan": {
       "post": {
         "operationId": "localscan-analyze-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
@@ -26150,6 +26312,36 @@
     "/tools/localscan/save": {
       "post": {
         "operationId": "localscan-save-legacy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "dscan": {
+                    "description": "Raw directional scan text. Used by the dscan routes.",
+                    "type": "string"
+                  },
+                  "names": {
+                    "description": "Character names. Used by the local scan routes.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "result": {
+                    "description": "Analyzed scan output to store alongside the input."
+                  }
+                },
+                "required": [
+                  "result"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {

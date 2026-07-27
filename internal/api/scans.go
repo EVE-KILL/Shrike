@@ -1,12 +1,11 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
-	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -31,26 +30,40 @@ func registerScanRoutes(a huma.API, opts Options) {
 	for _, route := range []struct {
 		id, method, path, summary string
 		security                  []map[string][]string
-		handler                   legacyHandler
+		// document attaches the request schema for routes that take a body.
+		document func(huma.Operation) huma.Operation
+		handler  legacyHandler
 	}{
 		{
 			id: "dscan-analyze", method: http.MethodPost,
 			path: "/scans/dscan/analyze", summary: "Analyze a directional scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[dscanAnalyzeBody](a, op)
+			},
 			handler: analyzeDirectionalScanHandler(opts),
 		},
 		{
 			id: "dscan-analyze-legacy", method: http.MethodPost,
 			path: "/tools/dscan", summary: "Analyze a directional scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[dscanAnalyzeBody](a, op)
+			},
 			handler: analyzeDirectionalScanHandler(opts),
 		},
 		{
 			id: "dscan-save", method: http.MethodPost,
 			path: "/scans/dscan", summary: "Save a directional scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[scanSaveBody](a, op)
+			},
 			security: required, handler: saveScanHandler(opts, auth, "dscan"),
 		},
 		{
 			id: "dscan-save-legacy", method: http.MethodPost,
 			path: "/tools/dscan/save", summary: "Save a directional scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[scanSaveBody](a, op)
+			},
 			security: required, handler: saveScanHandler(opts, auth, "dscan"),
 		},
 		{
@@ -66,21 +79,33 @@ func registerScanRoutes(a huma.API, opts Options) {
 		{
 			id: "localscan-analyze", method: http.MethodPost,
 			path: "/scans/local/analyze", summary: "Analyze a local character scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[localScanAnalyzeBody](a, op)
+			},
 			handler: analyzeLocalScanHandler(opts),
 		},
 		{
 			id: "localscan-analyze-legacy", method: http.MethodPost,
 			path: "/tools/localscan", summary: "Analyze a local character scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[localScanAnalyzeBody](a, op)
+			},
 			handler: analyzeLocalScanHandler(opts),
 		},
 		{
 			id: "localscan-save", method: http.MethodPost,
 			path: "/scans/local", summary: "Save a local character scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[scanSaveBody](a, op)
+			},
 			security: required, handler: saveScanHandler(opts, auth, "localscan"),
 		},
 		{
 			id: "localscan-save-legacy", method: http.MethodPost,
 			path: "/tools/localscan/save", summary: "Save a local character scan",
+			document: func(op huma.Operation) huma.Operation {
+				return documentJSONBody[scanSaveBody](a, op)
+			},
 			security: required, handler: saveScanHandler(opts, auth, "localscan"),
 		},
 		{
@@ -100,41 +125,50 @@ func registerScanRoutes(a huma.API, opts Options) {
 				opts, 24*time.Hour, "public, max-age=86400", handler,
 			)
 		}
-		registerLegacy(a, huma.Operation{
+		operation := huma.Operation{
 			OperationID: route.id,
 			Method:      route.method,
 			Path:        route.path,
 			Summary:     route.summary,
 			Tags:        []string{"scans", "tools"},
 			Security:    route.security,
-		}, handler)
+		}
+		if route.document != nil {
+			operation = route.document(operation)
+		}
+		registerLegacy(a, operation, handler)
 	}
 }
 
-func decodeScanBody(req *legacyRequest) (any, error) {
-	decoder := json.NewDecoder(io.LimitReader(req.Body, scanBodyLimit+1))
-	decoder.UseNumber()
-	var body any
-	if err := decoder.Decode(&body); err != nil {
-		return nil, apiError(http.StatusBadRequest, "Invalid JSON body")
-	}
-	var extra any
-	err := decoder.Decode(&extra)
-	if !errors.Is(err, io.EOF) {
-		return nil, apiError(http.StatusBadRequest, "Invalid JSON body")
-	}
-	return body, nil
+// Wire types for the scan routes.
+//
+// The save routes carry a different key per scan type, so one struct covers
+// both and each handler reads the field its type owns. result is free-form:
+// it is the analyzed output the client hands back to be stored verbatim.
+type dscanAnalyzeBody struct {
+	Dscan string `json:"dscan" doc:"Raw directional scan text, one result per line, tab separated."`
+}
+
+// localScanAnalyzeBody is a bare JSON array of character names, which is what
+// the in-game local list produces when pasted.
+type localScanAnalyzeBody []string
+
+type scanSaveBody struct {
+	Result json.RawMessage `json:"result" doc:"Analyzed scan output to store alongside the input."`
+	Dscan  string          `json:"dscan,omitempty" doc:"Raw directional scan text. Used by the dscan routes."`
+	// A pointer, because an absent names key is an error while an empty array
+	// is a legitimate empty scan.
+	Names *[]string `json:"names,omitempty" doc:"Character names. Used by the local scan routes."`
 }
 
 func analyzeDirectionalScanHandler(opts Options) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-		raw, err := decodeScanBody(req)
+		body, err := decodeJSONBody[dscanAnalyzeBody](req, scanBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, ok := raw.(map[string]any)
-		dscan, isString := body["dscan"].(string)
-		if !ok || !isString || dscan == "" {
+		dscan := body.Dscan
+		if dscan == "" {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest, "No D-Scan data provided",
 			)
@@ -272,12 +306,12 @@ func splitFourSpaces(line string) []string {
 
 func analyzeLocalScanHandler(opts Options) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-		raw, err := decodeScanBody(req)
+		body, err := decodeJSONBody[localScanAnalyzeBody](req, scanBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		values, ok := raw.([]any)
-		if !ok || len(values) == 0 {
+		values := *body
+		if len(values) == 0 {
 			return legacyPayload{}, apiError(
 				http.StatusBadRequest, "No character names provided",
 			)
@@ -289,11 +323,7 @@ func analyzeLocalScanHandler(opts Options) legacyHandler {
 		}
 		validNames := make([]string, 0, len(values))
 		for _, value := range values {
-			name, ok := value.(string)
-			if !ok {
-				continue
-			}
-			name = strings.TrimSpace(name)
+			name := strings.TrimSpace(value)
 			if name != "" && len([]rune(name)) <= localScanMaxNameLen {
 				validNames = append(validNames, name)
 			}
@@ -437,15 +467,11 @@ func saveScanHandler(
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		raw, err := decodeScanBody(req)
+		body, err := decodeJSONBody[scanSaveBody](req, scanBodyLimit)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, ok := raw.(map[string]any)
-		if !ok {
-			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid JSON body")
-		}
-		result := body["result"]
+		result := rawJSONValue(body.Result)
 		if !jsonTruthy(result) {
 			message := "Missing names or result"
 			if scanType == "dscan" {
@@ -456,28 +482,21 @@ func saveScanHandler(
 
 		var normalized string
 		if scanType == "dscan" {
-			dscan, ok := body["dscan"].(string)
-			if !ok || dscan == "" {
+			if body.Dscan == "" {
 				return legacyPayload{}, apiError(
 					http.StatusBadRequest, "Missing dscan or result",
 				)
 			}
-			normalized = strings.TrimSpace(dscan)
+			normalized = strings.TrimSpace(body.Dscan)
 		} else {
-			names, ok := body["names"].([]any)
-			if !ok {
+			if body.Names == nil {
 				return legacyPayload{}, apiError(
 					http.StatusBadRequest, "Missing names or result",
 				)
 			}
+			names := *body.Names
 			normalizedNames := make([]string, 0, len(names))
-			for _, value := range names {
-				name, ok := value.(string)
-				if !ok {
-					return legacyPayload{}, apiError(
-						http.StatusBadRequest, "Missing names or result",
-					)
-				}
+			for _, name := range names {
 				normalizedNames = append(normalizedNames, name)
 			}
 			sort.Strings(normalizedNames)
@@ -502,6 +521,21 @@ func saveScanHandler(
 		}
 		return accountNoStorePayload(map[string]any{"hash": hash}), nil
 	}
+}
+
+// rawJSONValue re-reads a stored fragment so jsonTruthy can judge it the way
+// it judged the decoded map before the body was typed.
+func rawJSONValue(raw json.RawMessage) any {
+	if len(raw) == 0 {
+		return nil
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil
+	}
+	return value
 }
 
 func jsonTruthy(value any) bool {

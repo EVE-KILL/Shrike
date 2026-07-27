@@ -13076,7 +13076,20 @@ export type ResolveResponses = {
 export type ResolveResponse2 = ResolveResponses[keyof ResolveResponses];
 
 export type DscanSaveData = {
-    body?: never;
+    body: {
+        /**
+         * Raw directional scan text. Used by the dscan routes.
+         */
+        dscan?: string;
+        /**
+         * Character names. Used by the local scan routes.
+         */
+        names?: Array<string>;
+        /**
+         * Analyzed scan output to store alongside the input.
+         */
+        result: unknown;
+    };
     path?: never;
     query?: never;
     url: '/scans/dscan';
@@ -13094,7 +13107,12 @@ export type DscanSaveResponses = {
 export type DscanSaveResponse = DscanSaveResponses[keyof DscanSaveResponses];
 
 export type DscanAnalyzeData = {
-    body?: never;
+    body: {
+        /**
+         * Raw directional scan text, one result per line, tab separated.
+         */
+        dscan: string;
+    };
     path?: never;
     query?: never;
     url: '/scans/dscan/analyze';
@@ -13130,7 +13148,20 @@ export type DscanGetResponses = {
 export type DscanGetResponse = DscanGetResponses[keyof DscanGetResponses];
 
 export type LocalscanSaveData = {
-    body?: never;
+    body: {
+        /**
+         * Raw directional scan text. Used by the dscan routes.
+         */
+        dscan?: string;
+        /**
+         * Character names. Used by the local scan routes.
+         */
+        names?: Array<string>;
+        /**
+         * Analyzed scan output to store alongside the input.
+         */
+        result: unknown;
+    };
     path?: never;
     query?: never;
     url: '/scans/local';
@@ -13148,7 +13179,7 @@ export type LocalscanSaveResponses = {
 export type LocalscanSaveResponse = LocalscanSaveResponses[keyof LocalscanSaveResponses];
 
 export type LocalscanAnalyzeData = {
-    body?: never;
+    body: Array<string> | null;
     path?: never;
     query?: never;
     url: '/scans/local/analyze';
@@ -14109,7 +14140,12 @@ export type SystemMostValuableCompatResponses = {
 export type SystemMostValuableCompatResponse = SystemMostValuableCompatResponses[keyof SystemMostValuableCompatResponses];
 
 export type DscanAnalyzeLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Raw directional scan text, one result per line, tab separated.
+         */
+        dscan: string;
+    };
     path?: never;
     query?: never;
     url: '/tools/dscan';
@@ -14127,7 +14163,20 @@ export type DscanAnalyzeLegacyResponses = {
 export type DscanAnalyzeLegacyResponse = DscanAnalyzeLegacyResponses[keyof DscanAnalyzeLegacyResponses];
 
 export type DscanSaveLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Raw directional scan text. Used by the dscan routes.
+         */
+        dscan?: string;
+        /**
+         * Character names. Used by the local scan routes.
+         */
+        names?: Array<string>;
+        /**
+         * Analyzed scan output to store alongside the input.
+         */
+        result: unknown;
+    };
     path?: never;
     query?: never;
     url: '/tools/dscan/save';
@@ -14163,7 +14212,7 @@ export type DscanGetLegacyResponses = {
 export type DscanGetLegacyResponse = DscanGetLegacyResponses[keyof DscanGetLegacyResponses];
 
 export type LocalscanAnalyzeLegacyData = {
-    body?: never;
+    body: Array<string> | null;
     path?: never;
     query?: never;
     url: '/tools/localscan';
@@ -14181,7 +14230,20 @@ export type LocalscanAnalyzeLegacyResponses = {
 export type LocalscanAnalyzeLegacyResponse = LocalscanAnalyzeLegacyResponses[keyof LocalscanAnalyzeLegacyResponses];
 
 export type LocalscanSaveLegacyData = {
-    body?: never;
+    body: {
+        /**
+         * Raw directional scan text. Used by the dscan routes.
+         */
+        dscan?: string;
+        /**
+         * Character names. Used by the local scan routes.
+         */
+        names?: Array<string>;
+        /**
+         * Analyzed scan output to store alongside the input.
+         */
+        result: unknown;
+    };
     path?: never;
     query?: never;
     url: '/tools/localscan/save';
