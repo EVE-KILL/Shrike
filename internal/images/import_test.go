@@ -99,12 +99,11 @@ func TestImportOldCharactersPreservesShardContract(t *testing.T) {
 	}
 }
 
-func TestSyncTypeBundleVerifiesDigestAndPublishesPointerLast(t *testing.T) {
+func TestSyncTypeExportVerifiesDigestAndUsesDirectTypeIDKeys(t *testing.T) {
 	icon := solidPNG(t, 8, 8, colorValue(20, 30, 40))
-	metadata := []byte(`{"42":{"icon":"icon-42.png"}}`)
 	archive := makeZip(t, map[string][]byte{
-		"service_metadata.json": metadata,
-		"icon-42.png":           icon,
+		"Image Export Collection/42_64.png": icon,
+		"README.txt":                        []byte("ignored"),
 	})
 	sum := sha256.Sum256(archive)
 	digest := hex.EncodeToString(sum[:])
@@ -118,7 +117,7 @@ func TestSyncTypeBundleVerifiesDigestAndPublishesPointerLast(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"tag_name": "icons-42",
 				"assets": []map[string]any{{
-					"name":                 TurtleBundleAsset,
+					"name":                 TurtleTypeExportAsset,
 					"browser_download_url": "http://" + r.Host + "/bundle",
 					"digest":               "sha256:" + digest,
 				}},
@@ -133,34 +132,37 @@ func TestSyncTypeBundleVerifiesDigestAndPublishesPointerLast(t *testing.T) {
 	defer server.Close()
 
 	store := newMemoryStore()
-	options := BundleSyncOptions{
+	options := TypeExportSyncOptions{
 		HTTPClient: server.Client(), APIURL: server.URL + "/latest",
 		Now: func() time.Time {
 			return time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
 		},
 	}
-	first, err := SyncTypeBundle(context.Background(), store, options)
+	first, err := SyncTypeExport(context.Background(), store, options)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !first.Changed || first.Digest != digest ||
-		store.objects["types/blobs/icon-42.png"] == nil {
+		store.objects["types/42_64.png"] == nil {
 		t.Fatalf("first sync = %+v, objects %v", first, store.objects)
 	}
-	pointerObject := store.objects["types/current.json"]
-	if pointerObject == nil {
-		t.Fatal("current pointer was not published")
+	manifestObject := store.objects[typeExportManifestKey]
+	if manifestObject == nil {
+		t.Fatal("current export manifest was not published")
 	}
-	var pointer typeBundlePointer
-	if err := json.Unmarshal(pointerObject.Body, &pointer); err != nil {
+	var manifest typeExportManifest
+	if err := json.Unmarshal(manifestObject.Body, &manifest); err != nil {
 		t.Fatal(err)
 	}
-	if pointer.Release != "icons-42" || pointer.Digest != digest ||
-		store.objects[pointer.MetadataKey] == nil {
-		t.Fatalf("pointer = %+v", pointer)
+	iconSum := sha256.Sum256(icon)
+	iconDigest := hex.EncodeToString(iconSum[:])
+	if manifest.Release != "icons-42" ||
+		manifest.ArchiveDigest != digest ||
+		manifest.Images["42_64.png"] != iconDigest {
+		t.Fatalf("manifest = %+v", manifest)
 	}
 
-	second, err := SyncTypeBundle(context.Background(), store, options)
+	second, err := SyncTypeExport(context.Background(), store, options)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,10 +171,9 @@ func TestSyncTypeBundleVerifiesDigestAndPublishesPointerLast(t *testing.T) {
 	}
 }
 
-func TestSyncTypeBundleRejectsDigestMismatchBeforePublishing(t *testing.T) {
+func TestSyncTypeExportRejectsDigestMismatchBeforePublishing(t *testing.T) {
 	archive := makeZip(t, map[string][]byte{
-		"service_metadata.json": []byte(`{"42":{"icon":"icon.png"}}`),
-		"icon.png":              []byte("not-an-image"),
+		"42_64.png": []byte("not-an-image"),
 	})
 	server := httptest.NewServer(http.HandlerFunc(func(
 		w http.ResponseWriter,
@@ -182,7 +183,7 @@ func TestSyncTypeBundleRejectsDigestMismatchBeforePublishing(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"tag_name": "icons-bad",
 				"assets": []map[string]any{{
-					"name":                 TurtleBundleAsset,
+					"name":                 TurtleTypeExportAsset,
 					"browser_download_url": "http://" + r.Host + "/bundle",
 					"digest":               "sha256:" + strings.Repeat("0", 64),
 				}},
@@ -193,17 +194,62 @@ func TestSyncTypeBundleRejectsDigestMismatchBeforePublishing(t *testing.T) {
 	}))
 	defer server.Close()
 	store := newMemoryStore()
-	if _, err := SyncTypeBundle(
+	if _, err := SyncTypeExport(
 		context.Background(),
 		store,
-		BundleSyncOptions{
+		TypeExportSyncOptions{
 			HTTPClient: server.Client(), APIURL: server.URL + "/latest",
 		},
 	); err == nil {
 		t.Fatal("digest mismatch was accepted")
 	}
-	if store.objects["types/current.json"] != nil {
-		t.Fatal("failed bundle was published")
+	if store.objects[typeExportManifestKey] != nil {
+		t.Fatal("failed image export was published")
+	}
+}
+
+func TestImportTypeExportImagesUsesManifestHashes(t *testing.T) {
+	unchanged := solidPNG(t, 8, 8, colorValue(10, 20, 30))
+	changed := solidPNG(t, 8, 8, colorValue(40, 50, 60))
+	added := solidPNG(t, 8, 8, colorValue(70, 80, 90))
+	archiveBody := makeZip(t, map[string][]byte{
+		"41_64.png": unchanged,
+		"42_64.png": changed,
+		"43_64.png": added,
+	})
+	archivePath := filepath.Join(t.TempDir(), "types.zip")
+	writeTestFile(t, archivePath, archiveBody)
+	archive, err := zip.OpenReader(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer archive.Close()
+
+	unchangedSum := sha256.Sum256(unchanged)
+	store := newMemoryStore()
+	result, hashes, err := importTypeExportImages(
+		context.Background(),
+		store,
+		archive.File,
+		map[string]string{
+			"41_64.png": hex.EncodeToString(unchangedSum[:]),
+			"42_64.png": strings.Repeat("0", 64),
+		},
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Scanned != 3 || result.Uploaded != 2 || result.Skipped != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	if len(hashes) != 3 {
+		t.Fatalf("hashes = %v", hashes)
+	}
+	if store.objects["types/41_64.png"] != nil ||
+		store.objects["types/42_64.png"] == nil ||
+		store.objects["types/43_64.png"] == nil {
+		t.Fatalf("uploaded objects = %v", store.objects)
 	}
 }
 

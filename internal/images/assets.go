@@ -16,20 +16,10 @@ import (
 	"github.com/eve-kill/shrike/internal/objectstore"
 )
 
-type typeBundlePointer struct {
-	Version     int       `json:"version"`
-	Release     string    `json:"release"`
-	Digest      string    `json:"digest"`
-	MetadataKey string    `json:"metadata_key"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
 type typeMetadata map[string]map[string]string
 
 type typeDataCache struct {
 	mu             sync.RWMutex
-	version        string
-	metadata       typeMetadata
 	dustLoaded     bool
 	dust           typeMetadata
 	overlaysLoaded bool
@@ -81,17 +71,6 @@ func (s *Service) loadType(
 	size int,
 	format string,
 ) (Result, error) {
-	metadata, dust, overlays, version, err := s.typeMetadata(ctx)
-	if err != nil {
-		return Result{}, err
-	}
-	idKey := strconv.FormatInt(id, 10)
-	entry := metadata[idKey]
-	prefix := "types/blobs/"
-	if entry == nil {
-		entry = dust[idKey]
-		prefix = "types/dust514/"
-	}
 	sourceVariant := variant
 	if sourceVariant == "overlayrender" {
 		sourceVariant = "render"
@@ -102,17 +81,29 @@ func (s *Service) loadType(
 		sourceKey   string
 		sourceStamp time.Time
 	)
-	if filename := entry[sourceVariant]; filename != "" {
-		if !safeAssetName(filename) {
-			return Result{}, fmt.Errorf(
-				"type metadata contains unsafe filename %q",
-				filename,
-			)
+	sourceKey = typeExportSourceKey(id, sourceVariant)
+	source, err := s.store.GetObject(ctx, sourceKey)
+	if err != nil {
+		return Result{}, fmt.Errorf("read type image: %w", err)
+	}
+	if source == nil {
+		dust, dustErr := s.dustTypeMetadata(ctx)
+		if dustErr != nil {
+			return Result{}, dustErr
 		}
-		sourceKey = prefix + filename
-		source, err = s.store.GetObject(ctx, sourceKey)
-		if err != nil {
-			return Result{}, fmt.Errorf("read type image: %w", err)
+		entry := dust[strconv.FormatInt(id, 10)]
+		if filename := entry[sourceVariant]; filename != "" {
+			if !safeAssetName(filename) {
+				return Result{}, fmt.Errorf(
+					"Dust 514 type metadata contains unsafe filename %q",
+					filename,
+				)
+			}
+			sourceKey = "types/dust514/" + filename
+			source, err = s.store.GetObject(ctx, sourceKey)
+			if err != nil {
+				return Result{}, fmt.Errorf("read Dust 514 type image: %w", err)
+			}
 		}
 	}
 	if source == nil {
@@ -143,7 +134,14 @@ func (s *Service) loadType(
 	}
 
 	var overlay []byte
-	overlayType := overlays[id]
+	var overlayType string
+	if variant == "overlayrender" {
+		overlays, overlayErr := s.typeOverlays(ctx)
+		if overlayErr != nil {
+			return Result{}, overlayErr
+		}
+		overlayType = overlays[id]
+	}
 	if variant == "overlayrender" && overlayType != "" {
 		object, getErr := s.store.GetObject(
 			ctx,
@@ -202,7 +200,6 @@ func (s *Service) loadType(
 				ContentType: contentType, CacheControl: immutableCacheControl,
 				Metadata: map[string]string{
 					"source-key": sourceKey,
-					"bundle":     version,
 				},
 			},
 		); err != nil {
@@ -210,6 +207,19 @@ func (s *Service) loadType(
 		}
 	}
 	return newResult(body, contentType, sourceStamp), nil
+}
+
+func typeExportSourceKey(id int64, variant string) string {
+	switch variant {
+	case "render":
+		return fmt.Sprintf("types/%d_512.jpg", id)
+	case "bpc":
+		return fmt.Sprintf("types/%d_64_bpc.png", id)
+	default:
+		// Image Export Collection uses the ordinary 64px icon for both the
+		// "icon" and blueprint-original ("bp") variants.
+		return fmt.Sprintf("types/%d_64.png", id)
+	}
 }
 
 func (s *Service) loadUpstreamType(
@@ -284,83 +294,56 @@ func (s *Service) loadUpstreamType(
 	}, nil
 }
 
-func (s *Service) typeMetadata(
-	ctx context.Context,
-) (typeMetadata, typeMetadata, map[int64]string, string, error) {
-	pointerObject, err := s.store.GetObject(ctx, "types/current.json")
-	if err != nil {
-		return nil, nil, nil, "", err
-	}
-	var pointer typeBundlePointer
-	if pointerObject != nil {
-		if err := json.Unmarshal(pointerObject.Body, &pointer); err != nil {
-			return nil, nil, nil, "", fmt.Errorf("decode type bundle pointer: %w", err)
-		}
-	}
-	version := pointer.Digest
-	if version == "" {
-		version = "upstream-only"
-	}
-
+func (s *Service) dustTypeMetadata(ctx context.Context) (typeMetadata, error) {
 	s.typeData.mu.RLock()
-	ready := s.typeData.version == version &&
-		s.typeData.dustLoaded &&
-		s.typeData.overlaysLoaded
-	if ready {
-		metadata := s.typeData.metadata
+	if s.typeData.dustLoaded {
 		dust := s.typeData.dust
-		overlays := s.typeData.overlays
 		s.typeData.mu.RUnlock()
-		return metadata, dust, overlays, version, nil
+		return dust, nil
 	}
 	s.typeData.mu.RUnlock()
 
 	s.typeData.mu.Lock()
 	defer s.typeData.mu.Unlock()
-	if s.typeData.version != version {
-		s.typeData.metadata = typeMetadata{}
-		if pointer.MetadataKey != "" {
-			object, getErr := s.store.GetObject(ctx, pointer.MetadataKey)
-			if getErr != nil {
-				return nil, nil, nil, "", getErr
-			}
-			if object == nil {
-				return nil, nil, nil, "", fmt.Errorf(
-					"type metadata %q is missing",
-					pointer.MetadataKey,
-				)
-			}
-			if err := json.Unmarshal(object.Body, &s.typeData.metadata); err != nil {
-				return nil, nil, nil, "", fmt.Errorf("decode type metadata: %w", err)
-			}
-		}
-		s.typeData.version = version
-	}
 	if !s.typeData.dustLoaded {
 		s.typeData.dust = typeMetadata{}
 		if object, getErr := s.store.GetObject(
 			ctx,
 			"types/dust514/service_metadata.json",
 		); getErr != nil {
-			return nil, nil, nil, "", getErr
+			return nil, getErr
 		} else if object != nil {
 			if err := json.Unmarshal(object.Body, &s.typeData.dust); err != nil {
-				return nil, nil, nil, "", fmt.Errorf("decode Dust 514 metadata: %w", err)
+				return nil, fmt.Errorf("decode Dust 514 metadata: %w", err)
 			}
 		}
 		s.typeData.dustLoaded = true
 	}
+	return s.typeData.dust, nil
+}
+
+func (s *Service) typeOverlays(ctx context.Context) (map[int64]string, error) {
+	s.typeData.mu.RLock()
+	if s.typeData.overlaysLoaded {
+		overlays := s.typeData.overlays
+		s.typeData.mu.RUnlock()
+		return overlays, nil
+	}
+	s.typeData.mu.RUnlock()
+
+	s.typeData.mu.Lock()
+	defer s.typeData.mu.Unlock()
 	if !s.typeData.overlaysLoaded {
 		s.typeData.overlays = make(map[int64]string)
 		if object, getErr := s.store.GetObject(
 			ctx,
 			"types/overlays/ids.json",
 		); getErr != nil {
-			return nil, nil, nil, "", getErr
+			return nil, getErr
 		} else if object != nil {
 			var groups map[string][]int64
 			if err := json.Unmarshal(object.Body, &groups); err != nil {
-				return nil, nil, nil, "", fmt.Errorf("decode type overlays: %w", err)
+				return nil, fmt.Errorf("decode type overlays: %w", err)
 			}
 			for overlay, ids := range groups {
 				for _, id := range ids {
@@ -370,33 +353,7 @@ func (s *Service) typeMetadata(
 		}
 		s.typeData.overlaysLoaded = true
 	}
-	return s.typeData.metadata, s.typeData.dust,
-		s.typeData.overlays, version, nil
-}
-
-func (s *Service) ServiceMetadata(ctx context.Context) ([]byte, error) {
-	if !s.Available() {
-		return nil, unavailable()
-	}
-	pointer, err := s.store.GetObject(ctx, "types/current.json")
-	if err != nil {
-		return nil, err
-	}
-	if pointer == nil {
-		return nil, statusError(http.StatusNotFound, "Type metadata not installed", nil)
-	}
-	var current typeBundlePointer
-	if err := json.Unmarshal(pointer.Body, &current); err != nil {
-		return nil, err
-	}
-	object, err := s.store.GetObject(ctx, current.MetadataKey)
-	if err != nil {
-		return nil, err
-	}
-	if object == nil {
-		return nil, statusError(http.StatusNotFound, "Type metadata not installed", nil)
-	}
-	return object.Body, nil
+	return s.typeData.overlays, nil
 }
 
 func (s *Service) Static(

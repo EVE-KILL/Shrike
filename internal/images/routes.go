@@ -26,7 +26,6 @@ func Register(a huma.API, service *Service) {
 	}
 	registerOldCharacterRoute(a, service)
 	registerKillmailSocialRoute(a, service)
-	registerMetadataRoute(a, service)
 }
 
 func registerOverview(a huma.API) {
@@ -214,43 +213,6 @@ func registerOldCharacterRoute(a huma.API, service *Service) {
 			id,
 			requestedFormat(ctx, "jpeg"),
 		)
-	})
-}
-
-func registerMetadataRoute(a huma.API, service *Service) {
-	op := huma.Operation{
-		OperationID: "image-service-metadata",
-		Method:      http.MethodGet,
-		Path:        "/images/service-metadata",
-		Summary:     "Current TurtleTools type image metadata",
-		Tags:        []string{"images"},
-		Servers:     imageServers(),
-		Extensions:  map[string]any{"x-audience": "public"},
-		Responses: map[string]*huma.Response{
-			"200": {
-				Description: "Service bundle metadata",
-				Content: map[string]*huma.MediaType{
-					"application/json": {
-						Schema: &huma.Schema{
-							Type:                 huma.TypeObject,
-							AdditionalProperties: true,
-						},
-					},
-				},
-			},
-		},
-	}
-	a.OpenAPI().AddOperation(&op)
-	a.Adapter().Handle(&op, func(ctx huma.Context) {
-		body, err := service.ServiceMetadata(ctx.Context())
-		if err != nil {
-			writeError(ctx, err)
-			return
-		}
-		ctx.SetHeader("Content-Type", "application/json")
-		ctx.SetHeader("Cache-Control", "public, max-age=3600")
-		ctx.SetStatus(http.StatusOK)
-		_, _ = ctx.BodyWriter().Write(body)
 	})
 }
 

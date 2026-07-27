@@ -83,17 +83,17 @@ objects whose stored SHA-256 matches are skipped.`,
 
 var imagesSyncTypesCmd = &cobra.Command{
 	Use:   "sync-types",
-	Short: "Synchronize the latest TurtleTools Service Bundle to B2",
+	Short: "Synchronize the latest TurtleTools Image Export Collection to B2",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		store, err := openImageStore()
 		if err != nil {
 			return err
 		}
 		start := time.Now()
-		result, err := images.SyncTypeBundle(
+		result, err := images.SyncTypeExport(
 			cmd.Context(),
 			store,
-			images.BundleSyncOptions{
+			images.TypeExportSyncOptions{
 				Token: os.Getenv("GITHUB_TOKEN"), UserAgent: userAgent(),
 				Progress: reportImageProgress,
 			},

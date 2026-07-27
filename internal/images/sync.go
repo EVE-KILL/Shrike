@@ -8,11 +8,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -22,10 +23,15 @@ import (
 
 const (
 	TurtleToolsRepository = "SentientTurtle/EVE-TurtleTools"
-	TurtleBundleAsset     = "Service.Bundle.zip"
+	TurtleTypeExportAsset = "Image.Export.Collection.zip"
+	typeExportManifestKey = "types/manifest.json"
 )
 
-type BundleSyncOptions struct {
+var typeExportAssetName = regexp.MustCompile(
+	`^[1-9][0-9]*_(?:64(?:_bpc)?\.png|512\.jpg)$`,
+)
+
+type TypeExportSyncOptions struct {
 	HTTPClient *http.Client
 	Token      string
 	UserAgent  string
@@ -34,11 +40,19 @@ type BundleSyncOptions struct {
 	Now        func() time.Time
 }
 
-type BundleSyncResult struct {
+type TypeExportSyncResult struct {
 	Release string       `json:"release"`
 	Digest  string       `json:"digest"`
 	Changed bool         `json:"changed"`
 	Import  ImportResult `json:"import"`
+}
+
+type typeExportManifest struct {
+	Version       int               `json:"version"`
+	Release       string            `json:"release"`
+	ArchiveDigest string            `json:"archive_digest"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+	Images        map[string]string `json:"images"`
 }
 
 type githubRelease struct {
@@ -50,13 +64,13 @@ type githubRelease struct {
 	} `json:"assets"`
 }
 
-func SyncTypeBundle(
+func SyncTypeExport(
 	ctx context.Context,
 	store ObjectStore,
-	options BundleSyncOptions,
-) (BundleSyncResult, error) {
+	options TypeExportSyncOptions,
+) (TypeExportSyncResult, error) {
 	if store == nil {
-		return BundleSyncResult{}, unavailable()
+		return TypeExportSyncResult{}, unavailable()
 	}
 	client := options.HTTPClient
 	if client == nil {
@@ -71,7 +85,7 @@ func SyncTypeBundle(
 		apiURL = "https://api.github.com/repos/" +
 			TurtleToolsRepository + "/releases/latest"
 	}
-	release, assetURL, remoteDigest, err := latestBundle(
+	release, assetURL, remoteDigest, err := latestTypeExport(
 		ctx,
 		client,
 		apiURL,
@@ -79,21 +93,22 @@ func SyncTypeBundle(
 		userAgent,
 	)
 	if err != nil {
-		return BundleSyncResult{}, err
+		return TypeExportSyncResult{}, err
 	}
-	current, err := loadTypeBundlePointer(ctx, store)
+	current, err := loadTypeExportManifest(ctx, store)
 	if err != nil {
-		return BundleSyncResult{}, err
+		return TypeExportSyncResult{}, err
 	}
 	if current != nil &&
-		((remoteDigest != "" && current.Digest == trimDigest(remoteDigest)) ||
+		((remoteDigest != "" &&
+			current.ArchiveDigest == trimDigest(remoteDigest)) ||
 			(remoteDigest == "" && current.Release == release)) {
-		return BundleSyncResult{
-			Release: release, Digest: current.Digest, Changed: false,
+		return TypeExportSyncResult{
+			Release: release, Digest: current.ArchiveDigest, Changed: false,
 		}, nil
 	}
 
-	archivePath, digest, cleanup, err := downloadBundle(
+	archivePath, digest, cleanup, err := downloadTypeExport(
 		ctx,
 		client,
 		assetURL,
@@ -101,107 +116,113 @@ func SyncTypeBundle(
 		remoteDigest,
 	)
 	if err != nil {
-		return BundleSyncResult{}, err
+		return TypeExportSyncResult{}, err
 	}
 	defer cleanup()
 
 	archive, err := zip.OpenReader(archivePath)
 	if err != nil {
-		return BundleSyncResult{}, fmt.Errorf("open TurtleTools bundle: %w", err)
+		return TypeExportSyncResult{}, fmt.Errorf(
+			"open TurtleTools image export: %w",
+			err,
+		)
 	}
 	defer archive.Close()
-	var metadata []byte
+	imageCount := 0
 	for _, file := range archive.File {
 		if file.FileInfo().IsDir() {
 			continue
 		}
 		name := filepath.ToSlash(file.Name)
 		if !safeRelativePath(name) {
-			return BundleSyncResult{}, fmt.Errorf("unsafe bundle path %q", name)
+			return TypeExportSyncResult{}, fmt.Errorf(
+				"unsafe image export path %q",
+				name,
+			)
 		}
 		base := filepath.Base(name)
-		if base == "service_metadata.json" {
-			body, err := readZipFile(file, defaultMaximumObject)
-			if err != nil {
-				return BundleSyncResult{}, err
-			}
-			metadata = body
+		if typeExportAssetName.MatchString(base) {
+			imageCount++
 		}
 	}
-	if len(metadata) == 0 {
-		return BundleSyncResult{}, fmt.Errorf("TurtleTools bundle has no service_metadata.json")
+	if imageCount == 0 {
+		return TypeExportSyncResult{}, fmt.Errorf(
+			"TurtleTools image export contains no type images",
+		)
 	}
-	var validate typeMetadata
-	if err := json.Unmarshal(metadata, &validate); err != nil {
-		return BundleSyncResult{}, fmt.Errorf("invalid TurtleTools metadata: %w", err)
+	var previous map[string]string
+	if current != nil {
+		previous = current.Images
 	}
-	result, err := importBundleImages(
+	result, hashes, err := importTypeExportImages(
 		ctx,
 		store,
 		archive.File,
+		previous,
 		options.Progress,
 	)
 	if err != nil {
-		return BundleSyncResult{}, err
-	}
-	metadataKey := fmt.Sprintf(
-		"types/releases/%s/service_metadata.json",
-		digest,
-	)
-	if _, err := putIfChanged(ctx, store, importObject{
-		Key: metadataKey, Body: metadata, ContentType: "application/json",
-	}); err != nil {
-		return BundleSyncResult{}, err
+		return TypeExportSyncResult{}, err
 	}
 	now := options.Now
 	if now == nil {
 		now = time.Now
 	}
-	pointer := typeBundlePointer{
-		Version: 1, Release: release, Digest: digest,
-		MetadataKey: metadataKey, UpdatedAt: now().UTC(),
+	manifest := typeExportManifest{
+		Version: 1, Release: release, ArchiveDigest: digest,
+		UpdatedAt: now().UTC(), Images: hashes,
 	}
-	body, err := json.Marshal(pointer)
+	body, err := json.Marshal(manifest)
 	if err != nil {
-		return BundleSyncResult{}, err
+		return TypeExportSyncResult{}, err
 	}
-	// The pointer is the commit marker. A failed blob or metadata upload can
-	// leave harmless unreferenced objects, but can never publish half a release.
+	// Serving derives stable object keys directly from the type ID and never
+	// reads this manifest. Publishing it last gives the next synchronization
+	// one small object to compare instead of a HEAD request per image.
 	if err := store.PutWithOptions(
 		ctx,
-		"types/current.json",
+		typeExportManifestKey,
 		body,
 		objectstore.PutOptions{
 			ContentType: "application/json", CacheControl: "no-cache",
 		},
 	); err != nil {
-		return BundleSyncResult{}, fmt.Errorf("publish type bundle: %w", err)
+		return TypeExportSyncResult{}, fmt.Errorf(
+			"publish type export manifest: %w",
+			err,
+		)
 	}
-	return BundleSyncResult{
+	return TypeExportSyncResult{
 		Release: release, Digest: digest, Changed: true, Import: result,
 	}, nil
 }
 
-func importBundleImages(
+func importTypeExportImages(
 	ctx context.Context,
 	store ObjectStore,
 	files []*zip.File,
+	previous map[string]string,
 	progress func(ImportResult),
-) (ImportResult, error) {
+) (ImportResult, map[string]string, error) {
 	unique := make(map[string]*zip.File)
 	for _, file := range files {
-		if file.FileInfo().IsDir() ||
-			filepath.Base(filepath.ToSlash(file.Name)) == "service_metadata.json" {
+		if file.FileInfo().IsDir() {
 			continue
 		}
 		base := filepath.Base(filepath.ToSlash(file.Name))
 		if !safeAssetName(base) {
-			return ImportResult{}, fmt.Errorf("unsafe bundle filename %q", base)
+			return ImportResult{}, nil, fmt.Errorf(
+				"unsafe image export filename %q",
+				base,
+			)
+		}
+		if !typeExportAssetName.MatchString(base) {
+			continue
 		}
 		if previous := unique[base]; previous != nil &&
 			previous.Name != file.Name {
-			return ImportResult{}, fmt.Errorf(
-				"TurtleTools bundle contains duplicate filename %q",
+			return ImportResult{}, nil, fmt.Errorf(
+				"TurtleTools image export contains duplicate filename %q",
 				base,
 			)
 		}
@@ -211,29 +232,46 @@ func importBundleImages(
 	group, groupCtx := errgroup.WithContext(ctx)
 	input := make(chan *zip.File, 8)
 	var scanned, uploaded, skipped, uploadedBytes atomic.Int64
+	hashes := make(map[string]string, len(unique))
+	var hashesMu sync.Mutex
 	for range 8 {
 		group.Go(func() error {
 			for file := range input {
 				base := filepath.Base(filepath.ToSlash(file.Name))
-				if !safeAssetName(base) {
-					return fmt.Errorf("unsafe bundle filename %q", base)
-				}
-				contentType := mime.TypeByExtension(
-					strings.ToLower(filepath.Ext(base)),
-				)
-				if !strings.HasPrefix(contentType, "image/") {
-					continue
+				contentType, ok := typeExportContentType(base)
+				if !ok {
+					return fmt.Errorf(
+						"unexpected TurtleTools image export filename %q",
+						base,
+					)
 				}
 				body, err := readZipFile(file, defaultMaximumObject)
 				if err != nil {
 					return err
 				}
-				changed, err := putIfChanged(groupCtx, store, importObject{
-					Key:  "types/blobs/" + base,
-					Body: body, ContentType: contentType,
-				})
-				if err != nil {
-					return err
+				sum := sha256.Sum256(body)
+				digest := hex.EncodeToString(sum[:])
+				hashesMu.Lock()
+				hashes[base] = digest
+				hashesMu.Unlock()
+
+				changed := previous[base] != digest
+				if changed {
+					err := store.PutWithOptions(
+						groupCtx,
+						"types/"+base,
+						body,
+						objectstore.PutOptions{
+							ContentType:  contentType,
+							CacheControl: immutableCacheControl,
+							Metadata: map[string]string{
+								"sha256": digest,
+							},
+						},
+					)
+					if err != nil {
+						return fmt.Errorf("upload types/%s: %w", base, err)
+					}
 				}
 				scanned.Add(1)
 				if changed {
@@ -271,10 +309,23 @@ func importBundleImages(
 	if progress != nil {
 		progress(result)
 	}
-	return result, err
+	return result, hashes, err
 }
 
-func latestBundle(
+func typeExportContentType(name string) (string, bool) {
+	if !typeExportAssetName.MatchString(name) {
+		return "", false
+	}
+	if strings.HasSuffix(name, ".png") {
+		return "image/png", true
+	}
+	if strings.HasSuffix(name, ".jpg") {
+		return "image/jpeg", true
+	}
+	return "", false
+}
+
+func latestTypeExport(
 	ctx context.Context,
 	client *http.Client,
 	apiURL, token, userAgent string,
@@ -307,18 +358,18 @@ func latestBundle(
 		return "", "", "", err
 	}
 	for _, asset := range value.Assets {
-		if asset.Name == TurtleBundleAsset {
+		if asset.Name == TurtleTypeExportAsset {
 			return value.TagName, asset.BrowserDownloadURL, asset.Digest, nil
 		}
 	}
 	return "", "", "", fmt.Errorf(
 		"%s is missing from TurtleTools release %s",
-		TurtleBundleAsset,
+		TurtleTypeExportAsset,
 		value.TagName,
 	)
 }
 
-func downloadBundle(
+func downloadTypeExport(
 	ctx context.Context,
 	client *http.Client,
 	url, userAgent, expectedDigest string,
@@ -330,12 +381,15 @@ func downloadBundle(
 	request.Header.Set("User-Agent", userAgent)
 	response, err := client.Do(request)
 	if err != nil {
-		return "", "", func() {}, fmt.Errorf("download TurtleTools bundle: %w", err)
+		return "", "", func() {}, fmt.Errorf(
+			"download TurtleTools image export: %w",
+			err,
+		)
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return "", "", func() {}, fmt.Errorf(
-			"download TurtleTools bundle: HTTP %d",
+			"download TurtleTools image export: HTTP %d",
 			response.StatusCode,
 		)
 	}
@@ -367,19 +421,28 @@ func downloadBundle(
 	return name, digest, cleanup, nil
 }
 
-func loadTypeBundlePointer(
+func loadTypeExportManifest(
 	ctx context.Context,
 	store ObjectStore,
-) (*typeBundlePointer, error) {
-	object, err := store.GetObject(ctx, "types/current.json")
+) (*typeExportManifest, error) {
+	object, err := store.GetObject(ctx, typeExportManifestKey)
 	if err != nil || object == nil {
 		return nil, err
 	}
-	var pointer typeBundlePointer
-	if err := json.Unmarshal(object.Body, &pointer); err != nil {
-		return nil, fmt.Errorf("decode current type bundle: %w", err)
+	var manifest typeExportManifest
+	if err := json.Unmarshal(object.Body, &manifest); err != nil {
+		return nil, fmt.Errorf("decode current type export manifest: %w", err)
 	}
-	return &pointer, nil
+	if manifest.Version != 1 {
+		return nil, fmt.Errorf(
+			"unsupported type export manifest version %d",
+			manifest.Version,
+		)
+	}
+	if manifest.Images == nil {
+		manifest.Images = map[string]string{}
+	}
+	return &manifest, nil
 }
 
 func trimDigest(value string) string {

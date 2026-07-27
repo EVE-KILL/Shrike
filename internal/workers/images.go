@@ -31,17 +31,23 @@ func (w *ImageRefreshWorker) Work(
 	)
 }
 
-// cronImageTypeSync checks GitHub once per day, content-addresses a changed
-// TurtleTools release into B2, then flips its tiny current.json commit marker.
+// cronImageTypeSync checks GitHub once per day and mirrors a changed
+// TurtleTools Image Export Collection into direct type-ID keys in B2. The
+// hash manifest is synchronization bookkeeping only and is not read while
+// serving.
 // An unconfigured image bucket is a supported deployment mode, not a failed
 // cron that should burn retries forever.
 func (d *Deps) cronImageTypeSync(ctx context.Context) (string, error) {
 	if d.ImageStore == nil {
 		return "image storage is not configured; skipped", nil
 	}
-	result, err := images.SyncTypeBundle(ctx, d.ImageStore, images.BundleSyncOptions{
-		Token: d.GitHubToken, UserAgent: d.UserAgent,
-	})
+	result, err := images.SyncTypeExport(
+		ctx,
+		d.ImageStore,
+		images.TypeExportSyncOptions{
+			Token: d.GitHubToken, UserAgent: d.UserAgent,
+		},
+	)
 	if err != nil {
 		return "", err
 	}

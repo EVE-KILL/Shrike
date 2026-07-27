@@ -22,6 +22,7 @@ import (
 type memoryStore struct {
 	mu      sync.Mutex
 	objects map[string]*objectstore.Object
+	gets    []string
 	puts    []string
 }
 
@@ -35,6 +36,7 @@ func (s *memoryStore) GetObject(
 ) (*objectstore.Object, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.gets = append(s.gets, key)
 	object := s.objects[key]
 	if object == nil {
 		return nil, nil
@@ -42,6 +44,50 @@ func (s *memoryStore) GetObject(
 	copy := *object
 	copy.Body = append([]byte(nil), object.Body...)
 	return &copy, nil
+}
+
+func TestTypeUsesDirectImageExportCollectionKey(t *testing.T) {
+	icon := solidPNG(t, 64, 64, colorValue(30, 100, 180))
+	store := newMemoryStore()
+	store.objects["types/648_64.png"] = &objectstore.Object{
+		Body: icon,
+		ObjectInfo: objectstore.ObjectInfo{
+			Key: "types/648_64.png", ContentType: "image/png",
+		},
+	}
+	service := New(Options{Store: store})
+	result, err := service.Type(
+		context.Background(),
+		648,
+		"icon",
+		0,
+		"",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(result.Body, icon) || result.ContentType != "image/png" {
+		t.Fatalf("result = type %q, %d bytes", result.ContentType, len(result.Body))
+	}
+	if len(store.gets) != 1 || store.gets[0] != "types/648_64.png" {
+		t.Fatalf("object reads = %v", store.gets)
+	}
+}
+
+func TestTypeExportSourceKeysMatchCollectionNames(t *testing.T) {
+	for _, test := range []struct {
+		variant string
+		want    string
+	}{
+		{variant: "icon", want: "types/983_64.png"},
+		{variant: "bp", want: "types/983_64.png"},
+		{variant: "bpc", want: "types/983_64_bpc.png"},
+		{variant: "render", want: "types/983_512.jpg"},
+	} {
+		if got := typeExportSourceKey(983, test.variant); got != test.want {
+			t.Errorf("%s key = %q, want %q", test.variant, got, test.want)
+		}
+	}
 }
 
 func (s *memoryStore) Stat(
