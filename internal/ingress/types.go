@@ -1,11 +1,11 @@
 // Package ingress embeds Caddy as Shrike's HTTP front door.
 //
 // Caddy is a library here, not a sidecar. There is no Caddyfile: Manager
-// builds a JSON configuration and hands it to caddy.Load. Today the origin is
-// deliberately plain HTTP/1.1 behind Cloudflare, which owns public TLS,
-// HTTP/2 and HTTP/3. Embedding Caddy still gives Shrike its hardened HTTP
-// stack and a path to terminate TLS and ACME tenant domains later, without a
-// second process to supervise or a second config file to keep in sync.
+// builds a JSON configuration and hands it to caddy.Load. Production origins
+// stay on plain HTTP behind Cloudflare, which owns public TLS, HTTP/2 and
+// HTTP/3. Development enables Caddy's internal CA on the same listener, giving
+// localhost a trusted certificate and exercising HTTP/2 and HTTP/3 locally
+// without a second process or config file.
 //
 // The part that makes it worth the dependency is that Shrike's own handlers
 // are Caddy modules rather than a proxy target. Caddy calls them directly, in
@@ -38,12 +38,22 @@ type Config struct {
 	// Address is the listener, as host:port.
 	Address string
 
-	// DataDir is where Caddy keeps its own state. Unused while everything is
-	// plain HTTP; it is where certificates will live once TLS is on.
+	// DataDir is where Caddy keeps its own state, including the development CA
+	// and localhost certificates when LocalHTTPS is enabled.
 	DataDir string
 
 	// LogLevel is a zerolog level name, translated to Caddy's zap levels.
 	LogLevel string
+
+	// LocalHTTPS enables an explicitly managed localhost certificate from
+	// Caddy's internal CA. It is for local development only; public TLS is
+	// terminated by Cloudflare before requests reach the production origin.
+	LocalHTTPS bool
+
+	// SkipLocalTrustInstall leaves the generated development CA out of system,
+	// Java, and Firefox trust stores. Tests use this to exercise real TLS
+	// without changing the host; normal local development leaves it false.
+	SkipLocalTrustInstall bool
 
 	// NuxtSocket is the Unix socket the Nitro renderer listens on. Every
 	// request that matches no surface is proxied there, which is what makes

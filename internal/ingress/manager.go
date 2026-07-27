@@ -2,12 +2,14 @@ package ingress
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -72,6 +74,9 @@ func (m *Manager) Start(ctx context.Context, cfg Config) error {
 	if _, _, err := net.SplitHostPort(cfg.Address); err != nil {
 		return fmt.Errorf("ingress: invalid address %q: %w", cfg.Address, err)
 	}
+	if cfg.LocalHTTPS && strings.TrimSpace(cfg.DataDir) == "" {
+		return errors.New("ingress: data directory is required for local HTTPS")
+	}
 	if cfg.DataDir != "" {
 		if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
 			return fmt.Errorf("ingress data directory: %w", err)
@@ -100,7 +105,7 @@ func (m *Manager) Start(ctx context.Context, cfg Config) error {
 		activeManager.CompareAndSwap(m, nil)
 		return err
 	}
-	if err := m.waitReady(ctx, cfg.Address); err != nil {
+	if err := m.waitReady(ctx, cfg); err != nil {
 		// Start still holds opMu, so calling Close here would try to acquire the
 		// same non-reentrant mutex and deadlock. Stop through the locked helper
 		// instead, and preserve both errors if cleanup ever fails.
@@ -221,10 +226,12 @@ func (m *Manager) addEventLocked(level, message string) {
 	}
 }
 
-// waitReady blocks until the listener accepts, so Start does not return before
-// the process can actually answer. Without it a readiness probe racing a fast
-// container start can observe a connection refused that means nothing.
-func (m *Manager) waitReady(ctx context.Context, address string) error {
+// waitReady blocks until the listener can complete the protocol it advertises,
+// so Start does not return while the local certificate is still being issued.
+// A TCP-only check is enough for production HTTP, but would let the first
+// browser request race Caddy's asynchronous certificate manager in development.
+func (m *Manager) waitReady(ctx context.Context, cfg Config) error {
+	address := cfg.Address
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return err
@@ -236,10 +243,23 @@ func (m *Manager) waitReady(ctx context.Context, address string) error {
 	readyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	var dialer net.Dialer
+	var netDialer net.Dialer
+	tlsDialer := tls.Dialer{
+		NetDialer: &netDialer,
+		Config: &tls.Config{ //nolint:gosec // readiness checks possession, not trust
+			ServerName:         "localhost",
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS12,
+		},
+	}
 	var lastErr error
 	for {
-		conn, err := dialer.DialContext(readyCtx, "tcp", address)
+		var conn net.Conn
+		if cfg.LocalHTTPS {
+			conn, err = tlsDialer.DialContext(readyCtx, "tcp", address)
+		} else {
+			conn, err = netDialer.DialContext(readyCtx, "tcp", address)
+		}
 		if err == nil {
 			return conn.Close()
 		}
@@ -372,9 +392,9 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 
 	server := map[string]any{
 		"listen": []string{"tcp/" + cfg.Address},
-		// Nothing here terminates TLS yet, and automatic HTTPS would otherwise
-		// try to provision certificates and bind a redirect listener for every
-		// hostname named above.
+		// Certificate management is explicit below for local HTTPS. Keeping
+		// automatic HTTPS disabled prevents Caddy from opening a second HTTP
+		// redirect listener or trying ACME for arbitrary tenant Host headers.
 		"automatic_https": map[string]any{"disable": true},
 		"routes":          routes,
 		// Slowloris guard, matching the timeout the plain net/http server used
@@ -383,6 +403,20 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		"read_timeout":        "2m",
 		"idle_timeout":        "5m",
 		"max_header_bytes":    64 << 10,
+	}
+
+	tlsApp := map[string]any{"disable_storage_clean": true}
+	apps := map[string]any{
+		"http": map[string]any{
+			"servers": map[string]any{"shrike": server},
+		},
+		// caddytls is linked whether or not we ask for it — caddyhttp needs
+		// it for connection policies — and its storage sweeper runs on a
+		// timer against the default storage path, which on a developer's
+		// machine is somewhere under their home directory. Shrike disables
+		// that background sweep and scopes all storage explicitly when TLS is
+		// enabled below.
+		"tls": tlsApp,
 	}
 
 	config := map[string]any{
@@ -397,27 +431,45 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		"logging": map[string]any{
 			"logs": map[string]any{"default": map[string]any{"level": caddyLogLevel(cfg.LogLevel)}},
 		},
-		"apps": map[string]any{
-			"http": map[string]any{
-				"servers": map[string]any{"shrike": server},
-			},
-			// caddytls is linked whether or not we ask for it — caddyhttp needs
-			// it for connection policies — and its storage sweeper runs on a
-			// timer against the default storage path, which on a developer's
-			// machine is somewhere under their home directory. Shrike stores no
-			// certificates, so the sweep can only find other software's, and
-			// writing outside our own data directory is not ours to do.
-			"tls": map[string]any{"disable_storage_clean": true},
-		},
+		"apps": apps,
 	}
-	// No "storage" block yet. Caddy's default file storage needs no module
-	// linked, whereas naming file_system here would reference a module that is
-	// deliberately not imported — and there is nothing to store until Shrike
-	// terminates TLS. DataDir is carried in Config for that day.
+
+	if cfg.LocalHTTPS {
+		// Keep one canonical development origin. Managing separate loopback IP
+		// certificates adds no browser capability (the advertised URL is
+		// localhost) and starts concurrent storage checks during the first run.
+		localNames := []string{"localhost"}
+
+		// A non-empty connection policy makes this listener TLS. Certificates
+		// are loaded into Caddy's managed cache by the automate loader, using
+		// the explicit internal issuer policy rather than public ACME.
+		server["tls_connection_policies"] = []any{map[string]any{}}
+		tlsApp["certificates"] = map[string]any{
+			"automate": localNames,
+		}
+		tlsApp["automation"] = map[string]any{
+			"policies": []any{map[string]any{
+				"subjects": localNames,
+				"issuers":  []any{map[string]any{"module": "internal"}},
+			}},
+		}
+		apps["pki"] = map[string]any{
+			"certificate_authorities": map[string]any{
+				"local": map[string]any{
+					"install_trust": !cfg.SkipLocalTrustInstall,
+				},
+			},
+		}
+		config["storage"] = map[string]any{
+			"module": "file_system",
+			"root":   filepath.Join(cfg.DataDir, "caddy"),
+		}
+	}
 
 	listeners := []ListenerStatus{{
 		Name:        "shrike",
 		Address:     cfg.Address,
+		TLS:         cfg.LocalHTTPS,
 		Description: "Embedded Caddy listener serving every Shrike surface",
 	}}
 	return config, listeners, status, nil

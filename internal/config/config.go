@@ -87,11 +87,11 @@ type Config struct {
 	NuxtSocket string
 
 	// APISocket is the private HTTP listener used by Nuxt SSR. Browser requests
-	// still use relative same-origin HTTP through Caddy.
+	// still use relative same-origin requests through Caddy.
 	APISocket string
 
-	// DataDir is where the ingress keeps its own state — certificates, once
-	// Shrike terminates TLS.
+	// DataDir is where the ingress keeps its own state, including the local
+	// development CA and localhost certificate.
 	DataDir string
 
 	// Observability / environment.

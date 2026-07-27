@@ -2,6 +2,8 @@ package ingress
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net"
@@ -195,11 +197,86 @@ func TestAdminAPIIsDisabled(t *testing.T) {
 	}
 }
 
+func TestLocalHTTPSConfigUsesInternalCAAndScopedStorage(t *testing.T) {
+	cfg := testConfig()
+	cfg.DataDir = t.TempDir()
+	cfg.LocalHTTPS = true
+	cfg.SkipLocalTrustInstall = true
+
+	m := newTestManager(t, cfg)
+	built, listeners, _, err := m.buildConfig()
+	if err != nil {
+		t.Fatalf("buildConfig: %v", err)
+	}
+
+	server := serverConfig(t, built)
+	policies, ok := server["tls_connection_policies"].([]any)
+	if !ok || len(policies) != 1 {
+		t.Fatalf("TLS connection policies = %#v, want one policy", server["tls_connection_policies"])
+	}
+
+	apps := built["apps"].(map[string]any)
+	tlsApp := apps["tls"].(map[string]any)
+	certificates := tlsApp["certificates"].(map[string]any)
+	names, ok := certificates["automate"].([]string)
+	if !ok {
+		t.Fatalf("automated certificate names = %#v, want []string", certificates["automate"])
+	}
+	wantNames := []string{"localhost"}
+	if strings.Join(names, ",") != strings.Join(wantNames, ",") {
+		t.Errorf("automated certificate names = %v, want %v", names, wantNames)
+	}
+
+	automation := tlsApp["automation"].(map[string]any)
+	automationPolicies := automation["policies"].([]any)
+	issuers := automationPolicies[0].(map[string]any)["issuers"].([]any)
+	if got := issuers[0].(map[string]any)["module"]; got != "internal" {
+		t.Errorf("certificate issuer = %v, want internal", got)
+	}
+
+	pkiApp := apps["pki"].(map[string]any)
+	authorities := pkiApp["certificate_authorities"].(map[string]any)
+	localCA := authorities["local"].(map[string]any)
+	if install, _ := localCA["install_trust"].(bool); install {
+		t.Error("test configuration unexpectedly installs the local CA into host trust stores")
+	}
+
+	storage := built["storage"].(map[string]any)
+	if got := storage["module"]; got != "file_system" {
+		t.Errorf("storage module = %v, want file_system", got)
+	}
+	if got, want := storage["root"], filepath.Join(cfg.DataDir, "caddy"); got != want {
+		t.Errorf("storage root = %v, want %v", got, want)
+	}
+
+	if len(listeners) != 1 || !listeners[0].TLS {
+		t.Errorf("listener status does not report TLS: %+v", listeners)
+	}
+}
+
 func TestStartRejectsBadAddress(t *testing.T) {
 	m := New(testSurfaces(), zerolog.Nop())
 	if err := m.Start(context.Background(), Config{Address: "not-an-address"}); err == nil {
 		t.Fatal("Start accepted a malformed address")
 		_ = m.Close()
+	}
+	if activeManager.Load() != nil {
+		t.Error("a failed Start left the runtime claimed")
+	}
+}
+
+func TestStartRejectsLocalHTTPSWithoutDataDirectory(t *testing.T) {
+	m := New(testSurfaces(), zerolog.Nop())
+	err := m.Start(context.Background(), Config{
+		Address:    "127.0.0.1:0",
+		LocalHTTPS: true,
+	})
+	if err == nil {
+		_ = m.Close()
+		t.Fatal("Start accepted local HTTPS without a data directory")
+	}
+	if !strings.Contains(err.Error(), "data directory") {
+		t.Errorf("error does not explain the missing data directory: %v", err)
 	}
 	if activeManager.Load() != nil {
 		t.Error("a failed Start left the runtime claimed")
@@ -292,6 +369,58 @@ func TestServesEachSurface(t *testing.T) {
 				t.Errorf("served by %q, want %q", body, tc.want)
 			}
 		})
+	}
+}
+
+func TestServesLocalHTTPSWithGeneratedCertificate(t *testing.T) {
+	port := freePort(t)
+	cfg := testConfig()
+	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
+	cfg.DataDir = t.TempDir()
+	cfg.LocalHTTPS = true
+	// A live TLS test must never modify the developer or CI trust stores.
+	cfg.SkipLocalTrustInstall = true
+
+	m := New(testSurfaces(), zerolog.Nop())
+	if err := m.Start(context.Background(), cfg); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(func() { _ = m.Close() })
+
+	rootPEM, err := os.ReadFile(filepath.Join(
+		cfg.DataDir, "caddy", "pki", "authorities", "local", "root.crt",
+	))
+	if err != nil {
+		t.Fatalf("read generated root CA: %v", err)
+	}
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(rootPEM) {
+		t.Fatal("generated root CA is not valid PEM")
+	}
+
+	client := &http.Client{Transport: &http.Transport{
+		ForceAttemptHTTP2: true,
+		TLSClientConfig: &tls.Config{ //nolint:gosec // trusted test CA, verification remains enabled
+			RootCAs:    roots,
+			ServerName: "localhost",
+			MinVersion: tls.VersionTLS12,
+		},
+	}}
+	res, err := client.Get(fmt.Sprintf("https://127.0.0.1:%d/health", port)) //nolint:noctx // test request
+	if err != nil {
+		t.Fatalf("HTTPS request: %v", err)
+	}
+	defer res.Body.Close() //nolint:errcheck // response body of a test request
+
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %q)", res.StatusCode, body)
+	}
+	if got := string(body); got != SurfaceSameOrigin {
+		t.Errorf("served by %q, want %q", got, SurfaceSameOrigin)
+	}
+	if res.TLS == nil || res.TLS.Version < tls.VersionTLS12 {
+		t.Errorf("response was not served over the configured TLS listener: %+v", res.TLS)
 	}
 }
 
@@ -438,15 +567,20 @@ func freePort(t *testing.T) int {
 
 func allRoutes(t *testing.T, cfg map[string]any) []any {
 	t.Helper()
-	apps := cfg["apps"].(map[string]any)
-	httpApp := apps["http"].(map[string]any)
-	servers := httpApp["servers"].(map[string]any)
-	server := servers["shrike"].(map[string]any)
+	server := serverConfig(t, cfg)
 	routes, ok := server["routes"].([]any)
 	if !ok || len(routes) == 0 {
 		t.Fatalf("no routes in the built config")
 	}
 	return routes
+}
+
+func serverConfig(t *testing.T, cfg map[string]any) map[string]any {
+	t.Helper()
+	apps := cfg["apps"].(map[string]any)
+	httpApp := apps["http"].(map[string]any)
+	servers := httpApp["servers"].(map[string]any)
+	return servers["shrike"].(map[string]any)
 }
 
 func lastRoute(t *testing.T, cfg map[string]any) map[string]any {

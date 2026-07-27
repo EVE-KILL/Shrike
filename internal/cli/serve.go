@@ -54,7 +54,11 @@ Every Go-owned surface shares the frontend origin, including tenant domains.
 In a source checkout, serve finds web/.output/server/index.mjs automatically.
 NUXT_ENTRYPOINT can select an explicit build. Caddy talks to Nuxt over
 NUXT_SOCKET, while Nuxt SSR talks back to Go over SHRIKE_API_SOCKET. Neither
-socket is public; browser API calls remain same-origin HTTP.
+socket is public; browser API calls remain same-origin.
+
+In development, Caddy serves trusted HTTPS on localhost using its internal CA.
+The first run may ask permission to add that CA to the system and browser trust
+stores. Production origins remain plain HTTP behind Cloudflare.
 
 SIGINT (Ctrl+C) and SIGTERM both trigger a graceful shutdown: the listener
 stops accepting, in-flight requests are given time to finish, and the
@@ -200,11 +204,13 @@ its default SIGTERM.`,
 			}
 
 			manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
+			localHTTPS := !cfg.IsProduction()
 
 			if err := manager.Start(ctx, ingress.Config{
 				Address:    fmt.Sprintf(":%d", port),
 				DataDir:    cfg.DataDir,
 				LogLevel:   cfg.LogLevel,
+				LocalHTTPS: localHTTPS,
 				NuxtSocket: nuxtSocket,
 			}); err != nil {
 				return fmt.Errorf("starting embedded Caddy ingress: %w", err)
@@ -214,7 +220,13 @@ its default SIGTERM.`,
 			for _, r := range manager.Status().Routes {
 				log.Info().Str("match", r.Match).Str("surface", r.Surface).Msg("route")
 			}
-			log.Info().Int("port", port).Msg("http listening")
+			scheme := "http"
+			if localHTTPS {
+				scheme = "https"
+			}
+			log.Info().
+				Str("url", fmt.Sprintf("%s://localhost:%d", scheme, port)).
+				Msg("site listening")
 
 			// All three accept loops are one service. Losing either private
 			// dependency is fatal, so Kubernetes can restart the whole unit

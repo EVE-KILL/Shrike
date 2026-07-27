@@ -13,6 +13,9 @@ bin/
 # `docker compose up` plus the SDE importer, so it is never committed.
 .data/
 
+# Embedded Caddy state, including the private key for the local development CA.
+/data/
+
 # Local notes, rollout runbooks (including the deferred Cloudflare image
 # Snippet), and handoff logs kept at the repository root. Tracked Markdown such
 # as README.md remains tracked; Markdown in subdirectories is unaffected.

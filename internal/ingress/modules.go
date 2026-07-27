@@ -13,10 +13,11 @@ import (
 	// other handlers that Shrike's closed config could never reach, and every
 	// one of them is binary weight and dependency surface for nothing.
 	//
-	// TLS is absent on purpose: everything is plain HTTP behind Cloudflare
-	// today. caddytls, caddypki and filestorage join this list on the day
-	// Shrike terminates TLS itself for tenant custom domains.
+	// caddyhttp already brings in the TLS and PKI apps. File storage is linked
+	// explicitly so the development CA and leaf certificates stay inside
+	// Shrike's data directory instead of Caddy's process-wide default.
 	_ "github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy"
+	_ "github.com/caddyserver/caddy/v2/modules/filestorage"
 )
 
 func init() {
