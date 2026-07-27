@@ -26,6 +26,28 @@ entries keep their entity tag for conditional requests.
 Image responses use a separate process-local LRU. Backblaze B2 is the shared
 image store.
 
+## Response directives
+
+Cloudflare is the tier in front of the origin. It reads the `Cache-Control`
+header on each response.
+
+A cached route derives its directives from the time to live that stores the
+entry:
+
+- `s-maxage` equals the time to live.
+- `stale-while-revalidate` equals the time to live.
+- `max-age` is one quarter of the time to live, and never below 30 seconds.
+
+The origin and Cloudflare then expire together. A shared cache that outlives
+the stored entry serves a body the origin has already replaced.
+
+Three route groups set their own directives instead. Killmail details, battle
+reports, and the static data export (SDE) do not change after the origin writes
+them, so they use a longer shared lifetime than their storage lifetime.
+
+`sharedCacheControl` in `internal/api/cache.go` builds the derived value.
+`routeJSONCache` in `internal/api/route_cache.go` takes the value per route.
+
 ## Defaults
 
 `API_CACHE_BYTES` sets the L1 API response limit. The default is 256 MiB.

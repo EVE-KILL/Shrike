@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"hash/fnv"
 	"net/http"
 	"regexp"
@@ -151,7 +152,42 @@ func writeUncachedResponse(
 }
 
 func cachePolicy(r *http.Request) (responseCachePolicy, bool) {
-	path := r.URL.Path
+	policy, ok := cachePolicyFor(r.URL.Path)
+	if !ok {
+		return responseCachePolicy{}, false
+	}
+	// A branch that names its own directives has a reason to diverge from its
+	// storage lifetime. Everything else expires at the edge exactly when the
+	// stored entry does.
+	if policy.CacheControl == "" {
+		policy.CacheControl = sharedCacheControl(policy.TTL)
+	}
+	return policy, true
+}
+
+// sharedCacheControl derives the response directives from the lifetime the
+// entry is stored under, so Cloudflare and the origin expire together.
+//
+// These routes used to return a TTL and no directives at all. The origin
+// refreshed on schedule, but with no s-maxage Cloudflare fell back to the zone
+// default edge lifetime, so the tier in front of the origin was the one tier
+// whose expiry nobody had chosen. Deriving both from one number is what keeps
+// them from drifting apart as TTLs change.
+//
+// max-age is a quarter of the shared lifetime so a client revalidates well
+// before the shared copy goes stale. That ratio matches the entity page routes.
+func sharedCacheControl(ttl time.Duration) string {
+	seconds := int64(ttl / time.Second)
+	if seconds <= 0 {
+		return ""
+	}
+	return fmt.Sprintf(
+		"public, max-age=%d, s-maxage=%d, stale-while-revalidate=%d",
+		maxInt64(30, seconds/4), seconds, seconds,
+	)
+}
+
+func cachePolicyFor(path string) (responseCachePolicy, bool) {
 	switch path {
 	case "/characters/analyze", "/characters/stats", "/corporations/stats",
 		"/alliances/stats", "/coalitions/stats", "/killmails/search":

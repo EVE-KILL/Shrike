@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -233,6 +234,86 @@ func TestResponseCacheBypassesAccountAndAdminRoutes(t *testing.T) {
 		}
 		if strings.Contains(response.Body.String(), `"$schema"`) {
 			t.Errorf("%s account body was rewritten: %s", path, response.Body)
+		}
+	}
+}
+
+// Every tier has to expire on the same schedule. A shared cache that outlives
+// the stored entry serves a body the origin has already replaced, so s-maxage
+// tracks the TTL rather than being chosen separately from it.
+func TestCachePolicySharedLifetimeMatchesStoredLifetime(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		"/killmails", "/killmails/count", "/history", "/history/latest",
+		"/history/2026-07-27", "/characters", "/characters/1/kills",
+		"/characters/1/losses", "/characters/1/count", "/characters/1/stats",
+		"/characters/1/intel", "/corporations/1", "/corporations/1/members",
+		"/alliances/1/corporations", "/ships/1", "/stats", "/search",
+		"/battles", "/wars", "/sde/systems/1/kills",
+	} {
+		policy, ok := cachePolicy(
+			httptest.NewRequest(http.MethodGet, "https://api.example"+path, nil),
+		)
+		if !ok {
+			t.Errorf("%s is not cached at all", path)
+			continue
+		}
+		want := int64(policy.TTL / time.Second)
+		if want <= 0 {
+			t.Errorf("%s has TTL %v", path, policy.TTL)
+			continue
+		}
+		for _, directive := range []string{
+			fmt.Sprintf("s-maxage=%d", want),
+			fmt.Sprintf("stale-while-revalidate=%d", want),
+		} {
+			if !strings.Contains(policy.CacheControl, directive) {
+				t.Errorf("%s Cache-Control %q is missing %q (TTL %v)",
+					path, policy.CacheControl, directive, policy.TTL)
+			}
+		}
+	}
+}
+
+// Killmails, battle reports and the static data export do not change once
+// written, so their edge lifetime is deliberately longer than the lifetime the
+// origin stores them for. The derived directives must not overwrite that.
+func TestCachePolicyKeepsExplicitImmutableDirectives(t *testing.T) {
+	t.Parallel()
+
+	for path, want := range map[string]string{
+		"/killmails/1":     "public, max-age=3600, s-maxage=31536000",
+		"/killmails/1/eft": "public, max-age=3600, s-maxage=31536000",
+		"/battles/1":       "public, max-age=3600, s-maxage=31536000",
+		"/sde/systems":     "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=86400",
+		"/sde/types/587":   "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=86400",
+	} {
+		policy, ok := cachePolicy(
+			httptest.NewRequest(http.MethodGet, "https://api.example"+path, nil),
+		)
+		if !ok {
+			t.Errorf("%s is not cached at all", path)
+			continue
+		}
+		if policy.CacheControl != want {
+			t.Errorf("%s Cache-Control = %q, want %q", path, policy.CacheControl, want)
+		}
+	}
+}
+
+// Session and moderation responses must never acquire shared directives.
+func TestCachePolicyLeavesUncacheableRoutesAlone(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{
+		"/me", "/admin/users", "/characters/analyze", "/killmails/search",
+		"/coalitions/stats", "/health",
+	} {
+		if policy, ok := cachePolicy(
+			httptest.NewRequest(http.MethodGet, "https://api.example"+path, nil),
+		); ok {
+			t.Errorf("%s became cacheable with %q", path, policy.CacheControl)
 		}
 	}
 }

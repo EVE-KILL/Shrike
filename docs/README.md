@@ -25,5 +25,5 @@ rules. It favors short, direct, and testable text.
 
 ## Architecture
 
-- [Cache architecture](architecture/caching.md): L1, Valkey L2, and queue
-  storage boundaries.
+- [Cache architecture](architecture/caching.md): L1, Valkey L2, response
+  directives, and queue storage boundaries.
