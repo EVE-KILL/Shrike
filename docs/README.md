@@ -20,6 +20,8 @@ rules. It favors short, direct, and testable text.
 
 - [Kubernetes](deployment/kubernetes.md): Production deployment gates and
   manifest requirements.
+- [Release pipeline](deployment/releases.md): CI, version tags, container
+  publication, and recovery.
 
 ## Architecture
 
