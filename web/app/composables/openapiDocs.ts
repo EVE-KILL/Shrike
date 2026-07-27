@@ -101,6 +101,13 @@ const ENTITY_BY_SEGMENT: Record<string, EntityKind> = {
     constellation: 'constellation',
     factions: 'faction',
     faction: 'faction',
+    types: 'item',
+    type: 'item',
+    items: 'item',
+    item: 'item',
+    oldcharacters: 'character',
+    sovereignty: 'system',
+    prices: 'item',
 }
 
 function entityKind(path: string, paramName: string): EntityKind | undefined {
@@ -113,15 +120,19 @@ function entityKind(path: string, paramName: string): EntityKind | undefined {
 
 function toParam(raw: any, doc: OpenAPIDocument, path: string): ApiParam {
     const schema = resolveSchema(raw.schema, doc)
+    const entity = raw.in === 'path' ? entityKind(path, raw.name) : undefined
     return {
         name: raw.name,
-        type: paramType(schema),
+        // 'entity' is what switches the card from a bare number box to the
+        // search picker. Knowing the kind without setting this leaves the
+        // picker unrendered, which is how it stayed dark until now.
+        type: entity ? 'entity' : paramType(schema),
         required: Boolean(raw.required),
         description: raw.description || schema?.description || undefined,
         default: schema?.default,
         values: Array.isArray(schema?.enum) ? schema.enum.map(String) : undefined,
         example: raw.example ?? schema?.examples?.[0] ?? schema?.example,
-        entityType: raw.in === 'path' ? entityKind(path, raw.name) : undefined,
+        entityType: entity,
     }
 }
 

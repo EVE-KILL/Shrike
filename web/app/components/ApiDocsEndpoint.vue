@@ -157,6 +157,11 @@ const METHOD_CLASSES: Record<string, string> = {
     DELETE: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
 
+// Dates get a real date picker rather than free text, so a malformed value
+// never reaches Try it.
+const inputType = (type: string) =>
+    type === 'int' ? 'number' : type === 'date' ? 'date' : 'text'
+
 const methodClass = computed(() =>
     METHOD_CLASSES[props.endpoint.method] ?? METHOD_CLASSES.GET!,
 )
@@ -242,7 +247,7 @@ const pathSegments = computed(() => {
                             <input
                                 v-else
                                 v-model="pathValues[p.name]"
-                                :type="p.type === 'int' ? 'number' : 'text'"
+                                :type="inputType(p.type)"
                                 :placeholder="p.pattern || p.example?.toString() || p.name"
                                 class="w-full bg-white/[0.04] border border-white/[0.10] rounded-md px-2.5 py-1.5 text-xs text-white placeholder-gray-600 outline-none focus:border-blue-500/40"
                             >
@@ -276,7 +281,7 @@ const pathSegments = computed(() => {
                             <input
                                 v-else
                                 v-model="queryValues[p.name]"
-                                :type="p.type === 'int' ? 'number' : 'text'"
+                                :type="inputType(p.type)"
                                 :placeholder="p.pattern || (p.default != null ? String(p.default) : p.name)"
                                 class="w-full bg-white/[0.04] border border-white/[0.10] rounded-md px-2.5 py-1.5 text-xs text-white placeholder-gray-600 outline-none focus:border-blue-500/40"
                             >
