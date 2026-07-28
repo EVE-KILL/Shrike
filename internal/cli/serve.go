@@ -259,7 +259,9 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 		var privateAPIDone <-chan struct{}
 		switch {
 		case !mode.supervised():
-			privateAPI, err = unixhttp.ListenLoopback(mode.DevAPIAddress, siteHandler)
+			privateAPI, err = unixhttp.ListenLoopback(
+				mode.DevAPIAddress, devRendererHost(siteHandler),
+			)
 			if err != nil {
 				return fmt.Errorf("start development SSR API: %w", err)
 			}
@@ -358,6 +360,31 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			}
 			return fmt.Errorf("private SSR API stopped unexpectedly")
 		}
+	})
+}
+
+// devRendererHost restores the browser's host on development server-side
+// rendering requests.
+//
+// Tenant scope comes from the request host, and the API reads it from the
+// authoritative Host field rather than a forwarding header so that no client
+// can claim another board by sending one. `nuxt dev` runs under Node, whose
+// fetch drops a caller-supplied Host — the name is forbidden to scripts — so
+// the renderer's only surviving copy is X-Forwarded-Host, and every board
+// answered with the apex site. Production keeps the header intact, because
+// the renderer runs under Bun.
+//
+// This wrapper is dev-only and stays that way. The listener it fronts is
+// loopback and serves one client, the renderer; the public listener still
+// ignores the header.
+func devRendererHost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		forwarded, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Host"), ",")
+		if forwarded = strings.TrimSpace(forwarded); forwarded != "" {
+			r = r.Clone(r.Context())
+			r.Host = forwarded
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

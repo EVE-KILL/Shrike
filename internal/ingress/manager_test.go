@@ -325,9 +325,25 @@ func TestLocalHTTPSConfigUsesInternalCAAndScopedStorage(t *testing.T) {
 
 	automation := tlsApp["automation"].(map[string]any)
 	automationPolicies := automation["policies"].([]any)
-	issuers := automationPolicies[0].(map[string]any)["issuers"].([]any)
-	if got := issuers[0].(map[string]any)["module"]; got != "internal" {
-		t.Errorf("certificate issuer = %v, want internal", got)
+	if len(automationPolicies) != 2 {
+		t.Fatalf("automation policies = %#v, want localhost and tenant boards", automationPolicies)
+	}
+	for _, policy := range automationPolicies {
+		issuers := policy.(map[string]any)["issuers"].([]any)
+		if got := issuers[0].(map[string]any)["module"]; got != "internal" {
+			t.Errorf("certificate issuer = %v, want internal", got)
+		}
+	}
+
+	// Board hostnames live in the database, so the tenant policy issues on
+	// demand rather than naming each board up front.
+	tenant := automationPolicies[1].(map[string]any)
+	tenantNames, _ := tenant["subjects"].([]string)
+	if strings.Join(tenantNames, ",") != "*.localhost" {
+		t.Errorf("tenant policy subjects = %v, want [*.localhost]", tenant["subjects"])
+	}
+	if onDemand, _ := tenant["on_demand"].(bool); !onDemand {
+		t.Error("tenant policy does not issue certificates on demand")
 	}
 
 	pkiApp := apps["pki"].(map[string]any)

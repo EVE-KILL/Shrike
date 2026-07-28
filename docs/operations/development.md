@@ -34,9 +34,53 @@ every other path to `nuxt dev`.
 across each Go restart, so the frontend keeps its state and its hot module
 replacement connections. `.air.toml` excludes `web/` for this reason.
 
+## Open a custom killboard
+
+A custom killboard answers on its own hostname. Development maps each board to
+`https://<subdomain>.localhost:4001`, where `<subdomain>` is the `subdomain`
+column of the `custom_domains` row.
+
+### Procedure
+
+1. Confirm the board row is active in `custom_domains`.
+2. Open `https://<subdomain>.localhost:4001`.
+
+Caddy issues a certificate for the hostname at the first request. The local
+certificate authority signs it, so the browser needs no new approval.
+
+macOS and Linux resolve every `*.localhost` name to the loopback address. Add
+the name to `/etc/hosts` on a system that does not.
+
+### Verification
+
+Run this command for a board named `void`:
+
+```sh
+curl --fail --show-error https://void.localhost:4001/api/site
+```
+
+The response must contain `"subdomain":"void"`. The rendered page must show
+the board name in its title.
+
+### Recovery
+
+A `no alternative certificate subject name` error means an old wildcard
+certificate is still stored. Delete it and restart:
+
+```sh
+rm -rf ./data/caddy/certificates/local/wildcard_.localhost
+```
+
+A page that renders the main site on a board hostname means the renderer host
+did not reach Go. Confirm the private API reads the forwarded host:
+
+```sh
+curl -H 'X-Forwarded-Host: void.localhost:4001' http://127.0.0.1:4002/api/site
+```
+
 ## Differences from production
 
-Two transports differ. Everything else is wired the same.
+Three transports differ. Everything else is wired the same.
 
 Production gives the renderer a Unix socket. `nuxt dev` cannot accept one: it
 listens through `listhen`, whose options carry a port and a hostname only. dev
@@ -46,6 +90,12 @@ Production sends server-side rendering to Go over a second Unix socket. `nuxt
 dev` runs under Node, and the Node `fetch` ignores the `unix` request option
 that Bun implements. dev serves the same handler on `127.0.0.1:4002` and sets
 `NUXT_API_ORIGIN` to it.
+
+Production carries the browser host to Go in the `Host` header. The Node
+`fetch` drops that header, because scripts cannot set it. dev sends
+`X-Forwarded-Host` as well, and the private API adopts it as the request host.
+The public listener still ignores the header, so no client can claim another
+board.
 
 `web/nuxt.config.ts` applies the Bun socket entry under `$production`. A
 top-level `entry` also replaces the entry that `nuxt dev` needs, which stops

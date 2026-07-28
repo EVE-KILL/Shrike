@@ -464,6 +464,24 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		// localhost) and starts concurrent storage checks during the first run.
 		localNames := []string{"localhost"}
 
+		// Tenant boards are the second origin. customDomainHostQuery reads a
+		// custom killboard out of `<subdomain>.localhost`, so a board is only
+		// reachable in development if the listener holds a certificate for
+		// that name; without one the handshake fails before any routing
+		// happens, and every board answers with a TLS alert.
+		//
+		// The board names live in the database, so they cannot be enumerated
+		// here. On-demand issuance signs each name at its first handshake
+		// instead, which keeps this configuration static. A single
+		// `*.localhost` certificate would be one fewer moving part, but
+		// Chromium and curl both refuse a wildcard whose parent is a single
+		// label, so it would be issued and then rejected by the client.
+		//
+		// The internal issuer is what makes this safe without a permission
+		// module: a name here costs one local signature and no public
+		// certificate authority ever sees it.
+		tenantNames := []string{"*.localhost"}
+
 		// A non-empty connection policy makes this listener TLS. Certificates
 		// are loaded into Caddy's managed cache by the automate loader, using
 		// the explicit internal issuer policy rather than public ACME.
@@ -472,10 +490,17 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 			"automate": localNames,
 		}
 		tlsApp["automation"] = map[string]any{
-			"policies": []any{map[string]any{
-				"subjects": localNames,
-				"issuers":  []any{map[string]any{"module": "internal"}},
-			}},
+			"policies": []any{
+				map[string]any{
+					"subjects": localNames,
+					"issuers":  []any{map[string]any{"module": "internal"}},
+				},
+				map[string]any{
+					"subjects":  tenantNames,
+					"issuers":   []any{map[string]any{"module": "internal"}},
+					"on_demand": true,
+				},
+			},
 		}
 		apps["pki"] = map[string]any{
 			"certificate_authorities": map[string]any{

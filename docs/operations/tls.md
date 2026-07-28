@@ -37,6 +37,13 @@ Cloudflare enables HTTP/2 origin connections by default.
 
 Use `localhost`. The certificate does not contain loopback IP addresses.
 
+A custom killboard uses `https://<subdomain>.localhost:4001`. Caddy signs a
+certificate for that name at the first request, from the same local authority.
+The board names are database rows, so the configuration cannot list them.
+
+A single `*.localhost` certificate would replace this, but Chromium and curl
+reject a wildcard whose parent is one label.
+
 The listener accepts HTTPS only. `http://localhost:4001` cannot use this
 listener.
 

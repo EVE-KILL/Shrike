@@ -12,7 +12,7 @@ rules. It favors short, direct, and testable text.
 ## Operations
 
 - [Development](operations/development.md): Run the site locally with `make dev`,
-  and how it differs from production.
+  open a custom killboard, and how it differs from production.
 - [Cloudflare image delivery](operations/cloudflare-image-delivery.md):
   Deferred image cache and origin fallback design.
 - [TLS](operations/tls.md): Local HTTPS and the planned Cloudflare origin TLS
@@ -29,3 +29,5 @@ rules. It favors short, direct, and testable text.
 
 - [Cache architecture](architecture/caching.md): L1, Valkey L2, response
   directives, and queue storage boundaries.
+- [API contract](architecture/api-contract.md): Where each part of the OpenAPI
+  document comes from, and how to document a new query parameter.
