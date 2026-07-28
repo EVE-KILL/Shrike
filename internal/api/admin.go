@@ -66,7 +66,7 @@ func registerAdminRoutes(a huma.API, opts Options) {
 			Security:    requiredSession,
 		}
 		if route.id == "admin-users-set-discord" {
-			operation = documentJSONBody[adminSetDiscordBody](a, operation)
+			operation = documentJSONBody[adminSetDiscordDocument](a, operation)
 		}
 		registerLegacy(a, operation, route.handler)
 	}

@@ -58,9 +58,9 @@ func (b *accountPreferencesBody) UnmarshalJSON(data []byte) error {
 }
 
 type accountDescriptionBody struct {
-	Entity      string `json:"entity" doc:"Which description to write: character, corporation or alliance."`
-	Description string `json:"description" doc:"Description text."`
-	Format      string `json:"format,omitempty" doc:"How to interpret the text."`
+	Entity      string `json:"entity" enum:"character,corporation,alliance" doc:"Which description to write."`
+	Description string `json:"description" maxLength:"4000" doc:"Description text."`
+	Format      string `json:"format" enum:"markdown,eve_html" doc:"How to interpret the text."`
 }
 
 type accountNotificationsReadBody struct {

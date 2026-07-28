@@ -28,7 +28,7 @@ type submittedKillmail struct {
 // Either form is accepted; text wins when both arrive.
 type killmailSubmissionBody struct {
 	Text  *string  `json:"text,omitempty" doc:"Free text containing ESI killmail links, one per line. Takes precedence over links."`
-	Links []string `json:"links,omitempty" doc:"ESI killmail links. Joined with newlines and parsed the same way as text."`
+	Links []string `json:"links,omitempty" nullable:"false" doc:"ESI killmail links. Joined with newlines and parsed the same way as text."`
 }
 
 type killmailSubmissionDispatcher func(

@@ -13,7 +13,7 @@ const analyzeBodyLimit = 64 << 10
 
 // analyzeRequest is both the decode target and the documented schema.
 type analyzeRequest struct {
-	CharacterIDs []int64 `json:"character_ids" minItems:"1" maxItems:"2500" doc:"Characters to analyze, at most 2500 per request."`
+	CharacterIDs requestList[int64] `json:"character_ids" minItems:"1" maxItems:"2500" doc:"Characters to analyze, at most 2500 per request."`
 }
 
 func registerAnalyzeRoute(a huma.API, opts Options) {

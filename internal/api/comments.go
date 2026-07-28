@@ -234,7 +234,7 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    optional,
 	}, commentCached(opts, 30*time.Second, service.listHandler()))
-	registerLegacy(a, documentJSONBody[commentCreateBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentCreateDocument](a, huma.Operation{
 		OperationID: "comments-create",
 		Method:      http.MethodPost,
 		Path:        "/comments",
@@ -250,7 +250,7 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    optional,
 	}, commentCached(opts, 30*time.Second, service.threadHandler()))
-	registerLegacy(a, documentJSONBody[commentBodyOnlyBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentBodyDocument](a, huma.Operation{
 		OperationID: "comments-preview",
 		Method:      http.MethodPost,
 		Path:        "/comments/preview",
@@ -282,7 +282,7 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    optional,
 	}, commentCached(opts, 15*time.Second, service.detailHandler()))
-	registerLegacy(a, documentJSONBody[commentEditBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentBodyDocument](a, huma.Operation{
 		OperationID: "comment-edit",
 		Method:      http.MethodPatch,
 		Path:        "/comments/{id}",
@@ -298,7 +298,7 @@ func registerCommentServiceRoutes(
 		Tags:        []string{"comments"},
 		Security:    required,
 	}, service.deleteHandler(false))
-	registerLegacy(a, documentJSONBody[commentReportBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[commentReportDocument](a, huma.Operation{
 		OperationID: "comment-report",
 		Method:      http.MethodPost,
 		Path:        "/comments/{id}/report",

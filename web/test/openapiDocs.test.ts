@@ -48,9 +48,48 @@ describe('OpenAPI to docs model', () => {
     test('reads query parameters, enums, and defaults', () => {
         const all = model.groups.flatMap(g => g.tags.flatMap(t => t.endpoints))
         const withQuery = all.filter(e => (e.query?.length ?? 0) > 0)
-        expect(withQuery.length).toBeGreaterThan(0)
+        expect(withQuery.length).toBeGreaterThan(150)
         const enums = all.flatMap(e => e.query ?? []).filter(p => p.type === 'enum')
         expect(enums.every(p => (p.values?.length ?? 0) > 0)).toBe(true)
+    })
+
+    // The advanced search is a GET whose entire query is its search form. It
+    // rendered with no inputs at all while the document declared none of it.
+    test('gives the advanced killmail search its search inputs', () => {
+        const all = model.groups.flatMap(g => g.tags.flatMap(t => t.endpoints))
+        const advanced = all.find(e => e.path === '/killlist/advanced')
+        expect(advanced).toBeDefined()
+        const names = (advanced!.query ?? []).map(p => p.name)
+        expect(names).toEqual(
+            expect.arrayContaining([
+                'filters', 'view', 'dedup', 'fitHash', 'familyHash',
+                'limit', 'after',
+            ]),
+        )
+        const view = advanced!.query!.find(p => p.name === 'view')
+        expect(view?.type).toBe('enum')
+        expect(view?.values).toEqual(['kills', 'fits'])
+        expect(view?.default).toBe('kills')
+    })
+
+    // A query parameter has no path segment to infer its kind from, so the
+    // API states it. Without this the picker stays a bare number box.
+    test('offers the entity picker on entity-typed query parameters', () => {
+        const all = model.groups.flatMap(g => g.tags.flatMap(t => t.endpoints))
+        const matchup = all.find(e => e.path === '/matchup')
+        const attacker = matchup?.query?.find(p => p.name === 'attacker')
+        expect(attacker?.type).toBe('entity')
+        expect(attacker?.entityType).toBe('ship')
+    })
+
+    // A boolean has no control of its own on the card. It has to arrive as a
+    // two-value choice or it renders as free text that accepts anything.
+    test('renders boolean filters as a two-value choice', () => {
+        const all = model.groups.flatMap(g => g.tags.flatMap(t => t.endpoints))
+        const wars = all.find(e => e.path === '/conflicts/wars')
+        const mutual = wars?.query?.find(p => p.name === 'mutual')
+        expect(mutual?.type).toBe('enum')
+        expect(mutual?.values).toEqual(['true', 'false'])
     })
 
     // Write endpoints now carry generated schemas, so the card renders real

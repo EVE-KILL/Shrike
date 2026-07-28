@@ -196,12 +196,12 @@ func (s *domainService) uploadHandler() legacyHandler {
 
 // Wire types for the domain asset routes.
 type domainAssetTypeBody struct {
-	Type string `json:"type,omitempty" doc:"Asset slot to clear: background, preview or icon."`
+	Type string `json:"type" enum:"banner,logo" doc:"Asset slot to clear."`
 }
 
 type domainAssetReviewBody struct {
-	Action string `json:"action,omitempty" doc:"Review outcome for the uploaded asset."`
-	Reason string `json:"reason,omitempty" doc:"Operator note recorded with the decision."`
+	Action string `json:"action" enum:"approve,reject" doc:"Review outcome for the uploaded asset."`
+	Reason string `json:"reason,omitempty" maxLength:"500" doc:"Operator note recorded with the decision."`
 }
 
 func (s *domainService) deleteAssetTypeHandler(

@@ -33,7 +33,7 @@ type killmailSearchInput struct {
 }
 
 func registerKillmailSearchRoute(a huma.API, opts Options) {
-	registerLegacy(a, documentJSONBody[killmailSearchBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[killmailSearchDocument](a, huma.Operation{
 		OperationID: "killmail-search",
 		Method:      http.MethodPost,
 		Path:        "/killmails/search",
@@ -77,9 +77,9 @@ func registerKillmailSearchRoute(a huma.API, opts Options) {
 	})
 }
 
-// killmailSearchBody is the documented request schema. Fields stay raw
-// because the parser coerces the way the TypeScript API did. from and to are
-// strings: searchTimestamp has always rejected a numeric timestamp.
+// killmailSearchBody is the runtime compatibility decode target. Fields stay
+// raw because the parser coerces the way the TypeScript API did. Its concrete
+// OpenAPI wire shape is killmailSearchDocument.
 type killmailSearchBody struct {
 	From  json.RawMessage `json:"from" doc:"Window start. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string."`
 	To    json.RawMessage `json:"to" doc:"Window end. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string."`

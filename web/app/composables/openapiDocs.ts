@@ -77,7 +77,22 @@ function paramType(schema: any): ParamType {
     if (Array.isArray(schema.enum) && schema.enum.length > 0) return 'enum'
     if (schema.format === 'date' || schema.format === 'date-time') return 'date'
     if (schema.type === 'integer' || schema.type === 'number') return 'int'
+    // A boolean has no input of its own here. Rendering it as a two-value
+    // choice beats a free-text box that accepts anything and means nothing.
+    if (schema.type === 'boolean') return 'enum'
     return 'string'
+}
+
+/**
+ * Enumerated values for the control, including the synthetic pair booleans
+ * need to render as a choice.
+ */
+function paramValues(schema: any): string[] | undefined {
+    if (Array.isArray(schema?.enum) && schema.enum.length > 0) {
+        return schema.enum.map(String)
+    }
+    if (schema?.type === 'boolean') return ['true', 'false']
+    return undefined
 }
 
 // Path segments that identify what an id refers to, so the entity picker can
@@ -120,7 +135,13 @@ function entityKind(path: string, paramName: string): EntityKind | undefined {
 
 function toParam(raw: any, doc: OpenAPIDocument, path: string): ApiParam {
     const schema = resolveSchema(raw.schema, doc)
-    const entity = raw.in === 'path' ? entityKind(path, raw.name) : undefined
+    // A path parameter's kind is read from the segment before it. A query
+    // parameter has no segment to read, so the API states the kind on the
+    // parameter itself and we take it at its word.
+    const entity: EntityKind | undefined =
+        raw.in === 'path'
+            ? entityKind(path, raw.name)
+            : (raw['x-entity'] as EntityKind | undefined)
     return {
         name: raw.name,
         // 'entity' is what switches the card from a bare number box to the
@@ -130,7 +151,7 @@ function toParam(raw: any, doc: OpenAPIDocument, path: string): ApiParam {
         required: Boolean(raw.required),
         description: raw.description || schema?.description || undefined,
         default: schema?.default,
-        values: Array.isArray(schema?.enum) ? schema.enum.map(String) : undefined,
+        values: paramValues(schema),
         example: raw.example ?? schema?.examples?.[0] ?? schema?.example,
         entityType: entity,
     }

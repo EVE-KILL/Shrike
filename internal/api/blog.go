@@ -268,7 +268,7 @@ func registerBlogServiceRoutes(
 		Tags:        []string{"admin", "blog"},
 		Security:    requiredSession,
 	}, service.adminListHandler())
-	registerLegacy(a, documentJSONBody[blogCreateBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[blogCreateDocument](a, huma.Operation{
 		OperationID: "blog-admin-create",
 		Method:      http.MethodPost,
 		Path:        "/admin/blog",
@@ -284,7 +284,7 @@ func registerBlogServiceRoutes(
 		Tags:        []string{"admin", "blog"},
 		Security:    requiredSession,
 	}, service.adminDetailHandler())
-	registerLegacy(a, documentJSONBody[blogUpdateBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[blogUpdateDocument](a, huma.Operation{
 		OperationID: "blog-admin-update",
 		Method:      http.MethodPatch,
 		Path:        "/admin/blog/{id}",
@@ -465,12 +465,11 @@ func (s *blogService) adminPreviewHandler() legacyHandler {
 	}
 }
 
-// Wire types for the blog write routes.
+// Runtime decode types for the blog write routes.
 //
-// Create reads its fields directly, so those are typed. Update branches on key
-// presence for every field — an absent slug leaves the stored one alone — so
-// those stay json.RawMessage and go through rawJSONField, which reports
-// presence the way the map lookup did.
+// Update branches on key presence for every field, so raw messages preserve
+// absent versus null. openapi_body_types.go documents the concrete wire
+// shapes independently.
 type blogCreateBody struct {
 	Title         string          `json:"title" doc:"Post title."`
 	Slug          string          `json:"slug,omitempty" doc:"URL slug. Derived from the title when omitted."`

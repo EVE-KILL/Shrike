@@ -96,7 +96,7 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
 	}, commentList)
-	registerLegacy(a, documentJSONBody[moderationActionBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationActionDocument](a, huma.Operation{
 		OperationID: "admin-comment-moderation",
 		Method:      http.MethodPatch,
 		Path:        "/admin/comments/{id}",
@@ -104,23 +104,23 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
 	}), service.commentVisibilityHandler(""))
-	registerLegacy(a, documentJSONBody[moderationActionBody](a, huma.Operation{
+	registerLegacy(a, huma.Operation{
 		OperationID: "admin-comment-hide-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/comments/{id}/hide",
 		Summary:     "Hide a comment (live frontend alias)",
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
-	}), service.commentVisibilityHandler("hide"))
-	registerLegacy(a, documentJSONBody[moderationActionBody](a, huma.Operation{
+	}, service.commentVisibilityHandler("hide"))
+	registerLegacy(a, huma.Operation{
 		OperationID: "admin-comment-restore-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/comments/{id}/restore",
 		Summary:     "Restore a comment (live frontend alias)",
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
-	}), service.commentVisibilityHandler("restore"))
-	registerLegacy(a, documentJSONBody[moderationResolutionBody](a, huma.Operation{
+	}, service.commentVisibilityHandler("restore"))
+	registerLegacy(a, documentJSONBody[moderationResolutionDocument](a, huma.Operation{
 		OperationID: "admin-comment-report-resolution",
 		Method:      http.MethodPatch,
 		Path:        "/admin/comment-reports/{id}",
@@ -128,7 +128,7 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "comments"},
 		Security:    required,
 	}), service.reportResolutionHandler())
-	registerLegacy(a, documentJSONBody[moderationResolutionBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationResolutionDocument](a, huma.Operation{
 		OperationID: "admin-comment-report-resolution-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/comments/reports/{id}/resolve",
@@ -154,7 +154,7 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
 	}, queueList)
-	registerLegacy(a, documentJSONBody[moderationDecisionBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[moderationDecisionDocument](a, huma.Operation{
 		OperationID: "admin-moderation-review",
 		Method:      http.MethodPatch,
 		Path:        "/admin/moderation/{id}",
@@ -162,7 +162,7 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
 	}), service.reviewHandler("", false))
-	registerLegacy(a, documentJSONBody[moderationDecisionBody](a, huma.Operation{
+	registerLegacy(a, documentOptionalJSONBody[moderationNotesDocument](a, huma.Operation{
 		OperationID: "admin-moderation-approve-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/moderation/{id}/approve",
@@ -170,7 +170,7 @@ func registerModerationServiceRoutes(
 		Tags:        []string{"admin", "moderation"},
 		Security:    required,
 	}), service.reviewHandler("approve", false))
-	registerLegacy(a, documentJSONBody[moderationDecisionBody](a, huma.Operation{
+	registerLegacy(a, documentOptionalJSONBody[moderationNotesDocument](a, huma.Operation{
 		OperationID: "admin-moderation-reject-live-alias",
 		Method:      http.MethodPost,
 		Path:        "/admin/moderation/{id}/reject",

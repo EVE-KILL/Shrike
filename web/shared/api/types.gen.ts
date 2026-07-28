@@ -5,6 +5,11 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}/api` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | `${string}://${string}` | (string & {});
 };
 
+export type AccountBoardsDocument = {
+    dismissed: Array<string>;
+    pinned: Array<string>;
+};
+
 export type Announcement = {
     body_html: string;
     body_md: string;
@@ -36,6 +41,42 @@ export type AnnouncementsResponse = {
     announcements: Array<Announcement>;
 };
 
+export type CampaignLocationDocument = {
+    /**
+     * An integer. A numeric string is accepted for compatibility.
+     */
+    constellationIds?: Array<number | string>;
+    /**
+     * An integer. A numeric string is accepted for compatibility.
+     */
+    regionIds?: Array<number | string>;
+    /**
+     * An integer. A numeric string is accepted for compatibility.
+     */
+    systemIds?: Array<number | string>;
+};
+
+export type CampaignPrizePoolDocument = {
+    enabled: boolean;
+    fundingRequestId?: string;
+    /**
+     * A number. A numeric string is accepted for compatibility.
+     */
+    initialContribution?: number | string;
+    /**
+     * An integer. A numeric string is accepted for compatibility.
+     */
+    metric?: number | string;
+    /**
+     * An integer. A numeric string is accepted for compatibility.
+     */
+    payoutPercentages?: Array<number | string>;
+    /**
+     * An integer. A numeric string is accepted for compatibility.
+     */
+    winnerCount?: number | string;
+};
+
 export type CoalitionSideBody = {
     /**
      * Alliance IDs on this side.
@@ -57,13 +98,13 @@ export type ConflictBattleGeneratorEntity = {
 };
 
 export type ConflictBattleGeneratorSide = {
-    entities: Array<ConflictBattleGeneratorEntity> | null;
+    entities: Array<ConflictBattleGeneratorEntity>;
     name: string;
 };
 
 export type ConflictBattleSaveAlliance = {
     alliance_id: number | null;
-    corporations: Array<ConflictBattleSaveCorporation> | null;
+    corporations: Array<ConflictBattleSaveCorporation>;
 };
 
 export type ConflictBattleSaveCorporation = {
@@ -75,7 +116,7 @@ export type ConflictBattleSaveCorporation = {
 };
 
 export type ConflictBattleSaveTeam = {
-    alliances: Array<ConflictBattleSaveAlliance> | null;
+    alliances: Array<ConflictBattleSaveAlliance>;
     total_isk_destroyed: number;
     total_isk_lost: number;
     total_kills: number;
@@ -134,33 +175,6 @@ export type ErrorModel = {
      * A URI reference to human-readable documentation for the error.
      */
     type?: string;
-};
-
-export type FittingItemBody = {
-    /**
-     * Charge loaded into this module, when it takes one.
-     */
-    charge_type_id?: number;
-    /**
-     * Position within the slot family.
-     */
-    ordinal: number | null;
-    /**
-     * Stack size. Must be 1 for module slots. Defaults to 1.
-     */
-    quantity?: number;
-    /**
-     * Slot family: 1-5 are module slots, 6 drones, 7 cargo.
-     */
-    slot_group: number | null;
-    /**
-     * Module state: offline, online, active, overloaded.
-     */
-    state: number | null;
-    /**
-     * Inventory type fitted in this position.
-     */
-    type_id: number | null;
 };
 
 export type ImagesOverviewResponse = {
@@ -6549,9 +6563,15 @@ export type SitemapAlliancesCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapAlliancesCompatResponse = SitemapAlliancesCompatResponses[keyof SitemapAlliancesCompatResponses];
@@ -6567,9 +6587,15 @@ export type SitemapBattlesCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapBattlesCompatResponse = SitemapBattlesCompatResponses[keyof SitemapBattlesCompatResponses];
@@ -6585,9 +6611,15 @@ export type SitemapCharactersCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapCharactersCompatResponse = SitemapCharactersCompatResponses[keyof SitemapCharactersCompatResponses];
@@ -6603,9 +6635,15 @@ export type SitemapCorporationsCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapCorporationsCompatResponse = SitemapCorporationsCompatResponses[keyof SitemapCorporationsCompatResponses];
@@ -6621,9 +6659,15 @@ export type SitemapItemsCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapItemsCompatResponse = SitemapItemsCompatResponses[keyof SitemapItemsCompatResponses];
@@ -6639,9 +6683,15 @@ export type SitemapKillsCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapKillsCompatResponse = SitemapKillsCompatResponses[keyof SitemapKillsCompatResponses];
@@ -6657,9 +6707,15 @@ export type SitemapRegionsCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapRegionsCompatResponse = SitemapRegionsCompatResponses[keyof SitemapRegionsCompatResponses];
@@ -6675,9 +6731,15 @@ export type SitemapShipsCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapShipsCompatResponse = SitemapShipsCompatResponses[keyof SitemapShipsCompatResponses];
@@ -6693,9 +6755,15 @@ export type SitemapSystemsCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapSystemsCompatResponse = SitemapSystemsCompatResponses[keyof SitemapSystemsCompatResponses];
@@ -6711,9 +6779,15 @@ export type SitemapWarsCompatResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapWarsCompatResponse = SitemapWarsCompatResponses[keyof SitemapWarsCompatResponses];
@@ -6721,7 +6795,20 @@ export type SitemapWarsCompatResponse = SitemapWarsCompatResponses[keyof Sitemap
 export type AnnouncementAdminListData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one lifecycle state.
+         */
+        status?: 'active' | 'scheduled' | 'expired' | 'archived';
+        /**
+         * Restrict to one tier.
+         */
+        tier?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/admin/announcements';
 };
 
@@ -6730,7 +6817,39 @@ export type AnnouncementAdminListResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        announcements: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            archived_at?: string | null;
+            body_html?: string;
+            body_md?: string;
+            color?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            created_by?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            icon?: string | null;
+            id?: number;
+            link_label?: string | null;
+            link_url?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            starts_at?: string;
+            tier?: number;
+            title?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -6738,42 +6857,15 @@ export type AnnouncementAdminListResponse = AnnouncementAdminListResponses[keyof
 
 export type AnnouncementAdminCreateData = {
     body: {
-        /**
-         * Announcement text, in Markdown.
-         */
-        body_md?: unknown;
-        /**
-         * Accent color.
-         */
-        color?: unknown;
-        /**
-         * When it stops being shown.
-         */
-        expires_at?: unknown;
-        /**
-         * Icon name.
-         */
-        icon?: unknown;
-        /**
-         * Label for the call-to-action.
-         */
-        link_label?: unknown;
-        /**
-         * Optional call-to-action URL.
-         */
-        link_url?: unknown;
-        /**
-         * When the announcement becomes visible.
-         */
-        starts_at?: unknown;
-        /**
-         * Severity tier.
-         */
-        tier?: unknown;
-        /**
-         * Announcement headline.
-         */
-        title?: unknown;
+        body_md?: string;
+        color?: 'info' | 'warning' | 'danger' | 'success';
+        expires_at: string;
+        icon?: string | null;
+        link_label?: string | null;
+        link_url?: string | null;
+        starts_at?: string;
+        tier: 1 | 2 | 3;
+        title: string;
     };
     path?: never;
     query?: never;
@@ -6785,7 +6877,39 @@ export type AnnouncementAdminCreateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        announcement: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            archived_at?: string | null;
+            body_html?: string;
+            body_md?: string;
+            color?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            created_by?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            icon?: string | null;
+            id?: number;
+            link_label?: string | null;
+            link_url?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            starts_at?: string;
+            tier?: number;
+            title?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -6803,7 +6927,39 @@ export type AnnouncementAdminArchiveResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        announcement: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            archived_at?: string | null;
+            body_html?: string;
+            body_md?: string;
+            color?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            created_by?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            icon?: string | null;
+            id?: number;
+            link_label?: string | null;
+            link_url?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            starts_at?: string;
+            tier?: number;
+            title?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -6821,7 +6977,39 @@ export type AnnouncementAdminDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        announcement: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            archived_at?: string | null;
+            body_html?: string;
+            body_md?: string;
+            color?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            created_by?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            icon?: string | null;
+            id?: number;
+            link_label?: string | null;
+            link_url?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            starts_at?: string;
+            tier?: number;
+            title?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -6829,42 +7017,15 @@ export type AnnouncementAdminDetailResponse = AnnouncementAdminDetailResponses[k
 
 export type AnnouncementAdminUpdateData = {
     body: {
-        /**
-         * New text, in Markdown.
-         */
-        body_md?: unknown;
-        /**
-         * New accent color.
-         */
-        color?: unknown;
-        /**
-         * New expiry.
-         */
-        expires_at?: unknown;
-        /**
-         * New icon name.
-         */
-        icon?: unknown;
-        /**
-         * New call-to-action label.
-         */
-        link_label?: unknown;
-        /**
-         * New call-to-action URL.
-         */
-        link_url?: unknown;
-        /**
-         * New visibility start.
-         */
-        starts_at?: unknown;
-        /**
-         * New severity tier.
-         */
-        tier?: unknown;
-        /**
-         * New headline.
-         */
-        title?: unknown;
+        body_md?: string;
+        color?: 'info' | 'warning' | 'danger' | 'success';
+        expires_at?: string;
+        icon?: string | null;
+        link_label?: string | null;
+        link_url?: string | null;
+        starts_at?: string;
+        tier?: 1 | 2 | 3;
+        title?: string;
     };
     path?: never;
     query?: never;
@@ -6876,7 +7037,39 @@ export type AnnouncementAdminUpdateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        announcement: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            archived_at?: string | null;
+            body_html?: string;
+            body_md?: string;
+            color?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            created_by?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            icon?: string | null;
+            id?: number;
+            link_label?: string | null;
+            link_url?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            starts_at?: string;
+            tier?: number;
+            title?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -6894,7 +7087,39 @@ export type AnnouncementAdminArchiveCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        announcement: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            archived_at?: string | null;
+            body_html?: string;
+            body_md?: string;
+            color?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            created_by?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            icon?: string | null;
+            id?: number;
+            link_label?: string | null;
+            link_url?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            starts_at?: string;
+            tier?: number;
+            title?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -6903,7 +7128,16 @@ export type AnnouncementAdminArchiveCompatResponse = AnnouncementAdminArchiveCom
 export type BlogAdminListData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one lifecycle state.
+         */
+        status?: 'draft' | 'published' | 'archived';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/admin/blog';
 };
 
@@ -6912,7 +7146,35 @@ export type BlogAdminListResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        posts: Array<{
+            author_alliance_id: number | null;
+            author_alliance_name: string | null;
+            author_corporation_id: number | null;
+            author_corporation_name: string | null;
+            author_id: number;
+            author_name: string;
+            body_html: string;
+            body_md: string;
+            cover_image_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            excerpt: string | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            published_at: string | null;
+            slug: string;
+            status: number;
+            tags: Array<string>;
+            title: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        }>;
     };
 };
 
@@ -6920,37 +7182,13 @@ export type BlogAdminListResponse = BlogAdminListResponses[keyof BlogAdminListRe
 
 export type BlogAdminCreateData = {
     body: {
-        /**
-         * Post body, in Markdown.
-         */
-        body_md: string;
-        /**
-         * Cover image URL, at most 4096 characters.
-         */
-        cover_image_url?: unknown;
-        /**
-         * Short summary, at most 500 characters.
-         */
-        excerpt?: unknown;
-        /**
-         * Publication timestamp.
-         */
-        published_at?: unknown;
-        /**
-         * URL slug. Derived from the title when omitted.
-         */
+        body_md?: string;
+        cover_image_url?: string | null;
+        excerpt?: string | null;
+        published_at?: string | null;
         slug?: string;
-        /**
-         * Publication status.
-         */
-        status?: unknown;
-        /**
-         * Tag list.
-         */
-        tags?: unknown;
-        /**
-         * Post title.
-         */
+        status?: 0 | 1 | 2;
+        tags?: Array<string>;
         title: string;
     };
     path?: never;
@@ -6963,7 +7201,35 @@ export type BlogAdminCreateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        post: {
+            author_alliance_id: number | null;
+            author_alliance_name: string | null;
+            author_corporation_id: number | null;
+            author_corporation_name: string | null;
+            author_id: number;
+            author_name: string;
+            body_html: string;
+            body_md: string;
+            cover_image_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            excerpt: string | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            published_at: string | null;
+            slug: string;
+            status: number;
+            tags: Array<string>;
+            title: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        };
     };
 };
 
@@ -6981,7 +7247,35 @@ export type BlogAdminPreviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        post: {
+            author_alliance_id: number | null;
+            author_alliance_name: string | null;
+            author_corporation_id: number | null;
+            author_corporation_name: string | null;
+            author_id: number;
+            author_name: string;
+            body_html: string;
+            body_md: string;
+            cover_image_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            excerpt: string | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            published_at: string | null;
+            slug: string;
+            status: number;
+            tags: Array<string>;
+            title: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        };
     };
 };
 
@@ -6999,7 +7293,8 @@ export type BlogAdminDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        id: number;
+        ok: boolean;
     };
 };
 
@@ -7017,7 +7312,35 @@ export type BlogAdminDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        post: {
+            author_alliance_id: number | null;
+            author_alliance_name: string | null;
+            author_corporation_id: number | null;
+            author_corporation_name: string | null;
+            author_id: number;
+            author_name: string;
+            body_html: string;
+            body_md: string;
+            cover_image_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            excerpt: string | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            published_at: string | null;
+            slug: string;
+            status: number;
+            tags: Array<string>;
+            title: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        };
     };
 };
 
@@ -7025,38 +7348,14 @@ export type BlogAdminDetailResponse = BlogAdminDetailResponses[keyof BlogAdminDe
 
 export type BlogAdminUpdateData = {
     body: {
-        /**
-         * New body, in Markdown.
-         */
-        body_md?: unknown;
-        /**
-         * New cover image URL.
-         */
-        cover_image_url?: unknown;
-        /**
-         * New excerpt.
-         */
-        excerpt?: unknown;
-        /**
-         * New publication timestamp.
-         */
-        published_at?: unknown;
-        /**
-         * New slug.
-         */
-        slug?: unknown;
-        /**
-         * New publication status.
-         */
-        status?: unknown;
-        /**
-         * Replacement tag list.
-         */
-        tags?: unknown;
-        /**
-         * New title.
-         */
-        title?: unknown;
+        body_md?: string;
+        cover_image_url?: string | null;
+        excerpt?: string | null;
+        published_at?: string | null;
+        slug?: string;
+        status?: 0 | 1 | 2;
+        tags?: Array<string>;
+        title?: string;
     };
     path?: never;
     query?: never;
@@ -7068,7 +7367,35 @@ export type BlogAdminUpdateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        post: {
+            author_alliance_id: number | null;
+            author_alliance_name: string | null;
+            author_corporation_id: number | null;
+            author_corporation_name: string | null;
+            author_id: number;
+            author_name: string;
+            body_html: string;
+            body_md: string;
+            cover_image_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            excerpt: string | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            published_at: string | null;
+            slug: string;
+            status: number;
+            tags: Array<string>;
+            title: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        };
     };
 };
 
@@ -7091,7 +7418,7 @@ export type CampaignPrizePaidLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        paid: boolean;
     };
 };
 
@@ -7100,7 +7427,20 @@ export type CampaignPrizePaidLegacyResponse = CampaignPrizePaidLegacyResponses[k
 export type CampaignAdminListData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one processing state.
+         */
+        state?: 'pending' | 'active' | 'archived' | 'paused' | 'failed';
+        /**
+         * Campaign name, ID, or creator search.
+         */
+        q?: string;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+    };
     url: '/admin/campaigns';
 };
 
@@ -7109,7 +7449,49 @@ export type CampaignAdminListResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        campaigns: Array<{
+            campaign_id: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            created_by_character_id: number;
+            creator_name: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            end_time: string | null;
+            estimated_killmails: number;
+            last_processing_duration_ms: number | null;
+            last_processing_error: string | null;
+            last_processing_killmails: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_processing_started_at: string | null;
+            name: string;
+            processing_note: string | null;
+            processing_paused: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_time: string;
+            status: number;
+            totals: {
+                alliancesInvolved: number;
+                charactersInvolved: number;
+                corporationsInvolved: number;
+                iskDestroyed: number;
+                killCount: number;
+            } | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
+        hasMore: boolean;
+        page: number;
     };
 };
 
@@ -7117,13 +7499,7 @@ export type CampaignAdminListResponse = CampaignAdminListResponses[keyof Campaig
 
 export type CampaignAdminActionLegacyData = {
     body: {
-        /**
-         * Administrative action to apply to the campaign.
-         */
-        action: string;
-        /**
-         * Operator note recorded with the action.
-         */
+        action: 'pause' | 'resume' | 'reprocess' | 'archive' | 'delete';
         reason?: string;
     };
     path?: never;
@@ -7136,7 +7512,9 @@ export type CampaignAdminActionLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        action: string;
+        dispatched: boolean;
+        ok: boolean;
     };
 };
 
@@ -7144,13 +7522,7 @@ export type CampaignAdminActionLegacyResponse = CampaignAdminActionLegacyRespons
 
 export type CampaignAdminActionData = {
     body: {
-        /**
-         * Administrative action to apply to the campaign.
-         */
-        action: string;
-        /**
-         * Operator note recorded with the action.
-         */
+        action: 'pause' | 'resume' | 'reprocess' | 'archive' | 'delete';
         reason?: string;
     };
     path?: never;
@@ -7163,7 +7535,9 @@ export type CampaignAdminActionResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        action: string;
+        dispatched: boolean;
+        ok: boolean;
     };
 };
 
@@ -7186,7 +7560,7 @@ export type CampaignPrizePaidResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        paid: boolean;
     };
 };
 
@@ -7194,10 +7568,7 @@ export type CampaignPrizePaidResponse = CampaignPrizePaidResponses[keyof Campaig
 
 export type AdminCommentReportResolutionData = {
     body: {
-        /**
-         * How the report was resolved.
-         */
-        resolution?: unknown;
+        resolution: 'dismissed' | 'deleted' | 'warned';
     };
     path?: never;
     query?: never;
@@ -7209,7 +7580,25 @@ export type AdminCommentReportResolutionResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
+        report: {
+            comment_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            id: number;
+            message: string | null;
+            reason: string;
+            reporter_id: number;
+            reporter_name: string;
+            resolution: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            resolved_at: string | null;
+            resolved_by: number | null;
+        };
     };
 };
 
@@ -7218,7 +7607,16 @@ export type AdminCommentReportResolutionResponse = AdminCommentReportResolutionR
 export type AdminCommentsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which comments to queue. Unknown values behave like `all`.
+         */
+        filter?: 'flagged' | 'reported' | 'all';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/admin/comments';
 };
 
@@ -7227,7 +7625,46 @@ export type AdminCommentsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comments: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
     };
 };
 
@@ -7236,7 +7673,16 @@ export type AdminCommentsResponse = AdminCommentsResponses[keyof AdminCommentsRe
 export type AdminCommentsLiveQueueAliasData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which comments to queue. Unknown values behave like `all`.
+         */
+        filter?: 'flagged' | 'reported' | 'all';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/admin/comments/queue';
 };
 
@@ -7245,7 +7691,46 @@ export type AdminCommentsLiveQueueAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comments: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
     };
 };
 
@@ -7253,10 +7738,7 @@ export type AdminCommentsLiveQueueAliasResponse = AdminCommentsLiveQueueAliasRes
 
 export type AdminCommentReportResolutionLiveAliasData = {
     body: {
-        /**
-         * How the report was resolved.
-         */
-        resolution?: unknown;
+        resolution: 'dismissed' | 'deleted' | 'warned';
     };
     path?: never;
     query?: never;
@@ -7268,7 +7750,25 @@ export type AdminCommentReportResolutionLiveAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
+        report: {
+            comment_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            id: number;
+            message: string | null;
+            reason: string;
+            reporter_id: number;
+            reporter_name: string;
+            resolution: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            resolved_at: string | null;
+            resolved_by: number | null;
+        };
     };
 };
 
@@ -7276,10 +7776,7 @@ export type AdminCommentReportResolutionLiveAliasResponse = AdminCommentReportRe
 
 export type AdminCommentModerationData = {
     body: {
-        /**
-         * Moderation action to apply.
-         */
-        action?: unknown;
+        action: 'hide' | 'restore' | 'hidden' | 'published';
     };
     path?: never;
     query?: never;
@@ -7291,19 +7788,54 @@ export type AdminCommentModerationResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comment: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        };
+        ok: boolean;
     };
 };
 
 export type AdminCommentModerationResponse = AdminCommentModerationResponses[keyof AdminCommentModerationResponses];
 
 export type AdminCommentHideLiveAliasData = {
-    body: {
-        /**
-         * Moderation action to apply.
-         */
-        action?: unknown;
-    };
+    body?: never;
     path?: never;
     query?: never;
     url: '/admin/comments/{id}/hide';
@@ -7314,19 +7846,54 @@ export type AdminCommentHideLiveAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comment: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        };
+        ok: boolean;
     };
 };
 
 export type AdminCommentHideLiveAliasResponse = AdminCommentHideLiveAliasResponses[keyof AdminCommentHideLiveAliasResponses];
 
 export type AdminCommentRestoreLiveAliasData = {
-    body: {
-        /**
-         * Moderation action to apply.
-         */
-        action?: unknown;
-    };
+    body?: never;
     path?: never;
     query?: never;
     url: '/admin/comments/{id}/restore';
@@ -7337,7 +7904,47 @@ export type AdminCommentRestoreLiveAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comment: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        };
+        ok: boolean;
     };
 };
 
@@ -7355,7 +7962,160 @@ export type AdminDomainsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domains: Array<{
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -7373,7 +8133,176 @@ export type AdminDomainResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        assets: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            domain_id?: number;
+            id?: number;
+            reject_reason?: string | null;
+            status?: string;
+            type?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        }>;
+        domain: {
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -7390,9 +8319,7 @@ export type AdminDomainAssetPreviewResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Blob | File;
 };
 
 export type AdminDomainAssetPreviewResponse = AdminDomainAssetPreviewResponses[keyof AdminDomainAssetPreviewResponses];
@@ -7402,7 +8329,7 @@ export type AdminDomainAssetReviewData = {
         /**
          * Review outcome for the uploaded asset.
          */
-        action?: string;
+        action: 'approve' | 'reject';
         /**
          * Operator note recorded with the decision.
          */
@@ -7418,7 +8345,8 @@ export type AdminDomainAssetReviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        status: string;
+        success: boolean;
     };
 };
 
@@ -7436,7 +8364,160 @@ export type AdminDomainToggleResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domain: {
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -7454,7 +8535,19 @@ export type AdminEsiOverviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        rateLimit: {
+            request_count: number;
+        };
+        responseTime: {
+            avg_ms: number | null;
+            p95_ms: number | null;
+        };
+        volumeByHour: Array<{
+            errors: number;
+            hour: string;
+            new_items: number;
+            total: number;
+        }>;
     };
 };
 
@@ -7463,7 +8556,12 @@ export type AdminEsiOverviewResponse = AdminEsiOverviewResponses[keyof AdminEsiO
 export type AdminEsiEntitiesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Entity name or ID search.
+         */
+        q?: string;
+    };
     url: '/admin/esi-entities';
 };
 
@@ -7472,7 +8570,11 @@ export type AdminEsiEntitiesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        results: Array<{
+            id: number;
+            name: string;
+            type: string;
+        }>;
     };
 };
 
@@ -7481,7 +8583,48 @@ export type AdminEsiEntitiesResponse = AdminEsiEntitiesResponses[keyof AdminEsiE
 export type AdminEsiLogsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Match the recorded request source exactly.
+         */
+        source?: string;
+        /**
+         * Restrict to successful or failed requests.
+         */
+        status?: 'success' | 'error';
+        /**
+         * Restrict to one ESI endpoint family, for example `killmails`.
+         */
+        endpoint_type?: string;
+        /**
+         * Return log rows below this log ID.
+         */
+        after_id?: number;
+        /**
+         * Match an endpoint or error message.
+         */
+        search?: string;
+        /**
+         * Restrict to one character.
+         */
+        character_id?: number;
+        /**
+         * Restrict to one corporation.
+         */
+        corporation_id?: number;
+        /**
+         * Only requests that returned new items.
+         */
+        has_new?: boolean;
+    };
     url: '/admin/esi-logs';
 };
 
@@ -7490,7 +8633,30 @@ export type AdminEsiLogsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit?: number;
+        newRows?: boolean;
+        page?: number;
+        pages?: number;
+        rows: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            endpoint: string;
+            endpoint_action: string;
+            endpoint_type: string;
+            error_message: string | null;
+            id: number;
+            items_returned: number | null;
+            method: string;
+            new_items: number | null;
+            request_duration_ms: number | null;
+            source: string;
+            status_code: number | null;
+            success: boolean;
+        }>;
+        sources?: Array<string>;
+        total?: number;
     };
 };
 
@@ -7499,7 +8665,24 @@ export type AdminEsiLogsResponse = AdminEsiLogsResponses[keyof AdminEsiLogsRespo
 export type AdminModerationData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one queue.
+         */
+        kind?: 'all' | 'comments' | 'bios' | 'bio_character' | 'bio_corporation' | 'bio_alliance';
+        /**
+         * Restrict to one review state.
+         */
+        status?: 'all' | 'pending' | 'auto_approved' | 'auto_rejected' | 'approved' | 'rejected';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Identifier cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        cursor?: number;
+    };
     url: '/admin/moderation';
 };
 
@@ -7508,7 +8691,50 @@ export type AdminModerationResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        counts: {
+            pending: number;
+            pending_bios: number;
+            pending_comments: number;
+            total: number;
+        };
+        items: Array<{
+            ai_action: string;
+            ai_category: string | null;
+            ai_max_score: number;
+            ai_scores: {
+                [key: string]: number;
+            };
+            ai_source: string;
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body: string;
+            body_format: string;
+            character_id: number;
+            character_name: string;
+            comment_context: {
+                target_id: number;
+                target_slug: string | null;
+                target_type: number;
+            } | null;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            id: number;
+            rendered_html: string;
+            review_notes: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            reviewed_at: string | null;
+            reviewed_by: number | null;
+            status: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            submitted_at: string;
+            target_id: number;
+            target_kind: number;
+        }>;
+        nextCursor: number | null;
     };
 };
 
@@ -7517,7 +8743,24 @@ export type AdminModerationResponse = AdminModerationResponses[keyof AdminModera
 export type AdminModerationLiveQueueAliasData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one queue.
+         */
+        kind?: 'all' | 'comments' | 'bios' | 'bio_character' | 'bio_corporation' | 'bio_alliance';
+        /**
+         * Restrict to one review state.
+         */
+        status?: 'all' | 'pending' | 'auto_approved' | 'auto_rejected' | 'approved' | 'rejected';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Identifier cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        cursor?: number;
+    };
     url: '/admin/moderation/queue';
 };
 
@@ -7526,7 +8769,50 @@ export type AdminModerationLiveQueueAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        counts: {
+            pending: number;
+            pending_bios: number;
+            pending_comments: number;
+            total: number;
+        };
+        items: Array<{
+            ai_action: string;
+            ai_category: string | null;
+            ai_max_score: number;
+            ai_scores: {
+                [key: string]: number;
+            };
+            ai_source: string;
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body: string;
+            body_format: string;
+            character_id: number;
+            character_name: string;
+            comment_context: {
+                target_id: number;
+                target_slug: string | null;
+                target_type: number;
+            } | null;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            id: number;
+            rendered_html: string;
+            review_notes: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            reviewed_at: string | null;
+            reviewed_by: number | null;
+            status: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            submitted_at: string;
+            target_id: number;
+            target_kind: number;
+        }>;
+        nextCursor: number | null;
     };
 };
 
@@ -7534,14 +8820,8 @@ export type AdminModerationLiveQueueAliasResponse = AdminModerationLiveQueueAlia
 
 export type AdminModerationReviewData = {
     body: {
-        /**
-         * Moderator decision for the queued item.
-         */
-        decision?: unknown;
-        /**
-         * Operator note, at most 1000 characters.
-         */
-        notes?: unknown;
+        decision: 'approve' | 'reject';
+        notes?: string | null;
     };
     path?: never;
     query?: never;
@@ -7553,22 +8833,17 @@ export type AdminModerationReviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        id: number;
+        ok: boolean;
+        status: string;
     };
 };
 
 export type AdminModerationReviewResponse = AdminModerationReviewResponses[keyof AdminModerationReviewResponses];
 
 export type AdminModerationApproveLiveAliasData = {
-    body: {
-        /**
-         * Moderator decision for the queued item.
-         */
-        decision?: unknown;
-        /**
-         * Operator note, at most 1000 characters.
-         */
-        notes?: unknown;
+    body?: {
+        notes?: string | null;
     };
     path?: never;
     query?: never;
@@ -7580,22 +8855,17 @@ export type AdminModerationApproveLiveAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        id: number;
+        ok: boolean;
+        status: string;
     };
 };
 
 export type AdminModerationApproveLiveAliasResponse = AdminModerationApproveLiveAliasResponses[keyof AdminModerationApproveLiveAliasResponses];
 
 export type AdminModerationRejectLiveAliasData = {
-    body: {
-        /**
-         * Moderator decision for the queued item.
-         */
-        decision?: unknown;
-        /**
-         * Operator note, at most 1000 characters.
-         */
-        notes?: unknown;
+    body?: {
+        notes?: string | null;
     };
     path?: never;
     query?: never;
@@ -7607,7 +8877,9 @@ export type AdminModerationRejectLiveAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        id: number;
+        ok: boolean;
+        status: string;
     };
 };
 
@@ -7625,7 +8897,33 @@ export type AdminOverviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comments: {
+            last24h?: number;
+            last7d?: number;
+            recent7d?: number;
+            total?: number;
+        };
+        esi: {
+            errorRate?: number;
+            errors?: number;
+            total?: number;
+        };
+        killmails: {
+            last24h?: number;
+            last7d?: number;
+            recent7d?: number;
+            total?: number;
+        };
+        moderation: {
+            flagged?: number;
+            pending?: number;
+        };
+        users: {
+            last24h?: number;
+            last7d?: number;
+            recent7d?: number;
+            total?: number;
+        };
     };
 };
 
@@ -7634,7 +8932,28 @@ export type AdminOverviewResponse = AdminOverviewResponses[keyof AdminOverviewRe
 export type AdminUsersListData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Match a character name or ID.
+         */
+        search?: string;
+        /**
+         * Ordering for the user rows.
+         */
+        sort?: 'last_login' | 'created_at' | 'character_name';
+        /**
+         * Sort direction.
+         */
+        dir?: 'asc' | 'desc';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+    };
     url: '/admin/users';
 };
 
@@ -7643,7 +8962,30 @@ export type AdminUsersListResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit: number;
+        page: number;
+        pages: number;
+        total: number;
+        users: Array<{
+            character_id?: number;
+            character_name?: string;
+            character_owner_hash?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string | null;
+            discord_user_id?: string | null;
+            is_admin?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_login?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -7661,7 +9003,51 @@ export type AdminUsersDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        config: Array<{
+            key?: string;
+            value?: string;
+            [key: string]: unknown;
+        }>;
+        esiStats: {
+            errors_24h?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_request?: string | null;
+            new_items_24h?: number;
+            requests_24h?: number;
+            total_errors?: number;
+            total_new_items?: number;
+            total_requests?: number;
+        };
+        esiToken: {
+            scopes?: Array<string>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            token_expiry?: string | null;
+            [key: string]: unknown;
+        } | null;
+        user: {
+            character_id?: number;
+            character_name?: string;
+            character_owner_hash?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string | null;
+            discord_user_id?: string | null;
+            is_admin?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_login?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string | null;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -7669,10 +9055,7 @@ export type AdminUsersDetailResponse = AdminUsersDetailResponses[keyof AdminUser
 
 export type AdminUsersSetDiscordData = {
     body: {
-        /**
-         * Discord user identifier, or null to unlink.
-         */
-        discord_user_id?: unknown;
+        discord_user_id?: string | null;
     };
     path?: never;
     query?: never;
@@ -7684,7 +9067,8 @@ export type AdminUsersSetDiscordResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        character_id: number;
+        discord_user_id: string | null;
     };
 };
 
@@ -7702,7 +9086,8 @@ export type AdminUsersToggleAdminResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        character_id: number;
+        is_admin: boolean;
     };
 };
 
@@ -7711,7 +9096,16 @@ export type AdminUsersToggleAdminResponse = AdminUsersToggleAdminResponses[keyof
 export type WalletAdminData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Corporation wallet division.
+         */
+        division?: number;
+    };
     url: '/admin/wallet';
 };
 
@@ -7720,7 +9114,122 @@ export type WalletAdminResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        authorization: {
+            authorized_by_admin_character_id?: number;
+            authorized_character_id?: number;
+            authorized_character_name?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            disabled?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_balance_sync?: string | null;
+            last_error?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_journal_sync?: string | null;
+            scopes?: Array<string>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            token_expiry?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        } | null;
+        balances: Array<{
+            balance?: string;
+            division?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            [key: string]: unknown;
+        }>;
+        corporation: {
+            corporation_id: number;
+            name: string;
+            ticker: string;
+        };
+        division: number | null;
+        hasMore: boolean;
+        journal: Array<{
+            amount?: string;
+            balance?: string;
+            context_id?: number | null;
+            context_id_type?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date?: string;
+            description?: string | null;
+            division?: number;
+            first_party_id?: number | null;
+            journal_id?: number;
+            reason?: string | null;
+            ref_type?: string;
+            second_party_id?: number | null;
+            tax?: string | null;
+            tax_receiver_id?: number | null;
+            [key: string]: unknown;
+        }>;
+        page: number;
+        pageSize: number;
+        prizeSettlements: Array<{
+            campaign_id?: string;
+            campaign_name?: string;
+            character_id?: number | null;
+            character_name?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            claimed_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finalized_at?: string | null;
+            funded_total?: string;
+            metric_value?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            paid_at?: string | null;
+            payment_note?: string | null;
+            payout_amount?: string | null;
+            payout_percentage?: number | null;
+            pool_status?: number;
+            rank?: number | null;
+            [key: string]: unknown;
+        }>;
+        requiredScopes: Array<string>;
+        totalBalance: string;
+        walletReferences: Array<{
+            amount?: string;
+            corporation_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date?: string;
+            division?: number;
+            first_party_id?: number | null;
+            journal_id?: number;
+            note?: string | null;
+            reason?: string | null;
+            reference_id?: string;
+            reference_type?: string;
+            status?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -7738,7 +9247,7 @@ export type WalletAdminAuthorizeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        url: string;
     };
 };
 
@@ -7756,7 +9265,7 @@ export type WalletAdminSyncResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        queued: boolean;
     };
 };
 
@@ -7774,7 +9283,205 @@ export type EntityPageDetailAllianceCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        character: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            birthday?: string | null;
+            bloodline_name?: string | null;
+            character_id?: number;
+            corporation_id?: number | null;
+            corporation_name?: string | null;
+            corporation_ticker?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            gender?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active?: string | null;
+            name?: string;
+            palette?: string | null;
+            race_name?: string | null;
+            security_status?: number;
+            title?: string | null;
+            [key: string]: unknown;
+        };
+        corporationHistory: Array<{
+            corporation_id: number;
+            corporation_name: string;
+            corporation_ticker: string;
+            kills: number;
+            losses: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporationHistoryQueued: boolean;
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShips: Array<{
+            kills?: number;
+            losses?: number;
+            ship_name?: string;
+            ship_type_id?: number;
+            [key: string]: unknown;
+        }>;
+    } | {
+        allianceHistory: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporation: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            corporation_id?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            friendly_fire?: boolean | null;
+            lp_tax_rate?: number | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            state?: string | null;
+            tax_rate?: number;
+            ticker?: string;
+            type?: string | null;
+            url?: string | null;
+            war_eligible?: boolean;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        alliance: {
+            alliance_id?: number;
+            corporation_count?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            executor_corporation_id?: number | null;
+            executor_name?: string | null;
+            executor_ticker?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            ticker?: string;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        faction: {
+            corporation_id?: number | null;
+            description?: string | null;
+            faction_id?: number;
+            militia_corporation_id?: number | null;
+            name?: string;
+            solar_system_id?: number | null;
+            station_count?: number;
+            station_system_count?: number;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_lost: number;
+            losses: number;
+        };
+        stats: {
+            isk_lost: number;
+            losses: number;
+        };
     };
 };
 
@@ -7783,7 +9490,16 @@ export type EntityPageDetailAllianceCompatResponse = EntityPageDetailAllianceCom
 export type EntityPageCorporationsAllianceCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the corporation rows.
+         */
+        sort?: 'member_count' | 'name';
+        /**
+         * Sort direction.
+         */
+        dir?: 'asc' | 'desc';
+    };
     url: '/alliance/{id}/corporations';
 };
 
@@ -7792,7 +9508,14 @@ export type EntityPageCorporationsAllianceCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        corporations: Array<{
+            corporation_id: number;
+            member_count: number;
+            name: string;
+            palette: string | null;
+            ticker: string;
+        }>;
+        total: number;
     };
 };
 
@@ -7801,7 +9524,12 @@ export type EntityPageCorporationsAllianceCompatResponse = EntityPageCorporation
 export type EntityPageIntelAllianceCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days.
+         */
+        days?: number;
+    };
     url: '/alliance/{id}/intel';
 };
 
@@ -7810,7 +9538,123 @@ export type EntityPageIntelAllianceCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        awox_kills: number;
+        bait: string;
+        bait_count: number;
+        bridge_score: number;
+        capital_pilot: boolean;
+        character_id: number;
+        cyno_deaths: number;
+        days: number;
+        dominant_style: string;
+        fc: {
+            likelihood?: number;
+            monitor_appearances?: number;
+            [key: string]: unknown;
+        };
+        fleet_partners: Array<{
+            [key: string]: unknown;
+        }>;
+        groups_flown_with: Array<{
+            [key: string]: unknown;
+        }>;
+        is_logi: boolean;
+        playstyle: {
+            [key: string]: unknown;
+        };
+        ships_flown: Array<{
+            [key: string]: unknown;
+        }>;
+        ships_lost: Array<{
+            [key: string]: unknown;
+        }>;
+        tags: Array<string>;
+        targets: Array<{
+            [key: string]: unknown;
+        }>;
+    } | {
+        activeMembers: {
+            days_30: number;
+            days_7: number;
+            days_90: number;
+        };
+        allies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        census: {
+            caps: number;
+            corps?: Array<{
+                id?: number;
+                name?: string;
+                total?: number;
+                [key: string]: unknown;
+            }>;
+            droppers: number;
+            fcs: number;
+            logis: number;
+            supers: number;
+            total: number;
+        };
+        enemies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        huntingGrounds: Array<{
+            active_characters: number;
+            id: number;
+            name: string;
+        }>;
+        recentDepartures: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
+        recentJoins: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
     };
 };
 
@@ -7819,7 +9663,28 @@ export type EntityPageIntelAllianceCompatResponse = EntityPageIntelAllianceCompa
 export type EntityPageMembersAllianceCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the member rows.
+         */
+        sort?: 'name' | 'last_active' | 'security_status';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Restrict an alliance's members to one corporation.
+         */
+        corporation_id?: number;
+        /**
+         * Only members active within this many days. 0 disables the filter.
+         */
+        activity?: number;
+    };
     url: '/alliance/{id}/members';
 };
 
@@ -7828,7 +9693,24 @@ export type EntityPageMembersAllianceCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit: number;
+        members: Array<{
+            character_id: number;
+            corporation_id?: number | null;
+            is_capital_pilot: boolean;
+            is_fc: boolean;
+            is_logi: boolean;
+            kills_90d: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active: string | null;
+            losses_90d: number;
+            name: string;
+            security_status: number;
+        }>;
+        page: number;
+        total: number;
     };
 };
 
@@ -7837,7 +9719,12 @@ export type EntityPageMembersAllianceCompatResponse = EntityPageMembersAllianceC
 export type EntityPageStatsAllianceCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days. 0 covers the whole record.
+         */
+        days?: number;
+    };
     url: '/alliance/{id}/stats';
 };
 
@@ -7846,7 +9733,62 @@ export type EntityPageStatsAllianceCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity?: {
+            kills: Array<Array<number>>;
+            losses: Array<Array<number>>;
+        };
+        diesToAlliances: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        diesToCorporations: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithAlliances?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithCorporations?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        heatMap?: {
+            [key: string]: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShipsLost: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
+        topShipsUsed: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
     };
 };
 
@@ -7855,7 +9797,16 @@ export type EntityPageStatsAllianceCompatResponse = EntityPageStatsAllianceCompa
 export type EntityTopAllianceCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which half of the leaderboard set to build. `right` also accepts `days=alltime`.
+         */
+        slice?: 'left' | 'right';
+        /**
+         * Window in days, between 1/24 and 365. Send `alltime` with `slice=right` for the unbounded set. Default 7.
+         */
+        days?: string;
+    };
     url: '/alliance/{id}/top';
 };
 
@@ -7864,7 +9815,96 @@ export type EntityTopAllianceCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        achievementPoints?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByIsk?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByKills?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByPoints?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        constellations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        corporationsByKills?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedAlliances?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedByAlliances?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedByCorporations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedCorporations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        recentMembers?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        regions?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        shipsUsed?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        soloKillers?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        systems?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
     };
 };
 
@@ -7873,7 +9913,20 @@ export type EntityTopAllianceCompatResponse = EntityTopAllianceCompatResponses[k
 export type AlliancesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Case-insensitive name prefix to match.
+         */
+        name?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/alliances';
 };
 
@@ -7905,21 +9958,21 @@ export type AlliancesCountResponse2 = AlliancesCountResponses[keyof AlliancesCou
 export type AlliancesBatchStatsData = {
     body: {
         /**
-         * Start of the window, for type=custom.
+         * Start of the window, for type=range.
          */
         from?: string;
         /**
          * Entity IDs to resolve, at most 100 per request.
          */
-        ids: Array<number> | null;
+        ids: Array<number>;
         /**
-         * End of the window, for type=custom.
+         * End of the window, for type=range.
          */
         to?: string;
         /**
          * Aggregation period. Falls back to the type query parameter, then alltime.
          */
-        type?: 'alltime' | 'weekly' | 'monthly' | 'custom';
+        type?: 'alltime' | 'weekly' | 'range';
     };
     path?: never;
     query?: never;
@@ -7958,7 +10011,16 @@ export type AllianceCorporationsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/alliances/{id}/corporations';
 };
 
@@ -7976,7 +10038,20 @@ export type AllianceKillsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/alliances/{id}/kills';
 };
 
@@ -7994,7 +10069,20 @@ export type AllianceLossesData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/alliances/{id}/losses';
 };
 
@@ -8012,7 +10100,16 @@ export type AllianceMembersData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/alliances/{id}/members';
 };
 
@@ -8098,7 +10195,29 @@ export type AnnouncementsActiveCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        announcements: Array<{
+            body_html: string;
+            body_md: string;
+            color: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at: string;
+            icon: string | null;
+            id: number;
+            link_label: string | null;
+            link_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            starts_at: string;
+            tier: number;
+            title: string;
+        }>;
     };
 };
 
@@ -8116,7 +10235,7 @@ export type AnnouncementsDismissedCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        dismissedIds: Array<number>;
     };
 };
 
@@ -8134,7 +10253,7 @@ export type AnnouncementDismissCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
     };
 };
 
@@ -8143,28 +10262,96 @@ export type AnnouncementDismissCompatResponse = AnnouncementDismissCompatRespons
 export type EveLoginCallbackLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Authorization code returned by EVE SSO.
+         */
+        code?: string;
+        /**
+         * Signed state issued when the flow started.
+         */
+        state?: string;
+        /**
+         * Error returned by EVE SSO, when it refuses.
+         */
+        error?: string;
+    };
     url: '/auth/callback';
 };
 
 export type EveLoginCallbackData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Authorization code returned by EVE SSO.
+         */
+        code?: string;
+        /**
+         * Signed state issued when the flow started.
+         */
+        state?: string;
+        /**
+         * Error returned by EVE SSO, when it refuses.
+         */
+        error?: string;
+    };
     url: '/auth/eve/callback';
 };
 
 export type EveLoginStartData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Same-origin path to return to after login. `redirect` is accepted as an alias.
+         */
+        returnTo?: string;
+        /**
+         * Alias for `returnTo`.
+         */
+        redirect?: string;
+        /**
+         * Delay applied before the redirect, in seconds.
+         */
+        delay?: string;
+        /**
+         * Send `0` to drop the character killmail scope from the authorization request.
+         */
+        charKm?: '0' | '1';
+        /**
+         * Send `0` to drop the corporation killmail scope from the authorization request.
+         */
+        corpKm?: '0' | '1';
+    };
     url: '/auth/eve/start';
 };
 
 export type AuthLoginLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Same-origin path to return to after login. `redirect` is accepted as an alias.
+         */
+        returnTo?: string;
+        /**
+         * Alias for `returnTo`.
+         */
+        redirect?: string;
+        /**
+         * Delay applied before the redirect, in seconds.
+         */
+        delay?: string;
+        /**
+         * Send `0` to drop the character killmail scope from the authorization request.
+         */
+        charKm?: '0' | '1';
+        /**
+         * Send `0` to drop the corporation killmail scope from the authorization request.
+         */
+        corpKm?: '0' | '1';
+    };
     url: '/auth/login';
 };
 
@@ -8173,7 +10360,7 @@ export type AuthLoginLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        url: string;
     };
 };
 
@@ -8191,7 +10378,7 @@ export type AuthLogoutLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        success: boolean;
     };
 };
 
@@ -8209,7 +10396,35 @@ export type AuthMeLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        user: {
+            allianceId: number | null;
+            allianceName: string | null;
+            characterId: number;
+            characterName: string;
+            characterOwnerHash?: string;
+            corporationId: number | null;
+            corporationName: string | null;
+            isAdmin: boolean;
+            lastSeenNotificationId: number;
+            settings?: {
+                boards?: {
+                    dismissed: Array<string>;
+                    pinned: Array<string>;
+                };
+                /**
+                 * Default tab keyed by page type.
+                 */
+                defaultTabs?: {
+                    [key: string]: unknown;
+                };
+                /**
+                 * User-selected theme settings.
+                 */
+                theme?: {
+                    [key: string]: unknown;
+                };
+            };
+        } | null;
     };
 };
 
@@ -8227,7 +10442,11 @@ export type AuthTokenInfoLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        scopes: Array<string>;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        token_expiry: string | null;
     };
 };
 
@@ -8245,7 +10464,12 @@ export type BackgroundsRedditResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        images: Array<{
+            source: string;
+            subreddit: string;
+            title: string;
+            url: string;
+        }>;
     };
 };
 
@@ -8264,7 +10488,7 @@ export type BattleGeneratorEntitiesData = {
         /**
          * Solar systems to scan for killmails.
          */
-        systemIds: Array<number> | null;
+        systemIds: Array<number>;
     };
     path?: never;
     query?: never;
@@ -8276,7 +10500,21 @@ export type BattleGeneratorEntitiesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances: Array<{
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            id: number;
+            name: string;
+            type: string;
+        }>;
+        corporations: Array<{
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            id: number;
+            name: string;
+            type: string;
+        }>;
+        killCount: number;
     };
 };
 
@@ -8284,7 +10522,7 @@ export type BattleGeneratorEntitiesResponse = BattleGeneratorEntitiesResponses[k
 
 export type BattleGeneratorPreviewData = {
     body: {
-        sides: Array<ConflictBattleGeneratorSide> | null;
+        sides: Array<ConflictBattleGeneratorSide>;
     };
     path?: never;
     query?: never;
@@ -8296,7 +10534,84 @@ export type BattleGeneratorPreviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances_involved: number;
+        battle_id?: number | null;
+        characters_involved: number;
+        corporations_involved: number;
+        duration_minutes: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        end_time: string;
+        is_custom: boolean;
+        is_multi_party: boolean;
+        kill_count: number;
+        killmail_id?: number;
+        region_id: number | null;
+        region_name: string | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        start_time: string;
+        team_entities: Array<{
+            alliances: Array<number>;
+            corps: Array<number>;
+        }>;
+        teams: Array<{
+            alliance_count: number;
+            alliances: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                corporations: Array<{
+                    corporation_id: number;
+                    corporation_name: string | null;
+                    isk_destroyed: number;
+                    isk_lost: number;
+                    kills: number;
+                    losses: number;
+                }>;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+            }>;
+            corp_count: number;
+            dominant_corp_palette: string | null;
+            team_index: number;
+            total_isk_destroyed: number;
+            total_isk_lost: number;
+            total_kills: number;
+            total_losses: number;
+        }>;
+        total_damage: number;
+        total_isk_destroyed: number;
+        unsided?: {
+            alliance_count: number;
+            alliances: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                corporations: Array<{
+                    corporation_id: number;
+                    corporation_name: string | null;
+                    isk_destroyed: number;
+                    isk_lost: number;
+                    kills: number;
+                    losses: number;
+                }>;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+            }>;
+            corp_count: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        } | null;
     };
 };
 
@@ -8312,7 +10627,10 @@ export type BattleGeneratorSaveData = {
         region_id: number | null;
         solar_system_id: number;
         start_time: string;
-        teams: Array<ConflictBattleSaveTeam> | null;
+        teams: [
+            ConflictBattleSaveTeam,
+            ConflictBattleSaveTeam
+        ];
         total_isk_destroyed: number;
     };
     path?: never;
@@ -8325,7 +10643,7 @@ export type BattleGeneratorSaveResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        battle_id: number;
     };
 };
 
@@ -8343,7 +10661,87 @@ export type KillmailBattleReportResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        battle_id: number;
+        redirect: string;
+    } | {
+        alliances_involved: number;
+        battle_id?: number | null;
+        characters_involved: number;
+        corporations_involved: number;
+        duration_minutes: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        end_time: string;
+        is_custom: boolean;
+        is_multi_party: boolean;
+        kill_count: number;
+        killmail_id?: number;
+        region_id: number | null;
+        region_name: string | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        start_time: string;
+        team_entities: Array<{
+            alliances: Array<number>;
+            corps: Array<number>;
+        }>;
+        teams: Array<{
+            alliance_count: number;
+            alliances: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                corporations: Array<{
+                    corporation_id: number;
+                    corporation_name: string | null;
+                    isk_destroyed: number;
+                    isk_lost: number;
+                    kills: number;
+                    losses: number;
+                }>;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+            }>;
+            corp_count: number;
+            dominant_corp_palette: string | null;
+            team_index: number;
+            total_isk_destroyed: number;
+            total_isk_lost: number;
+            total_kills: number;
+            total_losses: number;
+        }>;
+        total_damage: number;
+        total_isk_destroyed: number;
+        unsided?: {
+            alliance_count: number;
+            alliances: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                corporations: Array<{
+                    corporation_id: number;
+                    corporation_name: string | null;
+                    isk_destroyed: number;
+                    isk_lost: number;
+                    kills: number;
+                    losses: number;
+                }>;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+            }>;
+            corp_count: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        } | null;
     };
 };
 
@@ -8361,7 +10759,52 @@ export type KillmailBattleCompositionResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        team_count: number;
+        teams: Array<{
+            by_group: Array<{
+                count: number;
+                damage_done: number;
+                damage_taken: number;
+                isk_lost: number;
+                key: string;
+                losses: number;
+                name: string | null;
+                rank: number;
+                ship_group_id?: number;
+                ship_type_id?: number;
+            }>;
+            by_ship: Array<{
+                count: number;
+                damage_done: number;
+                damage_taken: number;
+                isk_lost: number;
+                key: string;
+                losses: number;
+                name: string | null;
+                rank: number;
+                ship_group_id?: number;
+                ship_type_id?: number;
+            }>;
+            individuals: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                damage_taken: number;
+                deaths: number;
+                isk_lost: number;
+                rank: number;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+                team_index: number;
+            }>;
+            team_index: number;
+        }>;
     };
 };
 
@@ -8379,7 +10822,54 @@ export type KillmailBattleIntelResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        teams: Array<{
+            capitals: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                confirmed?: boolean;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                died: boolean;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+            }>;
+            fcs: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                confirmed?: boolean;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                died: boolean;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+            }>;
+            logistics: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                confirmed?: boolean;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                died: boolean;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+            }>;
+            team_index: number;
+        }>;
     };
 };
 
@@ -8388,7 +10878,20 @@ export type KillmailBattleIntelResponse = KillmailBattleIntelResponses[keyof Kil
 export type KillmailBattleKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/battle/killmail/{id}/killlist';
 };
 
@@ -8397,7 +10900,43 @@ export type KillmailBattleKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -8406,7 +10945,20 @@ export type KillmailBattleKilllistResponse = KillmailBattleKilllistResponses[key
 export type KillmailBattleMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Restrict to one team index in the battle.
+         */
+        team?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/battle/killmail/{id}/most-valuable';
 };
 
@@ -8415,7 +10967,21 @@ export type KillmailBattleMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time?: string;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -8433,7 +10999,43 @@ export type KillmailBattleTimelineResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -8451,7 +11053,84 @@ export type BattleReportResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances_involved: number;
+        battle_id?: number | null;
+        characters_involved: number;
+        corporations_involved: number;
+        duration_minutes: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        end_time: string;
+        is_custom: boolean;
+        is_multi_party: boolean;
+        kill_count: number;
+        killmail_id?: number;
+        region_id: number | null;
+        region_name: string | null;
+        solar_system_id: number;
+        solar_system_name: string | null;
+        solar_system_security: number | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        start_time: string;
+        team_entities: Array<{
+            alliances: Array<number>;
+            corps: Array<number>;
+        }>;
+        teams: Array<{
+            alliance_count: number;
+            alliances: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                corporations: Array<{
+                    corporation_id: number;
+                    corporation_name: string | null;
+                    isk_destroyed: number;
+                    isk_lost: number;
+                    kills: number;
+                    losses: number;
+                }>;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+            }>;
+            corp_count: number;
+            dominant_corp_palette: string | null;
+            team_index: number;
+            total_isk_destroyed: number;
+            total_isk_lost: number;
+            total_kills: number;
+            total_losses: number;
+        }>;
+        total_damage: number;
+        total_isk_destroyed: number;
+        unsided?: {
+            alliance_count: number;
+            alliances: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                corporations: Array<{
+                    corporation_id: number;
+                    corporation_name: string | null;
+                    isk_destroyed: number;
+                    isk_lost: number;
+                    kills: number;
+                    losses: number;
+                }>;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+            }>;
+            corp_count: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        } | null;
     };
 };
 
@@ -8469,7 +11148,52 @@ export type BattleReportCompositionResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        team_count: number;
+        teams: Array<{
+            by_group: Array<{
+                count: number;
+                damage_done: number;
+                damage_taken: number;
+                isk_lost: number;
+                key: string;
+                losses: number;
+                name: string | null;
+                rank: number;
+                ship_group_id?: number;
+                ship_type_id?: number;
+            }>;
+            by_ship: Array<{
+                count: number;
+                damage_done: number;
+                damage_taken: number;
+                isk_lost: number;
+                key: string;
+                losses: number;
+                name: string | null;
+                rank: number;
+                ship_group_id?: number;
+                ship_type_id?: number;
+            }>;
+            individuals: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                damage_taken: number;
+                deaths: number;
+                isk_lost: number;
+                rank: number;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+                team_index: number;
+            }>;
+            team_index: number;
+        }>;
     };
 };
 
@@ -8487,7 +11211,54 @@ export type BattleReportIntelResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        teams: Array<{
+            capitals: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                confirmed?: boolean;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                died: boolean;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+            }>;
+            fcs: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                confirmed?: boolean;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                died: boolean;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+            }>;
+            logistics: Array<{
+                alliance_id: number | null;
+                alliance_name: string | null;
+                character_id: number;
+                character_name: string | null;
+                confirmed?: boolean;
+                corporation_id: number | null;
+                corporation_name: string | null;
+                damage_done: number;
+                died: boolean;
+                ship_group_id: number | null;
+                ship_group_name: string | null;
+                ship_name: string | null;
+                ship_type_id: number;
+            }>;
+            team_index: number;
+        }>;
     };
 };
 
@@ -8496,7 +11267,20 @@ export type BattleReportIntelResponse = BattleReportIntelResponses[keyof BattleR
 export type BattleReportKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/battle/{id}/killlist';
 };
 
@@ -8505,7 +11289,43 @@ export type BattleReportKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -8514,7 +11334,20 @@ export type BattleReportKilllistResponse = BattleReportKilllistResponses[keyof B
 export type BattleReportMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Restrict to one team index in the battle.
+         */
+        team?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/battle/{id}/most-valuable';
 };
 
@@ -8523,7 +11356,21 @@ export type BattleReportMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time?: string;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -8541,7 +11388,43 @@ export type BattleReportTimelineResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -8550,7 +11433,32 @@ export type BattleReportTimelineResponse = BattleReportTimelineResponses[keyof B
 export type BattlesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the battle rows.
+         */
+        sort?: 'battle_id' | 'total_isk_destroyed' | 'kill_count' | 'start_time';
+        /**
+         * Sort direction.
+         */
+        order?: 'asc' | 'desc';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Only battles starting after this.
+         */
+        start_after?: string;
+        /**
+         * Only battles starting before this.
+         */
+        start_before?: string;
+    };
     url: '/battles';
 };
 
@@ -8568,7 +11476,32 @@ export type AllianceBattlesData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the battle rows.
+         */
+        sort?: 'battle_id' | 'total_isk_destroyed' | 'kill_count' | 'start_time';
+        /**
+         * Sort direction.
+         */
+        order?: 'asc' | 'desc';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Only battles starting after this.
+         */
+        start_after?: string;
+        /**
+         * Only battles starting before this.
+         */
+        start_before?: string;
+    };
     url: '/battles/alliance/{id}';
 };
 
@@ -8586,7 +11519,32 @@ export type CorporationBattlesData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the battle rows.
+         */
+        sort?: 'battle_id' | 'total_isk_destroyed' | 'kill_count' | 'start_time';
+        /**
+         * Sort direction.
+         */
+        order?: 'asc' | 'desc';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Only battles starting after this.
+         */
+        start_after?: string;
+        /**
+         * Only battles starting before this.
+         */
+        start_before?: string;
+    };
     url: '/battles/corporation/{id}';
 };
 
@@ -8620,7 +11578,20 @@ export type BattleResponse2 = BattleResponses[keyof BattleResponses];
 export type BlogPostsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Identifier cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        cursor?: number;
+        /**
+         * Restrict to one tag.
+         */
+        tag?: string;
+    };
     url: '/blog';
 };
 
@@ -8629,7 +11600,36 @@ export type BlogPostsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        nextCursor: string | null;
+        posts: Array<{
+            author_alliance_id: number | null;
+            author_alliance_name: string | null;
+            author_corporation_id: number | null;
+            author_corporation_name: string | null;
+            author_id: number;
+            author_name: string;
+            body_html: string;
+            body_md: string;
+            cover_image_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            excerpt: string | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            published_at: string | null;
+            slug: string;
+            status: number;
+            tags: Array<string>;
+            title: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        }>;
     };
 };
 
@@ -8647,7 +11647,35 @@ export type BlogPostResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        post: {
+            author_alliance_id: number | null;
+            author_alliance_name: string | null;
+            author_corporation_id: number | null;
+            author_corporation_name: string | null;
+            author_id: number;
+            author_name: string;
+            body_html: string;
+            body_md: string;
+            cover_image_url: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            excerpt: string | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            published_at: string | null;
+            slug: string;
+            status: number;
+            tags: Array<string>;
+            title: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        };
     };
 };
 
@@ -8665,7 +11693,21 @@ export type BoardsMineCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        atCapacity: boolean;
+        authenticated: boolean;
+        boards: Array<{
+            host: string;
+            key: string;
+            name: string;
+            pinned: boolean;
+            tracked: boolean;
+            url: string;
+        }>;
+        current: {
+            key: string;
+            listed: boolean;
+            name: string;
+        } | null;
     };
 };
 
@@ -8673,42 +11715,35 @@ export type BoardsMineCompatResponse = BoardsMineCompatResponses[keyof BoardsMin
 
 export type CampaignCreateLegacyData = {
     body: {
-        /**
-         * Entities permitted to view a restricted campaign.
-         */
-        allowedEntities?: unknown;
-        /**
-         * Free text shown on the campaign page.
-         */
-        description?: string;
-        /**
-         * Campaign end. Omit for an open-ended campaign.
-         */
-        endTime?: unknown;
-        /**
-         * Location filter: system, constellation or region identifiers.
-         */
-        location?: unknown;
-        /**
-         * Campaign name.
-         */
+        allowedEntities?: Array<{
+            /**
+             * An integer. A numeric string is accepted for compatibility.
+             */
+            id: number | string;
+            name?: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        description?: string | null;
+        endTime?: string | null;
+        location?: CampaignLocationDocument;
         name: string;
+        prizePool?: CampaignPrizePoolDocument;
+        sides?: Array<{
+            entities: Array<{
+                /**
+                 * An integer. A numeric string is accepted for compatibility.
+                 */
+                id: number | string;
+                name?: string;
+                type: 'character' | 'corporation' | 'alliance';
+            }>;
+            name?: string;
+        }>;
+        startTime: string;
         /**
-         * Prize pool definition, including any initial contribution.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        prizePool?: unknown;
-        /**
-         * Participating sides, each naming its entities.
-         */
-        sides?: unknown;
-        /**
-         * Campaign start, as a timestamp or ISO 8601 string.
-         */
-        startTime: unknown;
-        /**
-         * Who may see the campaign.
-         */
-        visibility?: unknown;
+        visibility?: number | string;
     };
     path?: never;
     query?: never;
@@ -8720,7 +11755,10 @@ export type CampaignCreateLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        campaign_id: string;
+        estimated_killmails: number;
+        initial_contribution: string;
+        replayed: boolean;
     };
 };
 
@@ -8738,7 +11776,7 @@ export type CampaignDeleteLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        deleted: boolean;
     };
 };
 
@@ -8756,7 +11794,306 @@ export type CampaignDetailLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        allowed_entities: Array<{
+            id: number;
+            name?: string;
+            type: string;
+        }>;
+        campaign_id: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at: string;
+        creator: {
+            character_id: number;
+            name: string | null;
+        };
+        daily: {
+            granularity: string;
+            rows: Array<{
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+                period: string;
+                side_index: number;
+            }>;
+        };
+        description: string | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        end_time: string | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        last_activity_at: string | null;
+        location: {
+            constellationIds?: Array<number>;
+            regionIds?: Array<number>;
+            systemIds?: Array<number>;
+        } | null;
+        location_details: {
+            constellations: Array<{
+                id: number;
+                name: string;
+            }>;
+            regions: Array<{
+                id: number;
+                name: string;
+            }>;
+            systems: Array<{
+                id: number;
+                name: string;
+            }>;
+        };
+        mode: string;
+        name: string;
+        prize_pool: {
+            contribution_count: number;
+            contributions: Array<{
+                amount: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                contributed_at: string;
+                contributor_id: number | null;
+                contributor_name: string;
+                contributor_type: string;
+                id: string;
+                source: string;
+            }>;
+            discord_url: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finalized_at: string | null;
+            funded_total: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            funding_closes_at: string | null;
+            funding_reference: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_wallet_sync: string | null;
+            metric: number;
+            metric_label: string;
+            payout_percentages: Array<number>;
+            projected_lead_percent: number | null;
+            results: Array<{
+                can_claim: boolean;
+                character_id: number;
+                character_name: string;
+                claimed: boolean;
+                metric_value: string;
+                paid: boolean;
+                payout_amount: number;
+                payout_percentage: number;
+                rank: number;
+                secondary_value: string;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            rules_locked_at: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            settles_at: string | null;
+            status: number;
+            winner_count: number;
+        } | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        processed_through: string | null;
+        processing: {
+            estimated_killmails: number | null;
+            last_duration_ms: number | null;
+            last_error: string | null;
+            last_killmails: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_started_at: string | null;
+            note: string | null;
+            paused: boolean;
+        };
+        sides: Array<{
+            entities: Array<{
+                entity_id: number;
+                entity_type: number;
+                isk_destroyed?: number;
+                isk_lost?: number;
+                kills?: number;
+                losses?: number;
+                name?: string | null;
+            }>;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            name: string;
+            palette: string | null;
+            side_index: number;
+        }>;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        start_time: string;
+        stats: {
+            intelBySide: {
+                [key: string]: {
+                    capitals: Array<{
+                        allianceName: string | null;
+                        characterId: number;
+                        corporationName: string | null;
+                        damage: number;
+                        died: boolean;
+                        name: string | null;
+                        shipGroupName: string | null;
+                        shipName: string | null;
+                        shipTypeId: number | null;
+                    }>;
+                    capitalsCount: number;
+                    fcs: Array<{
+                        allianceName: string | null;
+                        characterId: number;
+                        corporationName: string | null;
+                        damage: number;
+                        died: boolean;
+                        name: string | null;
+                        shipGroupName: string | null;
+                        shipName: string | null;
+                        shipTypeId: number | null;
+                    }>;
+                    logistics: Array<{
+                        allianceName: string | null;
+                        characterId: number;
+                        corporationName: string | null;
+                        damage: number;
+                        died: boolean;
+                        name: string | null;
+                        shipGroupName: string | null;
+                        shipName: string | null;
+                        shipTypeId: number | null;
+                    }>;
+                    logisticsCount: number;
+                } | null;
+            };
+            mostValuable: Array<{
+                killmailId: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                killmailTime: string;
+                shipName: string | null;
+                shipTypeId: number | null;
+                value: number;
+                victimCharacterId: number | null;
+                victimCharacterName: string | null;
+                victimCorporationId: number | null;
+                victimCorporationName: string | null;
+                victimSide: number | null;
+            }>;
+            shipClassesBySide: {
+                [key: string]: Array<{
+                    groupId: number;
+                    iskLost: number;
+                    losses: number;
+                    name: string | null;
+                }>;
+            };
+            shipClassesOverall: Array<{
+                groupId: number;
+                iskLost: number;
+                losses: number;
+                name: string | null;
+            }>;
+            topKillersBySide: {
+                [key: string]: Array<{
+                    allianceId?: number | null;
+                    allianceName?: string | null;
+                    allianceTicker?: string | null;
+                    characterId: number;
+                    corporationId?: number | null;
+                    corporationName?: string | null;
+                    corporationTicker?: string | null;
+                    iskDestroyed?: number;
+                    iskLost?: number;
+                    kills?: number;
+                    losses?: number;
+                    name: string | null;
+                }>;
+            };
+            topKillersOverall: Array<{
+                allianceId?: number | null;
+                allianceName?: string | null;
+                allianceTicker?: string | null;
+                characterId: number;
+                corporationId?: number | null;
+                corporationName?: string | null;
+                corporationTicker?: string | null;
+                iskDestroyed?: number;
+                iskLost?: number;
+                kills?: number;
+                losses?: number;
+                name: string | null;
+            }>;
+            topSystems: Array<{
+                iskDestroyed: number;
+                kills: number;
+                name: string | null;
+                regionId: number | null;
+                regionName: string | null;
+                systemId: number;
+            }>;
+            topVictimsBySide: {
+                [key: string]: Array<{
+                    allianceId?: number | null;
+                    allianceName?: string | null;
+                    allianceTicker?: string | null;
+                    characterId: number;
+                    corporationId?: number | null;
+                    corporationName?: string | null;
+                    corporationTicker?: string | null;
+                    iskDestroyed?: number;
+                    iskLost?: number;
+                    kills?: number;
+                    losses?: number;
+                    name: string | null;
+                }>;
+            };
+            topVictimsOverall: Array<{
+                allianceId?: number | null;
+                allianceName?: string | null;
+                allianceTicker?: string | null;
+                characterId: number;
+                corporationId?: number | null;
+                corporationName?: string | null;
+                corporationTicker?: string | null;
+                iskDestroyed?: number;
+                iskLost?: number;
+                kills?: number;
+                losses?: number;
+                name: string | null;
+            }>;
+            totals: {
+                alliancesInvolved: number;
+                charactersInvolved: number;
+                corporationsInvolved: number;
+                iskDestroyed: number;
+                killCount: number;
+            };
+        } | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        stats_updated_at: string | null;
+        status: number;
+        visibility: number;
     };
 };
 
@@ -8764,34 +12101,23 @@ export type CampaignDetailLegacyResponse = CampaignDetailLegacyResponses[keyof C
 
 export type CampaignUpdateLegacyData = {
     body: {
+        allowedEntities?: Array<{
+            /**
+             * An integer. A numeric string is accepted for compatibility.
+             */
+            id: number | string;
+            name?: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        archived?: boolean;
+        description?: string | null;
+        endTime?: string | null;
+        name?: string;
+        resumeProcessing?: boolean;
         /**
-         * Replacement viewer list.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        allowedEntities?: unknown;
-        /**
-         * Archive or restore the campaign.
-         */
-        archived?: unknown;
-        /**
-         * New description. An empty string clears it.
-         */
-        description?: unknown;
-        /**
-         * New end time.
-         */
-        endTime?: unknown;
-        /**
-         * New campaign name.
-         */
-        name?: unknown;
-        /**
-         * Resume killmail processing after an edit.
-         */
-        resumeProcessing?: unknown;
-        /**
-         * New visibility.
-         */
-        visibility?: unknown;
+        visibility?: number | string;
     };
     path?: never;
     query?: never;
@@ -8803,7 +12129,8 @@ export type CampaignUpdateLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        recompute?: boolean;
+        updated: boolean;
     };
 };
 
@@ -8812,7 +12139,20 @@ export type CampaignUpdateLegacyResponse = CampaignUpdateLegacyResponses[keyof C
 export type CampaignKilllistLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one campaign side index. Must match a side the campaign defines.
+         */
+        side?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/campaign/{id}/killlist';
 };
 
@@ -8821,7 +12161,45 @@ export type CampaignKilllistLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -8839,7 +12217,8 @@ export type CampaignPrizeClaimLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        claimed: boolean;
+        rank: number;
     };
 };
 
@@ -8848,12 +12227,9 @@ export type CampaignPrizeClaimLegacyResponse = CampaignPrizeClaimLegacyResponses
 export type CampaignPrizeContributeLegacyData = {
     body: {
         /**
-         * ISK amount to contribute.
+         * A number. A numeric string is accepted for compatibility.
          */
-        amount: unknown;
-        /**
-         * Caller-supplied idempotency key for the contribution.
-         */
+        amount: number | string;
         requestId: string;
     };
     path?: never;
@@ -8866,7 +12242,9 @@ export type CampaignPrizeContributeLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        balance: string;
+        contributed: string;
+        replayed: boolean;
     };
 };
 
@@ -8874,34 +12252,23 @@ export type CampaignPrizeContributeLegacyResponse = CampaignPrizeContributeLegac
 
 export type CampaignUpdateBrowserLegacyData = {
     body: {
+        allowedEntities?: Array<{
+            /**
+             * An integer. A numeric string is accepted for compatibility.
+             */
+            id: number | string;
+            name?: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        archived?: boolean;
+        description?: string | null;
+        endTime?: string | null;
+        name?: string;
+        resumeProcessing?: boolean;
         /**
-         * Replacement viewer list.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        allowedEntities?: unknown;
-        /**
-         * Archive or restore the campaign.
-         */
-        archived?: unknown;
-        /**
-         * New description. An empty string clears it.
-         */
-        description?: unknown;
-        /**
-         * New end time.
-         */
-        endTime?: unknown;
-        /**
-         * New campaign name.
-         */
-        name?: unknown;
-        /**
-         * Resume killmail processing after an edit.
-         */
-        resumeProcessing?: unknown;
-        /**
-         * New visibility.
-         */
-        visibility?: unknown;
+        visibility?: number | string;
     };
     path?: never;
     query?: never;
@@ -8913,7 +12280,8 @@ export type CampaignUpdateBrowserLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        recompute?: boolean;
+        updated: boolean;
     };
 };
 
@@ -8922,7 +12290,32 @@ export type CampaignUpdateBrowserLegacyResponse = CampaignUpdateBrowserLegacyRes
 export type CampaignsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which campaigns to list. Defaults to `all` when the request is scoped to an entity.
+         */
+        status?: 'active' | 'archived' | 'private' | 'all';
+        /**
+         * Restrict to two-sided conflicts or area campaigns.
+         */
+        mode?: 'conflict' | 'area';
+        /**
+         * Scope the list to one entity. Requires `entityId`.
+         */
+        entityType?: 'character' | 'corporation' | 'alliance';
+        /**
+         * Entity ID to scope to. Requires `entityType`.
+         */
+        entityId?: number;
+        /**
+         * Name search, truncated to 100 characters.
+         */
+        q?: string;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+    };
     url: '/campaigns';
 };
 
@@ -8931,7 +12324,76 @@ export type CampaignsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        campaigns: Array<{
+            campaign_id: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            creator: {
+                character_id: number;
+                name: string | null;
+            };
+            description: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            end_time: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_activity_at: string | null;
+            location: {
+                constellationIds?: Array<number>;
+                regionIds?: Array<number>;
+                systemIds?: Array<number>;
+            } | null;
+            mode: string;
+            name: string;
+            sides: Array<{
+                entities: Array<{
+                    entity_id: number;
+                    entity_type: number;
+                    isk_destroyed?: number;
+                    isk_lost?: number;
+                    kills?: number;
+                    losses?: number;
+                    name?: string | null;
+                }>;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+                name: string;
+                palette: string | null;
+                side_index: number;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_time: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            stats_updated_at: string | null;
+            status: number;
+            totals: {
+                alliancesInvolved: number;
+                charactersInvolved: number;
+                corporationsInvolved: number;
+                iskDestroyed: number;
+                killCount: number;
+            } | null;
+            visibility: number;
+        }>;
+        counts: {
+            active: number;
+            archived: number;
+            private: number;
+        };
+        hasMore: boolean;
+        page: number;
+        total: number;
     };
 };
 
@@ -8939,42 +12401,35 @@ export type CampaignsResponse = CampaignsResponses[keyof CampaignsResponses];
 
 export type CampaignCreateData = {
     body: {
-        /**
-         * Entities permitted to view a restricted campaign.
-         */
-        allowedEntities?: unknown;
-        /**
-         * Free text shown on the campaign page.
-         */
-        description?: string;
-        /**
-         * Campaign end. Omit for an open-ended campaign.
-         */
-        endTime?: unknown;
-        /**
-         * Location filter: system, constellation or region identifiers.
-         */
-        location?: unknown;
-        /**
-         * Campaign name.
-         */
+        allowedEntities?: Array<{
+            /**
+             * An integer. A numeric string is accepted for compatibility.
+             */
+            id: number | string;
+            name?: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        description?: string | null;
+        endTime?: string | null;
+        location?: CampaignLocationDocument;
         name: string;
+        prizePool?: CampaignPrizePoolDocument;
+        sides?: Array<{
+            entities: Array<{
+                /**
+                 * An integer. A numeric string is accepted for compatibility.
+                 */
+                id: number | string;
+                name?: string;
+                type: 'character' | 'corporation' | 'alliance';
+            }>;
+            name?: string;
+        }>;
+        startTime: string;
         /**
-         * Prize pool definition, including any initial contribution.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        prizePool?: unknown;
-        /**
-         * Participating sides, each naming its entities.
-         */
-        sides?: unknown;
-        /**
-         * Campaign start, as a timestamp or ISO 8601 string.
-         */
-        startTime: unknown;
-        /**
-         * Who may see the campaign.
-         */
-        visibility?: unknown;
+        visibility?: number | string;
     };
     path?: never;
     query?: never;
@@ -8986,7 +12441,10 @@ export type CampaignCreateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        campaign_id: string;
+        estimated_killmails: number;
+        initial_contribution: string;
+        replayed: boolean;
     };
 };
 
@@ -9004,7 +12462,7 @@ export type CampaignDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        deleted: boolean;
     };
 };
 
@@ -9022,7 +12480,306 @@ export type CampaignDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        allowed_entities: Array<{
+            id: number;
+            name?: string;
+            type: string;
+        }>;
+        campaign_id: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at: string;
+        creator: {
+            character_id: number;
+            name: string | null;
+        };
+        daily: {
+            granularity: string;
+            rows: Array<{
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+                period: string;
+                side_index: number;
+            }>;
+        };
+        description: string | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        end_time: string | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        last_activity_at: string | null;
+        location: {
+            constellationIds?: Array<number>;
+            regionIds?: Array<number>;
+            systemIds?: Array<number>;
+        } | null;
+        location_details: {
+            constellations: Array<{
+                id: number;
+                name: string;
+            }>;
+            regions: Array<{
+                id: number;
+                name: string;
+            }>;
+            systems: Array<{
+                id: number;
+                name: string;
+            }>;
+        };
+        mode: string;
+        name: string;
+        prize_pool: {
+            contribution_count: number;
+            contributions: Array<{
+                amount: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                contributed_at: string;
+                contributor_id: number | null;
+                contributor_name: string;
+                contributor_type: string;
+                id: string;
+                source: string;
+            }>;
+            discord_url: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finalized_at: string | null;
+            funded_total: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            funding_closes_at: string | null;
+            funding_reference: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_wallet_sync: string | null;
+            metric: number;
+            metric_label: string;
+            payout_percentages: Array<number>;
+            projected_lead_percent: number | null;
+            results: Array<{
+                can_claim: boolean;
+                character_id: number;
+                character_name: string;
+                claimed: boolean;
+                metric_value: string;
+                paid: boolean;
+                payout_amount: number;
+                payout_percentage: number;
+                rank: number;
+                secondary_value: string;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            rules_locked_at: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            settles_at: string | null;
+            status: number;
+            winner_count: number;
+        } | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        processed_through: string | null;
+        processing: {
+            estimated_killmails: number | null;
+            last_duration_ms: number | null;
+            last_error: string | null;
+            last_killmails: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_started_at: string | null;
+            note: string | null;
+            paused: boolean;
+        };
+        sides: Array<{
+            entities: Array<{
+                entity_id: number;
+                entity_type: number;
+                isk_destroyed?: number;
+                isk_lost?: number;
+                kills?: number;
+                losses?: number;
+                name?: string | null;
+            }>;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            name: string;
+            palette: string | null;
+            side_index: number;
+        }>;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        start_time: string;
+        stats: {
+            intelBySide: {
+                [key: string]: {
+                    capitals: Array<{
+                        allianceName: string | null;
+                        characterId: number;
+                        corporationName: string | null;
+                        damage: number;
+                        died: boolean;
+                        name: string | null;
+                        shipGroupName: string | null;
+                        shipName: string | null;
+                        shipTypeId: number | null;
+                    }>;
+                    capitalsCount: number;
+                    fcs: Array<{
+                        allianceName: string | null;
+                        characterId: number;
+                        corporationName: string | null;
+                        damage: number;
+                        died: boolean;
+                        name: string | null;
+                        shipGroupName: string | null;
+                        shipName: string | null;
+                        shipTypeId: number | null;
+                    }>;
+                    logistics: Array<{
+                        allianceName: string | null;
+                        characterId: number;
+                        corporationName: string | null;
+                        damage: number;
+                        died: boolean;
+                        name: string | null;
+                        shipGroupName: string | null;
+                        shipName: string | null;
+                        shipTypeId: number | null;
+                    }>;
+                    logisticsCount: number;
+                } | null;
+            };
+            mostValuable: Array<{
+                killmailId: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                killmailTime: string;
+                shipName: string | null;
+                shipTypeId: number | null;
+                value: number;
+                victimCharacterId: number | null;
+                victimCharacterName: string | null;
+                victimCorporationId: number | null;
+                victimCorporationName: string | null;
+                victimSide: number | null;
+            }>;
+            shipClassesBySide: {
+                [key: string]: Array<{
+                    groupId: number;
+                    iskLost: number;
+                    losses: number;
+                    name: string | null;
+                }>;
+            };
+            shipClassesOverall: Array<{
+                groupId: number;
+                iskLost: number;
+                losses: number;
+                name: string | null;
+            }>;
+            topKillersBySide: {
+                [key: string]: Array<{
+                    allianceId?: number | null;
+                    allianceName?: string | null;
+                    allianceTicker?: string | null;
+                    characterId: number;
+                    corporationId?: number | null;
+                    corporationName?: string | null;
+                    corporationTicker?: string | null;
+                    iskDestroyed?: number;
+                    iskLost?: number;
+                    kills?: number;
+                    losses?: number;
+                    name: string | null;
+                }>;
+            };
+            topKillersOverall: Array<{
+                allianceId?: number | null;
+                allianceName?: string | null;
+                allianceTicker?: string | null;
+                characterId: number;
+                corporationId?: number | null;
+                corporationName?: string | null;
+                corporationTicker?: string | null;
+                iskDestroyed?: number;
+                iskLost?: number;
+                kills?: number;
+                losses?: number;
+                name: string | null;
+            }>;
+            topSystems: Array<{
+                iskDestroyed: number;
+                kills: number;
+                name: string | null;
+                regionId: number | null;
+                regionName: string | null;
+                systemId: number;
+            }>;
+            topVictimsBySide: {
+                [key: string]: Array<{
+                    allianceId?: number | null;
+                    allianceName?: string | null;
+                    allianceTicker?: string | null;
+                    characterId: number;
+                    corporationId?: number | null;
+                    corporationName?: string | null;
+                    corporationTicker?: string | null;
+                    iskDestroyed?: number;
+                    iskLost?: number;
+                    kills?: number;
+                    losses?: number;
+                    name: string | null;
+                }>;
+            };
+            topVictimsOverall: Array<{
+                allianceId?: number | null;
+                allianceName?: string | null;
+                allianceTicker?: string | null;
+                characterId: number;
+                corporationId?: number | null;
+                corporationName?: string | null;
+                corporationTicker?: string | null;
+                iskDestroyed?: number;
+                iskLost?: number;
+                kills?: number;
+                losses?: number;
+                name: string | null;
+            }>;
+            totals: {
+                alliancesInvolved: number;
+                charactersInvolved: number;
+                corporationsInvolved: number;
+                iskDestroyed: number;
+                killCount: number;
+            };
+        } | null;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        stats_updated_at: string | null;
+        status: number;
+        visibility: number;
     };
 };
 
@@ -9030,34 +12787,23 @@ export type CampaignDetailResponse = CampaignDetailResponses[keyof CampaignDetai
 
 export type CampaignUpdateData = {
     body: {
+        allowedEntities?: Array<{
+            /**
+             * An integer. A numeric string is accepted for compatibility.
+             */
+            id: number | string;
+            name?: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        archived?: boolean;
+        description?: string | null;
+        endTime?: string | null;
+        name?: string;
+        resumeProcessing?: boolean;
         /**
-         * Replacement viewer list.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        allowedEntities?: unknown;
-        /**
-         * Archive or restore the campaign.
-         */
-        archived?: unknown;
-        /**
-         * New description. An empty string clears it.
-         */
-        description?: unknown;
-        /**
-         * New end time.
-         */
-        endTime?: unknown;
-        /**
-         * New campaign name.
-         */
-        name?: unknown;
-        /**
-         * Resume killmail processing after an edit.
-         */
-        resumeProcessing?: unknown;
-        /**
-         * New visibility.
-         */
-        visibility?: unknown;
+        visibility?: number | string;
     };
     path?: never;
     query?: never;
@@ -9069,7 +12815,8 @@ export type CampaignUpdateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        recompute?: boolean;
+        updated: boolean;
     };
 };
 
@@ -9078,7 +12825,20 @@ export type CampaignUpdateResponse = CampaignUpdateResponses[keyof CampaignUpdat
 export type CampaignKillmailsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one campaign side index. Must match a side the campaign defines.
+         */
+        side?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/campaigns/{id}/killmails';
 };
 
@@ -9087,7 +12847,45 @@ export type CampaignKillmailsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -9105,7 +12903,8 @@ export type CampaignPrizeClaimResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        claimed: boolean;
+        rank: number;
     };
 };
 
@@ -9114,12 +12913,9 @@ export type CampaignPrizeClaimResponse = CampaignPrizeClaimResponses[keyof Campa
 export type CampaignPrizeContributeData = {
     body: {
         /**
-         * ISK amount to contribute.
+         * A number. A numeric string is accepted for compatibility.
          */
-        amount: unknown;
-        /**
-         * Caller-supplied idempotency key for the contribution.
-         */
+        amount: number | string;
         requestId: string;
     };
     path?: never;
@@ -9132,7 +12928,9 @@ export type CampaignPrizeContributeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        balance: string;
+        contributed: string;
+        replayed: boolean;
     };
 };
 
@@ -9150,7 +12948,205 @@ export type EntityPageDetailCharacterCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        character: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            birthday?: string | null;
+            bloodline_name?: string | null;
+            character_id?: number;
+            corporation_id?: number | null;
+            corporation_name?: string | null;
+            corporation_ticker?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            gender?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active?: string | null;
+            name?: string;
+            palette?: string | null;
+            race_name?: string | null;
+            security_status?: number;
+            title?: string | null;
+            [key: string]: unknown;
+        };
+        corporationHistory: Array<{
+            corporation_id: number;
+            corporation_name: string;
+            corporation_ticker: string;
+            kills: number;
+            losses: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporationHistoryQueued: boolean;
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShips: Array<{
+            kills?: number;
+            losses?: number;
+            ship_name?: string;
+            ship_type_id?: number;
+            [key: string]: unknown;
+        }>;
+    } | {
+        allianceHistory: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporation: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            corporation_id?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            friendly_fire?: boolean | null;
+            lp_tax_rate?: number | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            state?: string | null;
+            tax_rate?: number;
+            ticker?: string;
+            type?: string | null;
+            url?: string | null;
+            war_eligible?: boolean;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        alliance: {
+            alliance_id?: number;
+            corporation_count?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            executor_corporation_id?: number | null;
+            executor_name?: string | null;
+            executor_ticker?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            ticker?: string;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        faction: {
+            corporation_id?: number | null;
+            description?: string | null;
+            faction_id?: number;
+            militia_corporation_id?: number | null;
+            name?: string;
+            solar_system_id?: number | null;
+            station_count?: number;
+            station_system_count?: number;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_lost: number;
+            losses: number;
+        };
+        stats: {
+            isk_lost: number;
+            losses: number;
+        };
     };
 };
 
@@ -9168,7 +13164,18 @@ export type EntityPageAchievementsCharacterCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        achievements: Array<{
+            achievement_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            completed_at: string | null;
+            completion_tiers: number;
+            current_count: number;
+            is_completed: boolean;
+            points: number;
+            threshold: number;
+        }>;
     };
 };
 
@@ -9177,7 +13184,12 @@ export type EntityPageAchievementsCharacterCompatResponse = EntityPageAchievemen
 export type EntityPageIntelCharacterCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days.
+         */
+        days?: number;
+    };
     url: '/character/{id}/intel';
 };
 
@@ -9186,7 +13198,123 @@ export type EntityPageIntelCharacterCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        awox_kills: number;
+        bait: string;
+        bait_count: number;
+        bridge_score: number;
+        capital_pilot: boolean;
+        character_id: number;
+        cyno_deaths: number;
+        days: number;
+        dominant_style: string;
+        fc: {
+            likelihood?: number;
+            monitor_appearances?: number;
+            [key: string]: unknown;
+        };
+        fleet_partners: Array<{
+            [key: string]: unknown;
+        }>;
+        groups_flown_with: Array<{
+            [key: string]: unknown;
+        }>;
+        is_logi: boolean;
+        playstyle: {
+            [key: string]: unknown;
+        };
+        ships_flown: Array<{
+            [key: string]: unknown;
+        }>;
+        ships_lost: Array<{
+            [key: string]: unknown;
+        }>;
+        tags: Array<string>;
+        targets: Array<{
+            [key: string]: unknown;
+        }>;
+    } | {
+        activeMembers: {
+            days_30: number;
+            days_7: number;
+            days_90: number;
+        };
+        allies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        census: {
+            caps: number;
+            corps?: Array<{
+                id?: number;
+                name?: string;
+                total?: number;
+                [key: string]: unknown;
+            }>;
+            droppers: number;
+            fcs: number;
+            logis: number;
+            supers: number;
+            total: number;
+        };
+        enemies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        huntingGrounds: Array<{
+            active_characters: number;
+            id: number;
+            name: string;
+        }>;
+        recentDepartures: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
+        recentJoins: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
     };
 };
 
@@ -9195,7 +13323,12 @@ export type EntityPageIntelCharacterCompatResponse = EntityPageIntelCharacterCom
 export type EntityPageStatsCharacterCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days. 0 covers the whole record.
+         */
+        days?: number;
+    };
     url: '/character/{id}/stats';
 };
 
@@ -9204,7 +13337,62 @@ export type EntityPageStatsCharacterCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity?: {
+            kills: Array<Array<number>>;
+            losses: Array<Array<number>>;
+        };
+        diesToAlliances: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        diesToCorporations: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithAlliances?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithCorporations?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        heatMap?: {
+            [key: string]: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShipsLost: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
+        topShipsUsed: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
     };
 };
 
@@ -9213,7 +13401,16 @@ export type EntityPageStatsCharacterCompatResponse = EntityPageStatsCharacterCom
 export type EntityTopCharacterCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which half of the leaderboard set to build. `right` also accepts `days=alltime`.
+         */
+        slice?: 'left' | 'right';
+        /**
+         * Window in days, between 1/24 and 365. Send `alltime` with `slice=right` for the unbounded set. Default 7.
+         */
+        days?: string;
+    };
     url: '/character/{id}/top';
 };
 
@@ -9222,7 +13419,96 @@ export type EntityTopCharacterCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        achievementPoints?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByIsk?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByKills?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByPoints?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        constellations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        corporationsByKills?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedAlliances?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedByAlliances?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedByCorporations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedCorporations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        recentMembers?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        regions?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        shipsUsed?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        soloKillers?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        systems?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
     };
 };
 
@@ -9231,7 +13517,20 @@ export type EntityTopCharacterCompatResponse = EntityTopCharacterCompatResponses
 export type CharactersData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Case-insensitive name prefix to match.
+         */
+        name?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/characters';
 };
 
@@ -9249,7 +13548,7 @@ export type CharacterAnalyzeData = {
         /**
          * Characters to analyze, at most 2500 per request.
          */
-        character_ids: Array<number> | null;
+        character_ids: Array<number>;
     };
     path?: never;
     query?: never;
@@ -9284,21 +13583,21 @@ export type CharactersCountResponse2 = CharactersCountResponses[keyof Characters
 export type CharactersBatchStatsData = {
     body: {
         /**
-         * Start of the window, for type=custom.
+         * Start of the window, for type=range.
          */
         from?: string;
         /**
          * Entity IDs to resolve, at most 100 per request.
          */
-        ids: Array<number> | null;
+        ids: Array<number>;
         /**
-         * End of the window, for type=custom.
+         * End of the window, for type=range.
          */
         to?: string;
         /**
          * Aggregation period. Falls back to the type query parameter, then alltime.
          */
-        type?: 'alltime' | 'weekly' | 'monthly' | 'custom';
+        type?: 'alltime' | 'weekly' | 'range';
     };
     path?: never;
     query?: never;
@@ -9337,7 +13636,12 @@ export type CharacterIntelData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+    };
     url: '/characters/{id}/intel';
 };
 
@@ -9355,7 +13659,20 @@ export type CharacterKillsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/characters/{id}/kills';
 };
 
@@ -9373,7 +13690,20 @@ export type CharacterLossesData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/characters/{id}/losses';
 };
 
@@ -9391,7 +13721,20 @@ export type CharacterStatsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Reporting period.
+         */
+        type?: 'alltime' | 'weekly' | 'range';
+        /**
+         * Start date as YYYY-MM-DD. Required when `type` is `range`.
+         */
+        from?: string;
+        /**
+         * End date as YYYY-MM-DD. Required when `type` is `range`.
+         */
+        to?: string;
+    };
     url: '/characters/{id}/stats';
 };
 
@@ -9440,7 +13783,36 @@ export type CoalitionStatsResponse2 = CoalitionStatsResponses[keyof CoalitionSta
 export type CommentsFeedData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Identifier cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        cursor?: number;
+        /**
+         * Numeric target kind: 1 killmail, 2 character, 3 corporation, 4 alliance, 5 system, 6 page, 7 battle, 8 fit, 9 blog, 10 campaign.
+         */
+        target_type?: number;
+        /**
+         * Restrict to one author.
+         */
+        character_id?: number;
+        /**
+         * Restrict to one author corporation.
+         */
+        corporation_id?: number;
+        /**
+         * Restrict to one author alliance.
+         */
+        alliance_id?: number;
+        /**
+         * Body search. Applied once the text is at least two characters.
+         */
+        q?: string;
+    };
     url: '/comments';
 };
 
@@ -9449,7 +13821,47 @@ export type CommentsFeedResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comments: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
+        nextCursor: number | null;
     };
 };
 
@@ -9457,26 +13869,17 @@ export type CommentsFeedResponse = CommentsFeedResponses[keyof CommentsFeedRespo
 
 export type CommentsCreateData = {
     body: {
-        /**
-         * Comment text, in Markdown.
-         */
         body_md: string;
         /**
-         * Comment being replied to. Omit for a top-level comment.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        parent_id?: unknown;
+        parent_id?: number | string | null;
         /**
-         * Identifier of the thing being commented on.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        target_id?: unknown;
-        /**
-         * Slug form of the target, where one exists.
-         */
-        target_slug?: unknown;
-        /**
-         * What the thread is attached to: a killmail, campaign, battle and so on.
-         */
-        target_type?: unknown;
+        target_id: number | string;
+        target_slug?: string;
+        target_type: number;
     };
     path?: never;
     query?: never;
@@ -9488,7 +13891,46 @@ export type CommentsCreateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comment: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        };
     };
 };
 
@@ -9497,7 +13939,20 @@ export type CommentsCreateResponse = CommentsCreateResponses[keyof CommentsCreat
 export type CommentsKlipySearchData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Search text.
+         */
+        q?: string;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Results per page.
+         */
+        per_page?: number;
+    };
     url: '/comments/klipy/search';
 };
 
@@ -9506,7 +13961,12 @@ export type CommentsKlipySearchResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        has_next: boolean;
+        items: Array<{
+            [key: string]: unknown;
+        }>;
+        page: number;
+        per_page: number;
     };
 };
 
@@ -9515,7 +13975,20 @@ export type CommentsKlipySearchResponse = CommentsKlipySearchResponses[keyof Com
 export type CommentsKlipyTrendingData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Search text.
+         */
+        q?: string;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Results per page.
+         */
+        per_page?: number;
+    };
     url: '/comments/klipy/trending';
 };
 
@@ -9524,7 +13997,12 @@ export type CommentsKlipyTrendingResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        has_next: boolean;
+        items: Array<{
+            [key: string]: unknown;
+        }>;
+        page: number;
+        per_page: number;
     };
 };
 
@@ -9532,10 +14010,7 @@ export type CommentsKlipyTrendingResponse = CommentsKlipyTrendingResponses[keyof
 
 export type CommentsPreviewData = {
     body: {
-        /**
-         * Comment text, in Markdown.
-         */
-        body_md?: unknown;
+        body_md: string;
     };
     path?: never;
     query?: never;
@@ -9547,7 +14022,8 @@ export type CommentsPreviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        error?: string;
+        html: string;
     };
 };
 
@@ -9556,7 +14032,28 @@ export type CommentsPreviewResponse = CommentsPreviewResponses[keyof CommentsPre
 export type CommentsThreadData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Identifier cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        cursor?: number;
+        /**
+         * Numeric target kind: 1 killmail, 2 character, 3 corporation, 4 alliance, 5 system, 6 page, 7 battle, 8 fit, 9 blog, 10 campaign.
+         */
+        target_type?: number;
+        /**
+         * Numeric ID of the commented object.
+         */
+        target_id?: number;
+        /**
+         * Slug of the commented object.
+         */
+        target_slug?: string;
+    };
     url: '/comments/thread';
 };
 
@@ -9565,7 +14062,88 @@ export type CommentsThreadResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        nextCursor: number | null;
+        replies: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
+        repliesTruncated: boolean;
+        roots: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
     };
 };
 
@@ -9583,7 +14161,7 @@ export type CommentDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
     };
 };
 
@@ -9601,7 +14179,46 @@ export type CommentDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comment: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        };
     };
 };
 
@@ -9609,9 +14226,6 @@ export type CommentDetailResponse = CommentDetailResponses[keyof CommentDetailRe
 
 export type CommentEditData = {
     body: {
-        /**
-         * Replacement comment text, in Markdown.
-         */
         body_md: string;
     };
     path?: never;
@@ -9624,7 +14238,46 @@ export type CommentEditResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comment: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        };
     };
 };
 
@@ -9632,14 +14285,8 @@ export type CommentEditResponse = CommentEditResponses[keyof CommentEditResponse
 
 export type CommentReportData = {
     body: {
-        /**
-         * Additional detail for the moderator.
-         */
-        message?: unknown;
-        /**
-         * Why the comment is being reported.
-         */
-        reason?: unknown;
+        message?: string | null;
+        reason: 'spam' | 'harassment' | 'nsfw' | 'offtopic' | 'other';
     };
     path?: never;
     query?: never;
@@ -9651,7 +14298,9 @@ export type CommentReportResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        flagged: boolean;
+        ok: boolean;
+        reports_count: number;
     };
 };
 
@@ -9660,7 +14309,56 @@ export type CommentReportResponse = CommentReportResponses[keyof CommentReportRe
 export type ConflictBattlesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Restrict to battles that started in this year.
+         */
+        year?: number;
+        /**
+         * Minimum killmail count in the battle.
+         */
+        minKills?: number;
+        /**
+         * Minimum ISK destroyed in the battle.
+         */
+        minIsk?: number;
+        /**
+         * Restrict to battles inside the custom domain's own scope.
+         */
+        custom?: boolean;
+        /**
+         * Restrict to one alliance.
+         */
+        allianceId?: number;
+        /**
+         * Restrict to one corporation.
+         */
+        corporationId?: number;
+        /**
+         * Restrict to one character.
+         */
+        characterId?: number;
+        /**
+         * Restrict to one constellation.
+         */
+        constellationId?: number;
+        /**
+         * Restrict to one region.
+         */
+        regionId?: number;
+        /**
+         * Restrict to one solar system.
+         */
+        systemId?: number;
+    };
     url: '/conflicts/battles';
 };
 
@@ -9669,7 +14367,32 @@ export type ConflictBattlesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        battles: Array<{
+            battle_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            end_time?: string;
+            is_custom?: boolean;
+            kill_count?: number;
+            region_id?: number | null;
+            region_name?: string | null;
+            solar_system_id?: number;
+            solar_system_name?: string | null;
+            solar_system_security?: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_time?: string;
+            total_value?: number;
+            [key: string]: unknown;
+        }>;
+        limit: number;
+        page: number;
+        years: Array<{
+            count: number;
+            year: number;
+        }>;
     };
 };
 
@@ -9678,7 +14401,60 @@ export type ConflictBattlesResponse = ConflictBattlesResponses[keyof ConflictBat
 export type ConflictWarsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Only wars that have not started yet.
+         */
+        upcoming?: boolean;
+        /**
+         * Only wars that have finished.
+         */
+        finished?: boolean;
+        /**
+         * Only wars that are currently running.
+         */
+        ongoing?: boolean;
+        /**
+         * Only wars both parties agreed to.
+         */
+        mutual?: boolean;
+        /**
+         * Only wars with recorded activity.
+         */
+        hasActivity?: boolean;
+        /**
+         * Only wars with at least one killmail.
+         */
+        hasKills?: boolean;
+        /**
+         * Only wars that have allies.
+         */
+        hasAllies?: boolean;
+        /**
+         * Ordering. Ignored while `upcoming` is set, which always orders by start date.
+         */
+        sort?: 'kills' | 'isk';
+        /**
+         * Restrict to one alliance.
+         */
+        allianceId?: number;
+        /**
+         * Restrict to one corporation.
+         */
+        corporationId?: number;
+        /**
+         * Restrict to one character.
+         */
+        characterId?: number;
+    };
     url: '/conflicts/wars';
 };
 
@@ -9687,7 +14463,42 @@ export type ConflictWarsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit: number;
+        page: number;
+        wars: Array<{
+            aggressor?: {
+                id: number;
+                name?: string;
+                ticker?: string;
+                type: string;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            declared?: string;
+            defender?: {
+                id: number;
+                name?: string;
+                ticker?: string;
+                type: string;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finished?: string | null;
+            mutual?: boolean;
+            open_for_allies?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            retracted?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            started?: string | null;
+            war_id?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -9705,7 +14516,35 @@ export type ConstellationCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        constellation: {
+            constellation_id: number;
+            constellation_name: string;
+            faction_id: number | null;
+            region_id: number;
+            region_name: string | null;
+        };
+        sovDistribution: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            system_count: number;
+        }>;
+        stats: {
+            kills: number;
+            npc_kills: number;
+            pod_kills: number;
+            total_value: number;
+        };
+        systems: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+        }>;
     };
 };
 
@@ -9714,7 +14553,20 @@ export type ConstellationCompatResponse = ConstellationCompatResponses[keyof Con
 export type ConstellationKilllistCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/constellation/{id}/killlist';
 };
 
@@ -9723,7 +14575,46 @@ export type ConstellationKilllistCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -9732,7 +14623,20 @@ export type ConstellationKilllistCompatResponse = ConstellationKilllistCompatRes
 export type ConstellationMostValuableCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/constellation/{id}/most-valuable';
 };
 
@@ -9741,7 +14645,17 @@ export type ConstellationMostValuableCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -9759,7 +14673,205 @@ export type EntityPageDetailCorporationCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        character: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            birthday?: string | null;
+            bloodline_name?: string | null;
+            character_id?: number;
+            corporation_id?: number | null;
+            corporation_name?: string | null;
+            corporation_ticker?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            gender?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active?: string | null;
+            name?: string;
+            palette?: string | null;
+            race_name?: string | null;
+            security_status?: number;
+            title?: string | null;
+            [key: string]: unknown;
+        };
+        corporationHistory: Array<{
+            corporation_id: number;
+            corporation_name: string;
+            corporation_ticker: string;
+            kills: number;
+            losses: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporationHistoryQueued: boolean;
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShips: Array<{
+            kills?: number;
+            losses?: number;
+            ship_name?: string;
+            ship_type_id?: number;
+            [key: string]: unknown;
+        }>;
+    } | {
+        allianceHistory: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporation: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            corporation_id?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            friendly_fire?: boolean | null;
+            lp_tax_rate?: number | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            state?: string | null;
+            tax_rate?: number;
+            ticker?: string;
+            type?: string | null;
+            url?: string | null;
+            war_eligible?: boolean;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        alliance: {
+            alliance_id?: number;
+            corporation_count?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            executor_corporation_id?: number | null;
+            executor_name?: string | null;
+            executor_ticker?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            ticker?: string;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        faction: {
+            corporation_id?: number | null;
+            description?: string | null;
+            faction_id?: number;
+            militia_corporation_id?: number | null;
+            name?: string;
+            solar_system_id?: number | null;
+            station_count?: number;
+            station_system_count?: number;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_lost: number;
+            losses: number;
+        };
+        stats: {
+            isk_lost: number;
+            losses: number;
+        };
     };
 };
 
@@ -9768,7 +14880,12 @@ export type EntityPageDetailCorporationCompatResponse = EntityPageDetailCorporat
 export type EntityPageIntelCorporationCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days.
+         */
+        days?: number;
+    };
     url: '/corporation/{id}/intel';
 };
 
@@ -9777,7 +14894,123 @@ export type EntityPageIntelCorporationCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        awox_kills: number;
+        bait: string;
+        bait_count: number;
+        bridge_score: number;
+        capital_pilot: boolean;
+        character_id: number;
+        cyno_deaths: number;
+        days: number;
+        dominant_style: string;
+        fc: {
+            likelihood?: number;
+            monitor_appearances?: number;
+            [key: string]: unknown;
+        };
+        fleet_partners: Array<{
+            [key: string]: unknown;
+        }>;
+        groups_flown_with: Array<{
+            [key: string]: unknown;
+        }>;
+        is_logi: boolean;
+        playstyle: {
+            [key: string]: unknown;
+        };
+        ships_flown: Array<{
+            [key: string]: unknown;
+        }>;
+        ships_lost: Array<{
+            [key: string]: unknown;
+        }>;
+        tags: Array<string>;
+        targets: Array<{
+            [key: string]: unknown;
+        }>;
+    } | {
+        activeMembers: {
+            days_30: number;
+            days_7: number;
+            days_90: number;
+        };
+        allies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        census: {
+            caps: number;
+            corps?: Array<{
+                id?: number;
+                name?: string;
+                total?: number;
+                [key: string]: unknown;
+            }>;
+            droppers: number;
+            fcs: number;
+            logis: number;
+            supers: number;
+            total: number;
+        };
+        enemies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        huntingGrounds: Array<{
+            active_characters: number;
+            id: number;
+            name: string;
+        }>;
+        recentDepartures: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
+        recentJoins: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
     };
 };
 
@@ -9786,7 +15019,28 @@ export type EntityPageIntelCorporationCompatResponse = EntityPageIntelCorporatio
 export type EntityPageMembersCorporationCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the member rows.
+         */
+        sort?: 'name' | 'last_active' | 'security_status';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Restrict an alliance's members to one corporation.
+         */
+        corporation_id?: number;
+        /**
+         * Only members active within this many days. 0 disables the filter.
+         */
+        activity?: number;
+    };
     url: '/corporation/{id}/members';
 };
 
@@ -9795,7 +15049,24 @@ export type EntityPageMembersCorporationCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit: number;
+        members: Array<{
+            character_id: number;
+            corporation_id?: number | null;
+            is_capital_pilot: boolean;
+            is_fc: boolean;
+            is_logi: boolean;
+            kills_90d: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active: string | null;
+            losses_90d: number;
+            name: string;
+            security_status: number;
+        }>;
+        page: number;
+        total: number;
     };
 };
 
@@ -9804,7 +15075,12 @@ export type EntityPageMembersCorporationCompatResponse = EntityPageMembersCorpor
 export type EntityPageStatsCorporationCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days. 0 covers the whole record.
+         */
+        days?: number;
+    };
     url: '/corporation/{id}/stats';
 };
 
@@ -9813,7 +15089,62 @@ export type EntityPageStatsCorporationCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity?: {
+            kills: Array<Array<number>>;
+            losses: Array<Array<number>>;
+        };
+        diesToAlliances: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        diesToCorporations: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithAlliances?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithCorporations?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        heatMap?: {
+            [key: string]: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShipsLost: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
+        topShipsUsed: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
     };
 };
 
@@ -9822,7 +15153,16 @@ export type EntityPageStatsCorporationCompatResponse = EntityPageStatsCorporatio
 export type EntityTopCorporationCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which half of the leaderboard set to build. `right` also accepts `days=alltime`.
+         */
+        slice?: 'left' | 'right';
+        /**
+         * Window in days, between 1/24 and 365. Send `alltime` with `slice=right` for the unbounded set. Default 7.
+         */
+        days?: string;
+    };
     url: '/corporation/{id}/top';
 };
 
@@ -9831,7 +15171,96 @@ export type EntityTopCorporationCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        achievementPoints?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByIsk?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByKills?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        charactersByPoints?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        constellations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        corporationsByKills?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedAlliances?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedByAlliances?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedByCorporations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        killedCorporations?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        recentMembers?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        regions?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        shipsUsed?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        soloKillers?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
+        systems?: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+        }>;
     };
 };
 
@@ -9840,7 +15269,20 @@ export type EntityTopCorporationCompatResponse = EntityTopCorporationCompatRespo
 export type CorporationsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Case-insensitive name prefix to match.
+         */
+        name?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/corporations';
 };
 
@@ -9872,21 +15314,21 @@ export type CorporationsCountResponse2 = CorporationsCountResponses[keyof Corpor
 export type CorporationsBatchStatsData = {
     body: {
         /**
-         * Start of the window, for type=custom.
+         * Start of the window, for type=range.
          */
         from?: string;
         /**
          * Entity IDs to resolve, at most 100 per request.
          */
-        ids: Array<number> | null;
+        ids: Array<number>;
         /**
-         * End of the window, for type=custom.
+         * End of the window, for type=range.
          */
         to?: string;
         /**
          * Aggregation period. Falls back to the type query parameter, then alltime.
          */
-        type?: 'alltime' | 'weekly' | 'monthly' | 'custom';
+        type?: 'alltime' | 'weekly' | 'range';
     };
     path?: never;
     query?: never;
@@ -9925,7 +15367,20 @@ export type CorporationKillsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/corporations/{id}/kills';
 };
 
@@ -9943,7 +15398,20 @@ export type CorporationLossesData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/corporations/{id}/losses';
 };
 
@@ -9961,7 +15429,16 @@ export type CorporationMembersData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/corporations/{id}/members';
 };
 
@@ -10013,7 +15490,16 @@ export type CorporationStatsWeeklyResponse2 = CorporationStatsWeeklyResponses[ke
 export type DomainConstellationKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/custom/constellation/{id}/killlist';
 };
 
@@ -10022,7 +15508,46 @@ export type DomainConstellationKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -10031,7 +15556,20 @@ export type DomainConstellationKilllistResponse = DomainConstellationKilllistRes
 export type DomainKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/custom/killlist';
 };
 
@@ -10040,7 +15578,46 @@ export type DomainKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -10049,7 +15626,20 @@ export type DomainKilllistResponse = DomainKilllistResponses[keyof DomainKilllis
 export type DomainKillsMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/custom/kills/most-valuable';
 };
 
@@ -10058,7 +15648,17 @@ export type DomainKillsMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -10067,7 +15667,24 @@ export type DomainKillsMostValuableResponse = DomainKillsMostValuableResponses[k
 export type DomainKillsTopData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        /**
+         * Which leaderboard to build.
+         */
+        dataType?: 'characters' | 'corporations' | 'alliances' | 'ships' | 'systems' | 'regions';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/custom/kills/top';
 };
 
@@ -10076,7 +15693,14 @@ export type DomainKillsTopResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+            region_id?: number | null;
+            type: string;
+        }>;
     };
 };
 
@@ -10085,7 +15709,16 @@ export type DomainKillsTopResponse = DomainKillsTopResponses[keyof DomainKillsTo
 export type DomainRegionKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/custom/region/{id}/killlist';
 };
 
@@ -10094,7 +15727,46 @@ export type DomainRegionKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -10103,7 +15775,20 @@ export type DomainRegionKilllistResponse = DomainRegionKilllistResponses[keyof D
 export type DomainStatisticsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which leaderboard to build.
+         */
+        dataType?: 'characters' | 'corporations' | 'alliances' | 'ships' | 'systems' | 'regions';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/custom/stats';
 };
 
@@ -10112,7 +15797,29 @@ export type DomainStatisticsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        } | {
+            count?: number;
+            id?: number;
+            isk_destroyed?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            name?: string;
+            palette?: string | null;
+            type?: string;
+            value?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -10121,7 +15828,16 @@ export type DomainStatisticsResponse = DomainStatisticsResponses[keyof DomainSta
 export type DomainSystemKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/custom/system/{id}/killlist';
 };
 
@@ -10130,7 +15846,46 @@ export type DomainSystemKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -10147,9 +15902,7 @@ export type DomainBannerOrLogoResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Blob | File;
 };
 
 export type DomainBannerOrLogoResponse = DomainBannerOrLogoResponses[keyof DomainBannerOrLogoResponses];
@@ -10165,9 +15918,7 @@ export type DomainBackgroundResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Blob | File;
 };
 
 export type DomainBackgroundResponse = DomainBackgroundResponses[keyof DomainBackgroundResponses];
@@ -10175,7 +15926,12 @@ export type DomainBackgroundResponse = DomainBackgroundResponses[keyof DomainBac
 export type DomainAssetPreviewData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Signed preview token for an unapproved asset.
+         */
+        token?: string;
+    };
     url: '/domains/preview/{assetId}';
 };
 
@@ -10183,9 +15939,7 @@ export type DomainAssetPreviewResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Blob | File;
 };
 
 export type DomainAssetPreviewResponse = DomainAssetPreviewResponses[keyof DomainAssetPreviewResponses];
@@ -10193,7 +15947,16 @@ export type DomainAssetPreviewResponse = DomainAssetPreviewResponses[keyof Domai
 export type EntityResolveData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Entity kind to resolve. Required.
+         */
+        type: 'character' | 'corporation' | 'alliance' | 'faction';
+        /**
+         * Entity ID to resolve. Required.
+         */
+        id: number;
+    };
     url: '/entities/resolve';
 };
 
@@ -10202,7 +15965,9 @@ export type EntityResolveResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        id: number;
+        name: string;
+        type: string;
     };
 };
 
@@ -10220,7 +15985,205 @@ export type EntityPageDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        character: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            birthday?: string | null;
+            bloodline_name?: string | null;
+            character_id?: number;
+            corporation_id?: number | null;
+            corporation_name?: string | null;
+            corporation_ticker?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            gender?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active?: string | null;
+            name?: string;
+            palette?: string | null;
+            race_name?: string | null;
+            security_status?: number;
+            title?: string | null;
+            [key: string]: unknown;
+        };
+        corporationHistory: Array<{
+            corporation_id: number;
+            corporation_name: string;
+            corporation_ticker: string;
+            kills: number;
+            losses: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporationHistoryQueued: boolean;
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShips: Array<{
+            kills?: number;
+            losses?: number;
+            ship_name?: string;
+            ship_type_id?: number;
+            [key: string]: unknown;
+        }>;
+    } | {
+        allianceHistory: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporation: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            corporation_id?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            friendly_fire?: boolean | null;
+            lp_tax_rate?: number | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            state?: string | null;
+            tax_rate?: number;
+            ticker?: string;
+            type?: string | null;
+            url?: string | null;
+            war_eligible?: boolean;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        alliance: {
+            alliance_id?: number;
+            corporation_count?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            executor_corporation_id?: number | null;
+            executor_name?: string | null;
+            executor_ticker?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            ticker?: string;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        faction: {
+            corporation_id?: number | null;
+            description?: string | null;
+            faction_id?: number;
+            militia_corporation_id?: number | null;
+            name?: string;
+            solar_system_id?: number | null;
+            station_count?: number;
+            station_system_count?: number;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_lost: number;
+            losses: number;
+        };
+        stats: {
+            isk_lost: number;
+            losses: number;
+        };
     };
 };
 
@@ -10238,7 +16201,18 @@ export type EntityPageAchievementsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        achievements: Array<{
+            achievement_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            completed_at: string | null;
+            completion_tiers: number;
+            current_count: number;
+            is_completed: boolean;
+            points: number;
+            threshold: number;
+        }>;
     };
 };
 
@@ -10247,7 +16221,16 @@ export type EntityPageAchievementsResponse = EntityPageAchievementsResponses[key
 export type EntityPageCorporationsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the corporation rows.
+         */
+        sort?: 'member_count' | 'name';
+        /**
+         * Sort direction.
+         */
+        dir?: 'asc' | 'desc';
+    };
     url: '/entities/{type}/{id}/corporations';
 };
 
@@ -10256,7 +16239,14 @@ export type EntityPageCorporationsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        corporations: Array<{
+            corporation_id: number;
+            member_count: number;
+            name: string;
+            palette: string | null;
+            ticker: string;
+        }>;
+        total: number;
     };
 };
 
@@ -10265,7 +16255,12 @@ export type EntityPageCorporationsResponse = EntityPageCorporationsResponses[key
 export type EntityPageIntelData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days.
+         */
+        days?: number;
+    };
     url: '/entities/{type}/{id}/intel';
 };
 
@@ -10274,7 +16269,123 @@ export type EntityPageIntelResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        awox_kills: number;
+        bait: string;
+        bait_count: number;
+        bridge_score: number;
+        capital_pilot: boolean;
+        character_id: number;
+        cyno_deaths: number;
+        days: number;
+        dominant_style: string;
+        fc: {
+            likelihood?: number;
+            monitor_appearances?: number;
+            [key: string]: unknown;
+        };
+        fleet_partners: Array<{
+            [key: string]: unknown;
+        }>;
+        groups_flown_with: Array<{
+            [key: string]: unknown;
+        }>;
+        is_logi: boolean;
+        playstyle: {
+            [key: string]: unknown;
+        };
+        ships_flown: Array<{
+            [key: string]: unknown;
+        }>;
+        ships_lost: Array<{
+            [key: string]: unknown;
+        }>;
+        tags: Array<string>;
+        targets: Array<{
+            [key: string]: unknown;
+        }>;
+    } | {
+        activeMembers: {
+            days_30: number;
+            days_7: number;
+            days_90: number;
+        };
+        allies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        census: {
+            caps: number;
+            corps?: Array<{
+                id?: number;
+                name?: string;
+                total?: number;
+                [key: string]: unknown;
+            }>;
+            droppers: number;
+            fcs: number;
+            logis: number;
+            supers: number;
+            total: number;
+        };
+        enemies: Array<{
+            id?: number;
+            kills_given?: number;
+            kills_taken?: number;
+            mutual_kills?: number;
+            name?: string;
+            shared_enemy_kills?: number;
+            total?: number;
+        }>;
+        huntingGrounds: Array<{
+            active_characters: number;
+            id: number;
+            name: string;
+        }>;
+        recentDepartures: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
+        recentJoins: Array<{
+            current_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string | null;
+            name: string;
+            previous_corp?: {
+                id: number;
+                name: string | null;
+            } | null;
+        }>;
     };
 };
 
@@ -10283,7 +16394,28 @@ export type EntityPageIntelResponse = EntityPageIntelResponses[keyof EntityPageI
 export type EntityPageKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Whose killmails to return.
+         */
+        role?: 'kills' | 'losses' | 'combined';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+        /**
+         * Restrict to one victim ship group ID.
+         */
+        ship_group?: number;
+    };
     url: '/entities/{type}/{id}/killlist';
 };
 
@@ -10292,7 +16424,46 @@ export type EntityPageKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -10301,7 +16472,28 @@ export type EntityPageKilllistResponse = EntityPageKilllistResponses[keyof Entit
 export type EntityPageMembersData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Ordering for the member rows.
+         */
+        sort?: 'name' | 'last_active' | 'security_status';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Restrict an alliance's members to one corporation.
+         */
+        corporation_id?: number;
+        /**
+         * Only members active within this many days. 0 disables the filter.
+         */
+        activity?: number;
+    };
     url: '/entities/{type}/{id}/members';
 };
 
@@ -10310,7 +16502,24 @@ export type EntityPageMembersResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit: number;
+        members: Array<{
+            character_id: number;
+            corporation_id?: number | null;
+            is_capital_pilot: boolean;
+            is_fc: boolean;
+            is_logi: boolean;
+            kills_90d: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active: string | null;
+            losses_90d: number;
+            name: string;
+            security_status: number;
+        }>;
+        page: number;
+        total: number;
     };
 };
 
@@ -10319,7 +16528,20 @@ export type EntityPageMembersResponse = EntityPageMembersResponses[keyof EntityP
 export type EntityPageMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/entities/{type}/{id}/most-valuable';
 };
 
@@ -10328,7 +16550,17 @@ export type EntityPageMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -10346,7 +16578,12 @@ export type EntityPageShipClassesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        groups: Array<{
+            group_id: number;
+            group_name: string;
+            isk_lost: number;
+            losses: number;
+        }>;
     };
 };
 
@@ -10355,7 +16592,12 @@ export type EntityPageShipClassesResponse = EntityPageShipClassesResponses[keyof
 export type EntityPageStatsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days. 0 covers the whole record.
+         */
+        days?: number;
+    };
     url: '/entities/{type}/{id}/stats';
 };
 
@@ -10364,7 +16606,62 @@ export type EntityPageStatsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity?: {
+            kills: Array<Array<number>>;
+            losses: Array<Array<number>>;
+        };
+        diesToAlliances: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        diesToCorporations: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithAlliances?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        fliesWithCorporations?: Array<{
+            count: number;
+            id: number;
+            isk_value: number;
+            name: string;
+        }>;
+        heatMap?: {
+            [key: string]: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShipsLost: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
+        topShipsUsed: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
     };
 };
 
@@ -10373,7 +16670,12 @@ export type EntityPageStatsResponse = EntityPageStatsResponses[keyof EntityPageS
 export type EntityPageTopListsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days. 0 covers the whole record.
+         */
+        days?: number;
+    };
     url: '/entities/{type}/{id}/top-lists';
 };
 
@@ -10382,7 +16684,52 @@ export type EntityPageTopListsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        killed: {
+            alliances: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            characters: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            corporations: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+        };
+        killedBy: {
+            alliances: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            characters: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            corporations: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+        };
     };
 };
 
@@ -10391,7 +16738,16 @@ export type EntityPageTopListsResponse = EntityPageTopListsResponses[keyof Entit
 export type EntityResolveCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Entity kind to resolve. Required.
+         */
+        type: 'character' | 'corporation' | 'alliance' | 'faction';
+        /**
+         * Entity ID to resolve. Required.
+         */
+        id: number;
+    };
     url: '/entity/resolve';
 };
 
@@ -10400,7 +16756,9 @@ export type EntityResolveCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        id: number;
+        name: string;
+        type: string;
     };
 };
 
@@ -10409,7 +16767,28 @@ export type EntityResolveCompatResponse = EntityResolveCompatResponses[keyof Ent
 export type EntityPageKilllistGenericCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Whose killmails to return.
+         */
+        role?: 'kills' | 'losses' | 'combined';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+        /**
+         * Restrict to one victim ship group ID.
+         */
+        ship_group?: number;
+    };
     url: '/entity/{type}/{id}/killlist';
 };
 
@@ -10418,7 +16797,46 @@ export type EntityPageKilllistGenericCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -10427,7 +16845,20 @@ export type EntityPageKilllistGenericCompatResponse = EntityPageKilllistGenericC
 export type EntityPageMostValuableGenericCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/entity/{type}/{id}/most-valuable';
 };
 
@@ -10436,7 +16867,17 @@ export type EntityPageMostValuableGenericCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -10454,7 +16895,12 @@ export type EntityPageShipClassesGenericCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        groups: Array<{
+            group_id: number;
+            group_name: string;
+            isk_lost: number;
+            losses: number;
+        }>;
     };
 };
 
@@ -10463,7 +16909,12 @@ export type EntityPageShipClassesGenericCompatResponse = EntityPageShipClassesGe
 export type EntityPageTopListsGenericCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing window in days. 0 covers the whole record.
+         */
+        days?: number;
+    };
     url: '/entity/{type}/{id}/top-lists';
 };
 
@@ -10472,7 +16923,52 @@ export type EntityPageTopListsGenericCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        killed: {
+            alliances: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            characters: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            corporations: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+        };
+        killedBy: {
+            alliances: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            characters: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+            corporations: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+                palette: string | null;
+            }>;
+        };
     };
 };
 
@@ -10481,7 +16977,12 @@ export type EntityPageTopListsGenericCompatResponse = EntityPageTopListsGenericC
 export type FactionWarDashboardDetailData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+    };
     url: '/faction-war/{matchup}';
 };
 
@@ -10490,7 +16991,61 @@ export type FactionWarDashboardDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        days: number;
+        matchup: string;
+        side1: {
+            corpId: number;
+            id: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            name: string;
+            topAlliances: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCharacters: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCorporations: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+        };
+        side2: {
+            corpId: number;
+            id: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            name: string;
+            topAlliances: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCharacters: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCorporations: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+        };
+        topShips: Array<{
+            kills: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
     };
 };
 
@@ -10499,7 +17054,16 @@ export type FactionWarDashboardDetailResponse = FactionWarDashboardDetailRespons
 export type FactionWarDashboardData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Reporting window.
+         */
+        period?: 'yesterday' | 'last_week' | 'active_total';
+    };
     url: '/faction-war/{matchup}/dashboard';
 };
 
@@ -10508,7 +17072,151 @@ export type FactionWarDashboardResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        days: number;
+        matchup: string;
+        overview: {
+            factionStats: {
+                side1: {
+                    kills_last_week: number;
+                    kills_total: number;
+                    kills_yesterday: number;
+                    pilots: number;
+                    systems_controlled: number;
+                    vp_last_week: number;
+                    vp_total: number;
+                    vp_yesterday: number;
+                } | null;
+                side2: {
+                    kills_last_week: number;
+                    kills_total: number;
+                    kills_yesterday: number;
+                    pilots: number;
+                    systems_controlled: number;
+                    vp_last_week: number;
+                    vp_total: number;
+                    vp_yesterday: number;
+                } | null;
+            };
+            flipDays: Array<{
+                day: string;
+                items: Array<{
+                    /**
+                     * UTC timestamp with millisecond precision.
+                     */
+                    flipped_at: string;
+                    new_faction_id: number;
+                    new_faction_name: string | null;
+                    old_faction_id: number;
+                    old_faction_name: string | null;
+                    solar_system_id: number;
+                    system_name: string | null;
+                }>;
+            }>;
+            leaderboards: {
+                characters: {
+                    side1: Array<{
+                        corporation_name?: string | null;
+                        id: number;
+                        kills: number;
+                        name: string | null;
+                    }>;
+                    side2: Array<{
+                        corporation_name?: string | null;
+                        id: number;
+                        kills: number;
+                        name: string | null;
+                    }>;
+                };
+                corporations: {
+                    side1: Array<{
+                        corporation_name?: string | null;
+                        id: number;
+                        kills: number;
+                        name: string | null;
+                    }>;
+                    side2: Array<{
+                        corporation_name?: string | null;
+                        id: number;
+                        kills: number;
+                        name: string | null;
+                    }>;
+                };
+            };
+            warzone: {
+                side1: {
+                    captured: number;
+                    contested: number;
+                    total: number;
+                    total_threshold: number;
+                    total_vp: number;
+                    uncontested: number;
+                    vulnerable: number;
+                };
+                side2: {
+                    captured: number;
+                    contested: number;
+                    total: number;
+                    total_threshold: number;
+                    total_vp: number;
+                    uncontested: number;
+                    vulnerable: number;
+                };
+                total_systems: number;
+            };
+        };
+        side1: {
+            corpId: number;
+            id: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            name: string;
+            topAlliances: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCharacters: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCorporations: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+        };
+        side2: {
+            corpId: number;
+            id: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            name: string;
+            topAlliances: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCharacters: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+            topCorporations: Array<{
+                id: number;
+                kills: number;
+                name: string | null;
+            }>;
+        };
+        topShips: Array<{
+            kills: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
     };
 };
 
@@ -10517,7 +17225,12 @@ export type FactionWarDashboardResponse = FactionWarDashboardResponses[keyof Fac
 export type FactionWarIntelData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+    };
     url: '/faction-war/{matchup}/intel';
 };
 
@@ -10526,7 +17239,68 @@ export type FactionWarIntelResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        days: number;
+        matchup: string;
+        security_breakdown: Array<{
+            isk_destroyed: number;
+            kills: number;
+            sec_class: string;
+        }>;
+        ship_groups_destroyed: Array<{
+            count?: number;
+            group_id?: number;
+            group_name?: string | null;
+            isk_destroyed?: number;
+            [key: string]: unknown;
+        }>;
+        ships_destroyed: Array<{
+            count: number;
+            group_id: number | null;
+            group_name: string | null;
+            isk_destroyed: number;
+            ship_name: string | null;
+            ship_type_id: number;
+        }>;
+        ships_used: Array<{
+            count: number;
+            group_id: number | null;
+            group_name: string | null;
+            ship_name: string | null;
+            ship_type_id: number;
+        }>;
+        summary: {
+            constellations: number;
+            isk_destroyed: number;
+            kills: number;
+            regions: number;
+            systems: number;
+        };
+        top_constellations: Array<{
+            constellation_id?: number;
+            constellation_name?: string | null;
+            isk_destroyed?: number;
+            kills?: number;
+            region_id?: number | null;
+            region_name?: string | null;
+            [key: string]: unknown;
+        }>;
+        top_regions: Array<{
+            isk_destroyed?: number;
+            kills?: number;
+            region_id?: number;
+            region_name?: string | null;
+            [key: string]: unknown;
+        }>;
+        top_systems: Array<{
+            isk_destroyed?: number;
+            kills?: number;
+            region_id?: number | null;
+            region_name?: string | null;
+            security?: number | null;
+            system_id?: number;
+            system_name?: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -10535,7 +17309,32 @@ export type FactionWarIntelResponse = FactionWarIntelResponses[keyof FactionWarI
 export type FactionWarMembersData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which side of the war to report on.
+         */
+        side?: 'aggressor' | 'defender' | 'combined';
+        /**
+         * Ordering for the member rows.
+         */
+        sort?: 'kills' | 'losses' | 'isk' | 'activity';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Restrict to one corporation.
+         */
+        corporationId?: number;
+        /**
+         * Restrict to one alliance.
+         */
+        allianceId?: number;
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+    };
     url: '/faction-war/{matchup}/members';
 };
 
@@ -10544,7 +17343,29 @@ export type FactionWarMembersResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        count: number;
+        days: number;
+        limit: number;
+        matchup: string;
+        members: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            character_id: number;
+            character_name: string;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            corporation_ticker: string | null;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            side: string;
+            top_ship_count: number;
+            top_ship_name: string | null;
+            top_ship_type_id: number | null;
+        }>;
+        side: string;
     };
 };
 
@@ -10553,7 +17374,12 @@ export type FactionWarMembersResponse = FactionWarMembersResponses[keyof Faction
 export type FactionWarOverviewData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Reporting window.
+         */
+        period?: 'yesterday' | 'last_week' | 'active_total';
+    };
     url: '/faction-war/{matchup}/overview';
 };
 
@@ -10562,7 +17388,94 @@ export type FactionWarOverviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        factionStats: {
+            side1: {
+                kills_last_week: number;
+                kills_total: number;
+                kills_yesterday: number;
+                pilots: number;
+                systems_controlled: number;
+                vp_last_week: number;
+                vp_total: number;
+                vp_yesterday: number;
+            } | null;
+            side2: {
+                kills_last_week: number;
+                kills_total: number;
+                kills_yesterday: number;
+                pilots: number;
+                systems_controlled: number;
+                vp_last_week: number;
+                vp_total: number;
+                vp_yesterday: number;
+            } | null;
+        };
+        flipDays: Array<{
+            day: string;
+            items: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                flipped_at: string;
+                new_faction_id: number;
+                new_faction_name: string | null;
+                old_faction_id: number;
+                old_faction_name: string | null;
+                solar_system_id: number;
+                system_name: string | null;
+            }>;
+        }>;
+        leaderboards: {
+            characters: {
+                side1: Array<{
+                    corporation_name?: string | null;
+                    id: number;
+                    kills: number;
+                    name: string | null;
+                }>;
+                side2: Array<{
+                    corporation_name?: string | null;
+                    id: number;
+                    kills: number;
+                    name: string | null;
+                }>;
+            };
+            corporations: {
+                side1: Array<{
+                    corporation_name?: string | null;
+                    id: number;
+                    kills: number;
+                    name: string | null;
+                }>;
+                side2: Array<{
+                    corporation_name?: string | null;
+                    id: number;
+                    kills: number;
+                    name: string | null;
+                }>;
+            };
+        };
+        warzone: {
+            side1: {
+                captured: number;
+                contested: number;
+                total: number;
+                total_threshold: number;
+                total_vp: number;
+                uncontested: number;
+                vulnerable: number;
+            };
+            side2: {
+                captured: number;
+                contested: number;
+                total: number;
+                total_threshold: number;
+                total_vp: number;
+                uncontested: number;
+                vulnerable: number;
+            };
+            total_systems: number;
+        };
     };
 };
 
@@ -10580,7 +17493,31 @@ export type FactionWarSystemsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        celestials: Array<{
+            group_id: number;
+            system_id: number;
+            x: number;
+            z: number;
+        }>;
+        jumps: Array<Array<number>>;
+        systems: Array<{
+            constellation_id: number;
+            constellation_name: string | null;
+            contested: string | null;
+            isk_24h: number;
+            kills_24h: number;
+            occupier_faction_id: number;
+            owner_faction_id: number;
+            region_id: number;
+            region_name: string | null;
+            security: number;
+            solar_system_id: number;
+            system_name: string | null;
+            victory_points: number;
+            victory_points_threshold: number;
+            x: number;
+            y: number;
+        }>;
     };
 };
 
@@ -10598,7 +17535,30 @@ export type FactionWarsDashboardResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        'amarr-minmatar': {
+            [key: string]: {
+                faction_id: number;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+                name: string;
+                pilots: number;
+                systems_controlled: number;
+            };
+        };
+        'caldari-gallente': {
+            [key: string]: {
+                faction_id: number;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+                name: string;
+                pilots: number;
+                systems_controlled: number;
+            };
+        };
     };
 };
 
@@ -10616,7 +17576,205 @@ export type EntityPageDetailFactionCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        character: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            birthday?: string | null;
+            bloodline_name?: string | null;
+            character_id?: number;
+            corporation_id?: number | null;
+            corporation_name?: string | null;
+            corporation_ticker?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            gender?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_active?: string | null;
+            name?: string;
+            palette?: string | null;
+            race_name?: string | null;
+            security_status?: number;
+            title?: string | null;
+            [key: string]: unknown;
+        };
+        corporationHistory: Array<{
+            corporation_id: number;
+            corporation_name: string;
+            corporation_ticker: string;
+            kills: number;
+            losses: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporationHistoryQueued: boolean;
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+        topShips: Array<{
+            kills?: number;
+            losses?: number;
+            ship_name?: string;
+            ship_type_id?: number;
+            [key: string]: unknown;
+        }>;
+    } | {
+        allianceHistory: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_date: string;
+        }>;
+        corporation: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            alliance_ticker?: string | null;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            corporation_id?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            description?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            friendly_fire?: boolean | null;
+            lp_tax_rate?: number | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            state?: string | null;
+            tax_rate?: number;
+            ticker?: string;
+            type?: string | null;
+            url?: string | null;
+            war_eligible?: boolean;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        alliance: {
+            alliance_id?: number;
+            corporation_count?: number;
+            creator_id?: number | null;
+            creator_name?: string | null;
+            custom_description?: string | null;
+            custom_description_format?: string | null;
+            custom_description_html?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string | null;
+            executor_corporation_id?: number | null;
+            executor_name?: string | null;
+            executor_ticker?: string | null;
+            faction_id?: number | null;
+            faction_name?: string | null;
+            member_count?: number;
+            name?: string;
+            palette?: string | null;
+            ticker?: string;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+        };
+        stats: {
+            damage_dealt?: number;
+            damage_taken?: number;
+            efficiency?: number;
+            final_blows?: number;
+            isk_destroyed?: number;
+            isk_efficiency?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            npc_losses?: number;
+            points?: number;
+            solo_kills?: number;
+            [key: string]: unknown;
+        };
+    } | {
+        faction: {
+            corporation_id?: number | null;
+            description?: string | null;
+            faction_id?: number;
+            militia_corporation_id?: number | null;
+            name?: string;
+            solar_system_id?: number | null;
+            station_count?: number;
+            station_system_count?: number;
+            [key: string]: unknown;
+        };
+        recentStats: {
+            isk_lost: number;
+            losses: number;
+        };
+        stats: {
+            isk_lost: number;
+            losses: number;
+        };
     };
 };
 
@@ -10641,7 +17799,16 @@ export type FeedIndexResponse2 = FeedIndexResponses[keyof FeedIndexResponses];
 export type FeedPollData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/feed/poll';
 };
 
@@ -10688,26 +17855,18 @@ export type FeedStreamResponse = FeedStreamResponses[keyof FeedStreamResponses];
 
 export type FittingCreateLegacyData = {
     body: {
-        /**
-         * Free text shown with the fitting. Null clears it.
-         */
         description?: string | null;
-        /**
-         * Fitted modules, charges, drones and cargo.
-         */
-        items: Array<FittingItemBody> | null;
-        /**
-         * Display name for the fitting.
-         */
-        name: string | null;
-        /**
-         * Hull the fitting is for.
-         */
-        ship_type_id: number | null;
-        /**
-         * Who may see the fitting.
-         */
-        visibility: number | null;
+        items: Array<{
+            charge_type_id?: number;
+            ordinal: number;
+            quantity?: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        name: string;
+        ship_type_id: number;
+        visibility: number;
     };
     path?: never;
     query?: never;
@@ -10719,6 +17878,30 @@ export type FittingCreateLegacyResponses = {
      * OK
      */
     200: {
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at?: string;
+        description: string | null;
+        fit_id: string;
+        items: Array<{
+            charge_type_id: number | null;
+            ordinal: number;
+            quantity: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        name: string;
+        owner_character_id: number;
+        rating_avg?: number | null;
+        rating_count?: number;
+        ship_type_id: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        updated_at?: string;
+        visibility: number;
         [key: string]: unknown;
     };
 };
@@ -10737,7 +17920,7 @@ export type FittingDeleteLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
     };
 };
 
@@ -10755,7 +17938,34 @@ export type FittingDetailLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fit: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            fit_id?: string;
+            name?: string;
+            owner_character_id?: number;
+            rating_avg?: number | null;
+            rating_count?: number;
+            ship_type_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            visibility?: number;
+            [key: string]: unknown;
+        };
+        items: Array<{
+            charge_type_id: number | null;
+            ordinal: number;
+            quantity: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        viewer_rating: number | null;
     };
 };
 
@@ -10763,22 +17973,17 @@ export type FittingDetailLegacyResponse = FittingDetailLegacyResponses[keyof Fit
 
 export type FittingUpdateLegacyData = {
     body: {
-        /**
-         * New description. Null clears it.
-         */
         description?: string | null;
-        /**
-         * Replacement item list. Absent leaves the stored items alone.
-         */
-        items?: Array<FittingItemBody> | null;
-        /**
-         * New display name.
-         */
-        name?: string | null;
-        /**
-         * New visibility.
-         */
-        visibility?: number | null;
+        items?: Array<{
+            charge_type_id?: number;
+            ordinal: number;
+            quantity?: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        name?: string;
+        visibility?: number;
     };
     path?: never;
     query?: never;
@@ -10790,7 +17995,33 @@ export type FittingUpdateLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fit: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            fit_id?: string;
+            name?: string;
+            owner_character_id?: number;
+            rating_avg?: number | null;
+            rating_count?: number;
+            ship_type_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            visibility?: number;
+            [key: string]: unknown;
+        };
+        items: Array<{
+            charge_type_id: number | null;
+            ordinal: number;
+            quantity: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
     };
 };
 
@@ -10808,7 +18039,11 @@ export type FittingRatingDeleteLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        aggregate: {
+            rating_avg: number | null;
+            rating_count: number;
+        };
+        deleted: boolean;
     };
 };
 
@@ -10816,10 +18051,7 @@ export type FittingRatingDeleteLegacyResponse = FittingRatingDeleteLegacyRespons
 
 export type FittingRatingPutLegacyData = {
     body: {
-        /**
-         * Rating from 1 to 5.
-         */
-        rating: number | null;
+        rating: number;
     };
     path?: never;
     query?: never;
@@ -10831,7 +18063,11 @@ export type FittingRatingPutLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        aggregate: {
+            rating_avg: number | null;
+            rating_count: number;
+        };
+        rating: number;
     };
 };
 
@@ -10840,7 +18076,12 @@ export type FittingRatingPutLegacyResponse = FittingRatingPutLegacyResponses[key
 export type FittingsCommunityLatestLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/fits/community-latest';
 };
 
@@ -10849,7 +18090,26 @@ export type FittingsCommunityLatestLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fits: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            description: string | null;
+            fit_id: string;
+            module_count: number;
+            name: string;
+            owner_character_id: number;
+            owner_name: string | null;
+            rating_avg: number | null;
+            rating_count: number;
+            ship_name: string | null;
+            ship_type_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        }>;
     };
 };
 
@@ -10867,7 +18127,41 @@ export type FittingsTrendingLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        families: Array<{
+            canonical_fit_hash: string;
+            canonical_uses: number;
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            hull_cost: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            ship_name: string | null;
+            ship_type_id: number;
+            top_alliances?: Array<{
+                alliance_id: number | null;
+                name: string | null;
+                pct_of_alliance_losses: number;
+                uses: number;
+            }>;
+            total_uses: number;
+            variant_count: number;
+        }>;
+        window_days: number;
     };
 };
 
@@ -10885,7 +18179,18 @@ export type FittingsPopularShipsLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ships: Array<{
+            fit_count: number;
+            group_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            ship_name: string | null;
+            ship_type_id: number;
+            total_uses: number;
+        }>;
+        window_days: number;
     };
 };
 
@@ -10903,7 +18208,10 @@ export type FittingsStatsLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        community_fits: number;
+        fittings_known: number;
+        killmails_analyzed: number;
+        ratings_cast: number;
     };
 };
 
@@ -10921,7 +18229,14 @@ export type FittingsRolesLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        roles: Array<{
+            category: string;
+            description?: string;
+            icon: string;
+            id: string;
+            label: string;
+            typeCount: number;
+        }>;
     };
 };
 
@@ -10930,7 +18245,24 @@ export type FittingsRolesLegacyResponse = FittingsRolesLegacyResponses[keyof Fit
 export type FittingsSearchLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Hull type ID to search fittings for. Required.
+         */
+        ship: number;
+        /**
+         * JSON array of at most 8 module or role filters, each `{"kind":"module"|"role",...}`.
+         */
+        filters?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Rows to skip before the page.
+         */
+        offset?: number;
+    };
     url: '/fits/search';
 };
 
@@ -10939,7 +18271,47 @@ export type FittingsSearchLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        filters_applied: Array<{
+            count: number;
+            kind: string;
+            op: string;
+            role_id?: string;
+            type_id?: number;
+            type_name?: string;
+        }>;
+        fits: Array<{
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            fit_hash: string;
+            hull_cost: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            ship_name: string | null;
+            ship_type_id: number;
+            total_uses: number;
+        }>;
+        has_more: boolean;
+        limit: number;
+        offset: number;
+        ship_name?: string | null;
+        ship_type_id: number;
+        total: number;
+        window_days: number;
     };
 };
 
@@ -10957,7 +18329,37 @@ export type FittingsAllianceDoctrinesLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        doctrines: Array<{
+            alliance_id: number;
+            alliance_name: string | null;
+            canonical_fit_hash: string;
+            doctrine_share: number;
+            doctrine_uses: number;
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            hull_cost: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            ship_name: string | null;
+            ship_type_id: number;
+            total_losses: number;
+        }>;
+        window_days: number;
     };
 };
 
@@ -10966,7 +18368,12 @@ export type FittingsAllianceDoctrinesLegacyResponse = FittingsAllianceDoctrinesL
 export type FittingsCommunityTopRatedLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/fits/top-rated';
 };
 
@@ -10975,7 +18382,26 @@ export type FittingsCommunityTopRatedLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fits: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            description: string | null;
+            fit_id: string;
+            module_count: number;
+            name: string;
+            owner_character_id: number;
+            owner_name: string | null;
+            rating_avg: number | null;
+            rating_count: number;
+            ship_name: string | null;
+            ship_type_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        }>;
     };
 };
 
@@ -10983,26 +18409,18 @@ export type FittingsCommunityTopRatedLegacyResponse = FittingsCommunityTopRatedL
 
 export type FittingCreateData = {
     body: {
-        /**
-         * Free text shown with the fitting. Null clears it.
-         */
         description?: string | null;
-        /**
-         * Fitted modules, charges, drones and cargo.
-         */
-        items: Array<FittingItemBody> | null;
-        /**
-         * Display name for the fitting.
-         */
-        name: string | null;
-        /**
-         * Hull the fitting is for.
-         */
-        ship_type_id: number | null;
-        /**
-         * Who may see the fitting.
-         */
-        visibility: number | null;
+        items: Array<{
+            charge_type_id?: number;
+            ordinal: number;
+            quantity?: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        name: string;
+        ship_type_id: number;
+        visibility: number;
     };
     path?: never;
     query?: never;
@@ -11014,6 +18432,30 @@ export type FittingCreateResponses = {
      * OK
      */
     200: {
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at?: string;
+        description: string | null;
+        fit_id: string;
+        items: Array<{
+            charge_type_id: number | null;
+            ordinal: number;
+            quantity: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        name: string;
+        owner_character_id: number;
+        rating_avg?: number | null;
+        rating_count?: number;
+        ship_type_id: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        updated_at?: string;
+        visibility: number;
         [key: string]: unknown;
     };
 };
@@ -11023,7 +18465,12 @@ export type FittingCreateResponse = FittingCreateResponses[keyof FittingCreateRe
 export type FittingsCommunityLatestData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/fittings/community/latest';
 };
 
@@ -11032,7 +18479,26 @@ export type FittingsCommunityLatestResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fits: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            description: string | null;
+            fit_id: string;
+            module_count: number;
+            name: string;
+            owner_character_id: number;
+            owner_name: string | null;
+            rating_avg: number | null;
+            rating_count: number;
+            ship_name: string | null;
+            ship_type_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        }>;
     };
 };
 
@@ -11041,7 +18507,12 @@ export type FittingsCommunityLatestResponse = FittingsCommunityLatestResponses[k
 export type FittingsCommunityTopRatedData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/fittings/community/top-rated';
 };
 
@@ -11050,7 +18521,26 @@ export type FittingsCommunityTopRatedResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fits: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            description: string | null;
+            fit_id: string;
+            module_count: number;
+            name: string;
+            owner_character_id: number;
+            owner_name: string | null;
+            rating_avg: number | null;
+            rating_count: number;
+            ship_name: string | null;
+            ship_type_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        }>;
     };
 };
 
@@ -11068,7 +18558,37 @@ export type FittingsAllianceDoctrinesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        doctrines: Array<{
+            alliance_id: number;
+            alliance_name: string | null;
+            canonical_fit_hash: string;
+            doctrine_share: number;
+            doctrine_uses: number;
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            hull_cost: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            ship_name: string | null;
+            ship_type_id: number;
+            total_losses: number;
+        }>;
+        window_days: number;
     };
 };
 
@@ -11086,7 +18606,14 @@ export type FittingsRolesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        roles: Array<{
+            category: string;
+            description?: string;
+            icon: string;
+            id: string;
+            label: string;
+            typeCount: number;
+        }>;
     };
 };
 
@@ -11095,7 +18622,24 @@ export type FittingsRolesResponse = FittingsRolesResponses[keyof FittingsRolesRe
 export type FittingsSearchData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Hull type ID to search fittings for. Required.
+         */
+        ship: number;
+        /**
+         * JSON array of at most 8 module or role filters, each `{"kind":"module"|"role",...}`.
+         */
+        filters?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Rows to skip before the page.
+         */
+        offset?: number;
+    };
     url: '/fittings/search';
 };
 
@@ -11104,7 +18648,47 @@ export type FittingsSearchResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        filters_applied: Array<{
+            count: number;
+            kind: string;
+            op: string;
+            role_id?: string;
+            type_id?: number;
+            type_name?: string;
+        }>;
+        fits: Array<{
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            fit_hash: string;
+            hull_cost: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            ship_name: string | null;
+            ship_type_id: number;
+            total_uses: number;
+        }>;
+        has_more: boolean;
+        limit: number;
+        offset: number;
+        ship_name?: string | null;
+        ship_type_id: number;
+        total: number;
+        window_days: number;
     };
 };
 
@@ -11122,7 +18706,18 @@ export type FittingsPopularShipsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ships: Array<{
+            fit_count: number;
+            group_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            ship_name: string | null;
+            ship_type_id: number;
+            total_uses: number;
+        }>;
+        window_days: number;
     };
 };
 
@@ -11140,7 +18735,42 @@ export type FittingsShipFamiliesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        families: Array<{
+            canonical_fit_hash: string;
+            canonical_uses: number;
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            hull_cost?: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            top_alliances?: Array<{
+                alliance_id: number | null;
+                name: string | null;
+                pct_of_alliance_losses: number;
+                uses: number;
+            }>;
+            total_uses: number;
+            variant_count: number;
+        }>;
+        hull_cost?: number | null;
+        is_rare_hull: boolean;
+        ship_type_id: number;
+        window_days: number;
     };
 };
 
@@ -11158,7 +18788,15 @@ export type FittingsShipMetadataResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        groups: Array<{
+            group_id: number;
+            kill_count: number;
+            name: string;
+            pct: number;
+        }>;
+        ship_type_id: number;
+        total_kills: number;
+        window_days: number;
     };
 };
 
@@ -11176,7 +18814,10 @@ export type FittingsStatsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        community_fits: number;
+        fittings_known: number;
+        killmails_analyzed: number;
+        ratings_cast: number;
     };
 };
 
@@ -11194,7 +18835,41 @@ export type FittingsTrendingResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        families: Array<{
+            canonical_fit_hash: string;
+            canonical_uses: number;
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            hull_cost: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            ship_name: string | null;
+            ship_type_id: number;
+            top_alliances?: Array<{
+                alliance_id: number | null;
+                name: string | null;
+                pct_of_alliance_losses: number;
+                uses: number;
+            }>;
+            total_uses: number;
+            variant_count: number;
+        }>;
+        window_days: number;
     };
 };
 
@@ -11212,7 +18887,7 @@ export type FittingDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
     };
 };
 
@@ -11230,7 +18905,34 @@ export type FittingDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fit: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            fit_id?: string;
+            name?: string;
+            owner_character_id?: number;
+            rating_avg?: number | null;
+            rating_count?: number;
+            ship_type_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            visibility?: number;
+            [key: string]: unknown;
+        };
+        items: Array<{
+            charge_type_id: number | null;
+            ordinal: number;
+            quantity: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        viewer_rating: number | null;
     };
 };
 
@@ -11238,22 +18940,17 @@ export type FittingDetailResponse = FittingDetailResponses[keyof FittingDetailRe
 
 export type FittingUpdateData = {
     body: {
-        /**
-         * New description. Null clears it.
-         */
         description?: string | null;
-        /**
-         * Replacement item list. Absent leaves the stored items alone.
-         */
-        items?: Array<FittingItemBody> | null;
-        /**
-         * New display name.
-         */
-        name?: string | null;
-        /**
-         * New visibility.
-         */
-        visibility?: number | null;
+        items?: Array<{
+            charge_type_id?: number;
+            ordinal: number;
+            quantity?: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
+        name?: string;
+        visibility?: number;
     };
     path?: never;
     query?: never;
@@ -11265,7 +18962,33 @@ export type FittingUpdateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        fit: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            fit_id?: string;
+            name?: string;
+            owner_character_id?: number;
+            rating_avg?: number | null;
+            rating_count?: number;
+            ship_type_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            visibility?: number;
+            [key: string]: unknown;
+        };
+        items: Array<{
+            charge_type_id: number | null;
+            ordinal: number;
+            quantity: number;
+            slot_group: number;
+            state: number;
+            type_id: number;
+        }>;
     };
 };
 
@@ -11283,7 +19006,11 @@ export type FittingRatingDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        aggregate: {
+            rating_avg: number | null;
+            rating_count: number;
+        };
+        deleted: boolean;
     };
 };
 
@@ -11291,10 +19018,7 @@ export type FittingRatingDeleteResponse = FittingRatingDeleteResponses[keyof Fit
 
 export type FittingRatingPutData = {
     body: {
-        /**
-         * Rating from 1 to 5.
-         */
-        rating: number | null;
+        rating: number;
     };
     path?: never;
     query?: never;
@@ -11306,7 +19030,11 @@ export type FittingRatingPutResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        aggregate: {
+            rating_avg: number | null;
+            rating_count: number;
+        };
+        rating: number;
     };
 };
 
@@ -11315,7 +19043,32 @@ export type FittingRatingPutResponse = FittingRatingPutResponses[keyof FittingRa
 export type GraphData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which graph query to run.
+         */
+        mode?: 'path_finder' | 'coalitions' | 'rivalries' | 'entity_intel' | 'hunting_grounds' | 'hot_zones' | 'migration' | 'spy_check' | 'census';
+        /**
+         * Entity kind for the modes that take one. Anything other than `corporation` is read as `alliance`.
+         */
+        entityType?: 'character' | 'corporation' | 'alliance';
+        /**
+         * Entity ID for the entity-scoped modes.
+         */
+        entityId?: number;
+        /**
+         * Starting character for `path_finder`.
+         */
+        fromId?: number;
+        /**
+         * Destination character for `path_finder`.
+         */
+        toId?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/graph';
 };
 
@@ -11324,7 +19077,129 @@ export type GraphResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        error?: string;
+        mode: string;
+        path: {
+            edges: Array<{
+                weight: number;
+            }>;
+            hops: number;
+            nodes: Array<{
+                alliance_name?: string | null;
+                corp_name?: string | null;
+                id: number;
+                name: string;
+            }>;
+        } | null;
+    } | {
+        coalitions: Array<{
+            alliances: Array<{
+                connections?: number;
+                id: number;
+                name: string;
+            }>;
+            id: number;
+        }>;
+        mode: string;
+    } | {
+        entityType: string;
+        items: Array<{
+            entity_a: {
+                alliance_name?: string | null;
+                corp_name?: string | null;
+                id: number;
+                name: string;
+            };
+            entity_b: {
+                alliance_name?: string | null;
+                corp_name?: string | null;
+                id: number;
+                name: string;
+            };
+            mutual_kills: number;
+            total_isk: number;
+        }>;
+        mode: string;
+    } | {
+        allies: Array<{
+            id?: number;
+            name?: string;
+            [key: string]: unknown;
+        }>;
+        enemies: Array<{
+            id?: number;
+            name?: string;
+            [key: string]: unknown;
+        }>;
+        entityType?: string;
+        mode: string;
+    } | {
+        entityType?: string;
+        mode: string;
+        systems: Array<{
+            active_characters?: number;
+            alliances?: number;
+            characters?: number;
+            id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            latest_activity?: string;
+            name?: string;
+            [key: string]: unknown;
+        }>;
+    } | {
+        corp_name?: string | null;
+        departed: Array<{
+            id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            left_at?: string;
+            name?: string;
+            [key: string]: unknown;
+        }>;
+        joined: Array<{
+            id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            joined_at?: string;
+            name?: string;
+            [key: string]: unknown;
+        }>;
+        mode: string;
+    } | {
+        entityType?: string;
+        mode: string;
+        suspects: Array<{
+            id?: number;
+            name?: string;
+            total_flights?: number;
+            [key: string]: unknown;
+        }>;
+    } | {
+        corps: Array<{
+            caps?: number;
+            droppers?: number;
+            fcs?: number;
+            id?: number;
+            logis?: number;
+            name?: string;
+            supers?: number;
+            total?: number;
+            [key: string]: unknown;
+        }>;
+        mode: string;
+        totals: {
+            caps?: number;
+            droppers?: number;
+            fcs?: number;
+            logis?: number;
+            supers?: number;
+            total?: number;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -11349,7 +19224,12 @@ export type HealthResponse2 = HealthResponses[keyof HealthResponses];
 export type HistoryData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the daily counts to one year. Omit for every day on record.
+         */
+        year?: number;
+    };
     url: '/history';
 };
 
@@ -11796,9 +19676,7 @@ export type ImageDomainBackgroundResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Blob | File;
 };
 
 export type ImageDomainBackgroundResponse = ImageDomainBackgroundResponses[keyof ImageDomainBackgroundResponses];
@@ -11806,7 +19684,12 @@ export type ImageDomainBackgroundResponse = ImageDomainBackgroundResponses[keyof
 export type ImageDomainAssetPreviewData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Signed preview token for an unapproved asset.
+         */
+        token?: string;
+    };
     url: '/images/domains/preview/{assetId}';
 };
 
@@ -11814,9 +19697,7 @@ export type ImageDomainAssetPreviewResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Blob | File;
 };
 
 export type ImageDomainAssetPreviewResponse = ImageDomainAssetPreviewResponses[keyof ImageDomainAssetPreviewResponses];
@@ -11832,9 +19713,7 @@ export type ImageDomainBannerOrLogoResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Blob | File;
 };
 
 export type ImageDomainBannerOrLogoResponse = ImageDomainBannerOrLogoResponses[keyof ImageDomainBannerOrLogoResponses];
@@ -12149,7 +20028,98 @@ export type TypeCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        attributes: Array<{
+            id: number;
+            name?: string;
+            value: number;
+        }>;
+        item: {
+            base_price: number | null;
+            capacity: number | null;
+            category_id: number;
+            category_name: string | null;
+            description: string | null;
+            faction_id: number | null;
+            group_id: number;
+            group_name: string | null;
+            is_ship: boolean;
+            market_group_id: number | null;
+            mass: number | null;
+            meta_group_id: number | null;
+            meta_group_name: string | null;
+            meta_level: number | null;
+            name: string;
+            packaged_volume: number | null;
+            portion_size: number | null;
+            published: boolean;
+            race_id: number | null;
+            radius: number | null;
+            tech_level: number | null;
+            type_id: number;
+            volume: number | null;
+        };
+        marketBreadcrumb: Array<{
+            id: number;
+            name: string;
+            slug: string;
+        }>;
+        materials: Array<{
+            name: string | null;
+            quantity: number;
+            type_id: number;
+        }>;
+        pricing: {
+            customHistory: Array<{
+                date: string;
+                price: number;
+            }>;
+            customSummary: {
+                average_90d: number;
+                avg_volume_90d?: number;
+                highest_90d: number;
+                latest: number;
+                latest_date: string;
+                lowest_90d: number | null;
+            } | null;
+            history: Array<{
+                average: number;
+                date: string;
+                highest: number;
+                lowest: number;
+                volume: number;
+            }>;
+            insurance: Array<{
+                cost?: number;
+                name?: string;
+                payout?: number;
+                [key: string]: unknown;
+            }>;
+            summary: {
+                average_90d: number;
+                avg_volume_90d?: number;
+                highest_90d: number;
+                latest: number;
+                latest_date: string;
+                lowest_90d: number | null;
+            } | null;
+        };
+        requiredSkills: Array<{
+            level: number;
+            name: string | null;
+            type_id: number;
+        }>;
+        shipAttributes: {
+            [key: string]: Array<{
+                id: number;
+                name?: string;
+                value: number;
+            }>;
+        } | null;
+        variations: Array<{
+            meta_group_id: number | null;
+            name: string;
+            type_id: number;
+        }>;
     };
 };
 
@@ -12167,7 +20137,15 @@ export type FittingsShipMetadataLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        groups: Array<{
+            group_id: number;
+            kill_count: number;
+            name: string;
+            pct: number;
+        }>;
+        ship_type_id: number;
+        total_kills: number;
+        window_days: number;
     };
 };
 
@@ -12185,7 +20163,42 @@ export type FittingsShipFamiliesLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        families: Array<{
+            canonical_fit_hash: string;
+            canonical_uses: number;
+            drones: Array<{
+                name: string | null;
+                quantity: number;
+                type_id: number;
+            }>;
+            family_hash: string;
+            fit_cost: number;
+            hull_cost?: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_used: string;
+            modules: Array<{
+                charge_name: string | null;
+                charge_type_id: number | null;
+                name: string | null;
+                ordinal: number;
+                slot_group: number;
+                type_id: number;
+            }>;
+            top_alliances?: Array<{
+                alliance_id: number | null;
+                name: string | null;
+                pct_of_alliance_losses: number;
+                uses: number;
+            }>;
+            total_uses: number;
+            variant_count: number;
+        }>;
+        hull_cost?: number | null;
+        is_rare_hull: boolean;
+        ship_type_id: number;
+        window_days: number;
     };
 };
 
@@ -12194,7 +20207,16 @@ export type FittingsShipFamiliesLegacyResponse = FittingsShipFamiliesLegacyRespo
 export type ItemKilllistCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/item/{id}/killlist';
 };
 
@@ -12203,7 +20225,46 @@ export type ItemKilllistCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -12212,7 +20273,28 @@ export type ItemKilllistCompatResponse = ItemKilllistCompatResponses[keyof ItemK
 export type KilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+        /**
+         * Comma-separated faction IDs to restrict the victim to, for example `500001,500002`.
+         */
+        victimFactions?: string;
+    };
     url: '/killlist';
 };
 
@@ -12269,7 +20351,36 @@ export type KilllistResponse = KilllistResponses[keyof KilllistResponses];
 export type KilllistAdvancedData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * JSON filter tree: `entities`, `items`, `location`, `timeRange`, `attackerCount`, `attackerType`, `iskValue`, `iskMin`, `iskMax`, `shipCategory`, `techLevel`, and `sort`. Each ID-bearing list holds at most 15 entries.
+         */
+        filters?: string;
+        /**
+         * Return killmails or the fittings behind them.
+         */
+        view?: 'kills' | 'fits';
+        /**
+         * Group the `fits` view by exact fit or by fit family.
+         */
+        dedup?: 'none' | 'exact' | 'family';
+        /**
+         * 64-character hex fit hash to drill into.
+         */
+        fitHash?: string;
+        /**
+         * 64-character hex fit family hash to drill into.
+         */
+        familyHash?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/killlist/advanced';
 };
 
@@ -12278,7 +20389,46 @@ export type KilllistAdvancedResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -12289,7 +20439,7 @@ export type KillmailSubmitData = {
         /**
          * ESI killmail links. Joined with newlines and parsed the same way as text.
          */
-        links?: Array<string> | null;
+        links?: Array<string>;
         /**
          * Free text containing ESI killmail links, one per line. Takes precedence over links.
          */
@@ -12305,7 +20455,13 @@ export type KillmailSubmitResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        accepted: number;
+        existing: number;
+        existingIds: Array<number>;
+        killmails: Array<number>;
+        message?: string;
+        rejected: number;
+        total: number;
     };
 };
 
@@ -12325,7 +20481,89 @@ export type KillmailDetailLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        attacker_count?: number;
+        attackers: Array<{
+            alliance_id?: number | null;
+            character_id?: number | null;
+            corporation_id?: number | null;
+            damage_done?: number;
+            final_blow?: boolean;
+            ship_type_id?: number | null;
+            weapon_type_id?: number | null;
+            [key: string]: unknown;
+        }>;
+        constellation_id?: number | null;
+        constellation_name?: string | null;
+        destroyed_value?: number;
+        dropped_value?: number;
+        fitted_value?: number;
+        is_npc?: boolean;
+        is_solo?: boolean;
+        items: Array<{
+            item_index?: number;
+            price?: number;
+            quantity_destroyed?: number;
+            quantity_dropped?: number;
+            slot?: string;
+            total_value?: number;
+            type_id?: number;
+            type_name?: string | null;
+            [key: string]: unknown;
+        }>;
+        killmail_hash: string;
+        killmail_id: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        killmail_time: string;
+        location?: {
+            distance?: number;
+            group_id?: number;
+            item_id?: number;
+            item_name?: string;
+            type_id?: number;
+            [key: string]: unknown;
+        } | null;
+        points?: number;
+        position_x?: number | null;
+        position_y?: number | null;
+        position_z?: number | null;
+        region_id?: number | null;
+        region_name?: string | null;
+        siblings: Array<{
+            killmail_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time?: string;
+            ship_group_id?: number | null;
+            ship_name?: string | null;
+            ship_type_id?: number | null;
+            total_value?: number;
+            [key: string]: unknown;
+        }>;
+        solar_system_id: number;
+        solar_system_name?: string | null;
+        solar_system_security?: number | null;
+        total_damage?: number;
+        total_value: number;
+        victim: {
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            character_id?: number | null;
+            character_name?: string | null;
+            corporation_id?: number | null;
+            corporation_name?: string | null;
+            corporation_palette?: string | null;
+            damage_taken?: number;
+            ship_group_id?: number | null;
+            ship_group_name?: string | null;
+            ship_market_path?: string | null;
+            ship_name?: string | null;
+            ship_price?: number;
+            ship_type_id?: number | null;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -12345,7 +20583,7 @@ export type KillmailExistsLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        exists: boolean;
     };
 };
 
@@ -12365,7 +20603,20 @@ export type KillmailEditorFitLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        drones: Array<{
+            name: string | null;
+            quantity: number;
+            type_id: number;
+        }>;
+        modules: Array<{
+            charge_type_id: number | null;
+            name: string | null;
+            ordinal: number;
+            slot_group: number;
+            type_id: number;
+        }>;
+        name: string;
+        shipTypeId: number;
     };
 };
 
@@ -12385,7 +20636,17 @@ export type KillmailSiblingsLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        siblings: Array<{
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            ship_group_id: number | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            total_value: number;
+        }>;
     };
 };
 
@@ -12394,7 +20655,28 @@ export type KillmailSiblingsLegacyResponse = KillmailSiblingsLegacyResponses[key
 export type KillmailsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+        /**
+         * Comma-separated faction IDs to restrict the victim to, for example `500001,500002`.
+         */
+        victimFactions?: string;
+    };
     url: '/killmails';
 };
 
@@ -12426,45 +20708,45 @@ export type KillmailsCountResponse2 = KillmailsCountResponses[keyof KillmailsCou
 export type KillmailSearchData = {
     body: {
         /**
-         * Cursor: return killmails after this identifier.
+         * Return killmails after this identifier.
          */
-        after?: unknown;
+        after?: number | string;
         /**
-         * Restrict to killmails involving these alliances.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        alliance_ids?: unknown;
+        alliance_ids?: Array<number | string>;
         /**
-         * Restrict to killmails involving these characters.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        character_ids?: unknown;
+        character_ids?: Array<number | string>;
         /**
-         * Restrict to these constellations.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        constellation_ids?: unknown;
+        constellation_ids?: Array<number | string>;
         /**
-         * Restrict to killmails involving these corporations.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        corporation_ids?: unknown;
+        corporation_ids?: Array<number | string>;
         /**
-         * Window start. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string.
+         * Window start as YYYY-MM-DD or an ISO 8601 timestamp.
          */
-        from: unknown;
+        from: string;
         /**
-         * Maximum killmails to return, capped at 100.
+         * Maximum killmails to return.
          */
-        limit?: unknown;
+        limit?: number | string;
         /**
-         * Restrict to these regions.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        region_ids?: unknown;
+        region_ids?: Array<number | string>;
         /**
-         * Restrict to these solar systems.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        system_ids?: unknown;
+        system_ids?: Array<number | string>;
         /**
-         * Window end. A date (YYYY-MM-DD) or an ISO 8601 timestamp, as a string.
+         * Window end as YYYY-MM-DD or an ISO 8601 timestamp.
          */
-        to: unknown;
+        to: string;
     };
     path?: never;
     query?: never;
@@ -12512,7 +20794,20 @@ export type KillmailEditorFitResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        drones: Array<{
+            name: string | null;
+            quantity: number;
+            type_id: number;
+        }>;
+        modules: Array<{
+            charge_type_id: number | null;
+            name: string | null;
+            ordinal: number;
+            slot_group: number;
+            type_id: number;
+        }>;
+        name: string;
+        shipTypeId: number;
     };
 };
 
@@ -12568,7 +20863,7 @@ export type KillmailExistsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        exists: boolean;
     };
 };
 
@@ -12606,7 +20901,17 @@ export type KillmailSiblingsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        siblings: Array<{
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            ship_group_id: number | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            total_value: number;
+        }>;
     };
 };
 
@@ -12615,7 +20920,20 @@ export type KillmailSiblingsResponse = KillmailSiblingsResponses[keyof KillmailS
 export type KillsMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/kills/most-valuable';
 };
 
@@ -12624,7 +20942,17 @@ export type KillsMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -12633,7 +20961,24 @@ export type KillsMostValuableResponse = KillsMostValuableResponses[keyof KillsMo
 export type KillsTopData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        /**
+         * Which leaderboard to build.
+         */
+        dataType?: 'characters' | 'corporations' | 'alliances' | 'ships' | 'systems' | 'regions';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/kills/top';
 };
 
@@ -12642,7 +20987,14 @@ export type KillsTopResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+            region_id?: number | null;
+            type: string;
+        }>;
     };
 };
 
@@ -12651,7 +21003,20 @@ export type KillsTopResponse = KillsTopResponses[keyof KillsTopResponses];
 export type LegacyArchiveAutocompleteData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Search text. At least two characters.
+         */
+        q?: string;
+        /**
+         * Which column to complete.
+         */
+        field?: 'victim' | 'attacker' | 'corp' | 'alliance' | 'system';
+        /**
+         * Maximum suggestions to return.
+         */
+        limit?: number;
+    };
     url: '/legacy/autocomplete';
 };
 
@@ -12659,9 +21024,10 @@ export type LegacyArchiveAutocompleteResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        id: number | null;
+        name: string;
+    }>;
 };
 
 export type LegacyArchiveAutocompleteResponse = LegacyArchiveAutocompleteResponses[keyof LegacyArchiveAutocompleteResponses];
@@ -12678,7 +21044,44 @@ export type LegacyArchiveKillResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        attackers: Array<{
+            alliance_id?: number | null;
+            character_id?: number | null;
+            corporation_id?: number | null;
+            damage_done?: number;
+            final_blow?: boolean;
+            id?: number;
+            killmail_id?: number;
+            name?: string | null;
+            ship_type_id?: number | null;
+            [key: string]: unknown;
+        }>;
+        items: Array<{
+            flag?: number;
+            id?: number;
+            killmail_id?: number;
+            name?: string | null;
+            quantity_destroyed?: number | null;
+            quantity_dropped?: number | null;
+            singleton?: number;
+            type_id?: number | null;
+            [key: string]: unknown;
+        }>;
+        kill: {
+            killmail_id?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time?: string;
+            security?: number | null;
+            system_name?: string | null;
+            total_value?: number;
+            victim_alliance?: string | null;
+            victim_corp?: string | null;
+            victim_name?: string | null;
+            victim_ship?: string | null;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -12687,7 +21090,52 @@ export type LegacyArchiveKillResponse = LegacyArchiveKillResponses[keyof LegacyA
 export type LegacyArchiveKillsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Victim name contains this text.
+         */
+        victim?: string;
+        /**
+         * Victim corporation name contains this text.
+         */
+        corp?: string;
+        /**
+         * Victim alliance name contains this text.
+         */
+        alliance?: string;
+        /**
+         * System name contains this text.
+         */
+        system?: string;
+        /**
+         * Comma-separated hull names; a row matches any of them.
+         */
+        ship?: string;
+        /**
+         * Attacker name contains this text.
+         */
+        attacker?: string;
+        /**
+         * Earliest killmail date, as YYYY-MM-DD.
+         */
+        from?: string;
+        /**
+         * Latest killmail date, as YYYY-MM-DD.
+         */
+        to?: string;
+        /**
+         * Sort field and direction joined by an underscore.
+         */
+        sort?: 'id_desc' | 'id_asc' | 'value_desc' | 'value_asc' | 'time_desc' | 'time_asc';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/legacy/kills';
 };
 
@@ -12696,7 +21144,45 @@ export type LegacyArchiveKillsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -12714,7 +21200,10 @@ export type LegacyArchiveStatsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances: number;
+        characters: number;
+        corporations: number;
+        killmails: number;
     };
 };
 
@@ -12723,7 +21212,20 @@ export type LegacyArchiveStatsResponse = LegacyArchiveStatsResponses[keyof Legac
 export type LegacyArchiveTopData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which leaderboard to build.
+         */
+        dataType?: 'characters' | 'corporations' | 'alliances' | 'ships' | 'systems';
+        /**
+         * Restrict to one year.
+         */
+        year?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/legacy/top';
 };
 
@@ -12732,7 +21234,14 @@ export type LegacyArchiveTopResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            count: number;
+            id: number;
+            name: string;
+            palette?: string | null;
+            region_id?: number | null;
+            type: string;
+        }>;
     };
 };
 
@@ -12741,7 +21250,24 @@ export type LegacyArchiveTopResponse = LegacyArchiveTopResponses[keyof LegacyArc
 export type LocationData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Solar system to resolve within.
+         */
+        system_id: number;
+        /**
+         * X coordinate in metres.
+         */
+        x: number;
+        /**
+         * Y coordinate in metres.
+         */
+        y: number;
+        /**
+         * Z coordinate in metres.
+         */
+        z: number;
+    };
     url: '/location';
 };
 
@@ -12766,7 +21292,56 @@ export type MapRegionResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity: Array<{
+            npc_kills: number;
+            pod_kills: number;
+            ship_jumps: number;
+            ship_kills: number;
+            system_id: number;
+        }>;
+        celestials: Array<{
+            group_id: number;
+            system_id: number;
+            x: number;
+            z: number;
+        }>;
+        constellations: Array<{
+            constellation_id: number;
+            constellation_name: string;
+        }>;
+        externalJumps: Array<{
+            external_region_id: number;
+            external_region_name: string;
+            external_security: number;
+            external_system_id: number;
+            external_system_name: string;
+            external_x: number;
+            external_x2d: number;
+            external_z: number;
+            external_z2d: number;
+            internal_system_id: number;
+        }>;
+        jumps: Array<{
+            from_solar_system_id: number;
+            to_solar_system_id: number;
+        }>;
+        region: {
+            name: string;
+            region_id: number;
+            system_count?: number;
+        };
+        systems: Array<{
+            constellation_id: number;
+            region_id: number;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+            x: number;
+            x2d: number;
+            y: number;
+            z: number;
+            z2d: number;
+        }>;
     };
 };
 
@@ -12784,7 +21359,36 @@ export type MapRegionsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        abyssal: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        kspace: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        pochven: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        proving: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        wormhole: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        zarzakh: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
     };
 };
 
@@ -12793,7 +21397,12 @@ export type MapRegionsResponse = MapRegionsResponses[keyof MapRegionsResponses];
 export type MapScopeData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which slice of New Eden to return.
+         */
+        type?: 'new-eden' | 'zarzakh' | 'wormhole' | 'abyssal' | 'proving';
+    };
     url: '/map/scope';
 };
 
@@ -12802,7 +21411,47 @@ export type MapScopeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity: Array<{
+            npc_kills: number;
+            pod_kills: number;
+            ship_jumps: number;
+            ship_kills: number;
+            system_id: number;
+        }>;
+        externalJumps: Array<{
+            external_region_id: number;
+            external_region_name: string;
+            external_security: number;
+            external_system_id: number;
+            external_system_name: string;
+            external_x: number;
+            external_x2d: number;
+            external_z: number;
+            external_z2d: number;
+            internal_system_id: number;
+        }>;
+        jumps: Array<{
+            from_solar_system_id: number;
+            to_solar_system_id: number;
+        }>;
+        regions: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        scope: string;
+        systems: Array<{
+            constellation_id: number;
+            region_id: number;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+            x: number;
+            x2d: number;
+            y: number;
+            z: number;
+            z2d: number;
+        }>;
     };
 };
 
@@ -12820,7 +21469,14 @@ export type MarketGroupItemsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        items: Array<{
+            category_id: number;
+            group_id: number;
+            is_ship: boolean;
+            meta_group_id: number | null;
+            name: string;
+            type_id: number;
+        }>;
     };
 };
 
@@ -12838,7 +21494,33 @@ export type MarketTreeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        groups: Array<{
+            children: Array<{
+                children: Array<{
+                    children: Array<{
+                        [key: string]: unknown;
+                    }>;
+                    has_types: boolean;
+                    icon_id: number | null;
+                    id: number;
+                    name: string;
+                    parent_id: number | null;
+                    slug: string;
+                }>;
+                has_types: boolean;
+                icon_id: number | null;
+                id: number;
+                name: string;
+                parent_id: number | null;
+                slug: string;
+            }>;
+            has_types: boolean;
+            icon_id: number | null;
+            id: number;
+            name: string;
+            parent_id: number | null;
+            slug: string;
+        }>;
     };
 };
 
@@ -12847,7 +21529,16 @@ export type MarketTreeResponse = MarketTreeResponses[keyof MarketTreeResponses];
 export type ShipMatchupData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Attacking hull type ID. Required.
+         */
+        attacker: number;
+        /**
+         * Victim hull type ID. Required.
+         */
+        victim: number;
+    };
     url: '/matchup';
 };
 
@@ -12856,7 +21547,26 @@ export type ShipMatchupResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        attacker_ship_type_id: number;
+        attacker_win_rate: number;
+        attacker_wins: number;
+        enough: boolean;
+        min_sample: number;
+        mirror: boolean;
+        sample: number;
+        top_fits: Array<{
+            family_hash: string;
+            modules: Array<{
+                name: string | null;
+                slot_group: number;
+                type_id: number;
+            }>;
+            pct: number;
+            uses: number;
+        }>;
+        victim_ship_type_id: number;
+        victim_wins: number;
+        window_days: number;
     };
 };
 
@@ -12874,7 +21584,35 @@ export type MeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        user: {
+            allianceId: number | null;
+            allianceName: string | null;
+            characterId: number;
+            characterName: string;
+            characterOwnerHash?: string;
+            corporationId: number | null;
+            corporationName: string | null;
+            isAdmin: boolean;
+            lastSeenNotificationId: number;
+            settings?: {
+                boards?: {
+                    dismissed: Array<string>;
+                    pinned: Array<string>;
+                };
+                /**
+                 * Default tab keyed by page type.
+                 */
+                defaultTabs?: {
+                    [key: string]: unknown;
+                };
+                /**
+                 * User-selected theme settings.
+                 */
+                theme?: {
+                    [key: string]: unknown;
+                };
+            };
+        } | null;
     };
 };
 
@@ -12944,7 +21682,21 @@ export type AccountBoardsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        atCapacity: boolean;
+        authenticated: boolean;
+        boards: Array<{
+            host: string;
+            key: string;
+            name: string;
+            pinned: boolean;
+            tracked: boolean;
+            url: string;
+        }>;
+        current: {
+            key: string;
+            listed: boolean;
+            name: string;
+        } | null;
     };
 };
 
@@ -12953,7 +21705,16 @@ export type AccountBoardsResponse = AccountBoardsResponses[keyof AccountBoardsRe
 export type MyCommentsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Identifier cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        cursor?: number;
+    };
     url: '/me/comments';
 };
 
@@ -12962,7 +21723,47 @@ export type MyCommentsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comments: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
+        nextCursor: number | null;
     };
 };
 
@@ -12980,7 +21781,7 @@ export type MyCommentDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
     };
 };
 
@@ -12998,7 +21799,72 @@ export type AccountDescriptionsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliance: {
+            canEdit: boolean;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            custom_description: string | null;
+            custom_description_format: string;
+            esi_description?: string | null;
+            executor_ceo_id?: number | null;
+            executor_ceo_name?: string | null;
+            executor_corporation_id?: number | null;
+            id: number;
+            name: string;
+            pending_submission: {
+                body: string;
+                body_format: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                submitted_at: string;
+            } | null;
+            ticker?: string;
+        } | null;
+        character: {
+            canEdit: boolean;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            custom_description: string | null;
+            custom_description_format: string;
+            esi_description?: string | null;
+            executor_ceo_id?: number | null;
+            executor_ceo_name?: string | null;
+            executor_corporation_id?: number | null;
+            id: number;
+            name: string;
+            pending_submission: {
+                body: string;
+                body_format: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                submitted_at: string;
+            } | null;
+            ticker?: string;
+        };
+        corporation: {
+            canEdit: boolean;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            custom_description: string | null;
+            custom_description_format: string;
+            esi_description?: string | null;
+            executor_ceo_id?: number | null;
+            executor_ceo_name?: string | null;
+            executor_corporation_id?: number | null;
+            id: number;
+            name: string;
+            pending_submission: {
+                body: string;
+                body_format: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                submitted_at: string;
+            } | null;
+            ticker?: string;
+        } | null;
     };
 };
 
@@ -13011,13 +21877,13 @@ export type AccountDescriptionUpdateData = {
          */
         description: string;
         /**
-         * Which description to write: character, corporation or alliance.
+         * Which description to write.
          */
-        entity: string;
+        entity: 'character' | 'corporation' | 'alliance';
         /**
          * How to interpret the text.
          */
-        format?: string;
+        format: 'markdown' | 'eve_html';
     };
     path?: never;
     query?: never;
@@ -13029,7 +21895,11 @@ export type AccountDescriptionUpdateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entity: string;
+        entity_id: number;
+        ok: boolean;
+        queue_id?: number;
+        status: string;
     };
 };
 
@@ -13047,7 +21917,160 @@ export type DomainsMineResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domains: Array<{
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -13055,50 +22078,23 @@ export type DomainsMineResponse = DomainsMineResponses[keyof DomainsMineResponse
 
 export type DomainCreateData = {
     body: {
-        /**
-         * Whether the board serves traffic.
-         */
-        active?: unknown;
-        /**
-         * Campaigns featured on the board.
-         */
-        campaign_ids?: unknown;
-        /**
-         * How campaigns are selected for the board.
-         */
-        campaign_policy?: unknown;
-        /**
-         * Public identifiers of those campaigns.
-         */
-        campaign_public_ids?: unknown;
-        /**
-         * Characters, corporations and alliances the board covers.
-         */
-        entities?: unknown;
-        /**
-         * Custom navigation entries.
-         */
-        navbar_links?: unknown;
-        /**
-         * Short description for the board.
-         */
-        site_description?: unknown;
-        /**
-         * Board name shown in the title and header.
-         */
-        site_name?: unknown;
-        /**
-         * Subdomain the board answers on.
-         */
-        subdomain?: unknown;
-        /**
-         * Theme overrides: colors, fonts and background.
-         */
-        theme?: unknown;
-        /**
-         * Widgets shown on the board, in order.
-         */
-        widgets?: unknown;
+        entities: Array<{
+            id: number;
+            name: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        navbar_links?: Array<{
+            children?: Array<SiteDomainNavbarGroup>;
+            external?: boolean;
+            href: string;
+            icon?: string;
+            label: string;
+        }>;
+        site_description?: string | null;
+        site_name?: string | null;
+        subdomain: string;
+        theme?: SiteDomainTheme;
+        widgets?: SiteDomainWidgets;
     };
     path?: never;
     query?: never;
@@ -13110,7 +22106,160 @@ export type DomainCreateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domain: {
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -13119,7 +22268,12 @@ export type DomainCreateResponse = DomainCreateResponses[keyof DomainCreateRespo
 export type DomainSubdomainCheckData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Subdomain to test.
+         */
+        subdomain?: string;
+    };
     url: '/me/domains/check-subdomain';
 };
 
@@ -13128,7 +22282,8 @@ export type DomainSubdomainCheckResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        available: boolean;
+        reason?: string;
     };
 };
 
@@ -13146,7 +22301,7 @@ export type DomainDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        deleted: boolean;
     };
 };
 
@@ -13154,50 +22309,26 @@ export type DomainDeleteResponse = DomainDeleteResponses[keyof DomainDeleteRespo
 
 export type DomainUpdateData = {
     body: {
-        /**
-         * Whether the board serves traffic.
-         */
-        active?: unknown;
-        /**
-         * Campaigns featured on the board.
-         */
-        campaign_ids?: unknown;
-        /**
-         * How campaigns are selected for the board.
-         */
-        campaign_policy?: unknown;
-        /**
-         * Public identifiers of those campaigns.
-         */
-        campaign_public_ids?: unknown;
-        /**
-         * Characters, corporations and alliances the board covers.
-         */
-        entities?: unknown;
-        /**
-         * Custom navigation entries.
-         */
-        navbar_links?: unknown;
-        /**
-         * Short description for the board.
-         */
-        site_description?: unknown;
-        /**
-         * Board name shown in the title and header.
-         */
-        site_name?: unknown;
-        /**
-         * Subdomain the board answers on.
-         */
-        subdomain?: unknown;
-        /**
-         * Theme overrides: colors, fonts and background.
-         */
-        theme?: unknown;
-        /**
-         * Widgets shown on the board, in order.
-         */
-        widgets?: unknown;
+        active?: boolean;
+        campaign_ids?: Array<string>;
+        campaign_policy?: 0 | 1;
+        campaign_public_ids?: Array<string>;
+        entities?: Array<{
+            id: number;
+            name: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        navbar_links?: Array<{
+            children?: Array<SiteDomainNavbarGroup>;
+            external?: boolean;
+            href: string;
+            icon?: string;
+            label: string;
+        }>;
+        site_description?: string | null;
+        site_name?: string | null;
+        theme?: SiteDomainTheme;
+        widgets?: SiteDomainWidgets;
     };
     path?: never;
     query?: never;
@@ -13209,21 +22340,174 @@ export type DomainUpdateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domain: {
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        };
     };
 };
 
 export type DomainUpdateResponse = DomainUpdateResponses[keyof DomainUpdateResponses];
 
 export type DomainAssetsDeleteTypeData = {
-    body: {
+    body?: never;
+    path?: never;
+    query?: {
         /**
-         * Asset slot to clear: background, preview or icon.
+         * Asset slot to clear, for example `banner` or `logo`.
          */
         type?: string;
     };
-    path?: never;
-    query?: never;
     url: '/me/domains/{id}/assets';
 };
 
@@ -13232,7 +22516,7 @@ export type DomainAssetsDeleteTypeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        success: boolean;
     };
 };
 
@@ -13250,7 +22534,9 @@ export type DomainAssetUploadResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        assetId: number;
+        message: string;
+        status: string;
     };
 };
 
@@ -13268,7 +22554,7 @@ export type DomainAssetDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        success: boolean;
     };
 };
 
@@ -13277,7 +22563,12 @@ export type DomainAssetDeleteResponse = DomainAssetDeleteResponses[keyof DomainA
 export type DomainCampaignSearchData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Campaign name search.
+         */
+        q?: string;
+    };
     url: '/me/domains/{id}/campaigns';
 };
 
@@ -13286,7 +22577,25 @@ export type DomainCampaignSearchResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        campaigns: Array<{
+            campaign_id?: string;
+            created_by_character_id?: number;
+            description?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            end_time?: string;
+            estimated_killmails?: number | null;
+            name?: string;
+            public_on_domain?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_time?: string;
+            status?: number;
+            visibility?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -13304,7 +22613,19 @@ export type AccountEsiResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        rateLimit: {
+            request_count: number;
+        };
+        responseTime: {
+            avg_ms: number | null;
+            p95_ms: number | null;
+        };
+        volumeByHour: Array<{
+            errors: number;
+            hour: string;
+            new_items: number;
+            total: number;
+        }>;
     };
 };
 
@@ -13313,7 +22634,32 @@ export type AccountEsiResponse = AccountEsiResponses[keyof AccountEsiResponses];
 export type AccountEsiLogsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Match the recorded request source exactly.
+         */
+        source?: string;
+        /**
+         * Restrict to successful or failed requests.
+         */
+        status?: 'success' | 'error';
+        /**
+         * Restrict to one ESI endpoint family, for example `killmails`.
+         */
+        endpoint_type?: string;
+        /**
+         * Return log rows below this log ID.
+         */
+        after_id?: number;
+    };
     url: '/me/esi/logs';
 };
 
@@ -13322,7 +22668,30 @@ export type AccountEsiLogsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit?: number;
+        newRows?: boolean;
+        page?: number;
+        pages?: number;
+        rows: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            endpoint: string;
+            endpoint_action: string;
+            endpoint_type: string;
+            error_message: string | null;
+            id: number;
+            items_returned: number | null;
+            method: string;
+            new_items: number | null;
+            request_duration_ms: number | null;
+            source: string;
+            status_code: number | null;
+            success: boolean;
+        }>;
+        sources?: Array<string>;
+        total?: number;
     };
 };
 
@@ -13331,9 +22700,9 @@ export type AccountEsiLogsResponse = AccountEsiLogsResponses[keyof AccountEsiLog
 export type AccountNotificationReadCursorData = {
     body: {
         /**
-         * Read cursor. Marks every notification up to this identifier.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        id?: unknown;
+        id: number | string;
     };
     path?: never;
     query?: never;
@@ -13345,21 +22714,25 @@ export type AccountNotificationReadCursorResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        lastSeenNotificationId: number;
     };
 };
 
 export type AccountNotificationReadCursorResponse = AccountNotificationReadCursorResponses[keyof AccountNotificationReadCursorResponses];
 
 export type AccountNotificationRepliesData = {
-    body: {
-        /**
-         * Read cursor. Marks every notification up to this identifier.
-         */
-        id?: unknown;
-    };
+    body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Return replies with an ID above this one.
+         */
+        since?: number;
+    };
     url: '/me/notifications/replies';
 };
 
@@ -13368,7 +22741,27 @@ export type AccountNotificationRepliesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        highestId: number;
+        replies: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            id: number;
+            parent_comment_id: number;
+            parent_id: number | null;
+            parent_snippet: string;
+            root_id: number | null;
+            target_id: number;
+            target_type: number;
+        }>;
     };
 };
 
@@ -13386,7 +22779,42 @@ export type AccountOverviewResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        account: {
+            characterId: number;
+            characterName: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            createdAt: string | null;
+            isAdmin: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastLogin: string | null;
+        };
+        esiStats: {
+            errors_24h?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_request?: string | null;
+            new_items_24h?: number;
+            requests_24h?: number;
+            total_errors?: number;
+            total_new_items?: number;
+            total_requests?: number;
+        };
+        esiToken: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastFetched: string | null;
+            scopeCount: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            tokenExpiry: string | null;
+        } | null;
     };
 };
 
@@ -13404,7 +22832,22 @@ export type AccountPreferencesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        boards?: {
+            dismissed: Array<string>;
+            pinned: Array<string>;
+        };
+        /**
+         * Default tab keyed by page type.
+         */
+        defaultTabs?: {
+            [key: string]: unknown;
+        };
+        /**
+         * User-selected theme settings.
+         */
+        theme?: {
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -13412,18 +22855,13 @@ export type AccountPreferencesResponse = AccountPreferencesResponses[keyof Accou
 
 export type AccountPreferencesUpdateData = {
     body: {
-        /**
-         * Killboards pinned in the navigation.
-         */
-        boards?: unknown;
-        /**
-         * Default tab per entity page.
-         */
-        defaultTabs?: unknown;
-        /**
-         * Preferred site theme.
-         */
-        theme?: unknown;
+        boards?: AccountBoardsDocument;
+        defaultTabs?: {
+            [key: string]: string;
+        };
+        theme?: {
+            [key: string]: string;
+        };
     };
     path?: never;
     query?: never;
@@ -13435,7 +22873,24 @@ export type AccountPreferencesUpdateResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        preferences: {
+            boards?: {
+                dismissed: Array<string>;
+                pinned: Array<string>;
+            };
+            /**
+             * Default tab keyed by page type.
+             */
+            defaultTabs?: {
+                [key: string]: unknown;
+            };
+            /**
+             * User-selected theme settings.
+             */
+            theme?: {
+                [key: string]: unknown;
+            };
+        };
     };
 };
 
@@ -13453,7 +22908,7 @@ export type SessionDeleteResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        success: boolean;
     };
 };
 
@@ -13462,7 +22917,12 @@ export type SessionDeleteResponse = SessionDeleteResponses[keyof SessionDeleteRe
 export type OtherSessionsRevokeData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Session ID to keep. Every other session is revoked.
+         */
+        except?: string;
+    };
     url: '/me/sessions';
 };
 
@@ -13471,7 +22931,7 @@ export type OtherSessionsRevokeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        revoked: number;
     };
 };
 
@@ -13489,7 +22949,27 @@ export type SessionsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        sessions: Array<{
+            browser: string;
+            countryCode: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            createdAt: string;
+            current: boolean;
+            device: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expiresAt: string;
+            id: number;
+            ipAddress: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastSeenAt: string;
+            operatingSystem: string;
+        }>;
     };
 };
 
@@ -13507,7 +22987,8 @@ export type SessionRevokeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        current: boolean;
+        revoked: boolean;
     };
 };
 
@@ -13525,7 +23006,53 @@ export type MeSettingsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        account: {
+            characterId: number;
+            characterName: string;
+            characterOwnerHash: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            createdAt: string | null;
+            isAdmin: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastLogin: string | null;
+        };
+        esiToken: {
+            disabled: boolean;
+            effectiveScopes: Array<string>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastFetched: string | null;
+            revokedScopes: Array<string>;
+            scopeCount: number;
+            scopes: Array<string>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            tokenExpiry: string | null;
+        } | null;
+        preferences: {
+            boards?: {
+                dismissed: Array<string>;
+                pinned: Array<string>;
+            };
+            /**
+             * Default tab keyed by page type.
+             */
+            defaultTabs?: {
+                [key: string]: unknown;
+            };
+            /**
+             * User-selected theme settings.
+             */
+            theme?: {
+                [key: string]: unknown;
+            };
+        };
     };
 };
 
@@ -13534,7 +23061,12 @@ export type MeSettingsResponse = MeSettingsResponses[keyof MeSettingsResponses];
 export type WalletAccountData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+    };
     url: '/me/wallet';
 };
 
@@ -13543,7 +23075,58 @@ export type WalletAccountResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        availableBalance: string;
+        balance: string;
+        character: {
+            character_id: number;
+            character_name: string;
+        };
+        corporation: {
+            corporation_id: number;
+            name: string;
+            ticker: string;
+        };
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        depositsEnabledAt: string | null;
+        hasMore: boolean;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastSynced: string | null;
+        page: number;
+        pageSize: number;
+        reservations: Array<{
+            amount?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            external_reference?: string;
+            id?: number;
+            transaction_type?: number;
+            [key: string]: unknown;
+        }>;
+        reservedBalance: string;
+        totalBalance: string;
+        transactions: Array<{
+            amount?: string;
+            balance_after?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            id?: number;
+            type?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -13561,7 +23144,10 @@ export type WalletAccountBalanceResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        availableBalance: string;
+        balance: string;
+        reservedBalance: string;
+        totalBalance: string;
     };
 };
 
@@ -13570,9 +23156,9 @@ export type WalletAccountBalanceResponse = WalletAccountBalanceResponses[keyof W
 export type NotificationMarkReadCompatData = {
     body: {
         /**
-         * Read cursor. Marks every notification up to this identifier.
+         * An integer. A numeric string is accepted for compatibility.
          */
-        id?: unknown;
+        id: number | string;
     };
     path?: never;
     query?: never;
@@ -13584,7 +23170,7 @@ export type NotificationMarkReadCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        lastSeenNotificationId: number;
     };
 };
 
@@ -13593,7 +23179,16 @@ export type NotificationMarkReadCompatResponse = NotificationMarkReadCompatRespo
 export type NotificationRepliesCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Return replies with an ID above this one.
+         */
+        since?: number;
+    };
     url: '/notifications/replies';
 };
 
@@ -13602,7 +23197,27 @@ export type NotificationRepliesCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        highestId: number;
+        replies: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            id: number;
+            parent_comment_id: number;
+            parent_id: number | null;
+            parent_snippet: string;
+            root_id: number | null;
+            target_id: number;
+            target_type: number;
+        }>;
     };
 };
 
@@ -13611,7 +23226,12 @@ export type NotificationRepliesCompatResponse = NotificationRepliesCompatRespons
 export type BulkPricesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Comma-separated inventory type IDs. Omit for an empty price map.
+         */
+        types?: string;
+    };
     url: '/prices/bulk';
 };
 
@@ -13620,7 +23240,9 @@ export type BulkPricesResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        prices: {
+            [key: string]: number;
+        };
     };
 };
 
@@ -13638,7 +23260,44 @@ export type RegionCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        constellations: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            constellation_id: number;
+            constellation_name: string;
+            faction_id: number | null;
+            faction_name: string | null;
+            system_count: number;
+        }>;
+        region: {
+            constellation_count: number;
+            description: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            name: string;
+            region_id: number;
+            system_count: number;
+        };
+        sovDistribution: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            system_count: number;
+        }>;
+        stats: {
+            kills: number;
+            npc_kills: number;
+            pod_kills: number;
+            total_value: number;
+        };
+        topSystems: Array<{
+            kills: number;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+            total_value: number;
+        }>;
     };
 };
 
@@ -13647,7 +23306,20 @@ export type RegionCompatResponse = RegionCompatResponses[keyof RegionCompatRespo
 export type RegionKilllistCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/region/{id}/killlist';
 };
 
@@ -13656,7 +23328,46 @@ export type RegionKilllistCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -13665,7 +23376,20 @@ export type RegionKilllistCompatResponse = RegionKilllistCompatResponses[keyof R
 export type RegionMostValuableCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/region/{id}/most-valuable';
 };
 
@@ -13674,7 +23398,17 @@ export type RegionMostValuableCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -13685,7 +23419,7 @@ export type ResolveData = {
         /**
          * Exact entity names to resolve. Matching is case-sensitive and exact; use /search for fuzzy lookup.
          */
-        names: Array<string> | null;
+        names: Array<string>;
         /**
          * Which entity table to resolve against.
          */
@@ -13708,13 +23442,9 @@ export type ResolveResponse2 = ResolveResponses[keyof ResolveResponses];
 export type DscanSaveData = {
     body: {
         /**
-         * Raw directional scan text. Used by the dscan routes.
+         * Raw directional scan text.
          */
-        dscan?: string;
-        /**
-         * Character names. Used by the local scan routes.
-         */
-        names?: Array<string>;
+        dscan: string;
         /**
          * Analyzed scan output to store alongside the input.
          */
@@ -13730,7 +23460,7 @@ export type DscanSaveResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        hash: string;
     };
 };
 
@@ -13753,7 +23483,23 @@ export type DscanAnalyzeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        grouped: {
+            [key: string]: {
+                categoryId: number | null;
+                groups: {
+                    [key: string]: {
+                        groupId: number | null;
+                        types: Array<{
+                            count: number;
+                            typeId: number | null;
+                            typeName: string;
+                        }>;
+                    };
+                };
+            };
+        };
+        totalCount: number;
+        uniqueTypes: number;
     };
 };
 
@@ -13771,7 +23517,23 @@ export type DscanGetResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        grouped: {
+            [key: string]: {
+                categoryId: number | null;
+                groups: {
+                    [key: string]: {
+                        groupId: number | null;
+                        types: Array<{
+                            count: number;
+                            typeId: number | null;
+                            typeName: string;
+                        }>;
+                    };
+                };
+            };
+        };
+        totalCount: number;
+        uniqueTypes: number;
     };
 };
 
@@ -13780,13 +23542,9 @@ export type DscanGetResponse = DscanGetResponses[keyof DscanGetResponses];
 export type LocalscanSaveData = {
     body: {
         /**
-         * Raw directional scan text. Used by the dscan routes.
+         * Character names from the local scan.
          */
-        dscan?: string;
-        /**
-         * Character names. Used by the local scan routes.
-         */
-        names?: Array<string>;
+        names: Array<string>;
         /**
          * Analyzed scan output to store alongside the input.
          */
@@ -13802,14 +23560,14 @@ export type LocalscanSaveResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        hash: string;
     };
 };
 
 export type LocalscanSaveResponse = LocalscanSaveResponses[keyof LocalscanSaveResponses];
 
 export type LocalscanAnalyzeData = {
-    body: Array<string> | null;
+    body: Array<string>;
     path?: never;
     query?: never;
     url: '/scans/local/analyze';
@@ -13820,7 +23578,37 @@ export type LocalscanAnalyzeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances: {
+            [key: string]: {
+                corporations: {
+                    [key: string]: {
+                        characters: Array<{
+                            characterId: number;
+                            kills: number;
+                            name: string;
+                        }>;
+                        name: string;
+                        ticker: string;
+                    };
+                };
+                name: string;
+                ticker: string;
+            };
+        };
+        corporations: {
+            [key: string]: {
+                characters: Array<{
+                    characterId: number;
+                    kills: number;
+                    name: string;
+                }>;
+                name: string;
+                ticker: string;
+            };
+        };
+        totalCharacters: number;
+        totalDangerous: number;
+        unresolved: Array<string>;
     };
 };
 
@@ -13838,7 +23626,37 @@ export type LocalscanGetResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances: {
+            [key: string]: {
+                corporations: {
+                    [key: string]: {
+                        characters: Array<{
+                            characterId: number;
+                            kills: number;
+                            name: string;
+                        }>;
+                        name: string;
+                        ticker: string;
+                    };
+                };
+                name: string;
+                ticker: string;
+            };
+        };
+        corporations: {
+            [key: string]: {
+                characters: Array<{
+                    characterId: number;
+                    kills: number;
+                    name: string;
+                }>;
+                name: string;
+                ticker: string;
+            };
+        };
+        totalCharacters: number;
+        totalDangerous: number;
+        unresolved: Array<string>;
     };
 };
 
@@ -13881,7 +23699,12 @@ export type SdeBloodlineResponse2 = SdeBloodlineResponses[keyof SdeBloodlineResp
 export type SdeCategoriesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Send `false` to include unpublished rows. Anything else keeps published rows only.
+         */
+        published?: 'true' | 'false';
+    };
     url: '/sde/categories';
 };
 
@@ -13933,7 +23756,12 @@ export type SdeCelestialResponse2 = SdeCelestialResponses[keyof SdeCelestialResp
 export type SdeConstellationsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one region.
+         */
+        region_id?: number;
+    };
     url: '/sde/constellations';
 };
 
@@ -14033,7 +23861,24 @@ export type SdeFlagsResponse2 = SdeFlagsResponses[keyof SdeFlagsResponses];
 export type SdeGroupsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Send `false` to include unpublished rows. Anything else keeps published rows only.
+         */
+        published?: 'true' | 'false';
+        /**
+         * Restrict to one inventory category.
+         */
+        category_id?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/sde/groups';
 };
 
@@ -14067,7 +23912,12 @@ export type SdeGroupResponse2 = SdeGroupResponses[keyof SdeGroupResponses];
 export type SdeMarketGroupsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one parent market group.
+         */
+        parent_id?: number;
+    };
     url: '/sde/market-groups';
 };
 
@@ -14153,7 +24003,16 @@ export type SdePricesData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Market region to price against. Defaults to The Forge (10000002).
+         */
+        region_id?: number;
+        /**
+         * Most recent daily rows to return.
+         */
+        limit?: number;
+    };
     url: '/sde/prices/{id}';
 };
 
@@ -14239,7 +24098,20 @@ export type SdeRegionKillsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/sde/regions/{id}/kills';
 };
 
@@ -14255,7 +24127,16 @@ export type SdeRegionKillsResponse2 = SdeRegionKillsResponses[keyof SdeRegionKil
 export type SdeSovereigntyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one alliance.
+         */
+        alliance_id?: number;
+        /**
+         * Restrict to one faction.
+         */
+        faction_id?: number;
+    };
     url: '/sde/sovereignty';
 };
 
@@ -14341,7 +24222,24 @@ export type SdeStationOperationResponse2 = SdeStationOperationResponses[keyof Sd
 export type SdeStationsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one solar system.
+         */
+        solar_system_id?: number;
+        /**
+         * Restrict to one region.
+         */
+        region_id?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/sde/stations';
 };
 
@@ -14375,7 +24273,28 @@ export type SdeStationResponse2 = SdeStationResponses[keyof SdeStationResponses]
 export type SdeStructuresData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict to one solar system.
+         */
+        solar_system_id?: number;
+        /**
+         * Restrict to one region.
+         */
+        region_id?: number;
+        /**
+         * Restrict to one owning corporation.
+         */
+        owner_id?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/sde/structures';
 };
 
@@ -14409,7 +24328,28 @@ export type SdeStructureResponse2 = SdeStructureResponses[keyof SdeStructureResp
 export type SdeSystemsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Case-insensitive system name prefix to match.
+         */
+        name?: string;
+        /**
+         * Restrict to one region.
+         */
+        region_id?: number;
+        /**
+         * Restrict to one constellation.
+         */
+        constellation_id?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/sde/systems';
 };
 
@@ -14481,7 +24421,20 @@ export type SdeSystemKillsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Descending cursor, walking newest to oldest. Pass the previous response's pagination cursor to fetch the next page. Mutually exclusive with `after`, which it overrides.
+         */
+        before?: number;
+    };
     url: '/sde/systems/{id}/kills';
 };
 
@@ -14497,7 +24450,32 @@ export type SdeSystemKillsResponse2 = SdeSystemKillsResponses[keyof SdeSystemKil
 export type SdeTypesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Case-insensitive name prefix to match.
+         */
+        name?: string;
+        /**
+         * Send `false` to include unpublished rows. Anything else keeps published rows only.
+         */
+        published?: 'true' | 'false';
+        /**
+         * Restrict to one inventory group.
+         */
+        group_id?: number;
+        /**
+         * Restrict to one inventory category.
+         */
+        category_id?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/sde/types';
 };
 
@@ -14585,7 +24563,20 @@ export type SdeTypeMaterialsResponse2 = SdeTypeMaterialsResponses[keyof SdeTypeM
 export type SearchData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Search text. Required.
+         */
+        q: string;
+        /**
+         * Comma-separated entity kinds to search: `character`, `corporation`, `alliance`, `faction`, `ship`, `shipgroup`, `system`, `region`, `constellation`. Omit to search all of them.
+         */
+        type?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/search';
 };
 
@@ -14601,7 +24592,16 @@ export type SearchResponse2 = SearchResponses[keyof SearchResponses];
 export type ShipKilllistCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/ship/{id}/killlist';
 };
 
@@ -14610,7 +24610,46 @@ export type ShipKilllistCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -14621,7 +24660,16 @@ export type ShipFittingsData = {
     path: {
         id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Comma-separated module type IDs the fit must contain.
+         */
+        modules?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/ships/{id}/fittings';
 };
 
@@ -14674,9 +24722,15 @@ export type SitemapResponses = {
     /**
      * OK
      */
-    200: {
-        [key: string]: unknown;
-    };
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
 };
 
 export type SitemapResponse = SitemapResponses[keyof SitemapResponses];
@@ -14684,7 +24738,20 @@ export type SitemapResponse = SitemapResponses[keyof SitemapResponses];
 export type GlobalStatsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Which leaderboard to build. Required.
+         */
+        dataType: 'characters' | 'corporations' | 'alliances' | 'ships' | 'systems' | 'regions' | 'isk_destroyers_chars' | 'isk_destroyers_corps' | 'isk_destroyers_alliances' | 'solo_killers' | 'top_points' | 'dangerous_systems' | 'deadliest_regions' | 'most_used_ships' | 'most_destroyed_ships' | 'biggest_losers' | 'pirate_characters' | 'carebear_characters' | 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Window in days. Values below 1 select the realtime hourly window instead.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/stats';
 };
 
@@ -14700,7 +24767,32 @@ export type GlobalStatsResponse2 = GlobalStatsResponses[keyof GlobalStatsRespons
 export type StatsRankingsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        /**
+         * Which ranking to build. Required.
+         */
+        section: 'largest' | 'security' | 'growth' | 'newest' | 'achievements';
+        /**
+         * Which entity the ranking covers.
+         */
+        entityType?: 'character' | 'corporation' | 'alliance';
+        /**
+         * Security band. Only read when `section` is `security`.
+         */
+        rank?: 'pirate' | 'carebear';
+        /**
+         * Growth direction. Only read when `section` is `growth`.
+         */
+        direction?: 'growing' | 'shrinking';
+        /**
+         * Growth window in days. Only read when `section` is `growth`.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/stats/rankings';
 };
 
@@ -14709,7 +24801,25 @@ export type StatsRankingsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            achievement_points?: number;
+            completed_count?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_founded?: string;
+            delta_1d?: number;
+            delta_30d?: number;
+            delta_7d?: number;
+            growth?: number;
+            id?: number;
+            member_count?: number;
+            name?: string;
+            security_status?: number;
+            type?: string;
+            weighted_score?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -14727,7 +24837,122 @@ export type SystemCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity: {
+            history: Array<{
+                npc_kills: number;
+                pod_kills: number;
+                ship_jumps: number;
+                ship_kills: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                timestamp?: string;
+            }>;
+            latest: {
+                npc_kills: number;
+                pod_kills: number;
+                ship_jumps: number;
+                ship_kills: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                timestamp?: string;
+            } | null;
+            summary_24h: {
+                npc_kills: number;
+                pod_kills: number;
+                ship_jumps: number;
+                ship_kills: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                timestamp?: string;
+            } | null;
+        };
+        celestialList: Array<{
+            category: string;
+            group_id: number;
+            item_id: number;
+            item_name: string;
+            type_id: number;
+            type_name: string | null;
+        }>;
+        celestials: {
+            [key: string]: number;
+        };
+        connections: Array<{
+            is_regional: boolean;
+            region_id: number;
+            security: number;
+            system_name: string;
+            to_solar_system_id: number;
+        }>;
+        sovereignty: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+        } | null;
+        sovereigntyHistory: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date: string;
+            faction_id: number | null;
+            faction_name: string | null;
+        }>;
+        stations: Array<{
+            corporation_id: number;
+            corporation_name: string | null;
+            operation_name: string | null;
+            station_id: number;
+            station_name: string;
+            type_id: number;
+        }>;
+        stats: {
+            kills: number;
+            npc_kills: number;
+            pod_kills: number;
+            total_value: number;
+        };
+        structures: Array<{
+            is_market: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_seen: string | null;
+            name: string;
+            owner_id: number;
+            owner_name: string | null;
+            structure_id: number;
+            type_id: number;
+            type_name: string | null;
+        }>;
+        system: {
+            border: boolean;
+            constellation_id: number;
+            constellation_name: string;
+            corridor: boolean;
+            faction_id: number | null;
+            fringe: boolean;
+            hub: boolean;
+            international: boolean;
+            region_id: number;
+            region_name: string;
+            regional: boolean;
+            security: number;
+            security_class: string | null;
+            solar_system_id: number;
+            sun_type_id: number | null;
+            sun_type_name: string | null;
+            system_name: string;
+        };
     };
 };
 
@@ -14736,7 +24961,20 @@ export type SystemCompatResponse = SystemCompatResponses[keyof SystemCompatRespo
 export type SystemKilllistCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/system/{id}/killlist';
 };
 
@@ -14745,7 +24983,46 @@ export type SystemKilllistCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -14754,7 +25031,20 @@ export type SystemKilllistCompatResponse = SystemKilllistCompatResponses[keyof S
 export type SystemMostValuableCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/system/{id}/most-valuable';
 };
 
@@ -14763,7 +25053,17 @@ export type SystemMostValuableCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -14786,7 +25086,23 @@ export type DscanAnalyzeLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        grouped: {
+            [key: string]: {
+                categoryId: number | null;
+                groups: {
+                    [key: string]: {
+                        groupId: number | null;
+                        types: Array<{
+                            count: number;
+                            typeId: number | null;
+                            typeName: string;
+                        }>;
+                    };
+                };
+            };
+        };
+        totalCount: number;
+        uniqueTypes: number;
     };
 };
 
@@ -14795,13 +25111,9 @@ export type DscanAnalyzeLegacyResponse = DscanAnalyzeLegacyResponses[keyof Dscan
 export type DscanSaveLegacyData = {
     body: {
         /**
-         * Raw directional scan text. Used by the dscan routes.
+         * Raw directional scan text.
          */
-        dscan?: string;
-        /**
-         * Character names. Used by the local scan routes.
-         */
-        names?: Array<string>;
+        dscan: string;
         /**
          * Analyzed scan output to store alongside the input.
          */
@@ -14817,7 +25129,7 @@ export type DscanSaveLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        hash: string;
     };
 };
 
@@ -14835,14 +25147,30 @@ export type DscanGetLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        grouped: {
+            [key: string]: {
+                categoryId: number | null;
+                groups: {
+                    [key: string]: {
+                        groupId: number | null;
+                        types: Array<{
+                            count: number;
+                            typeId: number | null;
+                            typeName: string;
+                        }>;
+                    };
+                };
+            };
+        };
+        totalCount: number;
+        uniqueTypes: number;
     };
 };
 
 export type DscanGetLegacyResponse = DscanGetLegacyResponses[keyof DscanGetLegacyResponses];
 
 export type LocalscanAnalyzeLegacyData = {
-    body: Array<string> | null;
+    body: Array<string>;
     path?: never;
     query?: never;
     url: '/tools/localscan';
@@ -14853,7 +25181,37 @@ export type LocalscanAnalyzeLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances: {
+            [key: string]: {
+                corporations: {
+                    [key: string]: {
+                        characters: Array<{
+                            characterId: number;
+                            kills: number;
+                            name: string;
+                        }>;
+                        name: string;
+                        ticker: string;
+                    };
+                };
+                name: string;
+                ticker: string;
+            };
+        };
+        corporations: {
+            [key: string]: {
+                characters: Array<{
+                    characterId: number;
+                    kills: number;
+                    name: string;
+                }>;
+                name: string;
+                ticker: string;
+            };
+        };
+        totalCharacters: number;
+        totalDangerous: number;
+        unresolved: Array<string>;
     };
 };
 
@@ -14862,13 +25220,9 @@ export type LocalscanAnalyzeLegacyResponse = LocalscanAnalyzeLegacyResponses[key
 export type LocalscanSaveLegacyData = {
     body: {
         /**
-         * Raw directional scan text. Used by the dscan routes.
+         * Character names from the local scan.
          */
-        dscan?: string;
-        /**
-         * Character names. Used by the local scan routes.
-         */
-        names?: Array<string>;
+        names: Array<string>;
         /**
          * Analyzed scan output to store alongside the input.
          */
@@ -14884,7 +25238,7 @@ export type LocalscanSaveLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        hash: string;
     };
 };
 
@@ -14902,7 +25256,37 @@ export type LocalscanGetLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliances: {
+            [key: string]: {
+                corporations: {
+                    [key: string]: {
+                        characters: Array<{
+                            characterId: number;
+                            kills: number;
+                            name: string;
+                        }>;
+                        name: string;
+                        ticker: string;
+                    };
+                };
+                name: string;
+                ticker: string;
+            };
+        };
+        corporations: {
+            [key: string]: {
+                characters: Array<{
+                    characterId: number;
+                    kills: number;
+                    name: string;
+                }>;
+                name: string;
+                ticker: string;
+            };
+        };
+        totalCharacters: number;
+        totalDangerous: number;
+        unresolved: Array<string>;
     };
 };
 
@@ -14920,7 +25304,35 @@ export type UniverseConstellationResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        constellation: {
+            constellation_id: number;
+            constellation_name: string;
+            faction_id: number | null;
+            region_id: number;
+            region_name: string | null;
+        };
+        sovDistribution: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            system_count: number;
+        }>;
+        stats: {
+            kills: number;
+            npc_kills: number;
+            pod_kills: number;
+            total_value: number;
+        };
+        systems: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+        }>;
     };
 };
 
@@ -14929,7 +25341,20 @@ export type UniverseConstellationResponse = UniverseConstellationResponses[keyof
 export type UniverseConstellationKillmailsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/universe/constellations/{id}/killmails';
 };
 
@@ -14938,7 +25363,46 @@ export type UniverseConstellationKillmailsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -14947,7 +25411,20 @@ export type UniverseConstellationKillmailsResponse = UniverseConstellationKillma
 export type UniverseConstellationMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/universe/constellations/{id}/most-valuable';
 };
 
@@ -14956,7 +25433,17 @@ export type UniverseConstellationMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -14974,7 +25461,44 @@ export type UniverseRegionResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        constellations: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            constellation_id: number;
+            constellation_name: string;
+            faction_id: number | null;
+            faction_name: string | null;
+            system_count: number;
+        }>;
+        region: {
+            constellation_count: number;
+            description: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            name: string;
+            region_id: number;
+            system_count: number;
+        };
+        sovDistribution: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+            system_count: number;
+        }>;
+        stats: {
+            kills: number;
+            npc_kills: number;
+            pod_kills: number;
+            total_value: number;
+        };
+        topSystems: Array<{
+            kills: number;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+            total_value: number;
+        }>;
     };
 };
 
@@ -14983,7 +25507,20 @@ export type UniverseRegionResponse = UniverseRegionResponses[keyof UniverseRegio
 export type UniverseRegionKillmailsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/universe/regions/{id}/killmails';
 };
 
@@ -14992,7 +25529,46 @@ export type UniverseRegionKillmailsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -15001,7 +25577,20 @@ export type UniverseRegionKillmailsResponse = UniverseRegionKillmailsResponses[k
 export type UniverseRegionMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/universe/regions/{id}/most-valuable';
 };
 
@@ -15010,7 +25599,17 @@ export type UniverseRegionMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -15028,7 +25627,122 @@ export type UniverseSystemResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activity: {
+            history: Array<{
+                npc_kills: number;
+                pod_kills: number;
+                ship_jumps: number;
+                ship_kills: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                timestamp?: string;
+            }>;
+            latest: {
+                npc_kills: number;
+                pod_kills: number;
+                ship_jumps: number;
+                ship_kills: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                timestamp?: string;
+            } | null;
+            summary_24h: {
+                npc_kills: number;
+                pod_kills: number;
+                ship_jumps: number;
+                ship_kills: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                timestamp?: string;
+            } | null;
+        };
+        celestialList: Array<{
+            category: string;
+            group_id: number;
+            item_id: number;
+            item_name: string;
+            type_id: number;
+            type_name: string | null;
+        }>;
+        celestials: {
+            [key: string]: number;
+        };
+        connections: Array<{
+            is_regional: boolean;
+            region_id: number;
+            security: number;
+            system_name: string;
+            to_solar_system_id: number;
+        }>;
+        sovereignty: {
+            alliance_id: number | null;
+            alliance_name: string | null;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            faction_id: number | null;
+            faction_name: string | null;
+        } | null;
+        sovereigntyHistory: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date: string;
+            faction_id: number | null;
+            faction_name: string | null;
+        }>;
+        stations: Array<{
+            corporation_id: number;
+            corporation_name: string | null;
+            operation_name: string | null;
+            station_id: number;
+            station_name: string;
+            type_id: number;
+        }>;
+        stats: {
+            kills: number;
+            npc_kills: number;
+            pod_kills: number;
+            total_value: number;
+        };
+        structures: Array<{
+            is_market: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_seen: string | null;
+            name: string;
+            owner_id: number;
+            owner_name: string | null;
+            structure_id: number;
+            type_id: number;
+            type_name: string | null;
+        }>;
+        system: {
+            border: boolean;
+            constellation_id: number;
+            constellation_name: string;
+            corridor: boolean;
+            faction_id: number | null;
+            fringe: boolean;
+            hub: boolean;
+            international: boolean;
+            region_id: number;
+            region_name: string;
+            regional: boolean;
+            security: number;
+            security_class: string | null;
+            solar_system_id: number;
+            sun_type_id: number | null;
+            sun_type_name: string | null;
+            system_name: string;
+        };
     };
 };
 
@@ -15037,7 +25751,20 @@ export type UniverseSystemResponse = UniverseSystemResponses[keyof UniverseSyste
 export type UniverseSystemKillmailsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+    };
     url: '/universe/systems/{id}/killmails';
 };
 
@@ -15046,7 +25773,46 @@ export type UniverseSystemKillmailsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -15055,7 +25821,20 @@ export type UniverseSystemKillmailsResponse = UniverseSystemKillmailsResponses[k
 export type UniverseSystemMostValuableData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Restrict the losses to one category of hull.
+         */
+        dataType?: 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
     url: '/universe/systems/{id}/most-valuable';
 };
 
@@ -15064,7 +25843,17 @@ export type UniverseSystemMostValuableResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        }>;
     };
 };
 
@@ -15082,7 +25871,98 @@ export type UniverseTypeResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        attributes: Array<{
+            id: number;
+            name?: string;
+            value: number;
+        }>;
+        item: {
+            base_price: number | null;
+            capacity: number | null;
+            category_id: number;
+            category_name: string | null;
+            description: string | null;
+            faction_id: number | null;
+            group_id: number;
+            group_name: string | null;
+            is_ship: boolean;
+            market_group_id: number | null;
+            mass: number | null;
+            meta_group_id: number | null;
+            meta_group_name: string | null;
+            meta_level: number | null;
+            name: string;
+            packaged_volume: number | null;
+            portion_size: number | null;
+            published: boolean;
+            race_id: number | null;
+            radius: number | null;
+            tech_level: number | null;
+            type_id: number;
+            volume: number | null;
+        };
+        marketBreadcrumb: Array<{
+            id: number;
+            name: string;
+            slug: string;
+        }>;
+        materials: Array<{
+            name: string | null;
+            quantity: number;
+            type_id: number;
+        }>;
+        pricing: {
+            customHistory: Array<{
+                date: string;
+                price: number;
+            }>;
+            customSummary: {
+                average_90d: number;
+                avg_volume_90d?: number;
+                highest_90d: number;
+                latest: number;
+                latest_date: string;
+                lowest_90d: number | null;
+            } | null;
+            history: Array<{
+                average: number;
+                date: string;
+                highest: number;
+                lowest: number;
+                volume: number;
+            }>;
+            insurance: Array<{
+                cost?: number;
+                name?: string;
+                payout?: number;
+                [key: string]: unknown;
+            }>;
+            summary: {
+                average_90d: number;
+                avg_volume_90d?: number;
+                highest_90d: number;
+                latest: number;
+                latest_date: string;
+                lowest_90d: number | null;
+            } | null;
+        };
+        requiredSkills: Array<{
+            level: number;
+            name: string | null;
+            type_id: number;
+        }>;
+        shipAttributes: {
+            [key: string]: Array<{
+                id: number;
+                name?: string;
+                value: number;
+            }>;
+        } | null;
+        variations: Array<{
+            meta_group_id: number | null;
+            name: string;
+            type_id: number;
+        }>;
     };
 };
 
@@ -15091,7 +25971,16 @@ export type UniverseTypeResponse = UniverseTypeResponses[keyof UniverseTypeRespo
 export type UniverseTypeKillmailsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/universe/types/{id}/killmails';
 };
 
@@ -15100,7 +25989,46 @@ export type UniverseTypeKillmailsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -15108,18 +26036,8 @@ export type UniverseTypeKillmailsResponse = UniverseTypeKillmailsResponses[keyof
 
 export type UserBoardsUpdateCompatData = {
     body: {
-        /**
-         * Killboards pinned in the navigation.
-         */
-        boards?: unknown;
-        /**
-         * Default tab per entity page.
-         */
-        defaultTabs?: unknown;
-        /**
-         * Preferred site theme.
-         */
-        theme?: unknown;
+        dismissed: Array<string>;
+        pinned: Array<string>;
     };
     path?: never;
     query?: never;
@@ -15131,7 +26049,8 @@ export type UserBoardsUpdateCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        dismissed: Array<string>;
+        pinned: Array<string>;
     };
 };
 
@@ -15140,7 +26059,16 @@ export type UserBoardsUpdateCompatResponse = UserBoardsUpdateCompatResponses[key
 export type MyCommentsLiveAliasData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Identifier cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        cursor?: number;
+    };
     url: '/user/comments';
 };
 
@@ -15149,7 +26077,47 @@ export type MyCommentsLiveAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        comments: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            body_html: string;
+            body_md: string;
+            character_id: number;
+            character_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            deleted_at: string | null;
+            deleted_by: number | null;
+            depth: number;
+            domain_id: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            edited_at: string | null;
+            flagged: boolean;
+            id: number;
+            moderation_status: number;
+            parent_id: number | null;
+            reply_count?: number;
+            reports_count: number;
+            root_id: number | null;
+            target_id: number;
+            target_slug: string | null;
+            target_type: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            visibility: number;
+        }>;
+        nextCursor: number | null;
     };
 };
 
@@ -15167,7 +26135,7 @@ export type MyCommentDeleteLiveAliasResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        ok: boolean;
     };
 };
 
@@ -15180,13 +26148,13 @@ export type UserDescriptionUpdateCompatData = {
          */
         description: string;
         /**
-         * Which description to write: character, corporation or alliance.
+         * Which description to write.
          */
-        entity: string;
+        entity: 'character' | 'corporation' | 'alliance';
         /**
          * How to interpret the text.
          */
-        format?: string;
+        format: 'markdown' | 'eve_html';
     };
     path?: never;
     query?: never;
@@ -15198,7 +26166,11 @@ export type UserDescriptionUpdateCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entity: string;
+        entity_id: number;
+        ok: boolean;
+        queue_id?: number;
+        status: string;
     };
 };
 
@@ -15216,7 +26188,160 @@ export type DomainsMineCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domains: Array<{
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -15224,50 +26349,23 @@ export type DomainsMineCompatResponse = DomainsMineCompatResponses[keyof Domains
 
 export type DomainCreateCompatData = {
     body: {
-        /**
-         * Whether the board serves traffic.
-         */
-        active?: unknown;
-        /**
-         * Campaigns featured on the board.
-         */
-        campaign_ids?: unknown;
-        /**
-         * How campaigns are selected for the board.
-         */
-        campaign_policy?: unknown;
-        /**
-         * Public identifiers of those campaigns.
-         */
-        campaign_public_ids?: unknown;
-        /**
-         * Characters, corporations and alliances the board covers.
-         */
-        entities?: unknown;
-        /**
-         * Custom navigation entries.
-         */
-        navbar_links?: unknown;
-        /**
-         * Short description for the board.
-         */
-        site_description?: unknown;
-        /**
-         * Board name shown in the title and header.
-         */
-        site_name?: unknown;
-        /**
-         * Subdomain the board answers on.
-         */
-        subdomain?: unknown;
-        /**
-         * Theme overrides: colors, fonts and background.
-         */
-        theme?: unknown;
-        /**
-         * Widgets shown on the board, in order.
-         */
-        widgets?: unknown;
+        entities: Array<{
+            id: number;
+            name: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        navbar_links?: Array<{
+            children?: Array<SiteDomainNavbarGroup>;
+            external?: boolean;
+            href: string;
+            icon?: string;
+            label: string;
+        }>;
+        site_description?: string | null;
+        site_name?: string | null;
+        subdomain: string;
+        theme?: SiteDomainTheme;
+        widgets?: SiteDomainWidgets;
     };
     path?: never;
     query?: never;
@@ -15279,7 +26377,160 @@ export type DomainCreateCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domain: {
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -15288,7 +26539,12 @@ export type DomainCreateCompatResponse = DomainCreateCompatResponses[keyof Domai
 export type DomainSubdomainCheckCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Subdomain to test.
+         */
+        subdomain?: string;
+    };
     url: '/user/domains/check-subdomain';
 };
 
@@ -15297,7 +26553,8 @@ export type DomainSubdomainCheckCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        available: boolean;
+        reason?: string;
     };
 };
 
@@ -15315,7 +26572,7 @@ export type DomainDeleteCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        deleted: boolean;
     };
 };
 
@@ -15323,50 +26580,26 @@ export type DomainDeleteCompatResponse = DomainDeleteCompatResponses[keyof Domai
 
 export type DomainUpdatePatchCompatData = {
     body: {
-        /**
-         * Whether the board serves traffic.
-         */
-        active?: unknown;
-        /**
-         * Campaigns featured on the board.
-         */
-        campaign_ids?: unknown;
-        /**
-         * How campaigns are selected for the board.
-         */
-        campaign_policy?: unknown;
-        /**
-         * Public identifiers of those campaigns.
-         */
-        campaign_public_ids?: unknown;
-        /**
-         * Characters, corporations and alliances the board covers.
-         */
-        entities?: unknown;
-        /**
-         * Custom navigation entries.
-         */
-        navbar_links?: unknown;
-        /**
-         * Short description for the board.
-         */
-        site_description?: unknown;
-        /**
-         * Board name shown in the title and header.
-         */
-        site_name?: unknown;
-        /**
-         * Subdomain the board answers on.
-         */
-        subdomain?: unknown;
-        /**
-         * Theme overrides: colors, fonts and background.
-         */
-        theme?: unknown;
-        /**
-         * Widgets shown on the board, in order.
-         */
-        widgets?: unknown;
+        active?: boolean;
+        campaign_ids?: Array<string>;
+        campaign_policy?: 0 | 1;
+        campaign_public_ids?: Array<string>;
+        entities?: Array<{
+            id: number;
+            name: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        navbar_links?: Array<{
+            children?: Array<SiteDomainNavbarGroup>;
+            external?: boolean;
+            href: string;
+            icon?: string;
+            label: string;
+        }>;
+        site_description?: string | null;
+        site_name?: string | null;
+        theme?: SiteDomainTheme;
+        widgets?: SiteDomainWidgets;
     };
     path?: never;
     query?: never;
@@ -15378,7 +26611,160 @@ export type DomainUpdatePatchCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domain: {
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -15386,50 +26772,26 @@ export type DomainUpdatePatchCompatResponse = DomainUpdatePatchCompatResponses[k
 
 export type DomainUpdatePutCompatData = {
     body: {
-        /**
-         * Whether the board serves traffic.
-         */
-        active?: unknown;
-        /**
-         * Campaigns featured on the board.
-         */
-        campaign_ids?: unknown;
-        /**
-         * How campaigns are selected for the board.
-         */
-        campaign_policy?: unknown;
-        /**
-         * Public identifiers of those campaigns.
-         */
-        campaign_public_ids?: unknown;
-        /**
-         * Characters, corporations and alliances the board covers.
-         */
-        entities?: unknown;
-        /**
-         * Custom navigation entries.
-         */
-        navbar_links?: unknown;
-        /**
-         * Short description for the board.
-         */
-        site_description?: unknown;
-        /**
-         * Board name shown in the title and header.
-         */
-        site_name?: unknown;
-        /**
-         * Subdomain the board answers on.
-         */
-        subdomain?: unknown;
-        /**
-         * Theme overrides: colors, fonts and background.
-         */
-        theme?: unknown;
-        /**
-         * Widgets shown on the board, in order.
-         */
-        widgets?: unknown;
+        active?: boolean;
+        campaign_ids?: Array<string>;
+        campaign_policy?: 0 | 1;
+        campaign_public_ids?: Array<string>;
+        entities?: Array<{
+            id: number;
+            name: string;
+            type: 'character' | 'corporation' | 'alliance';
+        }>;
+        navbar_links?: Array<{
+            children?: Array<SiteDomainNavbarGroup>;
+            external?: boolean;
+            href: string;
+            icon?: string;
+            label: string;
+        }>;
+        site_description?: string | null;
+        site_name?: string | null;
+        theme?: SiteDomainTheme;
+        widgets?: SiteDomainWidgets;
     };
     path?: never;
     query?: never;
@@ -15441,7 +26803,160 @@ export type DomainUpdatePutCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        domain: {
+            active?: boolean;
+            backgrounds?: Array<{
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            }>;
+            bannerAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            campaign_policy?: number;
+            campaigns?: Array<{
+                campaign_id?: string;
+                created_by_character_id?: number;
+                description?: string | null;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                end_time?: string;
+                estimated_killmails?: number | null;
+                name?: string;
+                public_on_domain?: boolean;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                start_time?: string;
+                status?: number;
+                visibility?: number;
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            custom_hostname?: string | null;
+            entities?: Array<{
+                id: number;
+                name?: string;
+                type: string;
+            }>;
+            id?: number;
+            logoAsset?: {
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                created_at?: string;
+                domain_id?: number;
+                id?: number;
+                reject_reason?: string | null;
+                status?: string;
+                type?: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                updated_at?: string;
+                [key: string]: unknown;
+            } | null;
+            navbar_links?: Array<{
+                children?: Array<{
+                    items: Array<{
+                        external?: boolean;
+                        href: string;
+                        icon?: string;
+                        label: string;
+                    }>;
+                    label?: string;
+                }>;
+                external?: boolean;
+                href: string;
+                icon?: string;
+                label: string;
+            }>;
+            site_description?: string | null;
+            site_name?: string | null;
+            subdomain?: string;
+            theme?: {
+                accentColor?: string;
+                bannerUrl?: string;
+                bgColor?: string;
+                contentOpacity?: number;
+                defaultThemeOverrides?: {
+                    [key: string]: string;
+                };
+                defaultThemePreset?: string;
+                logoUrl?: string;
+                primaryColor?: string;
+                showDescriptionInBanner?: boolean;
+                showLogoInBanner?: boolean;
+                showNameInBanner?: boolean;
+                textColor?: string;
+                transparentBanner?: boolean;
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at?: string;
+            user_id?: number;
+            widgets?: {
+                columnRatio: string;
+                left: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                right: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+                top: Array<{
+                    campaignId?: string;
+                    content?: string;
+                    enabled?: boolean;
+                    killlistType?: string;
+                    title?: string;
+                    type?: string;
+                    [key: string]: unknown;
+                }>;
+            };
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -15459,7 +26974,7 @@ export type DomainAssetDeleteCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        success: boolean;
     };
 };
 
@@ -15468,7 +26983,12 @@ export type DomainAssetDeleteCompatResponse = DomainAssetDeleteCompatResponses[k
 export type DomainCampaignSearchCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Campaign name search.
+         */
+        q?: string;
+    };
     url: '/user/domains/{id}/campaigns/search';
 };
 
@@ -15477,7 +26997,25 @@ export type DomainCampaignSearchCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        campaigns: Array<{
+            campaign_id?: string;
+            created_by_character_id?: number;
+            description?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            end_time?: string;
+            estimated_killmails?: number | null;
+            name?: string;
+            public_on_domain?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_time?: string;
+            status?: number;
+            visibility?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -15486,9 +27024,9 @@ export type DomainCampaignSearchCompatResponse = DomainCampaignSearchCompatRespo
 export type DomainAssetsDeleteTypeCompatData = {
     body: {
         /**
-         * Asset slot to clear: background, preview or icon.
+         * Asset slot to clear.
          */
-        type?: string;
+        type: 'banner' | 'logo';
     };
     path?: never;
     query?: never;
@@ -15500,7 +27038,7 @@ export type DomainAssetsDeleteTypeCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        success: boolean;
     };
 };
 
@@ -15518,7 +27056,9 @@ export type DomainAssetUploadCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        assetId: number;
+        message: string;
+        status: string;
     };
 };
 
@@ -15536,7 +27076,19 @@ export type UserEsiCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        rateLimit: {
+            request_count: number;
+        };
+        responseTime: {
+            avg_ms: number | null;
+            p95_ms: number | null;
+        };
+        volumeByHour: Array<{
+            errors: number;
+            hour: string;
+            new_items: number;
+            total: number;
+        }>;
     };
 };
 
@@ -15545,7 +27097,32 @@ export type UserEsiCompatResponse = UserEsiCompatResponses[keyof UserEsiCompatRe
 export type UserEsiLogsCompatData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Match the recorded request source exactly.
+         */
+        source?: string;
+        /**
+         * Restrict to successful or failed requests.
+         */
+        status?: 'success' | 'error';
+        /**
+         * Restrict to one ESI endpoint family, for example `killmails`.
+         */
+        endpoint_type?: string;
+        /**
+         * Return log rows below this log ID.
+         */
+        after_id?: number;
+    };
     url: '/user/esi-logs';
 };
 
@@ -15554,7 +27131,30 @@ export type UserEsiLogsCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        limit?: number;
+        newRows?: boolean;
+        page?: number;
+        pages?: number;
+        rows: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            endpoint: string;
+            endpoint_action: string;
+            endpoint_type: string;
+            error_message: string | null;
+            id: number;
+            items_returned: number | null;
+            method: string;
+            new_items: number | null;
+            request_duration_ms: number | null;
+            source: string;
+            status_code: number | null;
+            success: boolean;
+        }>;
+        sources?: Array<string>;
+        total?: number;
     };
 };
 
@@ -15572,7 +27172,72 @@ export type UserManageableEntitiesCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        alliance: {
+            canEdit: boolean;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            custom_description: string | null;
+            custom_description_format: string;
+            esi_description?: string | null;
+            executor_ceo_id?: number | null;
+            executor_ceo_name?: string | null;
+            executor_corporation_id?: number | null;
+            id: number;
+            name: string;
+            pending_submission: {
+                body: string;
+                body_format: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                submitted_at: string;
+            } | null;
+            ticker?: string;
+        } | null;
+        character: {
+            canEdit: boolean;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            custom_description: string | null;
+            custom_description_format: string;
+            esi_description?: string | null;
+            executor_ceo_id?: number | null;
+            executor_ceo_name?: string | null;
+            executor_corporation_id?: number | null;
+            id: number;
+            name: string;
+            pending_submission: {
+                body: string;
+                body_format: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                submitted_at: string;
+            } | null;
+            ticker?: string;
+        };
+        corporation: {
+            canEdit: boolean;
+            ceo_id?: number | null;
+            ceo_name?: string | null;
+            custom_description: string | null;
+            custom_description_format: string;
+            esi_description?: string | null;
+            executor_ceo_id?: number | null;
+            executor_ceo_name?: string | null;
+            executor_corporation_id?: number | null;
+            id: number;
+            name: string;
+            pending_submission: {
+                body: string;
+                body_format: string;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                submitted_at: string;
+            } | null;
+            ticker?: string;
+        } | null;
     };
 };
 
@@ -15590,7 +27255,42 @@ export type UserOverviewCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        account: {
+            characterId: number;
+            characterName: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            createdAt: string | null;
+            isAdmin: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastLogin: string | null;
+        };
+        esiStats: {
+            errors_24h?: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_request?: string | null;
+            new_items_24h?: number;
+            requests_24h?: number;
+            total_errors?: number;
+            total_new_items?: number;
+            total_requests?: number;
+        };
+        esiToken: {
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastFetched: string | null;
+            scopeCount: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            tokenExpiry: string | null;
+        } | null;
     };
 };
 
@@ -15608,7 +27308,22 @@ export type UserPreferencesCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        boards?: {
+            dismissed: Array<string>;
+            pinned: Array<string>;
+        };
+        /**
+         * Default tab keyed by page type.
+         */
+        defaultTabs?: {
+            [key: string]: unknown;
+        };
+        /**
+         * User-selected theme settings.
+         */
+        theme?: {
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -15616,18 +27331,9 @@ export type UserPreferencesCompatResponse = UserPreferencesCompatResponses[keyof
 
 export type UserPreferencesUpdateCompatData = {
     body: {
-        /**
-         * Killboards pinned in the navigation.
-         */
-        boards?: unknown;
-        /**
-         * Default tab per entity page.
-         */
-        defaultTabs?: unknown;
-        /**
-         * Preferred site theme.
-         */
-        theme?: unknown;
+        defaultTabs: {
+            [key: string]: string;
+        };
     };
     path?: never;
     query?: never;
@@ -15639,7 +27345,24 @@ export type UserPreferencesUpdateCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        preferences: {
+            boards?: {
+                dismissed: Array<string>;
+                pinned: Array<string>;
+            };
+            /**
+             * Default tab keyed by page type.
+             */
+            defaultTabs?: {
+                [key: string]: unknown;
+            };
+            /**
+             * User-selected theme settings.
+             */
+            theme?: {
+                [key: string]: unknown;
+            };
+        };
     };
 };
 
@@ -15657,7 +27380,27 @@ export type UserSessionsLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        sessions: Array<{
+            browser: string;
+            countryCode: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            createdAt: string;
+            current: boolean;
+            device: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expiresAt: string;
+            id: number;
+            ipAddress: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            lastSeenAt: string;
+            operatingSystem: string;
+        }>;
     };
 };
 
@@ -15666,7 +27409,12 @@ export type UserSessionsLegacyResponse = UserSessionsLegacyResponses[keyof UserS
 export type OtherSessionsRevokeLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Session ID to keep. Every other session is revoked.
+         */
+        except?: string;
+    };
     url: '/user/sessions/revoke-others';
 };
 
@@ -15675,7 +27423,7 @@ export type OtherSessionsRevokeLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        revoked: number;
     };
 };
 
@@ -15693,7 +27441,8 @@ export type UserSessionRevokeLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        current: boolean;
+        revoked: boolean;
     };
 };
 
@@ -15701,18 +27450,9 @@ export type UserSessionRevokeLegacyResponse = UserSessionRevokeLegacyResponses[k
 
 export type UserThemeUpdateCompatData = {
     body: {
-        /**
-         * Killboards pinned in the navigation.
-         */
-        boards?: unknown;
-        /**
-         * Default tab per entity page.
-         */
-        defaultTabs?: unknown;
-        /**
-         * Preferred site theme.
-         */
-        theme?: unknown;
+        theme: {
+            [key: string]: string;
+        };
     };
     path?: never;
     query?: never;
@@ -15724,7 +27464,12 @@ export type UserThemeUpdateCompatResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        /**
+         * User-selected theme settings.
+         */
+        theme: {
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -15733,7 +27478,12 @@ export type UserThemeUpdateCompatResponse = UserThemeUpdateCompatResponses[keyof
 export type WalletAccountLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+    };
     url: '/user/wallet';
 };
 
@@ -15742,7 +27492,58 @@ export type WalletAccountLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        availableBalance: string;
+        balance: string;
+        character: {
+            character_id: number;
+            character_name: string;
+        };
+        corporation: {
+            corporation_id: number;
+            name: string;
+            ticker: string;
+        };
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        depositsEnabledAt: string | null;
+        hasMore: boolean;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastSynced: string | null;
+        page: number;
+        pageSize: number;
+        reservations: Array<{
+            amount?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at?: string;
+            external_reference?: string;
+            id?: number;
+            transaction_type?: number;
+            [key: string]: unknown;
+        }>;
+        reservedBalance: string;
+        totalBalance: string;
+        transactions: Array<{
+            amount?: string;
+            balance_after?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at?: string;
+            description?: string | null;
+            id?: number;
+            type?: number;
+            [key: string]: unknown;
+        }>;
     };
 };
 
@@ -15760,7 +27561,10 @@ export type WalletAccountBalanceLegacyResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        availableBalance: string;
+        balance: string;
+        reservedBalance: string;
+        totalBalance: string;
     };
 };
 
@@ -15769,7 +27573,16 @@ export type WalletAccountBalanceLegacyResponse = WalletAccountBalanceLegacyRespo
 export type WalletPublicData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Page number, counted from 1.
+         */
+        page?: number;
+        /**
+         * Corporation wallet division.
+         */
+        division?: number;
+    };
     url: '/wallet';
 };
 
@@ -15778,7 +27591,40 @@ export type WalletPublicResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        corporation: {
+            corporation_id: number;
+            name: string;
+            ticker: string;
+        };
+        division: number | null;
+        hasMore: boolean;
+        journal: Array<{
+            amount?: string;
+            balance?: string;
+            context_id?: number | null;
+            context_id_type?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date?: string;
+            description?: string | null;
+            division?: number;
+            first_party_id?: number | null;
+            journal_id?: number;
+            reason?: string | null;
+            ref_type?: string;
+            second_party_id?: number | null;
+            tax?: string | null;
+            tax_receiver_id?: number | null;
+            [key: string]: unknown;
+        }>;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastSynced: string | null;
+        page: number;
+        pageSize: number;
+        totalBalance: string;
     };
 };
 
@@ -15796,7 +27642,58 @@ export type WarDashboardDetailResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        stats: {
+            top_ships: Array<{
+                count: number;
+                ship_name: string;
+                ship_type_id: number;
+            }>;
+            total_kills: number;
+            total_value: number;
+        };
+        war: {
+            aggressor?: {
+                id: number;
+                name?: string;
+                ticker?: string;
+                type: string;
+            };
+            allies?: Array<{
+                id: number;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+                name: string;
+                type: string;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            declared?: string;
+            defender?: {
+                id: number;
+                name?: string;
+                ticker?: string;
+                type: string;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finished?: string | null;
+            mutual?: boolean;
+            open_for_allies?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            retracted?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            started?: string | null;
+            war_id?: number;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -15814,7 +27711,135 @@ export type WarDashboardResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        leaderboards: {
+            aggressor: {
+                topAlliances: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+                topCharacters: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+                topCorporations: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+            };
+            combined: {
+                topAlliances: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+                topCharacters: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+                topCorporations: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+            };
+            defender: {
+                topAlliances: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+                topCharacters: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+                topCorporations: Array<{
+                    count: number;
+                    id: number;
+                    isk_value: number;
+                    name: string;
+                }>;
+            };
+            sides: {
+                aggressor: {
+                    alliances: Array<number>;
+                    corporations: Array<number>;
+                };
+                defender: {
+                    alliances: Array<number>;
+                    corporations: Array<number>;
+                };
+            };
+            topShips: Array<{
+                count: number;
+                ship_name: string;
+                ship_type_id: number;
+            }>;
+        };
+        stats: {
+            top_ships: Array<{
+                count: number;
+                ship_name: string;
+                ship_type_id: number;
+            }>;
+            total_kills: number;
+            total_value: number;
+        };
+        war: {
+            aggressor?: {
+                id: number;
+                name?: string;
+                ticker?: string;
+                type: string;
+            };
+            allies?: Array<{
+                id: number;
+                isk_destroyed: number;
+                isk_lost: number;
+                kills: number;
+                losses: number;
+                name: string;
+                type: string;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            declared?: string;
+            defender?: {
+                id: number;
+                name?: string;
+                ticker?: string;
+                type: string;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finished?: string | null;
+            mutual?: boolean;
+            open_for_allies?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            retracted?: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            started?: string | null;
+            war_id?: number;
+            [key: string]: unknown;
+        };
     };
 };
 
@@ -15832,7 +27857,67 @@ export type WarIntelResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        security_breakdown: Array<{
+            isk_destroyed: number;
+            kills: number;
+            sec_class: string;
+        }>;
+        ship_groups_destroyed: Array<{
+            count?: number;
+            group_id?: number;
+            group_name?: string | null;
+            isk_destroyed?: number;
+            [key: string]: unknown;
+        }>;
+        ships_destroyed: Array<{
+            count: number;
+            group_id: number | null;
+            group_name: string | null;
+            isk_destroyed: number;
+            ship_name: string | null;
+            ship_type_id: number;
+        }>;
+        ships_used: Array<{
+            count: number;
+            group_id: number | null;
+            group_name: string | null;
+            ship_name: string | null;
+            ship_type_id: number;
+        }>;
+        summary: {
+            constellations: number;
+            isk_destroyed: number;
+            kills: number;
+            regions: number;
+            systems: number;
+        };
+        top_constellations: Array<{
+            constellation_id?: number;
+            constellation_name?: string | null;
+            isk_destroyed?: number;
+            kills?: number;
+            region_id?: number | null;
+            region_name?: string | null;
+            [key: string]: unknown;
+        }>;
+        top_regions: Array<{
+            isk_destroyed?: number;
+            kills?: number;
+            region_id?: number;
+            region_name?: string | null;
+            [key: string]: unknown;
+        }>;
+        top_systems: Array<{
+            isk_destroyed?: number;
+            kills?: number;
+            region_id?: number | null;
+            region_name?: string | null;
+            security?: number | null;
+            system_id?: number;
+            system_name?: string | null;
+            [key: string]: unknown;
+        }>;
+        war_id: number;
     };
 };
 
@@ -15841,7 +27926,36 @@ export type WarIntelResponse = WarIntelResponses[keyof WarIntelResponses];
 export type WarKilllistData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+        /**
+         * Page number for offset paging. Leave at 0 to page by cursor.
+         */
+        page?: number;
+        /**
+         * Override the window start.
+         */
+        warStart?: string;
+        /**
+         * Override the window end.
+         */
+        warEnd?: string;
+        /**
+         * Comma-separated corporation IDs on the side.
+         */
+        warSideCorps?: string;
+        /**
+         * Comma-separated alliance IDs on the side.
+         */
+        warSideAlliances?: string;
+    };
     url: '/war/{id}/killlist';
 };
 
@@ -15850,7 +27964,46 @@ export type WarKilllistResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
     };
 };
 
@@ -15859,7 +28012,28 @@ export type WarKilllistResponse = WarKilllistResponses[keyof WarKilllistResponse
 export type WarMembersData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which side of the war to report on.
+         */
+        side?: 'aggressor' | 'defender' | 'combined';
+        /**
+         * Ordering for the member rows.
+         */
+        sort?: 'kills' | 'losses' | 'isk' | 'activity';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Restrict to one corporation.
+         */
+        corporationId?: number;
+        /**
+         * Restrict to one alliance.
+         */
+        allianceId?: number;
+    };
     url: '/war/{id}/members';
 };
 
@@ -15868,7 +28042,28 @@ export type WarMembersResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        count: number;
+        limit: number;
+        members: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            character_id: number;
+            character_name: string;
+            corporation_id: number | null;
+            corporation_name: string | null;
+            corporation_ticker: string | null;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            side: string;
+            top_ship_count: number;
+            top_ship_name: string | null;
+            top_ship_type_id: number | null;
+        }>;
+        side: string;
+        war_id: number;
     };
 };
 
@@ -15886,7 +28081,81 @@ export type WarLeaderboardsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        aggressor: {
+            topAlliances: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+            topCharacters: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+            topCorporations: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+        };
+        combined: {
+            topAlliances: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+            topCharacters: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+            topCorporations: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+        };
+        defender: {
+            topAlliances: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+            topCharacters: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+            topCorporations: Array<{
+                count: number;
+                id: number;
+                isk_value: number;
+                name: string;
+            }>;
+        };
+        sides: {
+            aggressor: {
+                alliances: Array<number>;
+                corporations: Array<number>;
+            };
+            defender: {
+                alliances: Array<number>;
+                corporations: Array<number>;
+            };
+        };
+        topShips: Array<{
+            count: number;
+            ship_name: string;
+            ship_type_id: number;
+        }>;
     };
 };
 
@@ -15895,7 +28164,16 @@ export type WarLeaderboardsResponse = WarLeaderboardsResponses[keyof WarLeaderbo
 export type WarsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
     url: '/wars';
 };
 
@@ -15911,7 +28189,12 @@ export type WarsResponse2 = WarsResponses[keyof WarsResponses];
 export type WarsEligibleData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Which kind of war target to list.
+         */
+        type?: 'corporations' | 'alliances';
+    };
     url: '/wars/eligible';
 };
 
@@ -15920,7 +28203,22 @@ export type WarsEligibleResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        entries: Array<{
+            alliance_id?: number | null;
+            alliance_name?: string | null;
+            corporation_count?: number;
+            id?: number;
+            isk_destroyed?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            member_count?: number;
+            name?: string;
+            ticker?: string;
+            [key: string]: unknown;
+        }>;
+        limit: number;
+        type: string;
     };
 };
 
@@ -15938,7 +28236,11 @@ export type WarsOverviewStatsResponses = {
      * OK
      */
     200: {
-        [key: string]: unknown;
+        activeWars: number;
+        eligibleAlliances: number;
+        eligibleCorps: number;
+        finishedWars: number;
+        upcomingWars: number;
     };
 };
 

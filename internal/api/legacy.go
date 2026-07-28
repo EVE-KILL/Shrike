@@ -79,6 +79,12 @@ func registerLegacy(a huma.API, op huma.Operation, handler legacyHandler) {
 	op.SkipValidateBody = true
 	if op.Responses == nil {
 		op.Responses = legacyResponses(op.DefaultStatus)
+		if response := publicOperationResponse(op.OperationID, op.DefaultStatus); response != nil {
+			op.Responses[strconv.Itoa(op.DefaultStatus)] = response
+		} else if schema := publicOperationResponseSchema(op.OperationID); schema != nil {
+			op.Responses[strconv.Itoa(op.DefaultStatus)].
+				Content["application/json"].Schema = schema
+		}
 	}
 
 	a.OpenAPI().AddOperation(&op)

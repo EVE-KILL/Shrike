@@ -144,7 +144,7 @@ func registerAnnouncementAdminServiceRoutes(
 		Tags:        []string{"admin", "announcements"},
 		Security:    requiredSession,
 	}, service.listHandler())
-	registerLegacy(a, documentJSONBody[announcementCreateBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[announcementCreateDocument](a, huma.Operation{
 		OperationID: "announcement-admin-create",
 		Method:      http.MethodPost,
 		Path:        "/admin/announcements",
@@ -160,7 +160,7 @@ func registerAnnouncementAdminServiceRoutes(
 		Tags:        []string{"admin", "announcements"},
 		Security:    requiredSession,
 	}, service.detailHandler())
-	registerLegacy(a, documentJSONBody[announcementUpdateBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[announcementUpdateDocument](a, huma.Operation{
 		OperationID: "announcement-admin-update",
 		Method:      http.MethodPatch,
 		Path:        "/admin/announcements/{id}",

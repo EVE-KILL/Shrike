@@ -46,12 +46,28 @@ type bodyHandler[T any] func(context.Context, *legacyRequest, *T) (legacyPayload
 // tells them the body was parsed before their credentials were. Those handlers
 // call decodeJSONBody themselves, after the auth check.
 func documentJSONBody[T any](a huma.API, op huma.Operation) huma.Operation {
+	return documentJSONBodyRequired[T](a, op, true)
+}
+
+// documentOptionalJSONBody documents a body that the compatibility route can
+// read when present but does not require. The live moderation approve/reject
+// aliases are the current example: their only field is an optional note, and
+// the old handlers deliberately accepted an empty request.
+func documentOptionalJSONBody[T any](a huma.API, op huma.Operation) huma.Operation {
+	return documentJSONBodyRequired[T](a, op, false)
+}
+
+func documentJSONBodyRequired[T any](
+	a huma.API,
+	op huma.Operation,
+	required bool,
+) huma.Operation {
 	if op.RequestBody != nil {
 		return op
 	}
 	var zero T
 	op.RequestBody = &huma.RequestBody{
-		Required: true,
+		Required: required,
 		Content: map[string]*huma.MediaType{
 			"application/json": {Schema: huma.SchemaFromType(
 				a.OpenAPI().Components.Schemas, reflect.TypeOf(zero),
@@ -59,6 +75,31 @@ func documentJSONBody[T any](a huma.API, op huma.Operation) huma.Operation {
 		},
 	}
 	return op
+}
+
+// requestList is used by documentation-only body structs. Huma marks an
+// ordinary Go slice nullable because a nil slice exists at runtime, but the
+// TypeScript APIs reject null anywhere they require an array. This provider
+// keeps the generated contract as `T[]`, not `T[] | null`.
+type requestList[T any] []T
+
+func (requestList[T]) Schema(r huma.Registry) *huma.Schema {
+	var item T
+	return &huma.Schema{
+		Type:  huma.TypeArray,
+		Items: huma.SchemaFromType(r, reflect.TypeOf(item)),
+	}
+}
+
+// requestMap does the same for JSON objects with uniform value types.
+type requestMap[T any] map[string]T
+
+func (requestMap[T]) Schema(r huma.Registry) *huma.Schema {
+	var value T
+	return &huma.Schema{
+		Type:                 huma.TypeObject,
+		AdditionalProperties: huma.SchemaFromType(r, reflect.TypeOf(value)),
+	}
 }
 
 // registerLegacyJSON mounts a write route whose body is described by T.

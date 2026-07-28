@@ -115,6 +115,7 @@ func New(opts Options) *Service {
 	applyOperationTags(a.OpenAPI())
 	applyTagMetadata(a.OpenAPI())
 	applyOperationDescriptions(a.OpenAPI())
+	applyOperationParameters(a.OpenAPI())
 	registerLegacyMethodGuards(mux)
 	mux.HandleFunc("/", legacyFallback)
 	mux.NotFound(legacyFallback)

@@ -108,6 +108,8 @@ func TestEveryJSONWriteRouteDocumentsItsBody(t *testing.T) {
 		"campaign-prize-claim":              true,
 		"campaign-prize-claim-legacy":       true,
 		"account-announcement-dismissal":    true,
+		"admin-comment-hide-live-alias":     true,
+		"admin-comment-restore-live-alias":  true,
 		"other-sessions-revoke-legacy":      true,
 		"user-session-revoke-legacy":        true,
 		"domain-asset-upload":               true, // multipart
@@ -133,5 +135,69 @@ func TestEveryJSONWriteRouteDocumentsItsBody(t *testing.T) {
 	sort.Strings(undocumented)
 	if len(undocumented) > 0 {
 		t.Errorf("write routes with no documented body: %v", undocumented)
+	}
+}
+
+func TestReadRoutesNeverDocumentJSONBodies(t *testing.T) {
+	document := New(Options{}).document
+	for path, item := range document.Paths {
+		for _, operation := range []*huma.Operation{item.Get, item.Head} {
+			if operation != nil && operation.RequestBody != nil {
+				t.Errorf("%s %s unexpectedly documents a request body",
+					operation.Method, path)
+			}
+		}
+	}
+}
+
+func TestForcedModerationActionsMatchTheirLiveBodies(t *testing.T) {
+	document := New(Options{}).document
+
+	for _, path := range []string{
+		"/admin/comments/{id}/hide",
+		"/admin/comments/{id}/restore",
+	} {
+		if body := document.Paths[path].Post.RequestBody; body != nil {
+			t.Errorf("%s documents a body the handler does not read", path)
+		}
+	}
+
+	for _, path := range []string{
+		"/admin/moderation/{id}/approve",
+		"/admin/moderation/{id}/reject",
+	} {
+		body := document.Paths[path].Post.RequestBody
+		if body == nil {
+			t.Fatalf("%s has no optional notes body", path)
+		}
+		if body.Required {
+			t.Errorf("%s requires a body, but the live route accepts none", path)
+		}
+	}
+}
+
+func TestDomainAssetDeleteDocumentsBodyOnlyOnBodyAlias(t *testing.T) {
+	document := New(Options{}).document
+	if body := document.Paths["/me/domains/{id}/assets"].Delete.RequestBody; body != nil {
+		t.Error("canonical domain asset delete documents a body it does not read")
+	}
+	body := document.Paths["/user/domains/{id}/upload"].Delete.RequestBody
+	if body == nil || !body.Required {
+		t.Error("compatibility domain asset delete lost its required JSON body")
+	}
+}
+
+func TestBatchStatsDocumentsTheImplementedPeriods(t *testing.T) {
+	document := New(Options{}).document
+	schema := document.Paths["/characters/stats"].Post.
+		RequestBody.Content["application/json"].Schema
+	period := schema.Properties["type"]
+	got := make([]string, 0, len(period.Enum))
+	for _, value := range period.Enum {
+		got = append(got, value.(string))
+	}
+	want := []string{"alltime", "weekly", "range"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("period enum = %v, want %v", got, want)
 	}
 }

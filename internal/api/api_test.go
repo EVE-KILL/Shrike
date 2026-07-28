@@ -156,6 +156,110 @@ func TestEstablishedRouteCatalogueMatchesEmbeddedIndex(t *testing.T) {
 	}
 }
 
+func TestOpenAPISuccessResponsesUseConcreteSchemas(t *testing.T) {
+	raw, err := json.Marshal(New(Options{
+		Version: "test-version",
+		DB:      stubDatabase{},
+	}).OpenAPI())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document map[string]any
+	if err := json.Unmarshal(raw, &document); err != nil {
+		t.Fatal(err)
+	}
+	paths, _ := document["paths"].(map[string]any)
+	components, _ := document["components"].(map[string]any)
+	schemas, _ := components["schemas"].(map[string]any)
+	for path, rawItem := range paths {
+		item, _ := rawItem.(map[string]any)
+		for method, rawOperation := range item {
+			operation, ok := rawOperation.(map[string]any)
+			if !ok {
+				continue
+			}
+			operationID, _ := operation["operationId"].(string)
+			responses, _ := operation["responses"].(map[string]any)
+			for status, rawResponse := range responses {
+				if len(status) != 3 || status[0] != '2' && status[0] != '3' {
+					continue
+				}
+				response, _ := rawResponse.(map[string]any)
+				content, _ := response["content"].(map[string]any)
+				for mediaType, rawMedia := range content {
+					media, _ := rawMedia.(map[string]any)
+					schema, _ := media["schema"].(map[string]any)
+					if ref, _ := schema["$ref"].(string); ref != "" {
+						const prefix = "#/components/schemas/"
+						if !strings.HasPrefix(ref, prefix) {
+							t.Errorf("%s %s %s has unsupported schema ref %q",
+								method, path, status, ref)
+							continue
+						}
+						schema, _ = schemas[strings.TrimPrefix(ref, prefix)].(map[string]any)
+					}
+					if schema == nil {
+						t.Errorf("%s %s %s %s has no response schema",
+							method, path, status, mediaType)
+						continue
+					}
+					properties, _ := schema["properties"].(map[string]any)
+					additional, _ := schema["additionalProperties"].(bool)
+					if schema["type"] == "object" && additional &&
+						len(properties) == 0 {
+						t.Errorf("%s %s (%s) %s %s uses a free-form response",
+							strings.ToUpper(method), path, operationID,
+							status, mediaType)
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestOpenAPIDocumentsRedirectsAndDomainImagesByMediaType(t *testing.T) {
+	document := New(Options{
+		Version: "test-version",
+		DB:      stubDatabase{},
+	}).OpenAPI()
+	for _, path := range []string{
+		"/auth/eve/start", "/auth/eve/callback", "/auth/callback",
+	} {
+		response := document.Paths[path].Get.Responses["302"]
+		if len(response.Content) != 0 {
+			t.Errorf("%s redirect documents body content: %#v", path, response.Content)
+		}
+		if response.Headers["Location"] == nil {
+			t.Errorf("%s redirect does not document Location", path)
+		}
+	}
+	for _, path := range []string{
+		"/admin/domains/{id}/assets/{assetId}/preview",
+		"/images/domains/{id}/{type}",
+		"/images/domains/background/{assetId}",
+		"/images/domains/preview/{assetId}",
+		"/domains/asset/{id}/{type}",
+		"/domains/bg/{assetId}",
+		"/domains/preview/{assetId}",
+	} {
+		response := document.Paths[path].Get.Responses["200"]
+		if response.Content["application/json"] != nil {
+			t.Errorf("%s image response is documented as JSON", path)
+		}
+		for _, mediaType := range []string{
+			"image/jpeg", "image/png", "image/webp", "image/gif",
+		} {
+			media := response.Content[mediaType]
+			if media == nil || media.Schema == nil ||
+				media.Schema.Type != huma.TypeString ||
+				media.Schema.Format != "binary" {
+				t.Errorf("%s %s response schema = %#v",
+					path, mediaType, media)
+			}
+		}
+	}
+}
+
 func TestDocsUseScalar(t *testing.T) {
 	handler := apiPathHandler(Options{
 		Version: "test-version",

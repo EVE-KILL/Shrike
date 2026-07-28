@@ -130,7 +130,7 @@ func publicOperationResponseSchema(operationID string) *huma.Schema {
 	if strings.HasPrefix(operationID, "sde-") {
 		return sdeResponseSchema(operationID)
 	}
-	return nil
+	return applicationOperationResponseSchema(operationID)
 }
 
 func responseSchema(

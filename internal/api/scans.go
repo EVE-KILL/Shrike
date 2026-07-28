@@ -54,7 +54,7 @@ func registerScanRoutes(a huma.API, opts Options) {
 			id: "dscan-save", method: http.MethodPost,
 			path: "/scans/dscan", summary: "Save a directional scan",
 			document: func(op huma.Operation) huma.Operation {
-				return documentJSONBody[scanSaveBody](a, op)
+				return documentJSONBody[dscanSaveDocument](a, op)
 			},
 			security: required, handler: saveScanHandler(opts, auth, "dscan"),
 		},
@@ -62,7 +62,7 @@ func registerScanRoutes(a huma.API, opts Options) {
 			id: "dscan-save-legacy", method: http.MethodPost,
 			path: "/tools/dscan/save", summary: "Save a directional scan",
 			document: func(op huma.Operation) huma.Operation {
-				return documentJSONBody[scanSaveBody](a, op)
+				return documentJSONBody[dscanSaveDocument](a, op)
 			},
 			security: required, handler: saveScanHandler(opts, auth, "dscan"),
 		},
@@ -96,7 +96,7 @@ func registerScanRoutes(a huma.API, opts Options) {
 			id: "localscan-save", method: http.MethodPost,
 			path: "/scans/local", summary: "Save a local character scan",
 			document: func(op huma.Operation) huma.Operation {
-				return documentJSONBody[scanSaveBody](a, op)
+				return documentJSONBody[localScanSaveDocument](a, op)
 			},
 			security: required, handler: saveScanHandler(opts, auth, "localscan"),
 		},
@@ -104,7 +104,7 @@ func registerScanRoutes(a huma.API, opts Options) {
 			id: "localscan-save-legacy", method: http.MethodPost,
 			path: "/tools/localscan/save", summary: "Save a local character scan",
 			document: func(op huma.Operation) huma.Operation {
-				return documentJSONBody[scanSaveBody](a, op)
+				return documentJSONBody[localScanSaveDocument](a, op)
 			},
 			security: required, handler: saveScanHandler(opts, auth, "localscan"),
 		},
@@ -152,6 +152,20 @@ type dscanAnalyzeBody struct {
 // localScanAnalyzeBody is a bare JSON array of character names, which is what
 // the in-game local list produces when pasted.
 type localScanAnalyzeBody []string
+
+func (localScanAnalyzeBody) Schema(r huma.Registry) *huma.Schema {
+	return requestList[string]{}.Schema(r)
+}
+
+type dscanSaveDocument struct {
+	Result json.RawMessage `json:"result" doc:"Analyzed scan output to store alongside the input."`
+	Dscan  string          `json:"dscan" doc:"Raw directional scan text."`
+}
+
+type localScanSaveDocument struct {
+	Result json.RawMessage     `json:"result" doc:"Analyzed scan output to store alongside the input."`
+	Names  requestList[string] `json:"names" doc:"Character names from the local scan."`
+}
 
 type scanSaveBody struct {
 	Result json.RawMessage `json:"result" doc:"Analyzed scan output to store alongside the input."`

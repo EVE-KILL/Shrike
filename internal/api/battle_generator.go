@@ -15,9 +15,9 @@ import (
 )
 
 type conflictBattleGeneratorWindow struct {
-	SystemIDs []int32 `json:"systemIds" minItems:"1" doc:"Solar systems to scan for killmails."`
-	StartTime string  `json:"startTime" doc:"Window start, as an ISO 8601 timestamp."`
-	EndTime   string  `json:"endTime" doc:"Window end, as an ISO 8601 timestamp."`
+	SystemIDs []int32 `json:"systemIds" minItems:"1" nullable:"false" doc:"Solar systems to scan for killmails."`
+	StartTime string  `json:"startTime" format:"date-time" doc:"Window start, as an ISO 8601 timestamp."`
+	EndTime   string  `json:"endTime" format:"date-time" doc:"Window end, as an ISO 8601 timestamp."`
 }
 
 type conflictBattleGeneratorEntity struct {
@@ -27,12 +27,12 @@ type conflictBattleGeneratorEntity struct {
 
 type conflictBattleGeneratorSide struct {
 	Name     string                          `json:"name"`
-	Entities []conflictBattleGeneratorEntity `json:"entities"`
+	Entities []conflictBattleGeneratorEntity `json:"entities" nullable:"false"`
 }
 
 type conflictBattleGeneratorPreview struct {
 	conflictBattleGeneratorWindow
-	Sides []conflictBattleGeneratorSide `json:"sides"`
+	Sides []conflictBattleGeneratorSide `json:"sides" nullable:"false"`
 }
 
 type conflictBattleSaveCorporation struct {
@@ -45,7 +45,7 @@ type conflictBattleSaveCorporation struct {
 
 type conflictBattleSaveAlliance struct {
 	AllianceID   *int32                          `json:"alliance_id"`
-	Corporations []conflictBattleSaveCorporation `json:"corporations"`
+	Corporations []conflictBattleSaveCorporation `json:"corporations" nullable:"false"`
 }
 
 type conflictBattleSaveTeam struct {
@@ -53,20 +53,20 @@ type conflictBattleSaveTeam struct {
 	TotalLosses       int64                        `json:"total_losses"`
 	TotalIskDestroyed float64                      `json:"total_isk_destroyed"`
 	TotalIskLost      float64                      `json:"total_isk_lost"`
-	Alliances         []conflictBattleSaveAlliance `json:"alliances"`
+	Alliances         []conflictBattleSaveAlliance `json:"alliances" nullable:"false"`
 }
 
 type conflictBattleSaveBody struct {
 	BattleID          int32                    `json:"battle_id"`
 	SolarSystemID     int32                    `json:"solar_system_id"`
 	RegionID          *int32                   `json:"region_id"`
-	StartTime         string                   `json:"start_time"`
-	EndTime           string                   `json:"end_time"`
+	StartTime         string                   `json:"start_time" format:"date-time"`
+	EndTime           string                   `json:"end_time" format:"date-time"`
 	DurationMinutes   int                      `json:"duration_minutes"`
 	KillCount         int                      `json:"kill_count"`
 	TotalIskDestroyed float64                  `json:"total_isk_destroyed"`
 	IsMultiParty      bool                     `json:"is_multi_party"`
-	Teams             []conflictBattleSaveTeam `json:"teams"`
+	Teams             []conflictBattleSaveTeam `json:"teams" minItems:"2" maxItems:"2" nullable:"false"`
 }
 
 func registerBattleGeneratorRoutes(a huma.API, opts Options) {

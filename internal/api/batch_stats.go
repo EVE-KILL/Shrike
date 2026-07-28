@@ -10,10 +10,10 @@ import (
 
 // batchStatsRequest is both the decode target and the documented schema.
 type batchStatsRequest struct {
-	IDs  []int64 `json:"ids" minItems:"1" maxItems:"100" doc:"Entity IDs to resolve, at most 100 per request."`
-	Type string  `json:"type,omitempty" enum:"alltime,weekly,monthly,custom" default:"alltime" doc:"Aggregation period. Falls back to the type query parameter, then alltime."`
-	From string  `json:"from,omitempty" format:"date" doc:"Start of the window, for type=custom."`
-	To   string  `json:"to,omitempty" format:"date" doc:"End of the window, for type=custom."`
+	IDs  requestList[int64] `json:"ids" minItems:"1" maxItems:"100" doc:"Entity IDs to resolve, at most 100 per request."`
+	Type string             `json:"type,omitempty" enum:"alltime,weekly,range" default:"alltime" doc:"Aggregation period. Falls back to the type query parameter, then alltime."`
+	From string             `json:"from,omitempty" format:"date" doc:"Start of the window, for type=range."`
+	To   string             `json:"to,omitempty" format:"date" doc:"End of the window, for type=range."`
 }
 
 type batchEntityConfig struct {

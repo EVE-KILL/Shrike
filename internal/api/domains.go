@@ -187,11 +187,12 @@ func documentDomainBody(
 	op huma.Operation,
 ) huma.Operation {
 	switch id {
-	case "domain-create", "domain-create-compat",
-		"domain-update", "domain-update-patch-compat",
+	case "domain-create", "domain-create-compat":
+		return documentJSONBody[domainCreateDocument](a, op)
+	case "domain-update", "domain-update-patch-compat",
 		"domain-update-put-compat":
-		return documentJSONBody[domainWriteBody](a, op)
-	case "domain-assets-delete-type", "domain-assets-delete-type-compat":
+		return documentJSONBody[domainUpdateDocument](a, op)
+	case "domain-assets-delete-type-compat":
 		return documentJSONBody[domainAssetTypeBody](a, op)
 	case "admin-domain-asset-review":
 		return documentJSONBody[domainAssetReviewBody](a, op)
@@ -458,12 +459,12 @@ func (s *domainService) checkSubdomainHandler() legacyHandler {
 	}
 }
 
-// Wire type for the custom-domain write routes.
+// Runtime decode type for the custom-domain write routes.
 //
 // Every field is json.RawMessage: parseDomainCreate and parseDomainUpdate walk
 // nested theme, widget, navbar and entity structures whose parsers coerce the
-// way the TypeScript API did. Naming the fields documents the request without
-// rewriting that tree, and presence still reads correctly for the patch path.
+// way the TypeScript API did. The concrete request schemas live in
+// openapi_body_types.go; presence still reads correctly for the patch path.
 type domainWriteBody struct {
 	Subdomain         json.RawMessage `json:"subdomain,omitempty" doc:"Subdomain the board answers on."`
 	SiteName          json.RawMessage `json:"site_name,omitempty" doc:"Board name shown in the title and header."`

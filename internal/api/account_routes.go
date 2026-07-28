@@ -42,7 +42,7 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}, preferences)
-	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountPreferencesDocument](a, huma.Operation{
 		OperationID: "account-preferences-update",
 		Method:      http.MethodPut,
 		Path:        "/me/preferences",
@@ -123,16 +123,16 @@ func registerAccountServiceRoutes(
 	dismissAnnouncement := service.dismissAnnouncementHandler()
 
 	notificationReplies := service.notificationRepliesHandler()
-	registerLegacy(a, documentJSONBody[accountNotificationsReadBody](a, huma.Operation{
+	registerLegacy(a, huma.Operation{
 		OperationID: "account-notification-replies",
 		Method:      http.MethodGet,
 		Path:        "/me/notifications/replies",
 		Summary:     "Replies to this account's comments",
 		Tags:        []string{"account", "notifications"},
 		Security:    requiredSession,
-	}), notificationReplies)
+	}, notificationReplies)
 	markNotificationsRead := service.markNotificationsReadHandler()
-	registerLegacy(a, documentJSONBody[accountNotificationsReadBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountNotificationReadDocument](a, huma.Operation{
 		OperationID: "account-notification-read-cursor",
 		Method:      http.MethodPut,
 		Path:        "/me/notifications/read-cursor",
@@ -152,7 +152,7 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}, preferences)
-	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountDefaultTabsDocument](a, huma.Operation{
 		OperationID: "user-preferences-update-compat",
 		Method:      http.MethodPut,
 		Path:        "/user/preferences",
@@ -160,7 +160,7 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}), service.savePreferencesHandler(preferenceWriteDefaultTabs))
-	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountThemeDocument](a, huma.Operation{
 		OperationID: "user-theme-update-compat",
 		Method:      http.MethodPut,
 		Path:        "/user/theme",
@@ -168,7 +168,7 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "settings"},
 		Security:    requiredSession,
 	}), service.savePreferencesHandler(preferenceWriteTheme))
-	registerLegacy(a, documentJSONBody[accountPreferencesBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountBoardsDocument](a, huma.Operation{
 		OperationID: "user-boards-update-compat",
 		Method:      http.MethodPut,
 		Path:        "/user/boards",
@@ -255,7 +255,7 @@ func registerAccountServiceRoutes(
 		Tags:        []string{"account", "notifications"},
 		Security:    requiredSession,
 	}, notificationReplies)
-	registerLegacy(a, documentJSONBody[accountNotificationsReadBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[accountNotificationReadDocument](a, huma.Operation{
 		OperationID: "notification-mark-read-compat",
 		Method:      http.MethodPost,
 		Path:        "/notifications/mark-read",

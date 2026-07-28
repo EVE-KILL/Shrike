@@ -98,7 +98,7 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		Security:    optionalSession,
 	}, service.campaignListHandler())
 
-	registerLegacy(a, documentJSONBody[campaignCreateBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[campaignCreateDocument](a, huma.Operation{
 		OperationID: "campaign-create",
 		Method:      http.MethodPost,
 		Path:        "/campaigns",
@@ -106,7 +106,7 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		Tags:        []string{"account", "campaigns"},
 		Security:    requiredSession,
 	}), service.campaignCreateHandler())
-	registerLegacy(a, documentJSONBody[campaignCreateBody](a, huma.Operation{
+	registerLegacy(a, documentJSONBody[campaignCreateDocument](a, huma.Operation{
 		OperationID: "campaign-create-legacy",
 		Method:      http.MethodPost,
 		Path:        "/campaign/create",
@@ -136,7 +136,7 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		{"campaign-update-legacy", http.MethodPatch, "/campaign/{id}"},
 		{"campaign-update-browser-legacy", http.MethodPost, "/campaign/{id}/update"},
 	} {
-		registerLegacy(a, documentJSONBody[campaignUpdateBody](a, huma.Operation{
+		registerLegacy(a, documentJSONBody[campaignUpdateDocument](a, huma.Operation{
 			OperationID: route.id,
 			Method:      route.method,
 			Path:        route.path,
@@ -181,7 +181,7 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		{"campaign-prize-contribute", "/campaigns/{id}/prizes/contributions"},
 		{"campaign-prize-contribute-legacy", "/campaign/{id}/prize/contribute"},
 	} {
-		registerLegacy(a, documentJSONBody[campaignContributeBody](a, huma.Operation{
+		registerLegacy(a, documentJSONBody[campaignContributeDocument](a, huma.Operation{
 			OperationID: route.id,
 			Method:      http.MethodPost,
 			Path:        route.path,
@@ -220,7 +220,7 @@ func registerCampaignRoutes(a huma.API, opts Options) {
 		{"campaign-admin-action", "/admin/campaigns/{id}/actions"},
 		{"campaign-admin-action-legacy", "/admin/campaigns/{id}/action"},
 	} {
-		registerLegacy(a, documentJSONBody[campaignActionBody](a, huma.Operation{
+		registerLegacy(a, documentJSONBody[campaignActionDocument](a, huma.Operation{
 			OperationID: route.id,
 			Method:      http.MethodPost,
 			Path:        route.path,

@@ -10,8 +10,8 @@ import (
 
 // resolveBody is both the decode target and the documented request schema.
 type resolveBody struct {
-	Names []string `json:"names" minItems:"1" maxItems:"100" doc:"Exact entity names to resolve. Matching is case-sensitive and exact; use /search for fuzzy lookup."`
-	Type  string   `json:"type,omitempty" enum:"character,corporation,alliance" default:"character" doc:"Which entity table to resolve against."`
+	Names requestList[string] `json:"names" minItems:"1" maxItems:"100" doc:"Exact entity names to resolve. Matching is case-sensitive and exact; use /search for fuzzy lookup."`
+	Type  string              `json:"type,omitempty" enum:"character,corporation,alliance" default:"character" doc:"Which entity table to resolve against."`
 }
 
 func registerResolveRoute(a huma.API, opts Options) {

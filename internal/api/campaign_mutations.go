@@ -36,14 +36,11 @@ type campaignPrizeInput struct {
 	Percentages []int16
 }
 
-// Wire types for the campaign write routes.
+// Runtime decode types for the campaign write routes.
 //
-// The scalar fields are typed directly. The four structured fields keep
-// json.RawMessage and are handed to the existing parsers unchanged: sides,
-// location filters, allowed entities and the prize pool are nested shapes
-// whose parsers coerce the way the TypeScript API did, and rewriting that
-// tree is a larger change than documenting these endpoints needs. The doc
-// strings describe them so the reference is still useful.
+// Structured fields stay json.RawMessage and are handed to the compatibility
+// parsers unchanged. openapi_body_types.go carries their concrete documented
+// wire shapes without narrowing the values these parsers accept.
 type campaignCreateBody struct {
 	Name            string          `json:"name" doc:"Campaign name."`
 	Description     *string         `json:"description,omitempty" doc:"Free text shown on the campaign page."`

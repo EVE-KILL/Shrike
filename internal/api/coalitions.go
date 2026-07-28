@@ -15,7 +15,7 @@ import (
 // coalitionSideBody is the wire shape of one side. jsInt keeps the numeric
 // strings the previous API accepted while the parsed result is a proper int32,
 // which is what the alliance and corporation columns hold.
-var coalitionDatePattern = regexp.MustCompile(`^\\d{4}-\\d{2}-\\d{2}$`)
+var coalitionDatePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
 type coalitionSideBody struct {
 	Label        string  `json:"label,omitempty" maxLength:"120" doc:"Display name for this side. Truncated at 120 characters."`
@@ -27,7 +27,7 @@ type coalitionSideBody struct {
 type coalitionRequestBody struct {
 	SideA coalitionSideBody `json:"sideA" doc:"First coalition. Needs at least one alliance or corporation."`
 	SideB coalitionSideBody `json:"sideB" doc:"Second coalition. Needs at least one alliance or corporation."`
-	Date  string            `json:"date,omitempty" pattern:"^\\d{4}-\\d{2}-\\d{2}$" doc:"Restrict to a single day. Takes precedence over days."`
+	Date  string            `json:"date,omitempty" format:"date" pattern:"^\\d{4}-\\d{2}-\\d{2}$" doc:"Restrict to a single day. Takes precedence over days."`
 	Days  *jsInt            `json:"days,omitempty" doc:"Lookback window ending today, clamped to 1-90. Defaults to 30."`
 }
 

@@ -44,7 +44,7 @@ func registerFittingRoutes(a huma.API, opts Options) {
 func registerFittingCRUDRoutes(a huma.API, opts Options, auth *authService) {
 	create := createFittingHandler(opts, auth)
 	for i, path := range []string{"/fittings", "/fit"} {
-		registerLegacy(a, documentJSONBody[fittingCreateBody](a, huma.Operation{
+		registerLegacy(a, documentJSONBody[fittingCreateDocument](a, huma.Operation{
 			OperationID: fittingOperationID("fitting-create", i),
 			Method:      http.MethodPost,
 			Path:        path,
@@ -78,7 +78,7 @@ func registerFittingCRUDRoutes(a huma.API, opts Options, auth *authService) {
 				return updateFittingHandler(opts, auth, param)
 			},
 			Document: func(op huma.Operation) huma.Operation {
-				return documentJSONBody[fittingUpdateBody](a, op)
+				return documentJSONBody[fittingUpdateDocument](a, op)
 			},
 		},
 		{
@@ -97,7 +97,7 @@ func registerFittingCRUDRoutes(a huma.API, opts Options, auth *authService) {
 				return putFittingRatingHandler(opts, auth, param)
 			},
 			Document: func(op huma.Operation) huma.Operation {
-				return documentJSONBody[fittingRatingBody](a, op)
+				return documentJSONBody[fittingRatingDocument](a, op)
 			},
 		},
 		{
