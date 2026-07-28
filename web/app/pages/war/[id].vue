@@ -13,11 +13,12 @@ if (error.value) {
     })
 }
 // Stats load lazily — header + killlist render immediately, sidebar fills in after
-const { data: statsData, pending: statsPending } = useApiFetch<any>(`/api/war/${id}/stats`, {
-    lazy: true,
+const { data: statsData, pending: statsPending, refresh: loadStats } = useApiFetch<any>(`/api/war/${id}/stats`, {
     server: false,
+    immediate: false,
     getCachedData: cachedPayload,
 })
+onMounted(() => { void loadStats() })
 
 const war = computed(() => data.value?.war)
 const warStats = computed(() => data.value?.stats)

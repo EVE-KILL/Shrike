@@ -16,7 +16,7 @@ const fetchParams = computed(() => {
     return p
 })
 
-const { data, pending } = await useApiFetch<any>('/api/wars', {
+const { data, pending } = await useApiFetch<any>('/api/conflicts/wars', {
     params: fetchParams,
     watch: [page, sortBy],
 })

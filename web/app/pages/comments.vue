@@ -5,6 +5,11 @@ interface FeedComment extends CommentRow {
     reply_count: number
 }
 
+interface FeedPage {
+    comments: FeedComment[]
+    nextCursor: number | null
+}
+
 useSeoMeta({
     title: 'Comments — EVE-KILL',
     description: 'Site-wide comment feed across killmails, characters, corporations, alliances, systems, and battles.',
@@ -93,7 +98,7 @@ async function fetchPage(reset: boolean) {
         if (filterType.value !== 'all') params.set('target_type', String(TARGET_TYPE_MAP[filterType.value]))
         if (!reset && cursor.value) params.set('cursor', String(cursor.value))
 
-        const data = await apiFetch<{ comments: FeedComment[]; nextCursor: number | null }>(
+        const data = await apiFetch<FeedPage>(
             `/api/comments?${params.toString()}`,
         )
         if (reset) {
@@ -112,8 +117,19 @@ async function fetchPage(reset: boolean) {
     }
 }
 
-// Initial load (SSR-friendly via useAsyncData wrapper).
-await useAsyncData('comments-feed-initial', () => fetchPage(true))
+// Initial load is payload-backed so SSR and hydration start from the same
+// comments instead of repeating a side-effect-only handler on the client.
+const { data: initialPage, error: initialError } = await useAsyncData<FeedPage>(
+    'comments-feed-initial',
+    () => apiFetch<FeedPage>(`/api/comments?limit=${PAGE_SIZE}`),
+)
+if (initialPage.value) {
+    allComments.value = initialPage.value.comments
+    cursor.value = initialPage.value.nextCursor
+    hasMore.value = initialPage.value.nextCursor !== null
+} else if (initialError.value) {
+    loadError.value = initialError.value.statusMessage || initialError.value.message || 'Failed to load comments'
+}
 
 // Re-fetch from page 1 when filters change.
 watch([debouncedSearch, filterType], () => { fetchPage(true) })

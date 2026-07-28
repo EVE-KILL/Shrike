@@ -19,6 +19,7 @@ const { user, isAuthenticated, isAdmin } = useAuth()
 // Await the real auth state from the server before deciding to redirect.
 const { data: authCheck } = await useApiFetch('/api/auth/me')
 useState('auth-user').value = authCheck.value?.user ?? null
+const isAdminSession = authCheck.value?.user?.isAdmin === true
 // Logged out gets the login gate (and returns here after SSO); a logged-in
 // non-admin is bounced to the frontpage.
 if (authCheck.value?.user && !authCheck.value.user.isAdmin) {
@@ -71,15 +72,17 @@ const sectionComponents: Record<SectionId, Component> = {
 // Overview is the only blocking fetch — each section fetches its own data
 // lazily inside its component. esiData lives here because it is shared
 // between the Overview and ESI sections.
-const { data: overview, refresh: refreshOverview } = await useApiFetch('/api/admin/overview')
+const { data: overview, refresh: refreshOverview } = await useApiFetch('/api/admin/overview', {
+    immediate: isAdminSession,
+})
 const { data: esiData, refresh: refreshEsi } = useApiFetch('/api/admin/esi', {
-    immediate: activeSection.value === 'esi' || activeSection.value === 'overview',
+    immediate: isAdminSession && (activeSection.value === 'esi' || activeSection.value === 'overview'),
     lazy: true,
 })
 
 // Lazy-load the shared ESI summary when switching to the ESI tab
 watch(activeSection, (section) => {
-    if (section === 'esi' && !esiData.value) refreshEsi()
+    if (isAdminSession && section === 'esi' && !esiData.value) refreshEsi()
 }, { immediate: true })
 
 // Only the Overview and ESI sections take the shared data as props

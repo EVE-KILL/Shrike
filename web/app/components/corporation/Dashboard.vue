@@ -35,11 +35,12 @@ const diesToCorps = computed(() => statsData.value?.diesToCorporations || [])
 const diesToAlliances = computed(() => statsData.value?.diesToAlliances || [])
 
 // Intel data (graph-powered, lazy loaded client-side)
-const { data: intelData, pending: intelPending } = useApiFetch<any>(`/api/corporation/${props.corporationId}/intel`, {
-    lazy: true,
+const { data: intelData, pending: intelPending, refresh: loadIntel } = useApiFetch<any>(`/api/corporation/${props.corporationId}/intel`, {
     server: false,
+    immediate: false,
     getCachedData: cachedPayload,
 })
+onMounted(() => { void loadIntel() })
 
 const activeMembers = computed(() => intelData.value?.activeMembers)
 const census = computed(() => intelData.value?.census)

@@ -174,6 +174,7 @@ export default defineNuxtConfig({
     minify: true,
     compressPublicAssets: true,
     sourceMap: false,
+    errorHandler: fileURLToPath(new URL("./server/error.ts", import.meta.url)),
 
     // Esbuild minification
     esbuild: {
@@ -414,7 +415,8 @@ export default defineNuxtConfig({
         : {}),
     },
     optimizeDeps: {
-      include: ["isbot"],
+      include: ["isbot", "protobufjs/minimal.js"],
+      exclude: ["@evekill/dogma"],
     },
     plugins: [tailwindcss()],
     resolve: {

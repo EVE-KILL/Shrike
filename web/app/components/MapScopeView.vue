@@ -231,7 +231,7 @@ const hoveredLabel = computed(() => {
 <template>
     <div class="relative rounded-lg overflow-hidden border border-white/[0.08] bg-[#0a0a0f]">
         <div class="absolute top-2 right-2 z-10 text-xs text-gray-400 bg-black/40 backdrop-blur-sm rounded px-2 py-1 pointer-events-none">
-            <span v-if="data">{{ data.systems?.length?.toLocaleString() ?? 0 }} systems · {{ data.regions?.length ?? 0 }} regions · hover a region to light it up</span>
+            <span v-if="data">{{ formatNumber(data.systems?.length) }} systems · {{ data.regions?.length ?? 0 }} regions · hover a region to light it up</span>
         </div>
 
         <div v-if="pending" class="h-[80vh] flex items-center justify-center">

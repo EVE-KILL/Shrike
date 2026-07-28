@@ -41,6 +41,7 @@ const entityType = computed(() => {
 })
 
 const getImageUrl = (entry: TopEntry): string | null => {
+    if (!Number.isInteger(entry.id) || entry.id <= 0) return null
     switch (props.dataType) {
         case 'characters': return `/images/characters/${entry.id}/portrait?size=64`
         case 'corporations': return `/images/corporations/${entry.id}/logo?size=64`

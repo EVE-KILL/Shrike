@@ -777,11 +777,15 @@ const secLabel = (sec: number | null): string => {
 
                     <!-- Ship -->
                     <div class="relative z-10 flex items-center gap-2.5 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-                        <NuxtLink :to="`/kill/${row.kill.killmail_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
+                        <NuxtLink v-if="row.kill.ship_type_id" :to="`/kill/${row.kill.killmail_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
                             <EveImage :src="`/images/types/${row.kill.ship_type_id}/icon?size=64`" :alt="row.kill.ship_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                         </NuxtLink>
+                        <div v-else class="flex-shrink-0 w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">
+                            <Icon name="lucide:box" class="text-sm text-gray-500" />
+                        </div>
                         <div class="min-w-0">
-                            <NuxtLink :to="`/item/${row.kill.ship_type_id}`" class="block w-fit max-w-full text-xs text-gray-300 group-hover:text-blue-400 hover:text-blue-400 truncate">{{ row.kill.ship_name || 'Unknown' }}</NuxtLink>
+                            <NuxtLink v-if="row.kill.ship_type_id" :to="`/item/${row.kill.ship_type_id}`" class="block w-fit max-w-full text-xs text-gray-300 group-hover:text-blue-400 hover:text-blue-400 truncate">{{ row.kill.ship_name || 'Unknown' }}</NuxtLink>
+                            <div v-else class="text-xs text-gray-300 truncate">{{ row.kill.ship_name || 'Unknown' }}</div>
                             <NuxtLink v-if="row.kill.ship_market_path && row.kill.ship_group_name" :to="row.kill.ship_market_path" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.ship_group_name }}</NuxtLink>
                             <div v-else class="text-fine text-gray-400 truncate">{{ row.kill.ship_group_name }}</div>
                             <div class="text-fine text-isk/70 tabular-nums">{{ formatIsk(row.kill.total_value) }} ISK</div>
@@ -890,8 +894,11 @@ const secLabel = (sec: number | null): string => {
                 >
                     <!-- Images stack -->
                     <div class="flex-shrink-0 flex flex-col gap-1">
-                        <div class="w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
+                        <div v-if="row.kill.ship_type_id" class="w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
                             <EveImage :src="`/images/types/${row.kill.ship_type_id}/icon?size=64`" :alt="row.kill.ship_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
+                        </div>
+                        <div v-else class="w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">
+                            <Icon name="lucide:box" class="text-sm text-gray-500" />
                         </div>
                     </div>
 
