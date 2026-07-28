@@ -268,6 +268,7 @@ func legacyArchiveKillsHandler(opts Options) legacyHandler {
 				"victim_corporation_name":     row["victim_corp"],
 				"victim_alliance_id":          row["victim_alliance_id"],
 				"victim_alliance_name":        row["victim_alliance"],
+				"victim_faction_id":           nil,
 				"final_blow_character_id":     row["final_blow_character_id"],
 				"final_blow_character_name":   row["final_blow_name"],
 				"final_blow_corporation_id":   row["final_blow_corporation_id"],

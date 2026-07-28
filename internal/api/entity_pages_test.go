@@ -188,6 +188,9 @@ func TestEntityKilllistScopeExpandsBoundForNumberedPage(t *testing.T) {
 
 func TestEntityKilllistFactionScopeUsesBoundedSemiJoin(t *testing.T) {
 	config := entityKilllistConfigs[entityPageFaction]
+	if config.EntityType != entityFaction {
+		t.Fatalf("faction entity type = %d, want %d", config.EntityType, entityFaction)
+	}
 	plan := buildEntityKilllistScopePlan(
 		config, "kills", 500001, 50, 0, 0, 0,
 	)

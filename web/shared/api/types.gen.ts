@@ -2017,6 +2017,7 @@ export type KillmailSearchResponse = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -2073,6 +2074,7 @@ export type KillmailsResponse = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -2799,6 +2801,7 @@ export type SdeRegionKillsResponse = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -3199,6 +3202,7 @@ export type SdeSystemKillsResponse = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -5191,6 +5195,7 @@ export type KillmailSearchResponseWritable = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -5239,6 +5244,7 @@ export type KillmailsResponseWritable = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -5869,6 +5875,7 @@ export type SdeRegionKillsResponseWritable = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -6213,6 +6220,7 @@ export type SdeSystemKillsResponseWritable = {
         victim_character_name: string | null;
         victim_corporation_id: number | null;
         victim_corporation_name: string | null;
+        victim_faction_id: number | null;
         [key: string]: unknown;
     }>;
     pagination: {
@@ -10935,6 +10943,7 @@ export type KillmailBattleKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
     };
@@ -11034,6 +11043,7 @@ export type KillmailBattleTimelineResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
     };
@@ -11324,6 +11334,7 @@ export type BattleReportKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
     };
@@ -11423,6 +11434,7 @@ export type BattleReportTimelineResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
     };
@@ -12198,6 +12210,7 @@ export type CampaignKilllistLegacyResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
     };
@@ -12884,6 +12897,7 @@ export type CampaignKillmailsResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
     };
@@ -14612,6 +14626,7 @@ export type ConstellationKilllistCompatResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -15545,6 +15560,7 @@ export type DomainConstellationKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -15615,6 +15631,7 @@ export type DomainKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -15764,6 +15781,7 @@ export type DomainRegionKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -15883,6 +15901,7 @@ export type DomainSystemKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -16461,6 +16480,7 @@ export type EntityPageKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -16834,6 +16854,7 @@ export type EntityPageKilllistGenericCompatResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -20262,6 +20283,7 @@ export type ItemKilllistCompatResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -20340,6 +20362,7 @@ export type KilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -20426,6 +20449,7 @@ export type KilllistAdvancedResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -21181,6 +21205,7 @@ export type LegacyArchiveKillsResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
     };
@@ -23365,6 +23390,7 @@ export type RegionKilllistCompatResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -24647,6 +24673,7 @@ export type ShipKilllistCompatResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -25020,6 +25047,7 @@ export type SystemKilllistCompatResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -25400,6 +25428,7 @@ export type UniverseConstellationKillmailsResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -25566,6 +25595,7 @@ export type UniverseRegionKillmailsResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -25810,6 +25840,7 @@ export type UniverseSystemKillmailsResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -26026,6 +26057,7 @@ export type UniverseTypeKillmailsResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;
@@ -28001,6 +28033,7 @@ export type WarKilllistResponses = {
             victim_character_name: string | null;
             victim_corporation_id: number | null;
             victim_corporation_name: string | null;
+            victim_faction_id: number | null;
             [key: string]: unknown;
         }>;
         totalPages?: number;

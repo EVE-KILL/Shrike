@@ -9,6 +9,30 @@ import type { KilllistResponse } from '#shared/api'
  */
 export type KilllistRow = KilllistResponse['kills'][number]
 
+export interface KilllistLossEntities {
+    characterIds?: number[]
+    corporationIds?: number[]
+    allianceIds?: number[]
+    factionIds?: number[]
+}
+
+type KilllistVictimIdentity = Pick<
+    KilllistRow,
+    'victim_character_id' | 'victim_corporation_id' | 'victim_alliance_id' | 'victim_faction_id'
+>
+
+export function isKilllistLoss(
+    kill: KilllistVictimIdentity,
+    entities: KilllistLossEntities | null | undefined,
+): boolean {
+    if (!entities) return false
+    if (kill.victim_character_id && entities.characterIds?.includes(kill.victim_character_id)) return true
+    if (kill.victim_corporation_id && entities.corporationIds?.includes(kill.victim_corporation_id)) return true
+    if (kill.victim_alliance_id && entities.allianceIds?.includes(kill.victim_alliance_id)) return true
+    if (kill.victim_faction_id && entities.factionIds?.includes(kill.victim_faction_id)) return true
+    return false
+}
+
 export const META_GROUP = {
     tech1: 1,
     tech2: 2,

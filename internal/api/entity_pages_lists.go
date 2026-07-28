@@ -504,7 +504,7 @@ var entityKilllistConfigs = map[string]entityKilllistConfig{
 	entityPageCharacter:   {entityCharacter, "victim_character_id", "character_id"},
 	entityPageCorporation: {entityCorporation, "victim_corporation_id", "corporation_id"},
 	entityPageAlliance:    {entityAlliance, "victim_alliance_id", "alliance_id"},
-	entityPageFaction:     {-1, "victim_faction_id", "faction_id"},
+	entityPageFaction:     {entityFaction, "victim_faction_id", "faction_id"},
 }
 
 type entityKilllistScopePlan struct {
@@ -686,6 +686,7 @@ func loadEntityPageKilllist(
 		       k.victim_character_id, victim_char.name AS victim_character_name,
 		       k.victim_corporation_id, victim_corp.name AS victim_corporation_name,
 		       k.victim_alliance_id, victim_ally.name AS victim_alliance_name,
+		       k.victim_faction_id,
 		       final.character_id AS final_blow_character_id,
 		       final_char.name AS final_blow_character_name,
 		       final.corporation_id AS final_blow_corporation_id,

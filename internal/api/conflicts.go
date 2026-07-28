@@ -1673,6 +1673,7 @@ const conflictKilllistSelect = `
 	       k.victim_corporation_id,
 	       victim_corporation.name AS victim_corporation_name,
 	       k.victim_alliance_id, victim_alliance.name AS victim_alliance_name,
+	       k.victim_faction_id,
 	       final_blow.character_id AS final_blow_character_id,
 	       final_character.name AS final_blow_character_name,
 	       final_blow.corporation_id AS final_blow_corporation_id,

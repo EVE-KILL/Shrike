@@ -50,6 +50,7 @@ type KilllistRow struct {
 	VictimCorporationName *string `json:"victim_corporation_name"`
 	VictimAllianceID      *int32  `json:"victim_alliance_id"`
 	VictimAllianceName    *string `json:"victim_alliance_name"`
+	VictimFactionID       *int32  `json:"victim_faction_id"`
 
 	FinalBlowCharacterID     *int32  `json:"final_blow_character_id"`
 	FinalBlowCharacterName   *string `json:"final_blow_character_name"`
@@ -140,6 +141,7 @@ func BuildKilllistRow(p *killmail.Parsed, cache *eve.Cache, paths eve.MarketPath
 		VictimCharacterID:   idOrNil(km.VictimCharacterID),
 		VictimCorporationID: idOrNil(km.VictimCorporationID),
 		VictimAllianceID:    idOrNil(km.VictimAllianceID),
+		VictimFactionID:     idOrNil(km.VictimFactionID),
 		RegionID:            idOrNil(km.RegionID),
 	}
 

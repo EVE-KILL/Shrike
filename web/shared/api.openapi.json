@@ -7091,6 +7091,13 @@
                     "string",
                     "null"
                   ]
+                },
+                "victim_faction_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -7112,6 +7119,7 @@
                 "victim_corporation_name",
                 "victim_alliance_id",
                 "victim_alliance_name",
+                "victim_faction_id",
                 "final_blow_character_id",
                 "final_blow_character_name",
                 "final_blow_corporation_id",
@@ -7369,6 +7377,13 @@
                     "string",
                     "null"
                   ]
+                },
+                "victim_faction_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -7390,6 +7405,7 @@
                 "victim_corporation_name",
                 "victim_alliance_id",
                 "victim_alliance_name",
+                "victim_faction_id",
                 "final_blow_character_id",
                 "final_blow_character_name",
                 "final_blow_corporation_id",
@@ -10439,6 +10455,13 @@
                     "string",
                     "null"
                   ]
+                },
+                "victim_faction_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -10460,6 +10483,7 @@
                 "victim_corporation_name",
                 "victim_alliance_id",
                 "victim_alliance_name",
+                "victim_faction_id",
                 "final_blow_character_id",
                 "final_blow_character_name",
                 "final_blow_corporation_id",
@@ -12147,6 +12171,13 @@
                     "string",
                     "null"
                   ]
+                },
+                "victim_faction_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -12168,6 +12199,7 @@
                 "victim_corporation_name",
                 "victim_alliance_id",
                 "victim_alliance_name",
+                "victim_faction_id",
                 "final_blow_character_id",
                 "final_blow_character_name",
                 "final_blow_corporation_id",
@@ -27484,6 +27516,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -27505,6 +27544,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -27864,6 +27904,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -27885,6 +27932,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -29183,6 +29231,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -29204,6 +29259,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -29563,6 +29619,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -29584,6 +29647,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -32454,6 +32518,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -32475,6 +32546,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -35252,6 +35324,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -35273,6 +35352,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -40884,6 +40964,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -40905,6 +40992,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -44106,6 +44194,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -44127,6 +44222,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -44430,6 +44526,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -44451,6 +44554,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -45018,6 +45122,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -45039,6 +45150,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -45486,6 +45598,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -45507,6 +45626,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -47601,6 +47721,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -47622,6 +47749,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -48923,6 +49051,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -48944,6 +49079,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -60361,6 +60497,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -60382,6 +60525,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -60704,6 +60848,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -60725,6 +60876,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -61042,6 +61194,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -61063,6 +61222,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -63417,6 +63577,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -63438,6 +63605,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -70050,6 +70218,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -70071,6 +70246,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -72859,6 +73035,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -72880,6 +73063,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -74139,6 +74323,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -74160,6 +74351,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -75444,6 +75636,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -75465,6 +75664,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -76115,6 +76315,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -76136,6 +76343,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -77120,6 +77328,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -77141,6 +77356,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -78075,6 +78291,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -78096,6 +78319,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",
@@ -84236,6 +84460,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -84257,6 +84488,7 @@
                           "victim_corporation_name",
                           "victim_alliance_id",
                           "victim_alliance_name",
+                          "victim_faction_id",
                           "final_blow_character_id",
                           "final_blow_character_name",
                           "final_blow_corporation_id",

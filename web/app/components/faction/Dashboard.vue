@@ -2,16 +2,11 @@
 /**
  * Faction dashboard.
  *
- * Faction *killboard* stats are thin by design — /api/faction/:id returns only
- * {losses, isk_lost}, and the entity top-lists / ship-classes / most-valuable
- * endpoints all reject the type, because factions have no rollup rows in the
- * stats pipeline and killmail_attackers.faction_id is unindexed.
- *
- * The interesting material for the four militia factions is faction warfare,
- * which is already computed for the /faction-war pages. This pulls that in per
- * faction: how the warzone stands, what changed hands lately, who is flying for
- * them, and which corporations make up the militia. Pirate and minor factions
- * are not in a matchup and fall back to the description alone.
+ * Headline killboard stats come from the shared faction rollups. For factions
+ * in one of the two established militia matchups, this dashboard also pulls in
+ * the existing /faction-war context: warzone standing, recent flips, active
+ * pilots, and militia corporations. Factions outside those matchups retain the
+ * general description and identity panels.
  */
 const props = defineProps<{
     faction: {

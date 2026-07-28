@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
+    type KilllistLossEntities,
     type KilllistRow,
+    isKilllistLoss,
     matchesMetaGroup,
 } from '#shared/utils/killlistRow'
 
@@ -16,7 +18,7 @@ const props = defineProps<{
     /** For combined kill/loss view: entity ID to match losses */
     victimEntityId?: number
     /** Multi-entity loss highlighting: victim matching any of these IDs shows as red */
-    lossEntities?: { characterIds?: number[]; corporationIds?: number[]; allianceIds?: number[] }
+    lossEntities?: KilllistLossEntities
     /** Campaign side coloring: array indexed by side, victim rows get their
      *  side's tint (0=red, 1=blue, 2=purple, 3=amber — matches the campaign
      *  page palette). Takes precedence over lossEntities/war coloring;
@@ -451,20 +453,14 @@ const resolvedLossEntities = computed(() => {
     if (props.victimEntityType && props.victimEntityId) {
         const key = props.victimEntityType === 'character' ? 'characterIds'
             : props.victimEntityType === 'corporation' ? 'corporationIds'
-            : 'allianceIds'
+                : props.victimEntityType === 'alliance' ? 'allianceIds'
+                    : 'factionIds'
         return { [key]: [props.victimEntityId] }
     }
     return null
 })
 
-const isLoss = (kill: KillRow): boolean => {
-    const e = resolvedLossEntities.value
-    if (!e) return false
-    if (e.characterIds?.length && kill.victim_character_id && e.characterIds.includes(kill.victim_character_id)) return true
-    if (e.corporationIds?.length && kill.victim_corporation_id && e.corporationIds.includes(kill.victim_corporation_id)) return true
-    if (e.allianceIds?.length && kill.victim_alliance_id && e.allianceIds.includes(kill.victim_alliance_id)) return true
-    return false
-}
+const isLoss = (kill: KillRow): boolean => isKilllistLoss(kill, resolvedLossEntities.value)
 
 const warVictimSide = (kill: KillRow): 'aggressor' | 'defender' | null => {
     if (!props.warAggressorCorps && !props.warAggressorAlliances) return null

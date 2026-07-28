@@ -19,7 +19,7 @@ const {
 } = await useEntityPage('faction', {
     tabs,
     titleBase: f => f?.name || null,
-    defaultTab: 'combined',
+    defaultTab: 'dashboard',
     idRange: [500000, 599999],
     withTopLists: false,
     withAccent: false,
@@ -158,6 +158,7 @@ const factionLogo = computed(() => faction.value
             <!-- ===== KILL TABS ===== -->
             <div v-else>
                 <KillList :entity-endpoint="`/api/entity/faction/${id}/killlist`"
+                    victim-entity-type="faction" :victim-entity-id="id"
                     :entity-role="killlistRole"
                     :stream-topics="[`victim.${id}`, `attacker.${id}`]" />
             </div>

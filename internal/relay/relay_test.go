@@ -240,6 +240,9 @@ func TestBuildKilllistRowUsesISOTimeAndCanonicalNPCFinalBlowNulls(t *testing.T) 
 	if row.KillmailTime != "2026-07-20T12:00:00.000Z" {
 		t.Errorf("killmail_time = %q, want TypeScript toISOString shape", row.KillmailTime)
 	}
+	if row.VictimFactionID == nil || *row.VictimFactionID != 500001 {
+		t.Errorf("victim_faction_id = %v, want 500001", row.VictimFactionID)
+	}
 	for name, id := range map[string]*int32{
 		"character":   row.FinalBlowCharacterID,
 		"corporation": row.FinalBlowCorporationID,

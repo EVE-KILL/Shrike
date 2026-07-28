@@ -53,8 +53,8 @@ const defaultTabOptions: Record<string, { value: string; label: string }[]> = {
         { value: 'members', label: 'Members' },
     ],
     faction: [
-        { value: 'combined', label: 'Combined' },
         { value: 'dashboard', label: 'Dashboard' },
+        { value: 'combined', label: 'Combined' },
         { value: 'kills', label: 'Kills' },
         { value: 'losses', label: 'Losses' },
     ],
