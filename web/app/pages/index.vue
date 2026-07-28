@@ -140,6 +140,7 @@ const columnGridTemplate = computed(() => {
                     <TopBox title="Top Characters" dataType="characters" :limit="10" :days="7" :api-endpoint="statsEndpoint" eager />
                     <TopBox title="Top Corporations" dataType="corporations" :limit="10" :days="7" :api-endpoint="statsEndpoint" eager />
                     <TopBox title="Top Alliances" dataType="alliances" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
+                    <TopBox title="Top Factions" dataType="factions" :limit="6" :days="7" :api-endpoint="statsEndpoint" />
                     <TopBox title="Top Ships" dataType="ships" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
                     <TopBox title="Top Systems" dataType="systems" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
                     <TopBox title="Top Regions" dataType="regions" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
@@ -157,6 +158,7 @@ const columnGridTemplate = computed(() => {
             <TopBox title="Top Characters" dataType="characters" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
             <TopBox title="Top Corporations" dataType="corporations" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
             <TopBox title="Top Alliances" dataType="alliances" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
+            <TopBox title="Top Factions" dataType="factions" :limit="6" :days="7" :api-endpoint="statsEndpoint" />
             <TopBox title="Top Ships" dataType="ships" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
             <TopBox title="Top Systems" dataType="systems" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
             <TopBox title="Top Regions" dataType="regions" :limit="10" :days="7" :api-endpoint="statsEndpoint" />

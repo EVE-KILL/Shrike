@@ -29,7 +29,8 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
         SELECT killmail_id, killmail_time,
                coalesce(solar_system_id, 0), coalesce(constellation_id, 0), coalesce(region_id, 0),
                coalesce(victim_character_id, 0), coalesce(victim_corporation_id, 0),
-               coalesce(victim_alliance_id, 0), coalesce(victim_ship_type_id, 0),
+               coalesce(victim_alliance_id, 0), coalesce(victim_faction_id, 0),
+               coalesce(victim_ship_type_id, 0),
                coalesce(victim_damage_taken, 0),
                coalesce(total_value, 0), coalesce(points, 0), attacker_count,
                coalesce(is_npc, false), coalesce(is_solo, false)
@@ -37,7 +38,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
 		Scan(&km.KillmailID, &km.KillmailTime,
 			&km.SolarSystemID, &km.ConstellationID, &km.RegionID,
 			&km.VictimCharacterID, &km.VictimCorporationID,
-			&km.VictimAllianceID, &km.VictimShipTypeID,
+			&km.VictimAllianceID, &km.VictimFactionID, &km.VictimShipTypeID,
 			&km.VictimDamageTaken,
 			&km.TotalValue, &km.Points, &attackerCount,
 			&km.IsNPC, &km.IsSolo)
@@ -49,7 +50,8 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
 	}
 
 	rows, err := pool.Query(ctx, `
-        SELECT coalesce(character_id, 0), coalesce(corporation_id, 0), coalesce(alliance_id, 0),
+        SELECT coalesce(character_id, 0), coalesce(corporation_id, 0),
+               coalesce(alliance_id, 0), coalesce(faction_id, 0),
                coalesce(ship_type_id, 0), coalesce(damage_done, 0), coalesce(final_blow, false)
         FROM killmail_attackers WHERE killmail_id = $1`, killmailID)
 	if err != nil {
@@ -60,7 +62,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
 	var attackers []Attacker
 	for rows.Next() {
 		var a Attacker
-		if err := rows.Scan(&a.CharacterID, &a.CorporationID, &a.AllianceID,
+		if err := rows.Scan(&a.CharacterID, &a.CorporationID, &a.AllianceID, &a.FactionID,
 			&a.ShipTypeID, &a.DamageDone, &a.FinalBlow); err != nil {
 			return km, nil, err
 		}

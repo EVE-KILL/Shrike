@@ -32,6 +32,7 @@ const entityType = computed(() => {
         case 'characters': return 'character'
         case 'corporations': return 'corporation'
         case 'alliances': return 'alliance'
+        case 'factions': return 'faction'
         case 'ships': return 'item'
         case 'systems': return 'system'
         case 'constellations': return 'constellation'
@@ -46,6 +47,7 @@ const getImageUrl = (entry: TopEntry): string | null => {
         case 'characters': return `/images/characters/${entry.id}/portrait?size=64`
         case 'corporations': return `/images/corporations/${entry.id}/logo?size=64`
         case 'alliances': return `/images/alliances/${entry.id}/logo?size=64`
+        case 'factions': return `/images/corporations/${entry.id}/logo?size=64`
         case 'ships': return `/images/types/${entry.id}/icon?size=64`
         case 'systems': return `/images/systems/${entry.id}?size=64`
         case 'regions': return `/images/regions/${entry.id}?size=64`

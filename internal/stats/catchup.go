@@ -204,7 +204,8 @@ func streamRange(
 	        SELECT killmail_id, killmail_time,
 	               coalesce(solar_system_id, 0), coalesce(constellation_id, 0), coalesce(region_id, 0),
 	               coalesce(victim_character_id, 0), coalesce(victim_corporation_id, 0),
-               coalesce(victim_alliance_id, 0), coalesce(victim_ship_type_id, 0),
+	               coalesce(victim_alliance_id, 0), coalesce(victim_faction_id, 0),
+	               coalesce(victim_ship_type_id, 0),
                coalesce(victim_damage_taken, 0),
 	               coalesce(total_value, 0), coalesce(points, 0), attacker_count,
 	               coalesce(is_npc, false), coalesce(is_solo, false)
@@ -223,7 +224,8 @@ func streamRange(
 		if err := rows.Scan(&item.km.KillmailID, &item.km.KillmailTime,
 			&item.km.SolarSystemID, &item.km.ConstellationID, &item.km.RegionID,
 			&item.km.VictimCharacterID, &item.km.VictimCorporationID,
-			&item.km.VictimAllianceID, &item.km.VictimShipTypeID,
+			&item.km.VictimAllianceID, &item.km.VictimFactionID,
+			&item.km.VictimShipTypeID,
 			&item.km.VictimDamageTaken,
 			&item.km.TotalValue, &item.km.Points, &item.storedAttackerCount,
 			&item.km.IsNPC, &item.km.IsSolo); err != nil {
@@ -254,6 +256,129 @@ func streamRange(
 	return nil
 }
 
+// streamFactionRange reads only killmails that can contribute a faction
+// headline row and hydrates only their faction attackers. The general stream
+// is intentionally left unchanged for live catchup and all-entity backfills.
+func streamFactionRange(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	from, to time.Time,
+	limit int,
+	yield func([]dayItem) error,
+) error {
+	if limit <= 0 {
+		return fmt.Errorf("stream range batch size must be positive")
+	}
+
+	stream, err := pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer stream.Release()
+
+	rows, err := stream.Query(ctx, `
+		WITH relevant AS (
+			SELECT killmail_id
+			FROM killmails
+			WHERE killmail_time >= $1 AND killmail_time < $2
+			  AND victim_faction_id IS NOT NULL
+			UNION
+			SELECT killmail_id
+			FROM killmail_attackers
+			WHERE killmail_time >= $1 AND killmail_time < $2
+			  AND faction_id IS NOT NULL
+		)
+		SELECT k.killmail_id, k.killmail_time,
+		       coalesce(k.victim_faction_id, 0),
+		       coalesce(k.total_value, 0), coalesce(k.points, 0),
+		       coalesce(k.is_npc, false), coalesce(k.is_solo, false)
+		FROM relevant
+		JOIN killmails k USING (killmail_id)
+		ORDER BY k.killmail_id`, from, to)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	items := make([]dayItem, 0, limit)
+	for rows.Next() {
+		var item dayItem
+		if err := rows.Scan(
+			&item.km.KillmailID,
+			&item.km.KillmailTime,
+			&item.km.VictimFactionID,
+			&item.km.TotalValue,
+			&item.km.Points,
+			&item.km.IsNPC,
+			&item.km.IsSolo,
+		); err != nil {
+			return err
+		}
+		items = append(items, item)
+		if len(items) == limit {
+			if err := hydrateFactionAttackers(ctx, pool, items); err != nil {
+				return err
+			}
+			if err := yield(items); err != nil {
+				return err
+			}
+			items = make([]dayItem, 0, limit)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(items) > 0 {
+		if err := hydrateFactionAttackers(ctx, pool, items); err != nil {
+			return err
+		}
+		if err := yield(items); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func hydrateFactionAttackers(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	items []dayItem,
+) error {
+	byID := make(map[int64]int, len(items))
+	ids := make([]int64, len(items))
+	for i := range items {
+		id := items[i].km.KillmailID
+		byID[id] = i
+		ids[i] = id
+	}
+
+	rows, err := pool.Query(ctx, `
+		SELECT killmail_id, faction_id, coalesce(final_blow, false)
+		FROM killmail_attackers
+		WHERE killmail_id = ANY($1::bigint[])
+		  AND faction_id IS NOT NULL`, ids)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var killmailID int64
+		var attacker Attacker
+		if err := rows.Scan(
+			&killmailID,
+			&attacker.FactionID,
+			&attacker.FinalBlow,
+		); err != nil {
+			return err
+		}
+		if i, ok := byID[killmailID]; ok {
+			items[i].attackers = append(items[i].attackers, attacker)
+		}
+	}
+	return rows.Err()
+}
+
 func hydrateAttackers(ctx context.Context, pool *pgxpool.Pool, items []dayItem) error {
 	byID := make(map[int64]int, len(items))
 	ids := make([]int64, len(items))
@@ -264,7 +389,8 @@ func hydrateAttackers(ctx context.Context, pool *pgxpool.Pool, items []dayItem) 
 	}
 	arows, err := pool.Query(ctx, `
 	        SELECT killmail_id, coalesce(character_id, 0), coalesce(corporation_id, 0),
-	               coalesce(alliance_id, 0), coalesce(ship_type_id, 0),
+	               coalesce(alliance_id, 0), coalesce(faction_id, 0),
+	               coalesce(ship_type_id, 0),
 	               coalesce(damage_done, 0), coalesce(final_blow, false)
 	        FROM killmail_attackers WHERE killmail_id = ANY($1::bigint[])`, ids)
 	if err != nil {
@@ -276,6 +402,7 @@ func hydrateAttackers(ctx context.Context, pool *pgxpool.Pool, items []dayItem) 
 		var id int64
 		var a Attacker
 		if err := arows.Scan(&id, &a.CharacterID, &a.CorporationID, &a.AllianceID,
+			&a.FactionID,
 			&a.ShipTypeID, &a.DamageDone, &a.FinalBlow); err != nil {
 			return err
 		}

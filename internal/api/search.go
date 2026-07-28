@@ -146,9 +146,7 @@ func searchHandler(opts Options) legacyHandler {
 			))
 		}
 		if wants("faction") {
-			parts = append(parts, searchUniversePart(
-				"faction_id", "name", "factions", "faction",
-			))
+			parts = append(parts, searchFactionPart())
 		}
 		if len(parts) == 0 {
 			return jsonPayload(map[string]any{
@@ -263,6 +261,20 @@ func searchUniversePart(idColumn, nameColumn, table, entityType string) string {
 		WHERE (($3 AND %s %% $1) OR %s ILIKE $2)`,
 		idColumn, nameColumn, entityType, nameColumn, table, nameColumn, nameColumn,
 	)
+}
+
+func searchFactionPart() string {
+	return `
+		SELECT faction_id AS entity_id, name, NULL::text AS ticker,
+		       'faction' AS type, NULL::integer AS corporation_id,
+		       NULL::integer AS alliance_id, 0 AS weight,
+		       CASE
+		         WHEN name ILIKE $2 THEN 1
+		         WHEN $3 THEN similarity(name, $1)
+		         ELSE 0.5
+		       END AS score
+		FROM factions
+		WHERE (($3 AND name % $1) OR name ILIKE $2)`
 }
 
 func searchRelatedIDs(rows []map[string]any) ([]int32, []int32) {

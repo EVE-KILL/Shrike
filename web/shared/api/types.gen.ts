@@ -24742,7 +24742,7 @@ export type GlobalStatsData = {
         /**
          * Which leaderboard to build. Required.
          */
-        dataType: 'characters' | 'corporations' | 'alliances' | 'ships' | 'systems' | 'regions' | 'isk_destroyers_chars' | 'isk_destroyers_corps' | 'isk_destroyers_alliances' | 'solo_killers' | 'top_points' | 'dangerous_systems' | 'deadliest_regions' | 'most_used_ships' | 'most_destroyed_ships' | 'biggest_losers' | 'pirate_characters' | 'carebear_characters' | 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        dataType: 'characters' | 'corporations' | 'alliances' | 'factions' | 'ships' | 'systems' | 'regions' | 'isk_destroyers_chars' | 'isk_destroyers_corps' | 'isk_destroyers_alliances' | 'solo_killers' | 'top_points' | 'dangerous_systems' | 'deadliest_regions' | 'most_used_ships' | 'most_destroyed_ships' | 'biggest_losers' | 'pirate_characters' | 'carebear_characters' | 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
         /**
          * Window in days. Values below 1 select the realtime hourly window instead.
          */

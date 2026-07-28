@@ -16,3 +16,13 @@ func TestMonthsInclusive(t *testing.T) {
 		t.Fatalf("months = %v", got)
 	}
 }
+
+func TestParseEntityType(t *testing.T) {
+	got, ok := ParseEntityType(" Faction ")
+	if !ok || got != EntityFaction {
+		t.Fatalf("ParseEntityType(faction) = %d, %v", got, ok)
+	}
+	if _, ok := ParseEntityType("unknown"); ok {
+		t.Fatal("unknown entity type was accepted")
+	}
+}

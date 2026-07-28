@@ -19,6 +19,8 @@
 // gaps on purpose.
 package stats
 
+import "strings"
+
 // EntityType is what a stats row is about.
 type EntityType int16
 
@@ -30,7 +32,26 @@ const (
 	EntitySystem        EntityType = 4
 	EntityConstellation EntityType = 5
 	EntityRegion        EntityType = 6
+	EntityFaction       EntityType = 7
 )
+
+var entityTypeNames = map[string]EntityType{
+	"character":     EntityCharacter,
+	"corporation":   EntityCorporation,
+	"alliance":      EntityAlliance,
+	"ship":          EntityShip,
+	"system":        EntitySystem,
+	"constellation": EntityConstellation,
+	"region":        EntityRegion,
+	"faction":       EntityFaction,
+}
+
+// ParseEntityType resolves the stable name used by maintenance commands.
+// "all" and an empty value deliberately mean no filter.
+func ParseEntityType(value string) (EntityType, bool) {
+	entityType, ok := entityTypeNames[strings.ToLower(strings.TrimSpace(value))]
+	return entityType, ok
+}
 
 // PeriodType is the granularity of a row.
 //

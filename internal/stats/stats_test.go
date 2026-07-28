@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -85,6 +86,7 @@ func fleetKill() (Killmail, []Attacker) {
 		VictimCharacterID:   testIDBase + 100,
 		VictimCorporationID: testIDBase + 200,
 		VictimAllianceID:    testIDBase + 300,
+		VictimFactionID:     500004,
 		VictimShipTypeID:    17738,
 		VictimDamageTaken:   9000,
 		TotalValue:          1_000_000_000,
@@ -93,13 +95,81 @@ func fleetKill() (Killmail, []Attacker) {
 	}
 	attackers := []Attacker{
 		{CharacterID: testIDBase + 1, CorporationID: testIDBase + 10, AllianceID: testIDBase + 20,
-			ShipTypeID: 587, DamageDone: 5000, FinalBlow: true},
+			FactionID: 500001, ShipTypeID: 587, DamageDone: 5000, FinalBlow: true},
 		{CharacterID: testIDBase + 2, CorporationID: testIDBase + 10, AllianceID: testIDBase + 20,
-			ShipTypeID: 587, DamageDone: 3000},
+			FactionID: 500001, ShipTypeID: 587, DamageDone: 3000},
 		{CharacterID: testIDBase + 3, CorporationID: testIDBase + 10, AllianceID: testIDBase + 20,
-			ShipTypeID: 621, DamageDone: 1000},
+			FactionID: 500001, ShipTypeID: 621, DamageDone: 1000},
 	}
 	return km, attackers
+}
+
+func TestFactionStatsCountEachSideOnceWithoutBreakdowns(t *testing.T) {
+	km, attackers := fleetKill()
+	a := NewAccumulator()
+	a.Add(km, attackers)
+
+	attacker := a.Stats[StatsKey{EntityFaction, 500001}]
+	if attacker == nil {
+		t.Fatal("the attacking faction has no stats row")
+	}
+	if attacker.Kills != 1 || attacker.IskDestroyed != km.TotalValue {
+		t.Errorf("attacking faction = %#v, want one kill worth %.0f", attacker, km.TotalValue)
+	}
+	if attacker.FinalBlows != 1 {
+		t.Errorf("attacking faction final blows = %d, want 1", attacker.FinalBlows)
+	}
+
+	victim := a.Stats[StatsKey{EntityFaction, km.VictimFactionID}]
+	if victim == nil {
+		t.Fatal("the victim faction has no stats row")
+	}
+	if victim.Losses != 1 || victim.IskLost != km.TotalValue {
+		t.Errorf("victim faction = %#v, want one loss worth %.0f", victim, km.TotalValue)
+	}
+
+	for key := range a.Breakdowns {
+		if key.EntityType == EntityFaction {
+			t.Fatalf("faction breakdown unexpectedly generated: %#v", key)
+		}
+	}
+}
+
+func TestAddFactionsMatchesGeneralFactionRows(t *testing.T) {
+	km, attackers := fleetKill()
+
+	all := NewAccumulator()
+	all.Add(km, attackers)
+	all.KeepEntityTypes([]EntityType{EntityFaction})
+
+	factions := NewAccumulator()
+	factions.AddFactions(km, attackers)
+
+	if !reflect.DeepEqual(all.Stats, factions.Stats) {
+		t.Fatalf("targeted faction stats = %#v, want %#v", factions.Stats, all.Stats)
+	}
+	if len(factions.Breakdowns) != 0 {
+		t.Fatalf("targeted faction accumulator created %d breakdowns", len(factions.Breakdowns))
+	}
+}
+
+func TestKeepEntityTypesRetainsOnlyRequestedRows(t *testing.T) {
+	km, attackers := fleetKill()
+	a := NewAccumulator()
+	a.Add(km, attackers)
+	a.KeepEntityTypes([]EntityType{EntityFaction})
+
+	if len(a.Stats) != 2 {
+		t.Fatalf("faction stats rows = %d, want attacker and victim", len(a.Stats))
+	}
+	for key := range a.Stats {
+		if key.EntityType != EntityFaction {
+			t.Fatalf("non-faction stats row survived filter: %#v", key)
+		}
+	}
+	if len(a.Breakdowns) != 0 {
+		t.Fatalf("breakdowns survived faction filter: %d", len(a.Breakdowns))
+	}
 }
 
 func TestAttackerCountFallsBackOnlyWhenMissing(t *testing.T) {
@@ -602,7 +672,7 @@ func TestMonthlyAggregateStreamsThroughStaging(t *testing.T) {
 	})
 
 	written, kills, err := aggregateRange(
-		ctx, pool, from, to, from, PeriodMonthly, true, true,
+		ctx, pool, from, to, from, PeriodMonthly, true, true, nil,
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -646,6 +716,143 @@ func TestMonthlyAggregateStreamsThroughStaging(t *testing.T) {
 	}
 	if marker != int64(lastID) {
 		t.Errorf("monthly ship breakdown marker = %d, want %d", marker, lastID)
+	}
+}
+
+func TestFactionAggregateReadsOnlyFactionKillmails(t *testing.T) {
+	pool := testPool(t)
+	clearTestStats(t, pool)
+	ctx := context.Background()
+
+	const firstID int32 = -1_999_900_000
+	from := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, 0, 1)
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO killmails (
+			killmail_id, killmail_time, killmail_hash,
+			solar_system_id, victim_faction_id,
+			total_value, points, is_npc, is_solo
+		) VALUES
+			($1, $4, 'stats-faction-victim', 30000142, 500004, 10, 1, false, false),
+			($2, $4, 'stats-faction-attacker', 30000142, NULL, 20, 2, false, true),
+			($3, $4, 'stats-no-faction', 30000142, NULL, 30, 3, false, false)`,
+		firstID, firstID+1, firstID+2, testPeriod,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO killmail_attackers (
+			killmail_id, killmail_time, attacker_index, faction_id, final_blow
+		) VALUES
+			($1, $4, 0, NULL, true),
+			($2, $4, 0, 500001, true),
+			($3, $4, 0, NULL, true)`,
+		firstID, firstID+1, firstID+2, testPeriod,
+	); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM killmail_attackers WHERE killmail_id BETWEEN $1 AND $2`,
+			firstID, firstID+2)
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM killmails WHERE killmail_id BETWEEN $1 AND $2`,
+			firstID, firstID+2)
+	})
+
+	written, killmails, err := aggregateRange(
+		ctx, pool, from, to, from, PeriodDaily, true, false,
+		[]EntityType{EntityFaction},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if killmails != 2 {
+		t.Fatalf("aggregated killmails = %d, want only the 2 faction mails", killmails)
+	}
+	if written.Stats != 2 || written.Breakdowns != 0 {
+		t.Fatalf("written = %+v, want two headline rows only", written)
+	}
+
+	rows, err := pool.Query(ctx, `
+		SELECT entity_type, entity_id, kills, losses
+		FROM stats
+		WHERE period_type = $1 AND period_start = $2::date
+		ORDER BY entity_id`,
+		int16(PeriodDaily), from.Format("2006-01-02"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+
+	got := make(map[int32][2]int64)
+	for rows.Next() {
+		var entityType EntityType
+		var entityID int32
+		var kills, losses int64
+		if err := rows.Scan(&entityType, &entityID, &kills, &losses); err != nil {
+			t.Fatal(err)
+		}
+		if entityType != EntityFaction {
+			t.Fatalf("non-faction row written: entity type %d", entityType)
+		}
+		got[entityID] = [2]int64{kills, losses}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if got[500001] != [2]int64{1, 0} || got[500004] != [2]int64{0, 1} {
+		t.Fatalf("faction rows = %#v", got)
+	}
+}
+
+func TestFilteredRollupsLeaveOtherEntityTypesUnchanged(t *testing.T) {
+	pool := testPool(t)
+	clearTestStats(t, pool)
+	ctx := context.Background()
+	day := testPeriod.Format("2006-01-02")
+
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO stats (
+			entity_type, entity_id, period_type, period_start, kills, isk_destroyed
+		) VALUES
+			($1, 500001, $2, $3::date, 3, 30),
+			($4, $5, $6, $3::date, 99, 990),
+			($4, $5, $7, $3::date, 99, 990)`,
+		int16(EntityFaction), int16(PeriodDaily), day,
+		int16(EntityCorporation), testIDBase+10,
+		int16(PeriodMonthly), int16(PeriodYearly),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := rebuildAllMonthlyStats(ctx, pool, []EntityType{EntityFaction}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rebuildAllYearlyStats(ctx, pool, []EntityType{EntityFaction}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, period := range []PeriodType{PeriodMonthly, PeriodYearly} {
+		var factionKills, corporationKills int64
+		if err := pool.QueryRow(ctx, `
+			SELECT
+				coalesce(max(kills) FILTER (WHERE entity_type = $1), 0),
+				coalesce(max(kills) FILTER (WHERE entity_type = $2), 0)
+			FROM stats
+			WHERE period_type = $3 AND period_start = $4::date`,
+			int16(EntityFaction), int16(EntityCorporation), int16(period), day,
+		).Scan(&factionKills, &corporationKills); err != nil {
+			t.Fatal(err)
+		}
+		if factionKills != 3 {
+			t.Errorf("%d faction kills = %d, want 3", period, factionKills)
+		}
+		if corporationKills != 99 {
+			t.Errorf("%d corporation sentinel kills = %d, want 99", period, corporationKills)
+		}
 	}
 }
 

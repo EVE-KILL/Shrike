@@ -11,6 +11,7 @@ const (
 	entityCharacter   = 0
 	entityCorporation = 1
 	entityAlliance    = 2
+	entityFaction     = 7
 
 	dimShipFlown = 0
 	dimShipLost  = 1

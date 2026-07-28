@@ -38,6 +38,7 @@ type Killmail struct {
 	VictimCharacterID   int32
 	VictimCorporationID int32
 	VictimAllianceID    int32
+	VictimFactionID     int32
 	VictimShipTypeID    int32
 	VictimDamageTaken   int64
 
@@ -53,6 +54,7 @@ type Attacker struct {
 	CharacterID   int32
 	CorporationID int32
 	AllianceID    int32
+	FactionID     int32
 	ShipTypeID    int32
 	DamageDone    int64
 	FinalBlow     bool
@@ -123,9 +125,10 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 	charAlliance := map[int32]int32{}
 	corps := map[int32]bool{}
 	alliances := map[int32]bool{}
+	factions := map[int32]bool{}
 	shipTypes := map[int32]bool{}
 
-	var fbChar, fbCorp, fbAlliance int32
+	var fbChar, fbCorp, fbAlliance, fbFaction int32
 
 	for _, at := range attackers {
 		if at.CharacterID != 0 {
@@ -142,11 +145,15 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		if at.AllianceID != 0 {
 			alliances[at.AllianceID] = true
 		}
+		if at.FactionID != 0 {
+			factions[at.FactionID] = true
+		}
 		if at.ShipTypeID != 0 {
 			shipTypes[at.ShipTypeID] = true
 		}
 		if at.FinalBlow {
-			fbChar, fbCorp, fbAlliance = at.CharacterID, at.CorporationID, at.AllianceID
+			fbChar, fbCorp, fbAlliance, fbFaction = at.CharacterID, at.CorporationID,
+				at.AllianceID, at.FactionID
 		}
 	}
 
@@ -196,6 +203,19 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		}
 	}
 
+	for factionID := range factions {
+		r := a.stat(EntityFaction, factionID)
+		r.Kills++
+		r.IskDestroyed += v
+		r.Points += km.Points
+		if km.IsSolo {
+			r.SoloKills++
+		}
+		if factionID == fbFaction {
+			r.FinalBlows++
+		}
+	}
+
 	// One kill per distinct hull brought, so a fleet of twenty of the same ship
 	// credits that hull once.
 	for shipID := range shipTypes {
@@ -224,6 +244,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 	}{
 		{EntityCorporation, km.VictimCorporationID},
 		{EntityAlliance, km.VictimAllianceID},
+		{EntityFaction, km.VictimFactionID},
 	} {
 		if e.id == 0 {
 			continue
@@ -366,6 +387,74 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		}
 		for allyID := range alliances {
 			lossDim(e.t, e.id, DimDiesToAlliance, allyID)
+		}
+	}
+}
+
+// AddFactions folds only faction headline counters into the accumulator.
+//
+// A faction-only backfill deliberately avoids constructing every other entity
+// and breakdown row just to discard them. Keep this in lockstep with the
+// faction portions of Add: one attacker-side kill per distinct faction on the
+// mail, plus one victim-side loss.
+func (a *Accumulator) AddFactions(km Killmail, attackers []Attacker) {
+	factions := make(map[int32]struct{})
+	var finalBlowFactionID int32
+	for _, attacker := range attackers {
+		if attacker.FactionID != 0 {
+			factions[attacker.FactionID] = struct{}{}
+		}
+		if attacker.FinalBlow {
+			finalBlowFactionID = attacker.FactionID
+		}
+	}
+
+	for factionID := range factions {
+		row := a.stat(EntityFaction, factionID)
+		row.Kills++
+		row.IskDestroyed += km.TotalValue
+		row.Points += km.Points
+		if km.IsSolo {
+			row.SoloKills++
+		}
+		if factionID == finalBlowFactionID {
+			row.FinalBlows++
+		}
+	}
+
+	if km.VictimFactionID == 0 {
+		return
+	}
+	row := a.stat(EntityFaction, km.VictimFactionID)
+	row.Losses++
+	row.IskLost += km.TotalValue
+	if km.IsSolo {
+		row.SoloLosses++
+	}
+	if km.IsNPC {
+		row.NPCLosses++
+	}
+}
+
+// KeepEntityTypes removes aggregate rows outside an explicitly selected set.
+// A nil/empty selection means all entity types, preserving the normal live and
+// all-entity backfill behavior.
+func (a *Accumulator) KeepEntityTypes(entityTypes []EntityType) {
+	if len(entityTypes) == 0 {
+		return
+	}
+	keep := make(map[EntityType]struct{}, len(entityTypes))
+	for _, entityType := range entityTypes {
+		keep[entityType] = struct{}{}
+	}
+	for key := range a.Stats {
+		if _, ok := keep[key.EntityType]; !ok {
+			delete(a.Stats, key)
+		}
+	}
+	for key := range a.Breakdowns {
+		if _, ok := keep[key.EntityType]; !ok {
+			delete(a.Breakdowns, key)
 		}
 	}
 }

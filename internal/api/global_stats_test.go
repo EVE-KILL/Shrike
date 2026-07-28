@@ -135,3 +135,30 @@ func TestGlobalStatsLimitRetainsFrontendCap(t *testing.T) {
 		t.Error("invalid days produced NaN")
 	}
 }
+
+func TestGlobalStatsIncludesFactionLeaderboard(t *testing.T) {
+	if _, ok := validGlobalStatsTypes["factions"]; !ok {
+		t.Fatal("factions are not an accepted global stats type")
+	}
+	if got := globalStatsEntityFilter("factions"); got != " AND n.militia_corporation_id IS NOT NULL" {
+		t.Fatalf("faction filter = %q, want joinable-faction filter", got)
+	}
+	if got := globalStatsEntityFilter("characters"); got != "" {
+		t.Fatalf("character filter = %q, want none", got)
+	}
+
+	document := New(Options{}).document
+	operation := document.Paths["/stats"].Get
+	for _, parameter := range operation.Parameters {
+		if parameter.Name != "dataType" {
+			continue
+		}
+		for _, value := range parameter.Schema.Enum {
+			if value == "factions" {
+				return
+			}
+		}
+		t.Fatal("global stats OpenAPI dataType enum omits factions")
+	}
+	t.Fatal("global stats OpenAPI operation has no dataType parameter")
+}

@@ -12,7 +12,7 @@ import (
 )
 
 var validGlobalStatsTypes = map[string]struct{}{
-	"characters": {}, "corporations": {}, "alliances": {},
+	"characters": {}, "corporations": {}, "alliances": {}, "factions": {},
 	"ships": {}, "systems": {}, "regions": {},
 	"isk_destroyers_chars": {}, "isk_destroyers_corps": {},
 	"isk_destroyers_alliances": {}, "solo_killers": {},
@@ -108,6 +108,7 @@ func loadGlobalTopList(
 		"characters":               {0, "characters", "character_id", "name", "kills", "character"},
 		"corporations":             {1, "corporations", "corporation_id", "name", "kills", "corporation"},
 		"alliances":                {2, "alliances", "alliance_id", "name", "kills", "alliance"},
+		"factions":                 {7, "factions", "faction_id", "name", "kills", "faction"},
 		"ships":                    {3, "inv_types", "type_id", "name", "kills", "ship"},
 		"most_used_ships":          {3, "inv_types", "type_id", "name", "kills", "ship"},
 		"systems":                  {4, "solar_systems", "solar_system_id", "system_name", "kills", "system"},
@@ -123,6 +124,7 @@ func loadGlobalTopList(
 		"deadliest_regions":        {6, "regions", "region_id", "name", "isk_destroyed", "region"},
 	}
 	config := configs[dataType]
+	entityFilter := globalStatsEntityFilter(dataType)
 	rows, err := queryMaps(ctx, db, fmt.Sprintf(`
 		SELECT s.entity_id AS id, n.%s AS name,
 		       COALESCE(SUM(s.%s), 0)::double precision AS count%s
@@ -130,6 +132,7 @@ func loadGlobalTopList(
 		INNER JOIN %s n ON s.entity_id = n.%s
 		WHERE s.entity_type = $1 AND s.period_type = 0
 		  AND s.period_start >= $2::date
+		  %s
 		GROUP BY s.entity_id, n.%s
 		ORDER BY SUM(s.%s) DESC
 		LIMIT $3`,
@@ -146,7 +149,7 @@ func loadGlobalTopList(
 			}
 			return ""
 		}(),
-		config.table, config.idColumn, config.nameColumn, config.metric,
+		config.table, config.idColumn, entityFilter, config.nameColumn, config.metric,
 	), config.entityType, since, limit)
 	if err != nil {
 		return nil, err
@@ -158,6 +161,13 @@ func loadGlobalTopList(
 		row["type"] = config.resultType
 	}
 	return rows, nil
+}
+
+func globalStatsEntityFilter(dataType string) string {
+	if dataType == "factions" {
+		return " AND n.militia_corporation_id IS NOT NULL"
+	}
+	return ""
 }
 
 func loadSecurityStatusList(

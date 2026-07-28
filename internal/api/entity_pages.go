@@ -703,17 +703,7 @@ func loadFactionPage(
 			Args: []any{id},
 		},
 		databaseQuery{
-			SQL: `
-				SELECT COUNT(*)::bigint AS losses,
-				       COALESCE(SUM(total_value), 0)::double precision AS isk_lost,
-				       COUNT(*) FILTER (
-				         WHERE killmail_time >= NOW() - INTERVAL '90 days'
-				       )::bigint AS recent_losses,
-				       COALESCE(SUM(total_value) FILTER (
-				         WHERE killmail_time >= NOW() - INTERVAL '90 days'
-				       ), 0)::double precision AS recent_isk_lost
-				FROM killmails WHERE victim_faction_id = $1`,
-			Args: []any{id},
+			SQL: entityPageStatsSQL, Args: []any{entityFaction, id},
 		},
 	)
 	if err != nil {

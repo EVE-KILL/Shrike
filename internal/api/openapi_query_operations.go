@@ -481,7 +481,7 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"global-stats": {
 		requiredQuery(enumQuery(
 			"dataType", "Which leaderboard to build. Required.", "",
-			"characters", "corporations", "alliances", "ships", "systems",
+			"characters", "corporations", "alliances", "factions", "ships", "systems",
 			"regions", "isk_destroyers_chars", "isk_destroyers_corps",
 			"isk_destroyers_alliances", "solo_killers", "top_points",
 			"dangerous_systems", "deadliest_regions", "most_used_ships",

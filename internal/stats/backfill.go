@@ -13,6 +13,7 @@ type BackfillOptions struct {
 	FromMonth       time.Time
 	ToMonth         time.Time
 	DailyCutoff     time.Duration
+	EntityTypes     []EntityType
 	WantStats       bool
 	WantBreakdowns  bool
 	Reset           bool
@@ -54,27 +55,47 @@ func Backfill(ctx context.Context, pool *pgxpool.Pool, opts BackfillOptions) (Ba
 	if opts.DailyCutoff < 0 {
 		return out, fmt.Errorf("daily cutoff cannot be negative")
 	}
+	var err error
+	opts.EntityTypes, err = normalizeEntityTypes(opts.EntityTypes)
+	if err != nil {
+		return out, err
+	}
+	if onlyEntityType(opts.EntityTypes, EntityFaction) && !opts.WantStats {
+		return out, fmt.Errorf("faction aggregation has headline stats but no breakdowns")
+	}
 
 	if opts.Reset {
-		if opts.WantStats {
-			if _, err := pool.Exec(ctx, `TRUNCATE stats`); err != nil {
-				return out, err
+		for _, table := range selectedStatsTables(opts) {
+			if len(opts.EntityTypes) == 0 {
+				if _, err := pool.Exec(ctx, `TRUNCATE `+table); err != nil {
+					return out, err
+				}
+				continue
 			}
-		}
-		if opts.WantBreakdowns {
-			if _, err := pool.Exec(ctx, `TRUNCATE stats_breakdowns`); err != nil {
+			if _, err := pool.Exec(ctx,
+				`DELETE FROM `+table+` WHERE entity_type = ANY($1::smallint[])`,
+				entityTypeValues(opts.EntityTypes)); err != nil {
 				return out, err
 			}
 		}
 	} else if !opts.SkipAggregation {
 		for _, table := range selectedStatsTables(opts) {
 			var exists bool
-			if err := pool.QueryRow(ctx,
-				`SELECT EXISTS (SELECT 1 FROM `+table+` LIMIT 1)`).Scan(&exists); err != nil {
+			query := `SELECT EXISTS (SELECT 1 FROM ` + table
+			args := []any{}
+			if len(opts.EntityTypes) > 0 {
+				query += ` WHERE entity_type = ANY($1::smallint[])`
+				args = append(args, entityTypeValues(opts.EntityTypes))
+			}
+			query += ` LIMIT 1)`
+			if err := pool.QueryRow(ctx, query, args...).Scan(&exists); err != nil {
 				return out, err
 			}
 			if exists {
-				return out, fmt.Errorf("refusing aggregation without reset: %s already has rows", table)
+				return out, fmt.Errorf(
+					"refusing aggregation without reset: %s already has selected rows",
+					table,
+				)
 			}
 		}
 	}
@@ -94,7 +115,7 @@ func Backfill(ctx context.Context, pool *pgxpool.Pool, opts BackfillOptions) (Ba
 				out.MonthlyMonths++
 				written, kills, err := aggregateRange(
 					ctx, pool, month, nextMonth, month, PeriodMonthly,
-					opts.WantStats, opts.WantBreakdowns,
+					opts.WantStats, opts.WantBreakdowns, opts.EntityTypes,
 				)
 				if err != nil {
 					return out, fmt.Errorf("aggregate %s: %w", month.Format("2006-01"), err)
@@ -103,7 +124,9 @@ func Backfill(ctx context.Context, pool *pgxpool.Pool, opts BackfillOptions) (Ba
 				out.Stats += written.Stats
 				out.Breakdowns += written.Breakdowns
 				if opts.WantBreakdowns {
-					if err := capBreakdowns(ctx, pool, PeriodMonthly, month); err != nil {
+					if err := capBreakdowns(
+						ctx, pool, PeriodMonthly, month, opts.EntityTypes,
+					); err != nil {
 						return out, fmt.Errorf("cap %s breakdowns: %w", month.Format("2006-01"), err)
 					}
 				}
@@ -115,7 +138,7 @@ func Backfill(ctx context.Context, pool *pgxpool.Pool, opts BackfillOptions) (Ba
 				nextDay := day.AddDate(0, 0, 1)
 				written, kills, err := aggregateRange(
 					ctx, pool, day, nextDay, day, PeriodDaily,
-					opts.WantStats, opts.WantBreakdowns,
+					opts.WantStats, opts.WantBreakdowns, opts.EntityTypes,
 				)
 				if err != nil {
 					return out, fmt.Errorf("aggregate %s: %w", day.Format("2006-01-02"), err)
@@ -130,18 +153,26 @@ func Backfill(ctx context.Context, pool *pgxpool.Pool, opts BackfillOptions) (Ba
 	if !opts.SkipRollup {
 		var err error
 		if opts.WantStats {
-			if out.MonthlyStats, err = rebuildAllMonthlyStats(ctx, pool); err != nil {
+			if out.MonthlyStats, err = rebuildAllMonthlyStats(
+				ctx, pool, opts.EntityTypes,
+			); err != nil {
 				return out, err
 			}
-			if out.YearlyStats, err = rebuildAllYearlyStats(ctx, pool); err != nil {
+			if out.YearlyStats, err = rebuildAllYearlyStats(
+				ctx, pool, opts.EntityTypes,
+			); err != nil {
 				return out, err
 			}
 		}
 		if opts.WantBreakdowns {
-			if out.MonthlyBreakdowns, err = rebuildAllMonthlyBreakdowns(ctx, pool); err != nil {
+			if out.MonthlyBreakdowns, err = rebuildAllMonthlyBreakdowns(
+				ctx, pool, opts.EntityTypes,
+			); err != nil {
 				return out, err
 			}
-			if out.YearlyBreakdowns, err = rebuildAllYearlyBreakdowns(ctx, pool); err != nil {
+			if out.YearlyBreakdowns, err = rebuildAllYearlyBreakdowns(
+				ctx, pool, opts.EntityTypes,
+			); err != nil {
 				return out, err
 			}
 		}
@@ -160,31 +191,69 @@ func selectedStatsTables(opts BackfillOptions) []string {
 	return tables
 }
 
+func normalizeEntityTypes(values []EntityType) ([]EntityType, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	seen := make(map[EntityType]struct{}, len(values))
+	out := make([]EntityType, 0, len(values))
+	for _, value := range values {
+		if value < EntityCharacter || value > EntityFaction {
+			return nil, fmt.Errorf("invalid stats entity type %d", value)
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	slices.Sort(out)
+	return out, nil
+}
+
+func entityTypeValues(values []EntityType) []int16 {
+	out := make([]int16, len(values))
+	for i, value := range values {
+		out[i] = int16(value)
+	}
+	return out
+}
+
+func onlyEntityType(values []EntityType, want EntityType) bool {
+	return len(values) == 1 && values[0] == want
+}
+
 func aggregateRange(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	from, to, periodStart time.Time,
 	period PeriodType,
 	wantStats, wantBreakdowns bool,
+	entityTypes []EntityType,
 ) (WriteResult, int64, error) {
 	if period == PeriodMonthly {
 		return aggregateRangeStaged(
 			ctx, pool, from, to, periodStart, period, wantStats, wantBreakdowns,
+			entityTypes,
 		)
 	}
 
 	acc := NewAccumulator()
 	var kills int64
-	err := streamRange(ctx, pool, from, to, CatchupBatch, func(batch []dayItem) error {
-		for _, item := range batch {
-			acc.Add(item.km, item.attackers)
-			kills++
-		}
-		return nil
-	})
+	err := streamBackfillRange(
+		ctx, pool, from, to, CatchupBatch, entityTypes,
+		func(batch []dayItem) error {
+			for _, item := range batch {
+				addBackfillItem(acc, item, entityTypes)
+				kills++
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		return WriteResult{}, kills, err
 	}
+	acc.KeepEntityTypes(entityTypes)
 
 	written, err := WritePeriod(ctx, pool, acc, periodStart, period, wantStats, wantBreakdowns)
 	return written, kills, err
@@ -206,6 +275,7 @@ func aggregateRangeStaged(
 	from, to, periodStart time.Time,
 	period PeriodType,
 	wantStats, wantBreakdowns bool,
+	entityTypes []EntityType,
 ) (WriteResult, int64, error) {
 	var out WriteResult
 
@@ -235,19 +305,23 @@ func aggregateRangeStaged(
 	}
 
 	var kills int64
-	err = streamRange(ctx, pool, from, to, CatchupBatch, func(batch []dayItem) error {
-		acc := NewAccumulator()
-		for _, item := range batch {
-			acc.Add(item.km, item.attackers)
-			kills++
-		}
-		if _, err := WritePeriodTx(
-			ctx, tx, acc, periodStart, period, wantStats, wantBreakdowns,
-		); err != nil {
-			return fmt.Errorf("merge monthly stats staging: %w", err)
-		}
-		return nil
-	})
+	err = streamBackfillRange(
+		ctx, pool, from, to, CatchupBatch, entityTypes,
+		func(batch []dayItem) error {
+			acc := NewAccumulator()
+			for _, item := range batch {
+				addBackfillItem(acc, item, entityTypes)
+				kills++
+			}
+			acc.KeepEntityTypes(entityTypes)
+			if _, err := WritePeriodTx(
+				ctx, tx, acc, periodStart, period, wantStats, wantBreakdowns,
+			); err != nil {
+				return fmt.Errorf("merge monthly stats staging: %w", err)
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		return out, kills, err
 	}
@@ -256,6 +330,7 @@ func aggregateRangeStaged(
 		if _, err := tx.Exec(ctx,
 			capBreakdownsSQL("pg_temp.stats_breakdowns"),
 			int16(period), periodStart.Format("2006-01-02"), BreakdownTopN,
+			len(entityTypes) == 0, entityTypeValues(entityTypes),
 		); err != nil {
 			return out, kills, fmt.Errorf("cap monthly stats staging: %w", err)
 		}
@@ -337,6 +412,28 @@ func aggregateRangeStaged(
 	return out, kills, nil
 }
 
+func streamBackfillRange(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	from, to time.Time,
+	limit int,
+	entityTypes []EntityType,
+	yield func([]dayItem) error,
+) error {
+	if onlyEntityType(entityTypes, EntityFaction) {
+		return streamFactionRange(ctx, pool, from, to, limit, yield)
+	}
+	return streamRange(ctx, pool, from, to, limit, yield)
+}
+
+func addBackfillItem(acc *Accumulator, item dayItem, entityTypes []EntityType) {
+	if onlyEntityType(entityTypes, EntityFaction) {
+		acc.AddFactions(item.km, item.attackers)
+		return
+	}
+	acc.Add(item.km, item.attackers)
+}
+
 func monthStart(t time.Time) time.Time {
 	t = t.UTC()
 	return time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -355,10 +452,17 @@ func monthsInclusive(from, to time.Time) []time.Time {
 	return out
 }
 
-func capBreakdowns(ctx context.Context, pool *pgxpool.Pool, period PeriodType, start time.Time) error {
+func capBreakdowns(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	period PeriodType,
+	start time.Time,
+	entityTypes []EntityType,
+) error {
 	_, err := pool.Exec(ctx,
 		capBreakdownsSQL("stats_breakdowns"),
 		int16(period), start.Format("2006-01-02"), BreakdownTopN,
+		len(entityTypes) == 0, entityTypeValues(entityTypes),
 	)
 	return err
 }
@@ -376,6 +480,7 @@ func capBreakdownsSQL(table string) string {
 					       ) AS rn
 					FROM %[1]s
 					WHERE period_type = $1 AND period_start = $2::date
+					  AND ($4 OR entity_type = ANY($5::smallint[]))
 				) ranked
 				WHERE rn > $3
 		) excess
@@ -387,7 +492,11 @@ func capBreakdownsSQL(table string) string {
 			  AND b.dim_id = excess.dim_id`, table)
 }
 
-func rebuildAllMonthlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
+func rebuildAllMonthlyStats(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	entityTypes []EntityType,
+) (int64, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return 0, err
@@ -395,12 +504,18 @@ func rebuildAllMonthlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, err
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	if _, err := tx.Exec(ctx, `
-		DELETE FROM stats
-		WHERE period_type = $1
+		DELETE FROM stats target
+		WHERE target.period_type = $1
+		  AND ($3 OR target.entity_type = ANY($4::smallint[]))
 		  AND period_start IN (
 		      SELECT DISTINCT date_trunc('month', period_start)::date
-		      FROM stats WHERE period_type = $2
-		  )`, int16(PeriodMonthly), int16(PeriodDaily)); err != nil {
+		      FROM stats source
+		      WHERE source.period_type = $2
+		        AND ($3 OR source.entity_type = ANY($4::smallint[]))
+		  )`,
+		int16(PeriodMonthly), int16(PeriodDaily),
+		len(entityTypes) == 0, entityTypeValues(entityTypes),
+	); err != nil {
 		return 0, err
 	}
 	tag, err := tx.Exec(ctx, `
@@ -415,8 +530,10 @@ func rebuildAllMonthlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, err
 		       sum(damage_dealt), sum(damage_taken), sum(sum_attacker_count)
 		FROM stats
 		WHERE period_type = $2
+		  AND ($3 OR entity_type = ANY($4::smallint[]))
 		GROUP BY entity_type, entity_id, date_trunc('month', period_start)`,
-		int16(PeriodMonthly), int16(PeriodDaily))
+		int16(PeriodMonthly), int16(PeriodDaily),
+		len(entityTypes) == 0, entityTypeValues(entityTypes))
 	if err != nil {
 		return 0, err
 	}
@@ -426,14 +543,23 @@ func rebuildAllMonthlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, err
 	return tag.RowsAffected(), nil
 }
 
-func rebuildAllYearlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
+func rebuildAllYearlyStats(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	entityTypes []EntityType,
+) (int64, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if _, err := tx.Exec(ctx, `DELETE FROM stats WHERE period_type = $1`, int16(PeriodYearly)); err != nil {
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM stats
+		WHERE period_type = $1
+		  AND ($2 OR entity_type = ANY($3::smallint[]))`,
+		int16(PeriodYearly), len(entityTypes) == 0, entityTypeValues(entityTypes),
+	); err != nil {
 		return 0, err
 	}
 	tag, err := tx.Exec(ctx, `
@@ -448,8 +574,10 @@ func rebuildAllYearlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, erro
 		       sum(damage_dealt), sum(damage_taken), sum(sum_attacker_count)
 		FROM stats
 		WHERE period_type = $2
+		  AND ($3 OR entity_type = ANY($4::smallint[]))
 		GROUP BY entity_type, entity_id, date_trunc('year', period_start)`,
-		int16(PeriodYearly), int16(PeriodMonthly))
+		int16(PeriodYearly), int16(PeriodMonthly),
+		len(entityTypes) == 0, entityTypeValues(entityTypes))
 	if err != nil {
 		return 0, err
 	}
@@ -459,12 +587,24 @@ func rebuildAllYearlyStats(ctx context.Context, pool *pgxpool.Pool) (int64, erro
 	return tag.RowsAffected(), nil
 }
 
-func rebuildAllMonthlyBreakdowns(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
-	return rebuildAllBreakdowns(ctx, pool, PeriodMonthly, PeriodDaily, "month", true)
+func rebuildAllMonthlyBreakdowns(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	entityTypes []EntityType,
+) (int64, error) {
+	return rebuildAllBreakdowns(
+		ctx, pool, PeriodMonthly, PeriodDaily, "month", true, entityTypes,
+	)
 }
 
-func rebuildAllYearlyBreakdowns(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
-	return rebuildAllBreakdowns(ctx, pool, PeriodYearly, PeriodMonthly, "year", false)
+func rebuildAllYearlyBreakdowns(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	entityTypes []EntityType,
+) (int64, error) {
+	return rebuildAllBreakdowns(
+		ctx, pool, PeriodYearly, PeriodMonthly, "year", false, entityTypes,
+	)
 }
 
 func rebuildAllBreakdowns(
@@ -473,6 +613,7 @@ func rebuildAllBreakdowns(
 	target, source PeriodType,
 	trunc string,
 	onlySourceMonths bool,
+	entityTypes []EntityType,
 ) (int64, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -484,14 +625,24 @@ func rebuildAllBreakdowns(
 		if _, err := tx.Exec(ctx, fmt.Sprintf(`
 			DELETE FROM stats_breakdowns
 			WHERE period_type = $1
+			  AND ($3 OR entity_type = ANY($4::smallint[]))
 			  AND period_start IN (
 			      SELECT DISTINCT date_trunc('%s', period_start)::date
-			      FROM stats_breakdowns WHERE period_type = $2
-			  )`, trunc), int16(target), int16(source)); err != nil {
+			      FROM stats_breakdowns
+			      WHERE period_type = $2
+			        AND ($3 OR entity_type = ANY($4::smallint[]))
+			  )`, trunc),
+			int16(target), int16(source),
+			len(entityTypes) == 0, entityTypeValues(entityTypes),
+		); err != nil {
 			return 0, err
 		}
 	} else if _, err := tx.Exec(ctx,
-		`DELETE FROM stats_breakdowns WHERE period_type = $1`, int16(target)); err != nil {
+		`DELETE FROM stats_breakdowns
+		 WHERE period_type = $1
+		   AND ($2 OR entity_type = ANY($3::smallint[]))`,
+		int16(target), len(entityTypes) == 0, entityTypeValues(entityTypes),
+	); err != nil {
 		return 0, err
 	}
 
@@ -510,6 +661,7 @@ func rebuildAllBreakdowns(
 			       max(last_killmail_time) AS last_killmail_time
 			FROM stats_breakdowns
 			WHERE period_type = $2
+			  AND ($3 OR entity_type = ANY($4::smallint[]))
 			GROUP BY entity_type, entity_id, date_trunc('%[1]s', period_start), dim_category, dim_id
 		)
 		SELECT entity_type, entity_id, $1, period_start, dim_category, dim_id,
@@ -521,7 +673,9 @@ func rebuildAllBreakdowns(
 			) AS rn
 			FROM aggregated
 		) capped
-		WHERE rn <= %[2]d`, trunc, BreakdownTopN), int16(target), int16(source))
+		WHERE rn <= %[2]d`, trunc, BreakdownTopN),
+		int16(target), int16(source),
+		len(entityTypes) == 0, entityTypeValues(entityTypes))
 	if err != nil {
 		return 0, err
 	}

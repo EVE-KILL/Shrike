@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/achievements"
@@ -193,6 +194,7 @@ var (
 	flagStatsFromMonth       string
 	flagStatsToMonth         string
 	flagStatsTable           string
+	flagStatsEntity          string
 	flagStatsReset           bool
 	flagStatsReverse         bool
 	flagStatsDailyCutoffDays int
@@ -232,6 +234,19 @@ refused unless --reset is supplied, because aggregation is additive.`,
 		default:
 			return fmt.Errorf("invalid --table %q: want stats or breakdowns", flagStatsTable)
 		}
+		var entityTypes []stats.EntityType
+		entityName := strings.ToLower(strings.TrimSpace(flagStatsEntity))
+		if entityName != "" && entityName != "all" {
+			entityType, ok := stats.ParseEntityType(entityName)
+			if !ok {
+				return fmt.Errorf(
+					"invalid --entity %q: want character, corporation, alliance, "+
+						"ship, system, constellation, region, faction, or all",
+					flagStatsEntity,
+				)
+			}
+			entityTypes = []stats.EntityType{entityType}
+		}
 
 		pool, err := openPool(cmd)
 		if err != nil {
@@ -240,11 +255,17 @@ refused unless --reset is supplied, because aggregation is additive.`,
 		defer pool.Close()
 
 		ui.Section("Backfill stats")
+		if len(entityTypes) == 0 {
+			ui.KV("Entities", "all")
+		} else {
+			ui.KV("Entities", entityName)
+		}
 		start := time.Now()
 		res, err := stats.Backfill(cmd.Context(), pool, stats.BackfillOptions{
 			FromMonth:       from,
 			ToMonth:         to,
 			DailyCutoff:     time.Duration(flagStatsDailyCutoffDays) * 24 * time.Hour,
+			EntityTypes:     entityTypes,
 			WantStats:       wantStats,
 			WantBreakdowns:  wantBreakdowns,
 			Reset:           flagStatsReset,
@@ -763,7 +784,8 @@ func init() {
 	backfillStatsCmd.Flags().StringVarP(&flagStatsFromMonth, "from", "f", "2007-12", "Start month (YYYY-MM)")
 	backfillStatsCmd.Flags().StringVarP(&flagStatsToMonth, "to", "t", "", "End month, inclusive (YYYY-MM; default current)")
 	backfillStatsCmd.Flags().StringVar(&flagStatsTable, "table", "", "Target only stats or breakdowns")
-	backfillStatsCmd.Flags().BoolVar(&flagStatsReset, "reset", false, "Truncate selected target tables first")
+	backfillStatsCmd.Flags().StringVar(&flagStatsEntity, "entity", "all", "Target one entity type or all")
+	backfillStatsCmd.Flags().BoolVar(&flagStatsReset, "reset", false, "Clear selected entity rows before rebuilding")
 	backfillStatsCmd.Flags().BoolVar(&flagStatsReverse, "reverse", false, "Process newest months first")
 	backfillStatsCmd.Flags().IntVar(&flagStatsDailyCutoffDays, "daily-cutoff-days", 365, "Recent daily-retention window")
 	backfillStatsCmd.Flags().BoolVar(&flagStatsSkipAggregation, "skip-aggregation", false, "Only rebuild rollups")
