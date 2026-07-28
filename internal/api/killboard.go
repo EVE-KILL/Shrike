@@ -138,8 +138,12 @@ func killlistHandler(opts Options) legacyHandler {
 			))
 		}
 
-		if rollupEligible && len(factions) == 0 && page >= 1 && after == nil {
-			return loadNumberedKilllist(ctx, opts.DB, kind, predicate, page, limit)
+		if numberedPage, ok := killlistNumberedPage(
+			rollupEligible, len(factions), page, after,
+		); ok {
+			return loadNumberedKilllist(
+				ctx, opts.DB, kind, predicate, numberedPage, limit,
+			)
 		}
 		if len(factions) > 0 && page >= 1 && after == nil {
 			return loadBoundedKilllist(ctx, opts.DB, where, args, page, limit)
@@ -175,13 +179,9 @@ func killlistHandler(opts Options) legacyHandler {
 			"kills": rows, "hasMore": hasMore, "cursor": cursor,
 		}
 
-		var total int64
-		switch {
-		case rollupEligible && len(factions) == 0:
-			total, err = killlistRollupTotal(ctx, opts.DB, kind)
-		case len(factions) > 0:
-			total, err = countKilllistRows(ctx, opts.DB, where, args)
-		}
+		total, err := killlistCursorTotal(
+			ctx, opts.DB, kind, rollupEligible, len(factions),
+		)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -192,6 +192,39 @@ func killlistHandler(opts Options) legacyHandler {
 		}
 		return jsonPayload(response), nil
 	}
+}
+
+func killlistNumberedPage(
+	rollupEligible bool,
+	factionCount int,
+	page int,
+	after *int64,
+) (int, bool) {
+	if !rollupEligible || factionCount > 0 || after != nil {
+		return 0, false
+	}
+	if page < 1 {
+		page = 1
+	}
+	return page, true
+}
+
+func killlistCursorTotal(
+	ctx context.Context,
+	db Database,
+	kind string,
+	rollupEligible bool,
+	factionCount int,
+) (int64, error) {
+	if !rollupEligible || factionCount > 0 {
+		// Faction-filtered lists have no compact count rollup. Counting millions
+		// of matching killmails made the first faction-war render wait 15+
+		// seconds just to display a page count. The response already carries a
+		// stable cursor and hasMore, which is the normal fallback for filters
+		// without a precomputed total.
+		return 0, nil
+	}
+	return killlistRollupTotal(ctx, db, kind)
 }
 
 type killlistRollupDay struct {

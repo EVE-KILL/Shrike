@@ -507,6 +507,138 @@ var entityKilllistConfigs = map[string]entityKilllistConfig{
 	entityPageFaction:     {-1, "victim_faction_id", "faction_id"},
 }
 
+type entityKilllistScopePlan struct {
+	SQL      string
+	Args     []any
+	Order    string
+	Offset   int64
+	Numbered bool
+}
+
+func buildEntityKilllistScopePlan(
+	config entityKilllistConfig,
+	role string,
+	id int64,
+	limit int,
+	after int64,
+	page int,
+	shipGroup int64,
+) entityKilllistScopePlan {
+	numbered := page >= 1 && after == 0 && config.EntityType >= 0 && shipGroup == 0
+	order := "k.killmail_id DESC"
+	offset := int64(0)
+	if numbered {
+		order = "k.killmail_time DESC, k.killmail_id DESC"
+		offset = int64(page-1) * int64(limit)
+		if offset < 0 {
+			offset = 0
+		}
+	}
+
+	args := []any{id}
+	lossConditions := []string{fmt.Sprintf("k.%s = $1", config.Victim)}
+	attackConditions := []string{fmt.Sprintf("actor.%s = $1", config.Attacker)}
+	factionAttackConditions := []string{fmt.Sprintf(`
+		EXISTS (
+			SELECT 1
+			FROM killmail_attackers actor
+			WHERE actor.killmail_id = k.killmail_id
+			  AND actor.%s = $1
+		)`, config.Attacker)}
+	if shipGroup != 0 {
+		args = append(args, shipGroup)
+		parameter := fmt.Sprintf("$%d", len(args))
+		lossConditions = append(lossConditions, "k.victim_ship_group_id = "+parameter)
+		attackConditions = append(
+			attackConditions, "actor_k.victim_ship_group_id = "+parameter,
+		)
+		factionAttackConditions = append(
+			factionAttackConditions, "k.victim_ship_group_id = "+parameter,
+		)
+	}
+	if after != 0 {
+		args = append(args, after)
+		parameter := fmt.Sprintf("$%d", len(args))
+		lossConditions = append(lossConditions, "k.killmail_id < "+parameter)
+		factionAttackConditions = append(
+			factionAttackConditions, "k.killmail_id < "+parameter,
+		)
+		attackConditions = append(attackConditions, fmt.Sprintf(`
+			(actor.killmail_time < (
+				SELECT killmail_time FROM killmails WHERE killmail_id = %[1]s
+			) OR (
+			 actor.killmail_time = (
+			   SELECT killmail_time FROM killmails WHERE killmail_id = %[1]s
+			 ) AND actor.killmail_id < %[1]s
+			))`, parameter))
+	}
+
+	attackerJoin := ""
+	if shipGroup != 0 {
+		attackerJoin = "JOIN killmails actor_k ON actor_k.killmail_id = actor.killmail_id"
+	}
+
+	// Bound each half before UNION and before the detail joins. The old query
+	// materialized every historical killmail ID for the entity, deduplicated
+	// that complete set, and only then applied LIMIT 51. Large alliances have
+	// tens of millions of attacker rows, turning a first page into a 30-second
+	// query. Both source indexes are newest-first, so each branch only needs
+	// enough candidates to cover the requested offset and page.
+	branchLimit := offset + int64(limit) + 1
+	args = append(args, branchLimit)
+	branchLimitParameter := len(args)
+	lossScope := fmt.Sprintf(`
+		SELECT k.killmail_id, k.killmail_time
+		FROM killmails k
+		WHERE %s
+		ORDER BY k.killmail_id DESC
+		LIMIT $%d`,
+		strings.Join(lossConditions, " AND "), branchLimitParameter,
+	)
+	attackScope := ""
+	if config.Attacker == "faction_id" {
+		// Unlike character/corporation/alliance, attacker factions have no
+		// faction+time index. Walk the newest killmails and probe their indexed
+		// attacker rows instead; the semi-join stops as soon as the page is full.
+		attackScope = fmt.Sprintf(`
+			SELECT k.killmail_id, k.killmail_time
+			FROM killmails k
+			WHERE %s
+			ORDER BY k.killmail_id DESC
+			LIMIT $%d`,
+			strings.Join(factionAttackConditions, " AND "),
+			branchLimitParameter,
+		)
+	} else {
+		attackScope = fmt.Sprintf(`
+			SELECT DISTINCT ON (actor.killmail_time, actor.killmail_id)
+			       actor.killmail_id, actor.killmail_time
+			FROM killmail_attackers actor
+			%s
+			WHERE %s
+			ORDER BY actor.killmail_time DESC, actor.killmail_id DESC
+			LIMIT $%d`,
+			attackerJoin, strings.Join(attackConditions, " AND "),
+			branchLimitParameter,
+		)
+	}
+	scope := ""
+	switch role {
+	case "losses":
+		scope = lossScope
+	case "kills":
+		scope = attackScope
+	default:
+		scope = fmt.Sprintf(`
+			(%s)
+			UNION
+			(%s)`, lossScope, attackScope)
+	}
+	return entityKilllistScopePlan{
+		SQL: scope, Args: args, Order: order, Offset: offset, Numbered: numbered,
+	}
+}
+
 func loadEntityPageKilllist(
 	ctx context.Context,
 	opts Options,
@@ -535,74 +667,10 @@ func loadEntityPageKilllist(
 	after := int64(entityPageQueryInt(req.Query.Get("after"), 0))
 	page := entityPageQueryInt(req.Query.Get("page"), 0)
 	shipGroup := int64(entityPageQueryInt(req.Query.Get("ship_group"), 0))
-	numbered := page >= 1 && after == 0 && config.EntityType >= 0 && shipGroup == 0
-
-	args := []any{id}
-	lossConditions := []string{fmt.Sprintf("k.%s = $1", config.Victim)}
-	attackConditions := []string{fmt.Sprintf("actor.%s = $1", config.Attacker)}
-	if shipGroup != 0 {
-		args = append(args, shipGroup)
-		parameter := fmt.Sprintf("$%d", len(args))
-		lossConditions = append(lossConditions, "k.victim_ship_group_id = "+parameter)
-		attackConditions = append(
-			attackConditions, "actor_k.victim_ship_group_id = "+parameter,
-		)
-	}
-	if after != 0 {
-		args = append(args, after)
-		parameter := fmt.Sprintf("$%d", len(args))
-		lossConditions = append(lossConditions, "k.killmail_id < "+parameter)
-		attackConditions = append(attackConditions, fmt.Sprintf(`
-			(actor.killmail_time < (
-				SELECT killmail_time FROM killmails WHERE killmail_id = %[1]s
-			) OR (
-			 actor.killmail_time = (
-			   SELECT killmail_time FROM killmails WHERE killmail_id = %[1]s
-			 ) AND actor.killmail_id < %[1]s
-			))`, parameter))
-	}
-
-	attackerJoin := ""
-	if shipGroup != 0 {
-		attackerJoin = "JOIN killmails actor_k ON actor_k.killmail_id = actor.killmail_id"
-	}
-	scope := ""
-	switch role {
-	case "losses":
-		scope = fmt.Sprintf(`
-			SELECT k.killmail_id
-			FROM killmails k
-			WHERE %s`, strings.Join(lossConditions, " AND "))
-	case "kills":
-		scope = fmt.Sprintf(`
-			SELECT DISTINCT actor.killmail_id
-			FROM killmail_attackers actor
-			%s
-			WHERE %s`, attackerJoin, strings.Join(attackConditions, " AND "))
-	default:
-		scope = fmt.Sprintf(`
-			SELECT k.killmail_id
-			FROM killmails k
-			WHERE %s
-			UNION
-			SELECT DISTINCT actor.killmail_id
-			FROM killmail_attackers actor
-			%s
-			WHERE %s`,
-			strings.Join(lossConditions, " AND "),
-			attackerJoin, strings.Join(attackConditions, " AND "),
-		)
-	}
-	order := "k.killmail_id DESC"
-	offset := int64(0)
-	if numbered {
-		order = "k.killmail_time DESC, k.killmail_id DESC"
-		offset = int64(page-1) * int64(limit)
-		if offset < 0 {
-			offset = 0
-		}
-	}
-	args = append(args, limit+1, offset)
+	scope := buildEntityKilllistScopePlan(
+		config, role, id, limit, after, page, shipGroup,
+	)
+	args := append(scope.Args, limit+1, scope.Offset)
 	limitParameter, offsetParameter := len(args)-1, len(args)
 	killSQL := fmt.Sprintf(`
 		WITH scoped AS MATERIALIZED (%s)
@@ -659,7 +727,7 @@ func loadEntityPageKilllist(
 		LEFT JOIN regions region ON region.region_id = k.region_id
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d`,
-		scope, order, limitParameter, offsetParameter,
+		scope.SQL, scope.Order, limitParameter, offsetParameter,
 	)
 
 	queries := []databaseQuery{{SQL: killSQL, Args: args}}
@@ -700,7 +768,7 @@ func loadEntityPageKilllist(
 		delete(row, "_ship_market_group_id")
 	}
 	var cursor any
-	if len(rows) > 0 && !numbered {
+	if len(rows) > 0 && !scope.Numbered {
 		cursor = rows[len(rows)-1]["killmail_id"]
 	}
 	response := map[string]any{
@@ -714,7 +782,7 @@ func loadEntityPageKilllist(
 				totalPages = 1
 			}
 			response["totalPages"] = totalPages
-			if numbered {
+			if scope.Numbered {
 				response["hasMore"] = int64(page) < totalPages
 				response["cursor"] = nil
 			}

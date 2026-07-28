@@ -140,6 +140,75 @@ func TestEntityPageDaysSnapToStatsRetentionWindows(t *testing.T) {
 	}
 }
 
+func TestEntityKilllistScopeBoundsEachBranchBeforeUnion(t *testing.T) {
+	config := entityKilllistConfigs[entityPageAlliance]
+	plan := buildEntityKilllistScopePlan(
+		config, "combined", 1354830081, 50, 0, 0, 0,
+	)
+
+	if plan.Numbered || plan.Offset != 0 || plan.Order != "k.killmail_id DESC" {
+		t.Fatalf("unexpected first-page plan: %#v", plan)
+	}
+	if !reflect.DeepEqual(plan.Args, []any{int64(1354830081), int64(51)}) {
+		t.Fatalf("args = %#v, want entity ID and branch limit", plan.Args)
+	}
+	for _, fragment := range []string{
+		"UNION",
+		"SELECT DISTINCT ON (actor.killmail_time, actor.killmail_id)",
+		"ORDER BY actor.killmail_time DESC, actor.killmail_id DESC",
+	} {
+		if !strings.Contains(plan.SQL, fragment) {
+			t.Errorf("bounded combined scope missing %q:\n%s", fragment, plan.SQL)
+		}
+	}
+	if got := strings.Count(plan.SQL, "LIMIT $2"); got != 2 {
+		t.Fatalf("branch limits = %d, want 2:\n%s", got, plan.SQL)
+	}
+}
+
+func TestEntityKilllistScopeExpandsBoundForNumberedPage(t *testing.T) {
+	config := entityKilllistConfigs[entityPageCorporation]
+	plan := buildEntityKilllistScopePlan(
+		config, "kills", 98770866, 25, 0, 3, 0,
+	)
+
+	if !plan.Numbered || plan.Offset != 50 {
+		t.Fatalf("numbered plan = %#v", plan)
+	}
+	if plan.Order != "k.killmail_time DESC, k.killmail_id DESC" {
+		t.Fatalf("order = %q", plan.Order)
+	}
+	if !reflect.DeepEqual(plan.Args, []any{int64(98770866), int64(76)}) {
+		t.Fatalf("args = %#v, want offset + limit + sentinel", plan.Args)
+	}
+	if strings.Contains(plan.SQL, "UNION") || strings.Count(plan.SQL, "LIMIT $2") != 1 {
+		t.Fatalf("kills-only scope is not independently bounded:\n%s", plan.SQL)
+	}
+}
+
+func TestEntityKilllistFactionScopeUsesBoundedSemiJoin(t *testing.T) {
+	config := entityKilllistConfigs[entityPageFaction]
+	plan := buildEntityKilllistScopePlan(
+		config, "kills", 500001, 50, 0, 0, 0,
+	)
+
+	for _, fragment := range []string{
+		"FROM killmails k",
+		"EXISTS (",
+		"actor.killmail_id = k.killmail_id",
+		"actor.faction_id = $1",
+		"ORDER BY k.killmail_id DESC",
+		"LIMIT $2",
+	} {
+		if !strings.Contains(plan.SQL, fragment) {
+			t.Errorf("faction scope missing %q:\n%s", fragment, plan.SQL)
+		}
+	}
+	if strings.Contains(plan.SQL, "SELECT DISTINCT ON") {
+		t.Fatalf("faction scope restored the unindexed attacker sort:\n%s", plan.SQL)
+	}
+}
+
 func TestRenderEntityBioPreservesUsefulMarkupWithoutForwardingHTML(t *testing.T) {
 	got, ok := renderEntityBio(
 		"Hello **pilot**. [Board](https://example.com/?a=1&b=2)\n\n<script>alert(1)</script>",

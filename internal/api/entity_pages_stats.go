@@ -129,6 +129,10 @@ func loadEntityDashboardStats(
 		FROM stats
 		WHERE entity_type = $1 AND entity_id = $2 AND period_type = $3`
 	statsArgs := []any{entityType, id, periodType}
+	if fromDate != "" {
+		statsSQL += ` AND period_start >= $4::date`
+		statsArgs = append(statsArgs, fromDate)
+	}
 	breakdownSQL := `
 		WITH grouped AS (
 			SELECT dim_category, dim_id,
@@ -139,51 +143,51 @@ func loadEntityDashboardStats(
 			FROM stats_breakdowns
 			WHERE entity_type = $1 AND entity_id = $2
 			  AND period_type = $3
-			  AND dim_category = ANY($4::smallint[])`
-	breakdownArgs := []any{
-		entityType, id, periodType,
-		[]int16{dimShipFlown, dimShipLost, dimDiesToCorporation, dimDiesToAlliance},
-	}
+			  AND dim_category = $4`
 	if fromDate != "" {
-		statsSQL += ` AND period_start >= $4::date`
-		statsArgs = append(statsArgs, fromDate)
 		breakdownSQL += ` AND period_start >= $5::date`
-		breakdownArgs = append(breakdownArgs, fromDate)
 	}
 	breakdownSQL += `
 			GROUP BY dim_category, dim_id
-		), ranked AS (
-			SELECT grouped.*,
-			       ROW_NUMBER() OVER (
-			         PARTITION BY dim_category
-			         ORDER BY CASE
-			           WHEN dim_category IN (1, 21, 22) THEN losses
-			           ELSE kills
-			         END DESC, dim_id
-			       ) AS rank
-			FROM grouped
 		)
-		SELECT r.dim_category, r.dim_id, r.kills, r.losses,
-		       r.isk_destroyed, r.isk_lost,
+		SELECT grouped.dim_category, grouped.dim_id,
+		       grouped.kills, grouped.losses,
+		       grouped.isk_destroyed, grouped.isk_lost,
 		       CASE
-		         WHEN r.dim_category IN (0, 1) THEN COALESCE(t.name, 'Unknown')
-		         WHEN r.dim_category = 21 THEN COALESCE(c.name, 'Unknown')
-		         WHEN r.dim_category = 22 THEN COALESCE(a.name, 'Unknown')
+		         WHEN grouped.dim_category IN (0, 1) THEN COALESCE(t.name, 'Unknown')
+		         WHEN grouped.dim_category = 21 THEN COALESCE(c.name, 'Unknown')
+		         WHEN grouped.dim_category = 22 THEN COALESCE(a.name, 'Unknown')
 		       END AS name
-		FROM ranked r
+		FROM grouped
 		LEFT JOIN inv_types t
-		  ON r.dim_category IN (0, 1) AND t.type_id = r.dim_id
+		  ON grouped.dim_category IN (0, 1) AND t.type_id = grouped.dim_id
 		LEFT JOIN corporations c
-		  ON r.dim_category = 21 AND c.corporation_id = r.dim_id
+		  ON grouped.dim_category = 21 AND c.corporation_id = grouped.dim_id
 		LEFT JOIN alliances a
-		  ON r.dim_category = 22 AND a.alliance_id = r.dim_id
-		WHERE r.rank <= 10
-		ORDER BY r.dim_category, r.rank`
+		  ON grouped.dim_category = 22 AND a.alliance_id = grouped.dim_id
+		ORDER BY CASE
+		  WHEN grouped.dim_category IN (1, 21, 22) THEN grouped.losses
+		  ELSE grouped.kills
+		END DESC, grouped.dim_id
+		LIMIT 10`
 
 	queries := []databaseQuery{
 		{SQL: statsSQL, Args: statsArgs},
-		{SQL: breakdownSQL, Args: breakdownArgs},
 	}
+	// Each category is an independent index range. Running the four exact
+	// aggregates concurrently cuts cold-cache dashboard latency without a
+	// second 60+ GB covering index on stats_breakdowns.
+	for _, category := range []int16{
+		dimShipFlown, dimShipLost, dimDiesToCorporation, dimDiesToAlliance,
+	} {
+		args := []any{entityType, id, periodType, category}
+		if fromDate != "" {
+			args = append(args, fromDate)
+		}
+		queries = append(queries, databaseQuery{SQL: breakdownSQL, Args: args})
+	}
+	breakdownResultEnd := len(queries)
+	characterResultStart := breakdownResultEnd
 	if kind == entityPageCharacter {
 		since := time.Date(2003, time.January, 1, 0, 0, 0, 0, time.UTC)
 		if days > 0 {
@@ -276,7 +280,10 @@ func loadEntityDashboardStats(
 		return nil, err
 	}
 	stats := firstOrEmpty(results[0])
-	breakdowns := results[1]
+	breakdowns := []map[string]any{}
+	for _, rows := range results[1:breakdownResultEnd] {
+		breakdowns = append(breakdowns, rows...)
+	}
 	topUsed := []map[string]any{}
 	topLost := []map[string]any{}
 	diesCorps := []map[string]any{}
@@ -352,7 +359,7 @@ func loadEntityDashboardStats(
 	for hour := 0; hour < 24; hour++ {
 		heatMap[hour] = 0
 	}
-	for _, row := range results[2] {
+	for _, row := range results[characterResultStart] {
 		hour := int(int64OrZero(row["hour"]))
 		day := int(int64OrZero(row["dow"]))
 		if hour < 0 || hour >= 24 || day < 0 || day >= 7 {
@@ -381,7 +388,7 @@ func loadEntityDashboardStats(
 
 	flownWithCorps := []map[string]any{}
 	flownWithAlliances := []map[string]any{}
-	for _, row := range results[3] {
+	for _, row := range results[characterResultStart+1] {
 		item := map[string]any{
 			"id": row["id"], "name": row["name"], "count": row["count"],
 		}

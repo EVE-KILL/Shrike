@@ -213,3 +213,29 @@ func TestKilllistFactionIDsRejectFractionsAndDeduplicate(t *testing.T) {
 		t.Errorf("factions = %#v, want %#v", got, want)
 	}
 }
+
+func TestFactionFilteredCursorKilllistSkipsUnboundedTotal(t *testing.T) {
+	total, err := killlistCursorTotal(
+		context.Background(), nil, "latest", true, 2,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 0 {
+		t.Fatalf("faction-filtered cursor total = %d, want omitted", total)
+	}
+}
+
+func TestInitialRollupKilllistUsesBoundedFirstPage(t *testing.T) {
+	page, ok := killlistNumberedPage(true, 0, 0, nil)
+	if !ok || page != 1 {
+		t.Fatalf("initial rollup page = %d, %v; want 1, true", page, ok)
+	}
+	after := int64(123)
+	if _, ok := killlistNumberedPage(true, 0, 0, &after); ok {
+		t.Fatal("cursor request unexpectedly switched to numbered mode")
+	}
+	if _, ok := killlistNumberedPage(true, 2, 0, nil); ok {
+		t.Fatal("faction-filtered request unexpectedly used global rollup")
+	}
+}
