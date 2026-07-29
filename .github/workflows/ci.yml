@@ -21,9 +21,9 @@ env:
 
 jobs:
   go:
-    name: Go and schemas
+    name: Go lint, schemas, and race tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -53,6 +53,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -80,11 +82,39 @@ jobs:
             exit 1
           fi
 
+      - name: Run golangci-lint on new issues
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+          args: >-
+            --new-from-rev=${{
+              github.event_name == 'pull_request'
+              && format('origin/{0}', github.base_ref)
+              || github.event.before
+            }}
+            --timeout=5m
+
       - name: Check generated API contract
         run: make check-api-client
 
       - name: Run Go vet
         run: go vet ./...
+
+      - name: Compile Go commands
+        run: go build ./...
+
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+
+      - name: Check generated sqlc code
+        run: |
+          sqlc generate
+          if ! git diff --quiet -- internal/dbgen; then
+            echo "sqlc-generated code is out of date."
+            echo "Run 'sqlc generate' locally and commit the result."
+            git diff --stat -- internal/dbgen
+            exit 1
+          fi
 
       - name: Create application schema
         env:
@@ -96,8 +126,8 @@ jobs:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: go run ./cmd/shrike queue:migrate
 
-      - name: Run Go tests
-        run: go test ./...
+      - name: Run Go tests with race detector
+        run: go test -race -count=1 ./...
 
   frontend:
     name: Frontend
@@ -113,6 +143,14 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      - name: Guard against trusted dependencies
+        run: |
+          if grep -q '"trustedDependencies"' web/package.json; then
+            echo "web/package.json introduces trustedDependencies."
+            echo "This permits dependency lifecycle scripts and requires explicit review."
+            exit 1
+          fi
+
       - name: Install frontend modules
         run: bun install --cwd web --frozen-lockfile
 
@@ -121,6 +159,46 @@ jobs:
 
       - name: Type-check frontend
         run: bun run --cwd web typecheck
+
+      - name: Audit frontend dependencies
+        continue-on-error: true
+        run: bun audit --cwd web
+
+  security:
+    name: Security (govulncheck and OSV)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Cache govulncheck
+        uses: actions/cache@v6
+        with:
+          path: ~/go/bin/govulncheck
+          key: govulncheck-${{ runner.os }}-v1
+
+      - name: Check reachable Go vulnerabilities
+        run: |
+          if [ ! -x "$HOME/go/bin/govulncheck" ]; then
+            go install golang.org/x/vuln/cmd/govulncheck@latest
+          fi
+          "$HOME/go/bin/govulncheck" ./...
+
+      - name: Scan Go and frontend dependencies with OSV
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        continue-on-error: true
+        with:
+          scan-args: |-
+            --recursive
+            ./
 
   image:
     name: Unified image
@@ -157,6 +235,7 @@ jobs:
     needs:
       - go
       - frontend
+      - security
       - image
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -166,14 +245,17 @@ jobs:
         env:
           GO_RESULT: ${{ needs.go.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
           IMAGE_RESULT: ${{ needs.image.result }}
         shell: bash
         run: |
           if [[ "$GO_RESULT" != "success" ||
                 "$FRONTEND_RESULT" != "success" ||
+                "$SECURITY_RESULT" != "success" ||
                 "$IMAGE_RESULT" != "success" ]]; then
             echo "Go: $GO_RESULT"
             echo "Frontend: $FRONTEND_RESULT"
+            echo "Security: $SECURITY_RESULT"
             echo "Image: $IMAGE_RESULT"
             exit 1
           fi

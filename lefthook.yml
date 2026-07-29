@@ -15,6 +15,17 @@ pre-commit:
     - name: secrets
       run: ./scripts/check-secrets.sh
 
+    # Bun blocks dependency lifecycle scripts unless a package is explicitly
+    # trusted. Adding this escape hatch must be a deliberate policy change.
+    - name: bun trusted dependencies
+      glob: "web/package.json"
+      run: |
+        if grep -q '"trustedDependencies"' web/package.json; then
+          echo "web/package.json introduces trustedDependencies." >&2
+          echo "Remove it or intentionally update this guard after review." >&2
+          exit 1
+        fi
+
     - name: gofmt
       glob: "*.go"
       # stage_fixed re-stages what gofmt rewrites, so formatting never fails a
@@ -25,6 +36,12 @@ pre-commit:
     - name: go vet
       glob: "*.go"
       run: go vet ./...
+
+    # The repository has an existing lint baseline. Reject only findings
+    # introduced by the staged change until that baseline has been retired.
+    - name: golangci lint
+      glob: "*.go"
+      run: golangci-lint run --new-from-rev=HEAD --timeout=5m ./...
 
     - name: build
       glob:

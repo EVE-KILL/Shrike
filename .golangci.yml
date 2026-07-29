@@ -1,0 +1,53 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - misspell
+    - unconvert
+    - gocritic
+  settings:
+    gosec:
+      # G104 overlaps with errcheck. G115 is noisy around deliberate database
+      # integer-width conversions and is better reviewed at the call site.
+      excludes:
+        - G104
+        - G115
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - singleCaseSwitch
+  exclusions:
+    rules:
+      # sqlc output is generated and reviewed through the drift check.
+      - path: internal/dbgen/
+        linters:
+          - errcheck
+          - govet
+          - ineffassign
+          - staticcheck
+          - unused
+          - gosec
+          - misspell
+          - unconvert
+          - gocritic
+      # Tests get more leeway around cleanup paths and deliberately malformed
+      # security inputs.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
