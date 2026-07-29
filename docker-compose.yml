@@ -10,9 +10,9 @@ name: shrike-go
 
 services:
   postgres:
-    # Pinned to prod's exact version (18.3, Debian build) rather than :18, so a
-    # planner or catalog difference cannot show up only after deploying.
-    image: postgres:18.3
+    # Pinned to the next production patch (18.4, Debian build) rather than :18,
+    # so local and CI validation happen before the production database moves.
+    image: postgres:18.4
     environment:
       POSTGRES_USER: evekill
       POSTGRES_PASSWORD: evekill

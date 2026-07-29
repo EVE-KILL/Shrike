@@ -27,7 +27,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18.3
+        image: postgres:18.4
         env:
           POSTGRES_USER: shrike_ci
           POSTGRES_PASSWORD: shrike_ci
