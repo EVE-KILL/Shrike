@@ -55,8 +55,9 @@ services:
       - synchronous_commit=off
 
   valkey:
-    # Shared L2 cache, coordination, and pub/sub. Prod runs 8.1.x.
-    image: valkey/valkey:8.1-alpine
+    # Forward local baseline for the shared L2 cache, coordination, and pub/sub.
+    # The minor tag follows current 9.1.x security and bug-fix releases.
+    image: valkey/valkey:9.1-alpine
     ports:
       - "6379:6379"
     command:
