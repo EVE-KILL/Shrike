@@ -7,6 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/eve-kill/shrike/internal/images"
+	"github.com/eve-kill/shrike/internal/mcpserver"
 )
 
 // registerRoutes installs the whole API into one registry. The schema-linked
@@ -48,6 +49,11 @@ func registerRoutes(a huma.API, opts Options) *responseSchemaResolver {
 	registerAuthRoutes(a, opts)
 	registerAccountRoutes(a, opts)
 	registerAdminRoutes(a, opts)
+	if _, err := mcpserver.NewServer(mcpserver.Dependencies{
+		DB: opts.DB, Graph: opts.Graph, BaseURL: "https://eve-kill.com",
+	}, opts.Version, a); err != nil {
+		panic("register MCP tools: " + err.Error())
+	}
 	images.Register(a, opts.Images)
 
 	return schemas

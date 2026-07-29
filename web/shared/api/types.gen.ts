@@ -10,6 +10,12 @@ export type AccountBoardsDocument = {
     pinned: Array<string>;
 };
 
+export type AllianceNode = {
+    alliance_id: number;
+    name: string | null;
+    ticker: string | null;
+};
+
 export type Announcement = {
     body_html: string;
     body_md: string;
@@ -39,6 +45,87 @@ export type AnnouncementsResponse = {
      */
     readonly $schema?: string;
     announcements: Array<Announcement>;
+};
+
+export type BattleAllianceSummary = {
+    alliance_id: number;
+    isk_destroyed: number;
+    kills: number;
+    losses: number;
+    name: string | null;
+    ticker: string | null;
+};
+
+export type BattleMember = {
+    alliance_id: number | null;
+    alliance_name?: string;
+    alliance_ticker?: string;
+    corporation_count?: number;
+    corporation_id?: number;
+    corporation_name?: string;
+    corporation_ticker?: string;
+    isk_destroyed: number;
+    isk_lost: number;
+    kills: number;
+    losses: number;
+};
+
+export type BattleReportInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    battle_id: number;
+    format?: 'json' | 'summary';
+    level?: 'alliance' | 'corp';
+};
+
+export type BattleReportOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    battle_id: number;
+    duration_minutes?: number;
+    end_time?: string;
+    is_custom?: boolean;
+    is_multi_party?: boolean;
+    kill_count?: number;
+    level?: string;
+    start_time?: string;
+    summary?: string;
+    system?: BattleSystemSummary;
+    teams?: Array<BattleTeam> | null;
+    total_isk_destroyed?: number;
+    url: string;
+};
+
+export type BattleSystemSummary = {
+    id: number;
+    name: string | null;
+    region_id: number | null;
+    region_name: string | null;
+};
+
+export type BattleTeam = {
+    members: Array<BattleMember> | null;
+    team_index: number;
+    total_isk_destroyed: number;
+    total_isk_lost: number;
+    total_kills: number;
+    total_losses: number;
+};
+
+export type BattleTeamSummary = {
+    alliance_count: number;
+    team_index: number;
+    top_alliances: Array<BattleAllianceSummary> | null;
+};
+
+export type BattleTopAlliance = {
+    alliance_id: number;
+    name: string | null;
+    ticker: string | null;
 };
 
 export type CampaignLocationDocument = {
@@ -77,6 +164,121 @@ export type CampaignPrizePoolDocument = {
     winnerCount?: number | string;
 };
 
+export type CapDiff = {
+    a: string | null;
+    b: string | null;
+};
+
+export type CharacterHistoryInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    /**
+     * ISO datetime lower bound. Default all history.
+     */
+    since?: string;
+};
+
+export type CharacterHistoryOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    character: CharacterRef;
+    notes?: string;
+    observation_count: number;
+    period_count: number;
+    periods: Array<MembershipPeriod> | null;
+};
+
+export type CharacterIntelInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    limit?: number;
+    /**
+     * Must be character if specified.
+     */
+    type?: 'character';
+};
+
+export type CharacterIntelOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    characters: Array<IntelCharacter> | null;
+    count: number;
+    entity: Entity;
+    window_days: number;
+};
+
+export type CharacterRef = {
+    id: number;
+    name: string;
+    url: string;
+};
+
+export type CoalitionEdge = {
+    a: AllianceNode;
+    allied_battles: number;
+    b: AllianceNode;
+    enemy_battles: number;
+    total_battles: number;
+};
+
+export type CoalitionFocus = {
+    alliance_id: number;
+    name: string | null;
+};
+
+export type CoalitionGraphInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Alliance name or id for an ego graph.
+     */
+    focus_alliance?: string | number;
+    limit_edges?: number;
+    min_alliance_battles?: number;
+    min_edge_weight?: number;
+    /**
+     * ISO datetime lower bound. Default 30 days ago.
+     */
+    since?: string;
+    /**
+     * ISO datetime upper bound. Default now.
+     */
+    until?: string;
+};
+
+export type CoalitionGraphOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    allied_edges: Array<CoalitionEdge> | null;
+    edge_count: number;
+    enemy_edges: Array<CoalitionEdge> | null;
+    focus?: CoalitionFocus;
+    mixed_edges: Array<CoalitionEdge> | null;
+    node_count: number;
+    nodes: Array<AllianceNode> | null;
+    window: TimeWindow;
+};
+
 export type CoalitionSideBody = {
     /**
      * Alliance IDs on this side.
@@ -90,6 +292,35 @@ export type CoalitionSideBody = {
      * Display name for this side. Truncated at 120 characters.
      */
     label?: string;
+};
+
+export type CompareInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * First character name or id.
+     */
+    a: string | number;
+    /**
+     * Second character name or id.
+     */
+    b: string | number;
+};
+
+export type CompareOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    a: Entity;
+    a_killed_b: HeadToHead;
+    b: Entity;
+    b_killed_a: HeadToHead;
+    shared_systems: Array<SharedSystem> | null;
+    shared_wingmates: number;
+    window_days: number;
 };
 
 export type ConflictBattleGeneratorEntity = {
@@ -123,12 +354,343 @@ export type ConflictBattleSaveTeam = {
     total_losses: number;
 };
 
+export type ContestedSystem = {
+    a_kills_b: number;
+    b_kills_a: number;
+    solar_system_id: number;
+    system_name: string | null;
+    total_isk: number;
+    total_kills: number;
+};
+
 export type DismissedAnnouncementIdsResponse = {
     /**
      * A URL to the JSON Schema for this object.
      */
     readonly $schema?: string;
     dismissedIds: Array<number>;
+};
+
+export type DoctrineCluster = {
+    avg_isk_per_loss: number;
+    example_killmail: DoctrineExample;
+    family_hash: string;
+    first_loss?: string;
+    isk_lost: number;
+    last_loss?: string;
+    losses: number;
+    ship: DoctrineShip;
+    signature?: string;
+};
+
+export type DoctrineDetectInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    entity: string | number;
+    include_rookie_ships?: boolean;
+    limit?: number;
+    min_cluster_size?: number;
+    since?: string;
+    type?: 'character' | 'corporation' | 'alliance';
+    until?: string;
+};
+
+export type DoctrineDetectOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    clusters: Array<DoctrineCluster> | null;
+    count: number;
+    entity: Entity;
+    notes?: string;
+    window: TimeWindow;
+};
+
+export type DoctrineExample = {
+    killmail_id: number;
+    modules?: Array<string> | null;
+    url: string;
+};
+
+export type DoctrineShip = {
+    group?: string;
+    name: string | null;
+    type_id: number;
+};
+
+export type DogmaDroneInput = {
+    quantity?: number;
+    type_id: number;
+};
+
+export type DogmaEvalInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    drones?: Array<DogmaDroneInput> | null;
+    eft?: string;
+    fit_hash?: string;
+    killmail_id?: number;
+    modules?: Array<DogmaModuleInput> | null;
+    ship_type_id?: number;
+    skills?: 'all_v' | 'none';
+};
+
+export type DogmaEvalOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    dps_note?: string;
+    drone_count: number;
+    fit_hash?: string;
+    fitting: FittingDisplay;
+    killmail_id?: number;
+    module_count: number;
+    ship: DogmaShip;
+    skills: string;
+    source: string;
+    stats: HullDisplay;
+};
+
+export type DogmaFitInput = {
+    drones?: Array<DogmaDroneInput> | null;
+    eft?: string;
+    fit_hash?: string;
+    killmail_id?: number;
+    modules?: Array<DogmaModuleInput> | null;
+    ship_type_id?: number;
+};
+
+export type DogmaModuleInput = {
+    charge_type_id?: number;
+    index?: number;
+    slot: 'high' | 'med' | 'low' | 'rig' | 'subsystem';
+    type_id: number;
+};
+
+export type DogmaShip = {
+    name: string | null;
+    type_id: number;
+};
+
+export type DossierArchetypeLastSeen = {
+    last_blops_seen: string | null;
+    last_capital_kill: string | null;
+    last_fc_seen: string | null;
+    last_logi_seen: string | null;
+    last_super_kill: string | null;
+};
+
+export type DossierInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    format?: 'json' | 'summary';
+    type?: 'character';
+};
+
+export type DossierOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    archetype_last_seen?: DossierArchetypeLastSeen;
+    archetype_tags?: Array<string> | null;
+    entity: Entity;
+    lifetime?: EntityLifetime;
+    playstyle_90d?: DossierPlaystyle;
+    summary?: string;
+    top_ships?: Array<DossierTopShip> | null;
+    top_systems?: Array<DossierTopSystem> | null;
+    top_wingmates?: Array<DossierWingmate> | null;
+};
+
+export type DossierPlaystyle = {
+    avg_fleet_size: number;
+    blob_pct: number;
+    dominant: string;
+    fleet_pct: number;
+    mid_gang_pct: number;
+    small_gang_pct: number;
+    solo_pct: number;
+    total_kills_90d: number;
+};
+
+export type DossierTopShip = {
+    kills: number;
+    name: string | null;
+    type_id: number;
+};
+
+export type DossierTopSystem = {
+    kills: number;
+    name: string | null;
+    system_id: number;
+};
+
+export type DossierWingmate = {
+    character_id: number;
+    name: string | null;
+    shared_kills: number;
+    url: string;
+};
+
+export type Entity = {
+    id: number;
+    name: string;
+    ticker: string | null;
+    type: string;
+    url: string;
+};
+
+export type EntityBreakdown = {
+    id: number;
+    isk_destroyed: number;
+    isk_lost: number;
+    kills: number;
+    losses: number;
+    name: string | null;
+};
+
+export type EntityKillsInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    before?: number;
+    entity: string | number;
+    from?: string;
+    limit?: number;
+    role?: 'kills' | 'losses' | 'all';
+    to?: string;
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'system' | 'region' | 'constellation' | 'faction';
+};
+
+export type EntityKillsOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    count?: number;
+    entity: Entity;
+    kills: Array<KillmailSummary> | null;
+    next_before: number | null;
+};
+
+export type EntityLifetime = {
+    final_blows: number;
+    first_seen_year: string | null;
+    isk_destroyed: number;
+    isk_efficiency: number;
+    isk_lost: number;
+    kills: number;
+    last_seen_year: string | null;
+    losses: number;
+    npc_losses: number;
+    points: number;
+    solo_kills: number;
+    solo_losses: number;
+};
+
+export type EntityOverviewInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    entity: string | number;
+    format?: 'json' | 'summary';
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'system' | 'constellation' | 'region';
+};
+
+export type EntityOverviewOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    entity: Entity;
+    lifetime?: EntityLifetime;
+    summary?: string;
+    top_prey?: Array<EntityBreakdown> | null;
+    top_regions?: Array<EntityBreakdown> | null;
+    top_ships_flown?: Array<EntityBreakdown> | null;
+    top_ships_lost?: Array<EntityBreakdown> | null;
+    top_systems?: Array<EntityBreakdown> | null;
+    top_tormentors?: Array<EntityBreakdown> | null;
+};
+
+export type EntityTimelineInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    bucket?: 'day' | 'month' | 'year';
+    entity: string | number;
+    since?: string;
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'system' | 'constellation' | 'region';
+    until?: string;
+    /**
+     * Opponent character, corporation, or alliance.
+     */
+    vs?: string | number;
+};
+
+export type EntityTimelineOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    bucket: string;
+    buckets: Array<TimelineBucket> | null;
+    count: number;
+    entity: Entity;
+    vs?: Entity;
+    window: TimelineWindow;
+};
+
+export type EntityTopInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    dimension: 'ship_flown' | 'ship_lost' | 'system' | 'constellation' | 'region' | 'dies_to_corporation' | 'dies_to_alliance' | 'killed_corporation' | 'killed_alliance';
+    entity: string | number;
+    limit?: number;
+    since?: string;
+    sort_by?: 'kills' | 'losses' | 'isk_destroyed' | 'isk_lost';
+    type?: 'character' | 'corporation' | 'alliance';
+    until?: string;
+    /**
+     * Opponent character, corporation, or alliance.
+     */
+    vs?: string | number;
+};
+
+export type EntityTopOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    count: number;
+    dimension: string;
+    entity: Entity;
+    rows: Array<EntityBreakdown> | null;
+    sort_by: string;
+    vs?: Entity;
+    warnings?: Array<string> | null;
+    window: 'lifetime' | {
+        since: string;
+        until: string;
+    };
 };
 
 export type ErrorDetail = {
@@ -177,6 +739,408 @@ export type ErrorModel = {
     type?: string;
 };
 
+export type ExpensiveLoss = {
+    killmail_id: number;
+    system: LossSystem;
+    time: string | null;
+    total_value: number;
+    url: string;
+    victim: KillmailVictim;
+    victim_ship: LossShip;
+};
+
+export type ExpensiveLossesInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    days?: number;
+    limit?: number;
+    min_value?: number;
+    region_id?: number;
+    ship_type_id?: number;
+    system_id?: number;
+    victim_alliance_id?: number;
+    victim_character_id?: number;
+    /**
+     * Character, corporation, or alliance present as attacker.
+     */
+    vs?: string | number;
+};
+
+export type ExpensiveLossesOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    count: number;
+    kills: Array<ExpensiveLoss> | null;
+    window_days: number;
+};
+
+export type FindBattlesInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    limit?: number;
+    min_isk?: number;
+    min_kills?: number;
+    opposing?: boolean;
+    participants?: Array<string | number> | null;
+    region_id?: number;
+    since?: string;
+    sort?: 'isk' | 'kills' | 'recent' | 'intensity';
+    system_id?: number;
+    until?: string;
+};
+
+export type FindBattlesOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    battles: Array<FoundBattle> | null;
+    count: number;
+    opposing_required?: boolean;
+    participants_resolved?: Array<ResolvedParticipant> | null;
+};
+
+export type FitCompareInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    a: DogmaFitInput;
+    b: DogmaFitInput;
+    skills?: 'all_v' | 'none';
+};
+
+export type FitCompareOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    a: FitComparisonSide;
+    b: FitComparisonSide;
+    diff: FitDiff;
+    skills: string;
+};
+
+export type FitComparisonSide = {
+    dps_note?: string;
+    ship: DogmaShip;
+    stats: HullDisplay;
+};
+
+export type FitDiff = {
+    align_time_s: NumericDiff;
+    alpha: NumericDiff;
+    cap: CapDiff;
+    dps: NumericDiff;
+    ehp: NumericDiff;
+    ehp_armor: NumericDiff;
+    ehp_hull: NumericDiff;
+    ehp_shield: NumericDiff;
+    max_velocity_ms: NumericDiff;
+    signature_radius_m: NumericDiff;
+};
+
+export type FittingDisplay = {
+    calibration: number | null;
+    cpu: number | null;
+    powergrid: number | null;
+};
+
+export type FittingItem = {
+    charge?: FittingType;
+    name: string | null;
+    quantity: number;
+    type_id: number;
+};
+
+export type FittingSlot = {
+    items: Array<FittingItem> | null;
+    slot: string;
+};
+
+export type FittingType = {
+    name: string | null;
+    type_id: number;
+};
+
+export type FittingVictim = {
+    character_id: number | null;
+    character_name: string | null;
+};
+
+export type FliesWithOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    count: number;
+    entity: Entity;
+    partners: Array<IntelPartner> | null;
+    window_days: number;
+};
+
+export type ForensicsEvidence = {
+    actual_ehp?: number;
+    align_time_s?: number;
+    attacker_count?: number;
+    cap_stable?: boolean;
+    cap_time_s?: number;
+    family_hash?: string;
+    hull_class?: string;
+    top_family_count?: number;
+    typical_ehp?: number;
+    typical_threshold?: number;
+};
+
+export type ForensicsFinding = {
+    code: string;
+    evidence: ForensicsEvidence;
+    message: string;
+    severity: 'info' | 'warn' | 'critical';
+};
+
+export type ForensicsShip = {
+    group: string | null;
+    name: string | null;
+    type_id: number;
+};
+
+export type ForensicsSystem = {
+    id: number;
+    name: string | null;
+    security: number | null;
+};
+
+export type FoundBattle = {
+    alliances_involved: number | null;
+    battle_id: number;
+    corporations_involved: number | null;
+    duration_minutes: number;
+    end_time: string | null;
+    intensity_isk_per_minute: number | null;
+    is_multi_party: boolean;
+    kill_count: number;
+    start_time: string | null;
+    system: BattleSystemSummary;
+    top_alliance_by_isk: BattleTopAlliance;
+    total_isk_destroyed: number;
+    url: string;
+};
+
+export type GlobalPulseAlliance = {
+    alliance_id: number;
+    kills: number;
+    name: string | null;
+    systems_active: number;
+    ticker: string | null;
+    url: string;
+};
+
+export type GlobalPulseCorporation = {
+    alliance_id: number | null;
+    alliance_name: string | null;
+    corporation_id: number;
+    kills: number;
+    name: string | null;
+    ticker: string | null;
+    url: string;
+};
+
+export type GlobalPulseInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Lookback window in hours (max 24).
+     */
+    hours?: number;
+    /**
+     * How many rows in each list.
+     */
+    top_n?: number;
+};
+
+export type GlobalPulseOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    hottest_systems: Array<GlobalPulseSystem> | null;
+    most_active_alliances: Array<GlobalPulseAlliance> | null;
+    most_active_corporations: Array<GlobalPulseCorporation> | null;
+    since: string;
+    totals: GlobalPulseTotals;
+    window_hours: number;
+};
+
+export type GlobalPulseSystem = {
+    isk_destroyed: number;
+    kills: number;
+    latest_kill: string | null;
+    name: string | null;
+    region_name: string | null;
+    security: number | null;
+    solar_system_id: number;
+    url: string;
+};
+
+export type GlobalPulseTotals = {
+    isk_destroyed: number;
+    kills: number;
+    solo_kills: number;
+    systems_active: number;
+};
+
+export type HeadToHead = {
+    count: number;
+    final_blows?: number;
+    isk_destroyed?: number;
+    last_seen?: string;
+};
+
+export type HullCapacitor = {
+    capacity: number | null;
+    recharge_s: number | null;
+};
+
+export type HullCargo = {
+    special_bay: number | null;
+    standard: number | null;
+};
+
+export type HullDifference = {
+    armor_hp?: ValueDifference;
+    cpu?: ValueDifference;
+    hull_hp?: ValueDifference;
+    max_target_range_m?: ValueDifference;
+    max_velocity_ms?: ValueDifference;
+    powergrid?: ValueDifference;
+    shield_hp?: ValueDifference;
+    signature_radius_m?: ValueDifference;
+};
+
+export type HullDisplay = {
+    align_time_s: number | null;
+    alpha: number | null;
+    cap_capacity_gj: number | null;
+    cap_peak_delta_gj_s: number | null;
+    cap_stable: boolean;
+    cap_time_s: number | null;
+    dps_with_reload: number | null;
+    dps_without_reload: number | null;
+    ehp: number | null;
+    ehp_armor: number | null;
+    ehp_hull: number | null;
+    ehp_shield: number | null;
+    max_locked_targets: number | null;
+    max_target_range_km: number | null;
+    max_velocity_ms: number | null;
+    scan_resolution_mm: number | null;
+    signature_radius_m: number | null;
+};
+
+export type HullDrones = {
+    bandwidth: number | null;
+    bay: number | null;
+};
+
+export type HullFitting = {
+    calibration: number | null;
+    cpu: number | null;
+    powergrid: number | null;
+};
+
+export type HullHp = {
+    armor: number | null;
+    hull: number | null;
+    shield: number | null;
+};
+
+export type HullMobility = {
+    agility: number | null;
+    mass: number | null;
+    max_velocity_ms: number | null;
+    signature_radius_m: number | null;
+};
+
+export type HullResists = {
+    armor: ResistLayer;
+    hull: ResistLayer;
+    shield: ResistLayer;
+};
+
+export type HullSensors = {
+    gravimetric_strength: number | null;
+    ladar_strength: number | null;
+    magnetometric_strength: number | null;
+    max_locked_targets: number | null;
+    max_target_range_m: number | null;
+    radar_strength: number | null;
+    scan_resolution_mm: number | null;
+};
+
+export type HullSlots = {
+    high: number | null;
+    launcher_hardpoints: number | null;
+    low: number | null;
+    med: number | null;
+    rig: number | null;
+    subsystem: number | null;
+    turret_hardpoints: number | null;
+};
+
+export type HullStats = {
+    align_time: number | null;
+    alpha: number | null;
+    armor_ehp: number | null;
+    calibration: number | null;
+    cap_capacity: number | null;
+    cap_depletes_in: number | null;
+    cap_peak_delta: number | null;
+    cpu_output: number | null;
+    dps_with_reload: number | null;
+    dps_without_reload: number | null;
+    ehp: number | null;
+    hull_ehp: number | null;
+    mass: number | null;
+    max_locked_targets: number | null;
+    max_target_range: number | null;
+    max_velocity: number | null;
+    pg_output: number | null;
+    scan_resolution: number | null;
+    shield_ehp: number | null;
+    signature_radius: number | null;
+};
+
+export type HuntsInOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    count: number;
+    entity: Entity;
+    systems: Array<IntelSystem> | null;
+    window_days: number;
+};
+
+export type IdName = {
+    id: number | null;
+    name: string | null;
+};
+
+export type IdNameTicker = {
+    id: number;
+    name: string | null;
+    ticker: string | null;
+};
+
 export type ImagesOverviewResponse = {
     /**
      * A URL to the JSON Schema for this object.
@@ -184,6 +1148,783 @@ export type ImagesOverviewResponse = {
     readonly $schema?: string;
     routes: Array<string> | null;
     service: string;
+};
+
+export type IntelCharacter = {
+    alliance_id: number | null;
+    alliance_name: string | null;
+    character_id: number;
+    character_name: string | null;
+    corporation_id: number | null;
+    corporation_name: string | null;
+    count: number;
+    final_blows: number;
+    isk_destroyed: number;
+    last_seen: string | null;
+    url: string;
+};
+
+export type IntelPartner = {
+    alliance_id: number | null;
+    alliance_name: string | null;
+    character_id: number;
+    character_name: string | null;
+    corporation_id: number | null;
+    corporation_name: string | null;
+    first_seen: string | null;
+    last_seen: string | null;
+    shared_kills: number;
+    url: string;
+};
+
+export type IntelSystem = {
+    kills: number;
+    last_seen: string | null;
+    region_id: number | null;
+    region_name: string | null;
+    security: number | null;
+    system_id: number;
+    system_name: string | null;
+    url: string;
+};
+
+export type ItemFitting = {
+    calibration: number | null;
+    cpu: number | null;
+    powergrid: number | null;
+};
+
+export type ItemInfoInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    item: string | number;
+};
+
+export type ItemInfoOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    category: IdName;
+    current_jita_price: number | null;
+    description: string | null;
+    fitting: ItemFitting;
+    group: IdName;
+    market_note?: string;
+    meta_group: IdName;
+    name: string;
+    physical: ItemPhysical;
+    type_id: number;
+    url: string;
+    variants: Array<ItemVariant> | null;
+    variation_parent_type_id: number | null;
+};
+
+export type ItemPhysical = {
+    capacity: number | null;
+    mass: number | null;
+    volume: number | null;
+};
+
+export type ItemVariant = {
+    meta_group: string | null;
+    name: string;
+    type_id: number;
+};
+
+export type KillmailAttacker = {
+    alliance_id: number | null;
+    alliance_name: string | null;
+    alliance_ticker: string | null;
+    character_id: number | null;
+    character_name: string | null;
+    corporation_id: number | null;
+    corporation_name: string | null;
+    corporation_ticker: string | null;
+    damage_done: number;
+    faction_id: number | null;
+    faction_name: string | null;
+    final_blow: boolean;
+    security_status: number | null;
+    ship_name: string | null;
+    ship_type_id: number | null;
+    weapon_name: string | null;
+    weapon_type_id: number | null;
+};
+
+export type KillmailFittingInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    format?: 'json' | 'eft';
+    killmail_id: number;
+};
+
+export type KillmailFittingOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    drones?: Array<FittingItem> | null;
+    eft?: string;
+    family_hash: string;
+    first_seen_at?: string;
+    fit_hash: string;
+    kill_time?: string;
+    killmail_id: number;
+    ship: FittingType;
+    slots?: Array<FittingSlot> | null;
+    total_value?: number;
+    url: string;
+    victim?: FittingVictim;
+};
+
+export type KillmailForensicsOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    attacker_count: number;
+    dogma_stats: HullStats;
+    finding_count: number;
+    findings: Array<ForensicsFinding> | null;
+    fit_hash: string | null;
+    kill_time: string | null;
+    killmail_id: number;
+    system: ForensicsSystem;
+    total_value: number;
+    url: string;
+    victim_ship: ForensicsShip;
+};
+
+export type KillmailInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    killmail_id: number;
+};
+
+export type KillmailLocation = {
+    constellation_id: number | null;
+    constellation_name: string | null;
+    id: number;
+    name: string | null;
+    region_id: number | null;
+    region_name: string | null;
+    security: number | null;
+};
+
+export type KillmailOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    attacker_count: number;
+    attackers: Array<KillmailAttacker> | null;
+    destroyed_value: number;
+    dropped_value: number;
+    final_blow: KillmailAttacker;
+    fitted_value: number;
+    hash: string;
+    is_npc: boolean;
+    is_solo: boolean;
+    killmail_id: number;
+    points: number;
+    system: KillmailLocation;
+    time: string;
+    total_value: number;
+    url: string;
+    victim: KillmailVictim;
+    war_id: number | null;
+};
+
+export type KillmailParticipant = {
+    alliance_id: number | null;
+    alliance_name: string | null;
+    alliance_ticker: string | null;
+    character_id: number | null;
+    character_name: string | null;
+    corporation_id: number | null;
+    corporation_name: string | null;
+    corporation_ticker: string | null;
+    ship_name: string | null;
+    ship_type_id: number | null;
+};
+
+export type KillmailStoryFacts = {
+    attacker_count: number;
+    final_blow: KillmailAttacker;
+    is_npc: boolean;
+    is_solo: boolean;
+    system: KillmailLocation;
+    time: string;
+    total_value: number;
+    victim: string | null;
+    victim_affiliation: string | null;
+    victim_ship: string | null;
+};
+
+export type KillmailStoryOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    facts: KillmailStoryFacts;
+    killmail_id: number;
+    story: string;
+    url: string;
+};
+
+export type KillmailSummary = {
+    attacker_count?: number;
+    final_blow: KillmailParticipant;
+    is_npc?: boolean;
+    is_solo?: boolean;
+    killmail_id: number;
+    system?: KillmailSystem;
+    time?: string;
+    total_value?: number;
+    url: string;
+    victim?: KillmailParticipant;
+};
+
+export type KillmailSystem = {
+    id: number;
+    name: string | null;
+    region_id: number | null;
+    region_name: string | null;
+    security: number | null;
+};
+
+export type KillmailVictim = {
+    alliance_id: number | null;
+    alliance_name: string | null;
+    alliance_ticker: string | null;
+    character_id: number | null;
+    character_name: string | null;
+    corporation_id: number | null;
+    corporation_name: string | null;
+    corporation_ticker: string | null;
+    damage_taken: number;
+    faction_id: number | null;
+    faction_name: string | null;
+    ship_group_id: number | null;
+    ship_group_name: string | null;
+    ship_name: string | null;
+    ship_type_id: number | null;
+};
+
+export type KillsWithBreakdown = {
+    isk_destroyed: number;
+    kills: number;
+    month?: string;
+    name?: string;
+    region_id?: number;
+    system_id?: number;
+    type_id?: number;
+};
+
+export type KillsWithFilters = {
+    entity_ship: NamedShip;
+    from: string | null;
+    partner_ship: NamedShip;
+    region: Entity;
+    system: Entity;
+    to: string | null;
+    victim_entity: Entity;
+    victim_ship: NamedShip;
+};
+
+export type KillsWithInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    entity: string | number;
+    entity_ship?: string | number;
+    from?: string;
+    group_by?: 'none' | 'victim_ship' | 'system' | 'region' | 'month' | 'partner_ship' | 'entity_ship';
+    limit?: number;
+    partner: string | number;
+    partner_ship?: string | number;
+    region?: string | number;
+    system?: string | number;
+    to?: string;
+    type?: 'character';
+    victim_entity?: string | number;
+    victim_ship?: string | number;
+};
+
+export type KillsWithOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    breakdown?: Array<KillsWithBreakdown> | null;
+    entity: Entity;
+    filters: KillsWithFilters;
+    group_by?: string;
+    partner: Entity;
+    totals: KillsWithTotals;
+};
+
+export type KillsWithTotals = {
+    isk_destroyed: number;
+    kills: number;
+};
+
+export type LossShip = {
+    name: string | null;
+    type_id: number | null;
+};
+
+export type LossSystem = {
+    id: number;
+    name: string | null;
+    region_id: number | null;
+    region_name: string | null;
+};
+
+export type MeInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Your EVE character name as typed in-game.
+     */
+    me: string;
+};
+
+export type MeIntelInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    limit?: number;
+    me: string;
+};
+
+export type MeKillsInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    before?: number;
+    from?: string;
+    limit?: number;
+    me: string;
+    role?: 'kills' | 'losses' | 'all';
+    to?: string;
+};
+
+export type MeKillsWithInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    entity_ship?: string | number;
+    from?: string;
+    group_by?: 'none' | 'victim_ship' | 'system' | 'region' | 'month' | 'partner_ship' | 'entity_ship';
+    limit?: number;
+    me: string;
+    partner: string | number;
+    partner_ship?: string | number;
+    region?: string | number;
+    system?: string | number;
+    to?: string;
+    victim_entity?: string | number;
+    victim_ship?: string | number;
+};
+
+export type MeShipsUsedInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    from?: string;
+    group_by?: 'none' | 'ship' | 'victim_ship' | 'system' | 'region' | 'month';
+    limit?: number;
+    me: string;
+    region?: string | number;
+    role?: 'kills' | 'losses' | 'all';
+    ship?: string | number;
+    system?: string | number;
+    to?: string;
+};
+
+export type MeTimelineInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    bucket?: 'day' | 'month' | 'year';
+    me: string;
+    since?: string;
+    until?: string;
+    vs?: string | number;
+};
+
+export type MembershipPeriod = {
+    alliance: IdNameTicker;
+    corporation: IdNameTicker;
+    duration_days: number;
+    first_seen: string;
+    last_seen: string;
+    observation_count: number;
+};
+
+export type MetaPulseInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    include_rookie_ships?: boolean;
+    limit?: number;
+    min_cluster_size?: number;
+    region_id?: number;
+    ship_category?: 'all' | 'frigate' | 'destroyer' | 'cruiser' | 'battlecruiser' | 'battleship' | 'capital' | 'supercap' | 'subcap';
+    since?: string;
+    until?: string;
+};
+
+export type MetaPulseOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    clusters: Array<DoctrineCluster> | null;
+    count: number;
+    region_id: number | null;
+    ship_category: string;
+    window: TimeWindow;
+};
+
+export type NamedShip = {
+    name: string;
+    type_id: number;
+};
+
+export type NumericDiff = {
+    a: number | null;
+    b: number | null;
+    delta: number | null;
+    delta_pct: number | null;
+};
+
+export type OrganizationActivity = {
+    id: number;
+    kills: number;
+    name: string | null;
+    ticker: string | null;
+};
+
+export type PilotActivity = {
+    by_day_of_week: {
+        [key: string]: number;
+    };
+    by_hour_utc: {
+        [key: string]: number;
+    };
+    description: string;
+    peak_hour_event_count: number;
+    peak_hour_utc: number;
+    semantics: string;
+};
+
+export type PilotEfficiencyInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    /**
+     * Restrict to events involving this ship type.
+     */
+    ship_type_id?: number;
+    /**
+     * ISO datetime lower bound. Default 90 days ago.
+     */
+    since?: string;
+    /**
+     * ISO datetime upper bound. Default now.
+     */
+    until?: string;
+};
+
+export type PilotEfficiencyOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    activity: PilotActivity;
+    character: CharacterRef;
+    ship_filter?: ShipFilter;
+    totals: PilotEfficiencyTotals;
+    window: TimeWindow;
+};
+
+export type PilotEfficiencyTotals = {
+    avg_gang_on_kills: number;
+    avg_gang_on_losses: number;
+    final_blows: number;
+    isk_destroyed: number;
+    isk_efficiency_pct: number;
+    isk_lost: number;
+    isk_ratio: number | null;
+    kill_loss_ratio: number | null;
+    kills: number;
+    losses: number;
+    solo_kills: number;
+    solo_rate_pct: number;
+};
+
+export type RequiredIdName = {
+    id: number;
+    name: string | null;
+};
+
+export type ResistLayer = {
+    em: number | null;
+    explosive: number | null;
+    kinetic: number | null;
+    thermal: number | null;
+};
+
+export type ResolvedParticipant = {
+    id: number;
+    name: string;
+    type: string;
+};
+
+export type RouteDangerInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    avoid?: Array<string | number> | null;
+    /**
+     * Starting solar system name or id.
+     */
+    from: string | number;
+    hours?: number;
+    prefer?: 'shortest' | 'safest' | 'lowsec_ok';
+    round_trip?: boolean;
+    /**
+     * Destination solar system name or id.
+     */
+    to: string | number;
+};
+
+export type RouteDangerOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    avg_danger: number;
+    avoided_systems: number;
+    crosses_lowsec: boolean;
+    crosses_nullsec: boolean;
+    from: SystemRef;
+    hops: Array<RouteHop> | null;
+    jumps: number;
+    prefer: string;
+    return_leg?: RouteLeg;
+    to: SystemRef;
+    total_kills_on_route: number;
+    window_hours: number;
+    worst_hop: WorstRouteHop;
+};
+
+export type RouteHop = {
+    danger: number;
+    kills_window: number;
+    region_id: number | null;
+    region_name: string | null;
+    sec_band: string;
+    security: number | null;
+    step: number;
+    system_id: number;
+    system_name: string | null;
+    url: string;
+};
+
+export type RouteLeg = {
+    avg_danger: number;
+    crosses_lowsec: boolean;
+    crosses_nullsec: boolean;
+    hops: Array<RouteHop> | null;
+    jumps: number;
+    total_kills_on_route: number;
+};
+
+export type SearchHit = {
+    alliance_id?: number;
+    corporation_id?: number;
+    id: number;
+    name: string;
+    ticker: string | null;
+    type: string;
+    url: string;
+};
+
+export type SearchInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    limit?: number;
+    /**
+     * Name or ticker to search for.
+     */
+    query: string;
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'item' | 'system' | 'region' | 'constellation' | 'faction';
+};
+
+export type SearchOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    count: number;
+    hits: Array<SearchHit> | null;
+    query: string;
+};
+
+export type SharedSystem = {
+    a_kills_seen: number;
+    b_kills_seen: number;
+    region_name: string | null;
+    system_id: number;
+    system_name: string | null;
+};
+
+export type ShipCompareInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    a: string | number;
+    b: string | number;
+};
+
+export type ShipCompareOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    a: ShipInfoOutput;
+    b: ShipInfoOutput;
+    diff: HullDifference;
+};
+
+export type ShipFilter = {
+    type_id: number;
+};
+
+export type ShipInfoInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    ship: string | number;
+};
+
+export type ShipInfoOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    base_hp: HullHp;
+    capacitor: HullCapacitor;
+    cargo: HullCargo;
+    category: string | null;
+    current_jita_price: number | null;
+    description: string | null;
+    drones: HullDrones;
+    fitting: HullFitting;
+    group: string | null;
+    market_note?: string;
+    meta_group: string | null;
+    mobility: HullMobility;
+    name: string;
+    race: string | null;
+    resist_profile: HullResists;
+    sensors: HullSensors;
+    slots: HullSlots;
+    type_id: number;
+    url: string;
+};
+
+export type ShipLossActivity = {
+    isk_lost: number;
+    losses: number;
+    name: string | null;
+    type_id: number | null;
+};
+
+export type ShipsUsedBreakdown = {
+    isk_destroyed: number;
+    isk_lost: number;
+    kills: number;
+    losses: number;
+    month?: string;
+    name?: string;
+    region_id?: number;
+    system_id?: number;
+    type_id?: number;
+};
+
+export type ShipsUsedFilters = {
+    from: string | null;
+    region: Entity;
+    role: string;
+    ship: NamedShip;
+    system: Entity;
+    to: string | null;
+};
+
+export type ShipsUsedInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    entity: string | number;
+    from?: string;
+    group_by?: 'none' | 'ship' | 'victim_ship' | 'system' | 'region' | 'month';
+    limit?: number;
+    region?: string | number;
+    role?: 'kills' | 'losses' | 'all';
+    ship?: string | number;
+    system?: string | number;
+    to?: string;
+    type?: 'character' | 'corporation' | 'alliance';
+};
+
+export type ShipsUsedOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    breakdown?: Array<ShipsUsedBreakdown> | null;
+    entity: Entity;
+    filters: ShipsUsedFilters;
+    group_by?: string;
+    totals: ShipsUsedTotals;
+};
+
+export type ShipsUsedTotals = {
+    isk_destroyed: number;
+    isk_lost: number;
+    kills: number;
+    losses: number;
 };
 
 export type SiteConfigurationResponse = {
@@ -275,6 +2016,203 @@ export type SiteDomainWidgets = {
     left: Array<SiteDomainWidget>;
     right: Array<SiteDomainWidget>;
     top: Array<SiteDomainWidget>;
+};
+
+export type SystemFlags = {
+    border: boolean;
+    corridor: boolean;
+    fringe: boolean;
+    hub: boolean;
+    international: boolean;
+    regional: boolean;
+};
+
+export type SystemInfoInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    system: string | number;
+};
+
+export type SystemInfoOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    constellation: RequiredIdName;
+    faction: RequiredIdName;
+    flags: SystemFlags;
+    is_pipe_tip: boolean;
+    name: string;
+    neighbor_count: number;
+    neighbors: Array<SystemNeighbor> | null;
+    region: RequiredIdName;
+    security: number | null;
+    security_band: string | null;
+    security_class: string | null;
+    solar_system_id: number;
+    station_count: number;
+    stations: Array<SystemStation> | null;
+    url: string;
+};
+
+export type SystemNeighbor = {
+    name: string;
+    region_name: string | null;
+    security: number | null;
+    solar_system_id: number;
+};
+
+export type SystemPulseInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    hours?: number;
+    /**
+     * ISO datetime lower bound.
+     */
+    since?: string;
+    /**
+     * System name or id.
+     */
+    system: string | number;
+    top_n?: number;
+    /**
+     * ISO datetime upper bound.
+     */
+    until?: string;
+};
+
+export type SystemPulseOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    heat_score: number;
+    system: SystemRef;
+    top_attacker_alliances: Array<OrganizationActivity> | null;
+    top_attacker_corps: Array<OrganizationActivity> | null;
+    top_victim_ships: Array<ShipLossActivity> | null;
+    totals: SystemPulseTotals;
+    window: TimeWindow;
+    window_hours: number | null;
+};
+
+export type SystemPulseTotals = {
+    attackers_total: number;
+    isk_destroyed: number;
+    kills: number;
+    pvp_kills: number;
+    solo_kills: number;
+};
+
+export type SystemRef = {
+    id: number;
+    name: string;
+    url: string;
+};
+
+export type SystemStation = {
+    name: string;
+    station_id: number;
+};
+
+export type TimeWindow = {
+    since: string;
+    until: string;
+};
+
+export type TimelineBucket = {
+    final_blows?: number;
+    isk_destroyed: number;
+    isk_lost: number;
+    kills: number;
+    losses: number;
+    period_start: string;
+    points?: number;
+    solo_kills?: number;
+    solo_losses?: number;
+};
+
+export type TimelineWindow = {
+    since: string | null;
+    until: string | null;
+};
+
+export type ValueDifference = {
+    a: number;
+    b: number;
+    delta: number;
+    delta_pct: number | null;
+};
+
+export type WarBattleSummary = {
+    battle_id: number;
+    duration_minutes: number;
+    end_time: string | null;
+    is_multi_party: boolean;
+    kill_count: number;
+    start_time: string | null;
+    system: BattleSystemSummary;
+    teams: Array<BattleTeamSummary> | null;
+    total_isk_destroyed: number;
+    url: string;
+};
+
+export type WarReportInput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    a: string | number;
+    b: string | number;
+    since?: string;
+    top_battles?: number;
+    top_systems?: number;
+    until?: string;
+};
+
+export type WarReportOutput = {
+    /**
+     * A URL to the JSON Schema for this object.
+     */
+    readonly $schema?: string;
+    a: Entity;
+    b: Entity;
+    recent_battles: Array<WarBattleSummary> | null;
+    timeline_daily: Array<WarTimelineDay> | null;
+    top_contested_systems: Array<ContestedSystem> | null;
+    totals: WarTotals;
+    window: TimeWindow;
+};
+
+export type WarTimelineDay = {
+    a_isk_on_b: number;
+    a_kills_b: number;
+    b_isk_on_a: number;
+    b_kills_a: number;
+    period_start: string;
+};
+
+export type WarTotals = {
+    a_isk_destroyed: number;
+    a_isk_share: number;
+    a_kills_b: number;
+    b_isk_destroyed: number;
+    b_kills_a: number;
+    leader: string;
+    total_isk: number;
+    total_kills: number;
+};
+
+export type WorstRouteHop = {
+    danger: number;
+    kills_window: number;
+    sec_band: string;
+    system_id: number;
+    system_name: string | null;
 };
 
 export type AllianceBattlesResponse = {
@@ -3594,8 +5532,264 @@ export type AnnouncementsResponseWritable = {
     announcements: Array<Announcement>;
 };
 
+export type BattleReportInputWritable = {
+    battle_id: number;
+    format?: 'json' | 'summary';
+    level?: 'alliance' | 'corp';
+};
+
+export type BattleReportOutputWritable = {
+    battle_id: number;
+    duration_minutes?: number;
+    end_time?: string;
+    is_custom?: boolean;
+    is_multi_party?: boolean;
+    kill_count?: number;
+    level?: string;
+    start_time?: string;
+    summary?: string;
+    system?: BattleSystemSummary;
+    teams?: Array<BattleTeam> | null;
+    total_isk_destroyed?: number;
+    url: string;
+};
+
+export type CharacterHistoryInputWritable = {
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    /**
+     * ISO datetime lower bound. Default all history.
+     */
+    since?: string;
+};
+
+export type CharacterHistoryOutputWritable = {
+    character: CharacterRef;
+    notes?: string;
+    observation_count: number;
+    period_count: number;
+    periods: Array<MembershipPeriod> | null;
+};
+
+export type CharacterIntelInputWritable = {
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    limit?: number;
+    /**
+     * Must be character if specified.
+     */
+    type?: 'character';
+};
+
+export type CharacterIntelOutputWritable = {
+    characters: Array<IntelCharacter> | null;
+    count: number;
+    entity: Entity;
+    window_days: number;
+};
+
+export type CoalitionGraphInputWritable = {
+    /**
+     * Alliance name or id for an ego graph.
+     */
+    focus_alliance?: string | number;
+    limit_edges?: number;
+    min_alliance_battles?: number;
+    min_edge_weight?: number;
+    /**
+     * ISO datetime lower bound. Default 30 days ago.
+     */
+    since?: string;
+    /**
+     * ISO datetime upper bound. Default now.
+     */
+    until?: string;
+};
+
+export type CoalitionGraphOutputWritable = {
+    allied_edges: Array<CoalitionEdge> | null;
+    edge_count: number;
+    enemy_edges: Array<CoalitionEdge> | null;
+    focus?: CoalitionFocus;
+    mixed_edges: Array<CoalitionEdge> | null;
+    node_count: number;
+    nodes: Array<AllianceNode> | null;
+    window: TimeWindow;
+};
+
+export type CompareInputWritable = {
+    /**
+     * First character name or id.
+     */
+    a: string | number;
+    /**
+     * Second character name or id.
+     */
+    b: string | number;
+};
+
+export type CompareOutputWritable = {
+    a: Entity;
+    a_killed_b: HeadToHead;
+    b: Entity;
+    b_killed_a: HeadToHead;
+    shared_systems: Array<SharedSystem> | null;
+    shared_wingmates: number;
+    window_days: number;
+};
+
 export type DismissedAnnouncementIdsResponseWritable = {
     dismissedIds: Array<number>;
+};
+
+export type DoctrineDetectInputWritable = {
+    entity: string | number;
+    include_rookie_ships?: boolean;
+    limit?: number;
+    min_cluster_size?: number;
+    since?: string;
+    type?: 'character' | 'corporation' | 'alliance';
+    until?: string;
+};
+
+export type DoctrineDetectOutputWritable = {
+    clusters: Array<DoctrineCluster> | null;
+    count: number;
+    entity: Entity;
+    notes?: string;
+    window: TimeWindow;
+};
+
+export type DogmaEvalInputWritable = {
+    drones?: Array<DogmaDroneInput> | null;
+    eft?: string;
+    fit_hash?: string;
+    killmail_id?: number;
+    modules?: Array<DogmaModuleInput> | null;
+    ship_type_id?: number;
+    skills?: 'all_v' | 'none';
+};
+
+export type DogmaEvalOutputWritable = {
+    dps_note?: string;
+    drone_count: number;
+    fit_hash?: string;
+    fitting: FittingDisplay;
+    killmail_id?: number;
+    module_count: number;
+    ship: DogmaShip;
+    skills: string;
+    source: string;
+    stats: HullDisplay;
+};
+
+export type DossierInputWritable = {
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    format?: 'json' | 'summary';
+    type?: 'character';
+};
+
+export type DossierOutputWritable = {
+    archetype_last_seen?: DossierArchetypeLastSeen;
+    archetype_tags?: Array<string> | null;
+    entity: Entity;
+    lifetime?: EntityLifetime;
+    playstyle_90d?: DossierPlaystyle;
+    summary?: string;
+    top_ships?: Array<DossierTopShip> | null;
+    top_systems?: Array<DossierTopSystem> | null;
+    top_wingmates?: Array<DossierWingmate> | null;
+};
+
+export type EntityKillsInputWritable = {
+    before?: number;
+    entity: string | number;
+    from?: string;
+    limit?: number;
+    role?: 'kills' | 'losses' | 'all';
+    to?: string;
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'system' | 'region' | 'constellation' | 'faction';
+};
+
+export type EntityKillsOutputWritable = {
+    count?: number;
+    entity: Entity;
+    kills: Array<KillmailSummary> | null;
+    next_before: number | null;
+};
+
+export type EntityOverviewInputWritable = {
+    entity: string | number;
+    format?: 'json' | 'summary';
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'system' | 'constellation' | 'region';
+};
+
+export type EntityOverviewOutputWritable = {
+    entity: Entity;
+    lifetime?: EntityLifetime;
+    summary?: string;
+    top_prey?: Array<EntityBreakdown> | null;
+    top_regions?: Array<EntityBreakdown> | null;
+    top_ships_flown?: Array<EntityBreakdown> | null;
+    top_ships_lost?: Array<EntityBreakdown> | null;
+    top_systems?: Array<EntityBreakdown> | null;
+    top_tormentors?: Array<EntityBreakdown> | null;
+};
+
+export type EntityTimelineInputWritable = {
+    bucket?: 'day' | 'month' | 'year';
+    entity: string | number;
+    since?: string;
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'system' | 'constellation' | 'region';
+    until?: string;
+    /**
+     * Opponent character, corporation, or alliance.
+     */
+    vs?: string | number;
+};
+
+export type EntityTimelineOutputWritable = {
+    bucket: string;
+    buckets: Array<TimelineBucket> | null;
+    count: number;
+    entity: Entity;
+    vs?: Entity;
+    window: TimelineWindow;
+};
+
+export type EntityTopInputWritable = {
+    dimension: 'ship_flown' | 'ship_lost' | 'system' | 'constellation' | 'region' | 'dies_to_corporation' | 'dies_to_alliance' | 'killed_corporation' | 'killed_alliance';
+    entity: string | number;
+    limit?: number;
+    since?: string;
+    sort_by?: 'kills' | 'losses' | 'isk_destroyed' | 'isk_lost';
+    type?: 'character' | 'corporation' | 'alliance';
+    until?: string;
+    /**
+     * Opponent character, corporation, or alliance.
+     */
+    vs?: string | number;
+};
+
+export type EntityTopOutputWritable = {
+    count: number;
+    dimension: string;
+    entity: Entity;
+    rows: Array<EntityBreakdown> | null;
+    sort_by: string;
+    vs?: Entity;
+    warnings?: Array<string> | null;
+    window: 'lifetime' | {
+        since: string;
+        until: string;
+    };
 };
 
 export type ErrorModelWritable = {
@@ -3625,14 +5819,486 @@ export type ErrorModelWritable = {
     type?: string;
 };
 
+export type ExpensiveLossesInputWritable = {
+    days?: number;
+    limit?: number;
+    min_value?: number;
+    region_id?: number;
+    ship_type_id?: number;
+    system_id?: number;
+    victim_alliance_id?: number;
+    victim_character_id?: number;
+    /**
+     * Character, corporation, or alliance present as attacker.
+     */
+    vs?: string | number;
+};
+
+export type ExpensiveLossesOutputWritable = {
+    count: number;
+    kills: Array<ExpensiveLoss> | null;
+    window_days: number;
+};
+
+export type FindBattlesInputWritable = {
+    limit?: number;
+    min_isk?: number;
+    min_kills?: number;
+    opposing?: boolean;
+    participants?: Array<string | number> | null;
+    region_id?: number;
+    since?: string;
+    sort?: 'isk' | 'kills' | 'recent' | 'intensity';
+    system_id?: number;
+    until?: string;
+};
+
+export type FindBattlesOutputWritable = {
+    battles: Array<FoundBattle> | null;
+    count: number;
+    opposing_required?: boolean;
+    participants_resolved?: Array<ResolvedParticipant> | null;
+};
+
+export type FitCompareInputWritable = {
+    a: DogmaFitInput;
+    b: DogmaFitInput;
+    skills?: 'all_v' | 'none';
+};
+
+export type FitCompareOutputWritable = {
+    a: FitComparisonSide;
+    b: FitComparisonSide;
+    diff: FitDiff;
+    skills: string;
+};
+
+export type FliesWithOutputWritable = {
+    count: number;
+    entity: Entity;
+    partners: Array<IntelPartner> | null;
+    window_days: number;
+};
+
+export type GlobalPulseInputWritable = {
+    /**
+     * Lookback window in hours (max 24).
+     */
+    hours?: number;
+    /**
+     * How many rows in each list.
+     */
+    top_n?: number;
+};
+
+export type GlobalPulseOutputWritable = {
+    hottest_systems: Array<GlobalPulseSystem> | null;
+    most_active_alliances: Array<GlobalPulseAlliance> | null;
+    most_active_corporations: Array<GlobalPulseCorporation> | null;
+    since: string;
+    totals: GlobalPulseTotals;
+    window_hours: number;
+};
+
+export type HuntsInOutputWritable = {
+    count: number;
+    entity: Entity;
+    systems: Array<IntelSystem> | null;
+    window_days: number;
+};
+
 export type ImagesOverviewResponseWritable = {
     routes: Array<string> | null;
     service: string;
 };
 
+export type ItemInfoInputWritable = {
+    item: string | number;
+};
+
+export type ItemInfoOutputWritable = {
+    category: IdName;
+    current_jita_price: number | null;
+    description: string | null;
+    fitting: ItemFitting;
+    group: IdName;
+    market_note?: string;
+    meta_group: IdName;
+    name: string;
+    physical: ItemPhysical;
+    type_id: number;
+    url: string;
+    variants: Array<ItemVariant> | null;
+    variation_parent_type_id: number | null;
+};
+
+export type KillmailFittingInputWritable = {
+    format?: 'json' | 'eft';
+    killmail_id: number;
+};
+
+export type KillmailFittingOutputWritable = {
+    drones?: Array<FittingItem> | null;
+    eft?: string;
+    family_hash: string;
+    first_seen_at?: string;
+    fit_hash: string;
+    kill_time?: string;
+    killmail_id: number;
+    ship: FittingType;
+    slots?: Array<FittingSlot> | null;
+    total_value?: number;
+    url: string;
+    victim?: FittingVictim;
+};
+
+export type KillmailForensicsOutputWritable = {
+    attacker_count: number;
+    dogma_stats: HullStats;
+    finding_count: number;
+    findings: Array<ForensicsFinding> | null;
+    fit_hash: string | null;
+    kill_time: string | null;
+    killmail_id: number;
+    system: ForensicsSystem;
+    total_value: number;
+    url: string;
+    victim_ship: ForensicsShip;
+};
+
+export type KillmailInputWritable = {
+    killmail_id: number;
+};
+
+export type KillmailOutputWritable = {
+    attacker_count: number;
+    attackers: Array<KillmailAttacker> | null;
+    destroyed_value: number;
+    dropped_value: number;
+    final_blow: KillmailAttacker;
+    fitted_value: number;
+    hash: string;
+    is_npc: boolean;
+    is_solo: boolean;
+    killmail_id: number;
+    points: number;
+    system: KillmailLocation;
+    time: string;
+    total_value: number;
+    url: string;
+    victim: KillmailVictim;
+    war_id: number | null;
+};
+
+export type KillmailStoryOutputWritable = {
+    facts: KillmailStoryFacts;
+    killmail_id: number;
+    story: string;
+    url: string;
+};
+
+export type KillsWithInputWritable = {
+    entity: string | number;
+    entity_ship?: string | number;
+    from?: string;
+    group_by?: 'none' | 'victim_ship' | 'system' | 'region' | 'month' | 'partner_ship' | 'entity_ship';
+    limit?: number;
+    partner: string | number;
+    partner_ship?: string | number;
+    region?: string | number;
+    system?: string | number;
+    to?: string;
+    type?: 'character';
+    victim_entity?: string | number;
+    victim_ship?: string | number;
+};
+
+export type KillsWithOutputWritable = {
+    breakdown?: Array<KillsWithBreakdown> | null;
+    entity: Entity;
+    filters: KillsWithFilters;
+    group_by?: string;
+    partner: Entity;
+    totals: KillsWithTotals;
+};
+
+export type MeInputWritable = {
+    /**
+     * Your EVE character name as typed in-game.
+     */
+    me: string;
+};
+
+export type MeIntelInputWritable = {
+    limit?: number;
+    me: string;
+};
+
+export type MeKillsInputWritable = {
+    before?: number;
+    from?: string;
+    limit?: number;
+    me: string;
+    role?: 'kills' | 'losses' | 'all';
+    to?: string;
+};
+
+export type MeKillsWithInputWritable = {
+    entity_ship?: string | number;
+    from?: string;
+    group_by?: 'none' | 'victim_ship' | 'system' | 'region' | 'month' | 'partner_ship' | 'entity_ship';
+    limit?: number;
+    me: string;
+    partner: string | number;
+    partner_ship?: string | number;
+    region?: string | number;
+    system?: string | number;
+    to?: string;
+    victim_entity?: string | number;
+    victim_ship?: string | number;
+};
+
+export type MeShipsUsedInputWritable = {
+    from?: string;
+    group_by?: 'none' | 'ship' | 'victim_ship' | 'system' | 'region' | 'month';
+    limit?: number;
+    me: string;
+    region?: string | number;
+    role?: 'kills' | 'losses' | 'all';
+    ship?: string | number;
+    system?: string | number;
+    to?: string;
+};
+
+export type MeTimelineInputWritable = {
+    bucket?: 'day' | 'month' | 'year';
+    me: string;
+    since?: string;
+    until?: string;
+    vs?: string | number;
+};
+
+export type MetaPulseInputWritable = {
+    include_rookie_ships?: boolean;
+    limit?: number;
+    min_cluster_size?: number;
+    region_id?: number;
+    ship_category?: 'all' | 'frigate' | 'destroyer' | 'cruiser' | 'battlecruiser' | 'battleship' | 'capital' | 'supercap' | 'subcap';
+    since?: string;
+    until?: string;
+};
+
+export type MetaPulseOutputWritable = {
+    clusters: Array<DoctrineCluster> | null;
+    count: number;
+    region_id: number | null;
+    ship_category: string;
+    window: TimeWindow;
+};
+
+export type PilotEfficiencyInputWritable = {
+    /**
+     * Character name or id.
+     */
+    entity: string | number;
+    /**
+     * Restrict to events involving this ship type.
+     */
+    ship_type_id?: number;
+    /**
+     * ISO datetime lower bound. Default 90 days ago.
+     */
+    since?: string;
+    /**
+     * ISO datetime upper bound. Default now.
+     */
+    until?: string;
+};
+
+export type PilotEfficiencyOutputWritable = {
+    activity: PilotActivity;
+    character: CharacterRef;
+    ship_filter?: ShipFilter;
+    totals: PilotEfficiencyTotals;
+    window: TimeWindow;
+};
+
+export type RouteDangerInputWritable = {
+    avoid?: Array<string | number> | null;
+    /**
+     * Starting solar system name or id.
+     */
+    from: string | number;
+    hours?: number;
+    prefer?: 'shortest' | 'safest' | 'lowsec_ok';
+    round_trip?: boolean;
+    /**
+     * Destination solar system name or id.
+     */
+    to: string | number;
+};
+
+export type RouteDangerOutputWritable = {
+    avg_danger: number;
+    avoided_systems: number;
+    crosses_lowsec: boolean;
+    crosses_nullsec: boolean;
+    from: SystemRef;
+    hops: Array<RouteHop> | null;
+    jumps: number;
+    prefer: string;
+    return_leg?: RouteLeg;
+    to: SystemRef;
+    total_kills_on_route: number;
+    window_hours: number;
+    worst_hop: WorstRouteHop;
+};
+
+export type SearchInputWritable = {
+    limit?: number;
+    /**
+     * Name or ticker to search for.
+     */
+    query: string;
+    type?: 'character' | 'corporation' | 'alliance' | 'ship' | 'item' | 'system' | 'region' | 'constellation' | 'faction';
+};
+
+export type SearchOutputWritable = {
+    count: number;
+    hits: Array<SearchHit> | null;
+    query: string;
+};
+
+export type ShipCompareInputWritable = {
+    a: string | number;
+    b: string | number;
+};
+
+export type ShipCompareOutputWritable = {
+    a: ShipInfoOutputWritable;
+    b: ShipInfoOutputWritable;
+    diff: HullDifference;
+};
+
+export type ShipInfoInputWritable = {
+    ship: string | number;
+};
+
+export type ShipInfoOutputWritable = {
+    base_hp: HullHp;
+    capacitor: HullCapacitor;
+    cargo: HullCargo;
+    category: string | null;
+    current_jita_price: number | null;
+    description: string | null;
+    drones: HullDrones;
+    fitting: HullFitting;
+    group: string | null;
+    market_note?: string;
+    meta_group: string | null;
+    mobility: HullMobility;
+    name: string;
+    race: string | null;
+    resist_profile: HullResists;
+    sensors: HullSensors;
+    slots: HullSlots;
+    type_id: number;
+    url: string;
+};
+
+export type ShipsUsedInputWritable = {
+    entity: string | number;
+    from?: string;
+    group_by?: 'none' | 'ship' | 'victim_ship' | 'system' | 'region' | 'month';
+    limit?: number;
+    region?: string | number;
+    role?: 'kills' | 'losses' | 'all';
+    ship?: string | number;
+    system?: string | number;
+    to?: string;
+    type?: 'character' | 'corporation' | 'alliance';
+};
+
+export type ShipsUsedOutputWritable = {
+    breakdown?: Array<ShipsUsedBreakdown> | null;
+    entity: Entity;
+    filters: ShipsUsedFilters;
+    group_by?: string;
+    totals: ShipsUsedTotals;
+};
+
 export type SiteConfigurationResponseWritable = {
     domain: SiteDomainConfiguration | null;
     isDomainHost: boolean;
+};
+
+export type SystemInfoInputWritable = {
+    system: string | number;
+};
+
+export type SystemInfoOutputWritable = {
+    constellation: RequiredIdName;
+    faction: RequiredIdName;
+    flags: SystemFlags;
+    is_pipe_tip: boolean;
+    name: string;
+    neighbor_count: number;
+    neighbors: Array<SystemNeighbor> | null;
+    region: RequiredIdName;
+    security: number | null;
+    security_band: string | null;
+    security_class: string | null;
+    solar_system_id: number;
+    station_count: number;
+    stations: Array<SystemStation> | null;
+    url: string;
+};
+
+export type SystemPulseInputWritable = {
+    hours?: number;
+    /**
+     * ISO datetime lower bound.
+     */
+    since?: string;
+    /**
+     * System name or id.
+     */
+    system: string | number;
+    top_n?: number;
+    /**
+     * ISO datetime upper bound.
+     */
+    until?: string;
+};
+
+export type SystemPulseOutputWritable = {
+    heat_score: number;
+    system: SystemRef;
+    top_attacker_alliances: Array<OrganizationActivity> | null;
+    top_attacker_corps: Array<OrganizationActivity> | null;
+    top_victim_ships: Array<ShipLossActivity> | null;
+    totals: SystemPulseTotals;
+    window: TimeWindow;
+    window_hours: number | null;
+};
+
+export type WarReportInputWritable = {
+    a: string | number;
+    b: string | number;
+    since?: string;
+    top_battles?: number;
+    top_systems?: number;
+    until?: string;
+};
+
+export type WarReportOutputWritable = {
+    a: Entity;
+    b: Entity;
+    recent_battles: Array<WarBattleSummary> | null;
+    timeline_daily: Array<WarTimelineDay> | null;
+    top_contested_systems: Array<ContestedSystem> | null;
+    totals: WarTotals;
+    window: TimeWindow;
 };
 
 export type AllianceBattlesResponseWritable = {
@@ -21596,6 +24262,1131 @@ export type ShipMatchupResponses = {
 };
 
 export type ShipMatchupResponse = ShipMatchupResponses[keyof ShipMatchupResponses];
+
+export type McpBattleReportData = {
+    body: BattleReportInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/battle_report';
+};
+
+export type McpBattleReportErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpBattleReportError = McpBattleReportErrors[keyof McpBattleReportErrors];
+
+export type McpBattleReportResponses = {
+    /**
+     * OK
+     */
+    200: BattleReportOutput;
+};
+
+export type McpBattleReportResponse = McpBattleReportResponses[keyof McpBattleReportResponses];
+
+export type McpCapsuleerDossierData = {
+    body: DossierInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/capsuleer_dossier';
+};
+
+export type McpCapsuleerDossierErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpCapsuleerDossierError = McpCapsuleerDossierErrors[keyof McpCapsuleerDossierErrors];
+
+export type McpCapsuleerDossierResponses = {
+    /**
+     * OK
+     */
+    200: DossierOutput;
+};
+
+export type McpCapsuleerDossierResponse = McpCapsuleerDossierResponses[keyof McpCapsuleerDossierResponses];
+
+export type McpCharacterHistoryData = {
+    body: CharacterHistoryInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/character_history';
+};
+
+export type McpCharacterHistoryErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpCharacterHistoryError = McpCharacterHistoryErrors[keyof McpCharacterHistoryErrors];
+
+export type McpCharacterHistoryResponses = {
+    /**
+     * OK
+     */
+    200: CharacterHistoryOutput;
+};
+
+export type McpCharacterHistoryResponse = McpCharacterHistoryResponses[keyof McpCharacterHistoryResponses];
+
+export type McpCoalitionGraphData = {
+    body: CoalitionGraphInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/coalition_graph';
+};
+
+export type McpCoalitionGraphErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpCoalitionGraphError = McpCoalitionGraphErrors[keyof McpCoalitionGraphErrors];
+
+export type McpCoalitionGraphResponses = {
+    /**
+     * OK
+     */
+    200: CoalitionGraphOutput;
+};
+
+export type McpCoalitionGraphResponse = McpCoalitionGraphResponses[keyof McpCoalitionGraphResponses];
+
+export type McpCompareData = {
+    body: CompareInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/compare';
+};
+
+export type McpCompareErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpCompareError = McpCompareErrors[keyof McpCompareErrors];
+
+export type McpCompareResponses = {
+    /**
+     * OK
+     */
+    200: CompareOutput;
+};
+
+export type McpCompareResponse = McpCompareResponses[keyof McpCompareResponses];
+
+export type McpDoctrineDetectData = {
+    body: DoctrineDetectInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/doctrine_detect';
+};
+
+export type McpDoctrineDetectErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpDoctrineDetectError = McpDoctrineDetectErrors[keyof McpDoctrineDetectErrors];
+
+export type McpDoctrineDetectResponses = {
+    /**
+     * OK
+     */
+    200: DoctrineDetectOutput;
+};
+
+export type McpDoctrineDetectResponse = McpDoctrineDetectResponses[keyof McpDoctrineDetectResponses];
+
+export type McpDogmaEvalData = {
+    body: DogmaEvalInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/dogma_eval';
+};
+
+export type McpDogmaEvalErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpDogmaEvalError = McpDogmaEvalErrors[keyof McpDogmaEvalErrors];
+
+export type McpDogmaEvalResponses = {
+    /**
+     * OK
+     */
+    200: DogmaEvalOutput;
+};
+
+export type McpDogmaEvalResponse = McpDogmaEvalResponses[keyof McpDogmaEvalResponses];
+
+export type McpEntityKillsData = {
+    body: EntityKillsInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/entity_kills';
+};
+
+export type McpEntityKillsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpEntityKillsError = McpEntityKillsErrors[keyof McpEntityKillsErrors];
+
+export type McpEntityKillsResponses = {
+    /**
+     * OK
+     */
+    200: EntityKillsOutput;
+};
+
+export type McpEntityKillsResponse = McpEntityKillsResponses[keyof McpEntityKillsResponses];
+
+export type McpEntityOverviewData = {
+    body: EntityOverviewInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/entity_overview';
+};
+
+export type McpEntityOverviewErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpEntityOverviewError = McpEntityOverviewErrors[keyof McpEntityOverviewErrors];
+
+export type McpEntityOverviewResponses = {
+    /**
+     * OK
+     */
+    200: EntityOverviewOutput;
+};
+
+export type McpEntityOverviewResponse = McpEntityOverviewResponses[keyof McpEntityOverviewResponses];
+
+export type McpEntityTimelineData = {
+    body: EntityTimelineInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/entity_timeline';
+};
+
+export type McpEntityTimelineErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpEntityTimelineError = McpEntityTimelineErrors[keyof McpEntityTimelineErrors];
+
+export type McpEntityTimelineResponses = {
+    /**
+     * OK
+     */
+    200: EntityTimelineOutput;
+};
+
+export type McpEntityTimelineResponse = McpEntityTimelineResponses[keyof McpEntityTimelineResponses];
+
+export type McpEntityTopData = {
+    body: EntityTopInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/entity_top';
+};
+
+export type McpEntityTopErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpEntityTopError = McpEntityTopErrors[keyof McpEntityTopErrors];
+
+export type McpEntityTopResponses = {
+    /**
+     * OK
+     */
+    200: EntityTopOutput;
+};
+
+export type McpEntityTopResponse = McpEntityTopResponses[keyof McpEntityTopResponses];
+
+export type McpExpensiveLossesData = {
+    body: ExpensiveLossesInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/expensive_losses';
+};
+
+export type McpExpensiveLossesErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpExpensiveLossesError = McpExpensiveLossesErrors[keyof McpExpensiveLossesErrors];
+
+export type McpExpensiveLossesResponses = {
+    /**
+     * OK
+     */
+    200: ExpensiveLossesOutput;
+};
+
+export type McpExpensiveLossesResponse = McpExpensiveLossesResponses[keyof McpExpensiveLossesResponses];
+
+export type McpFindBattlesData = {
+    body: FindBattlesInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/find_battles';
+};
+
+export type McpFindBattlesErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpFindBattlesError = McpFindBattlesErrors[keyof McpFindBattlesErrors];
+
+export type McpFindBattlesResponses = {
+    /**
+     * OK
+     */
+    200: FindBattlesOutput;
+};
+
+export type McpFindBattlesResponse = McpFindBattlesResponses[keyof McpFindBattlesResponses];
+
+export type McpFitCompareData = {
+    body: FitCompareInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/fit_compare';
+};
+
+export type McpFitCompareErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpFitCompareError = McpFitCompareErrors[keyof McpFitCompareErrors];
+
+export type McpFitCompareResponses = {
+    /**
+     * OK
+     */
+    200: FitCompareOutput;
+};
+
+export type McpFitCompareResponse = McpFitCompareResponses[keyof McpFitCompareResponses];
+
+export type McpFliesWithData = {
+    body: CharacterIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/flies_with';
+};
+
+export type McpFliesWithErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpFliesWithError = McpFliesWithErrors[keyof McpFliesWithErrors];
+
+export type McpFliesWithResponses = {
+    /**
+     * OK
+     */
+    200: FliesWithOutput;
+};
+
+export type McpFliesWithResponse = McpFliesWithResponses[keyof McpFliesWithResponses];
+
+export type McpGlobalPulseData = {
+    body: GlobalPulseInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/global_pulse';
+};
+
+export type McpGlobalPulseErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpGlobalPulseError = McpGlobalPulseErrors[keyof McpGlobalPulseErrors];
+
+export type McpGlobalPulseResponses = {
+    /**
+     * OK
+     */
+    200: GlobalPulseOutput;
+};
+
+export type McpGlobalPulseResponse = McpGlobalPulseResponses[keyof McpGlobalPulseResponses];
+
+export type McpHuntedByData = {
+    body: CharacterIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/hunted_by';
+};
+
+export type McpHuntedByErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpHuntedByError = McpHuntedByErrors[keyof McpHuntedByErrors];
+
+export type McpHuntedByResponses = {
+    /**
+     * OK
+     */
+    200: CharacterIntelOutput;
+};
+
+export type McpHuntedByResponse = McpHuntedByResponses[keyof McpHuntedByResponses];
+
+export type McpHuntsInData = {
+    body: CharacterIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/hunts_in';
+};
+
+export type McpHuntsInErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpHuntsInError = McpHuntsInErrors[keyof McpHuntsInErrors];
+
+export type McpHuntsInResponses = {
+    /**
+     * OK
+     */
+    200: HuntsInOutput;
+};
+
+export type McpHuntsInResponse = McpHuntsInResponses[keyof McpHuntsInResponses];
+
+export type McpItemInfoData = {
+    body: ItemInfoInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/item_info';
+};
+
+export type McpItemInfoErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpItemInfoError = McpItemInfoErrors[keyof McpItemInfoErrors];
+
+export type McpItemInfoResponses = {
+    /**
+     * OK
+     */
+    200: ItemInfoOutput;
+};
+
+export type McpItemInfoResponse = McpItemInfoResponses[keyof McpItemInfoResponses];
+
+export type McpKillmailData = {
+    body: KillmailInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/killmail';
+};
+
+export type McpKillmailErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpKillmailError = McpKillmailErrors[keyof McpKillmailErrors];
+
+export type McpKillmailResponses = {
+    /**
+     * OK
+     */
+    200: KillmailOutput;
+};
+
+export type McpKillmailResponse = McpKillmailResponses[keyof McpKillmailResponses];
+
+export type McpKillmailFittingData = {
+    body: KillmailFittingInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/killmail_fitting';
+};
+
+export type McpKillmailFittingErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpKillmailFittingError = McpKillmailFittingErrors[keyof McpKillmailFittingErrors];
+
+export type McpKillmailFittingResponses = {
+    /**
+     * OK
+     */
+    200: KillmailFittingOutput;
+};
+
+export type McpKillmailFittingResponse = McpKillmailFittingResponses[keyof McpKillmailFittingResponses];
+
+export type McpKillmailForensicsData = {
+    body: KillmailInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/killmail_forensics';
+};
+
+export type McpKillmailForensicsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpKillmailForensicsError = McpKillmailForensicsErrors[keyof McpKillmailForensicsErrors];
+
+export type McpKillmailForensicsResponses = {
+    /**
+     * OK
+     */
+    200: KillmailForensicsOutput;
+};
+
+export type McpKillmailForensicsResponse = McpKillmailForensicsResponses[keyof McpKillmailForensicsResponses];
+
+export type McpKillmailStoryData = {
+    body: KillmailInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/killmail_story';
+};
+
+export type McpKillmailStoryErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpKillmailStoryError = McpKillmailStoryErrors[keyof McpKillmailStoryErrors];
+
+export type McpKillmailStoryResponses = {
+    /**
+     * OK
+     */
+    200: KillmailStoryOutput;
+};
+
+export type McpKillmailStoryResponse = McpKillmailStoryResponses[keyof McpKillmailStoryResponses];
+
+export type McpKillsWithData = {
+    body: KillsWithInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/kills_with';
+};
+
+export type McpKillsWithErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpKillsWithError = McpKillsWithErrors[keyof McpKillsWithErrors];
+
+export type McpKillsWithResponses = {
+    /**
+     * OK
+     */
+    200: KillsWithOutput;
+};
+
+export type McpKillsWithResponse = McpKillsWithResponses[keyof McpKillsWithResponses];
+
+export type McpMeDossierData = {
+    body: MeInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_dossier';
+};
+
+export type McpMeDossierErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeDossierError = McpMeDossierErrors[keyof McpMeDossierErrors];
+
+export type McpMeDossierResponses = {
+    /**
+     * OK
+     */
+    200: DossierOutput;
+};
+
+export type McpMeDossierResponse = McpMeDossierResponses[keyof McpMeDossierResponses];
+
+export type McpMeFliesWithData = {
+    body: MeIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_flies_with';
+};
+
+export type McpMeFliesWithErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeFliesWithError = McpMeFliesWithErrors[keyof McpMeFliesWithErrors];
+
+export type McpMeFliesWithResponses = {
+    /**
+     * OK
+     */
+    200: FliesWithOutput;
+};
+
+export type McpMeFliesWithResponse = McpMeFliesWithResponses[keyof McpMeFliesWithResponses];
+
+export type McpMeHuntedByData = {
+    body: MeIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_hunted_by';
+};
+
+export type McpMeHuntedByErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeHuntedByError = McpMeHuntedByErrors[keyof McpMeHuntedByErrors];
+
+export type McpMeHuntedByResponses = {
+    /**
+     * OK
+     */
+    200: CharacterIntelOutput;
+};
+
+export type McpMeHuntedByResponse = McpMeHuntedByResponses[keyof McpMeHuntedByResponses];
+
+export type McpMeHuntsInData = {
+    body: MeIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_hunts_in';
+};
+
+export type McpMeHuntsInErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeHuntsInError = McpMeHuntsInErrors[keyof McpMeHuntsInErrors];
+
+export type McpMeHuntsInResponses = {
+    /**
+     * OK
+     */
+    200: HuntsInOutput;
+};
+
+export type McpMeHuntsInResponse = McpMeHuntsInResponses[keyof McpMeHuntsInResponses];
+
+export type McpMeKillsData = {
+    body: MeKillsInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_kills';
+};
+
+export type McpMeKillsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeKillsError = McpMeKillsErrors[keyof McpMeKillsErrors];
+
+export type McpMeKillsResponses = {
+    /**
+     * OK
+     */
+    200: EntityKillsOutput;
+};
+
+export type McpMeKillsResponse = McpMeKillsResponses[keyof McpMeKillsResponses];
+
+export type McpMeKillsWithData = {
+    body: MeKillsWithInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_kills_with';
+};
+
+export type McpMeKillsWithErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeKillsWithError = McpMeKillsWithErrors[keyof McpMeKillsWithErrors];
+
+export type McpMeKillsWithResponses = {
+    /**
+     * OK
+     */
+    200: KillsWithOutput;
+};
+
+export type McpMeKillsWithResponse = McpMeKillsWithResponses[keyof McpMeKillsWithResponses];
+
+export type McpMeOverviewData = {
+    body: MeInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_overview';
+};
+
+export type McpMeOverviewErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeOverviewError = McpMeOverviewErrors[keyof McpMeOverviewErrors];
+
+export type McpMeOverviewResponses = {
+    /**
+     * OK
+     */
+    200: EntityOverviewOutput;
+};
+
+export type McpMeOverviewResponse = McpMeOverviewResponses[keyof McpMeOverviewResponses];
+
+export type McpMePreysOnData = {
+    body: MeIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_preys_on';
+};
+
+export type McpMePreysOnErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMePreysOnError = McpMePreysOnErrors[keyof McpMePreysOnErrors];
+
+export type McpMePreysOnResponses = {
+    /**
+     * OK
+     */
+    200: CharacterIntelOutput;
+};
+
+export type McpMePreysOnResponse = McpMePreysOnResponses[keyof McpMePreysOnResponses];
+
+export type McpMeShipsUsedData = {
+    body: MeShipsUsedInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_ships_used';
+};
+
+export type McpMeShipsUsedErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeShipsUsedError = McpMeShipsUsedErrors[keyof McpMeShipsUsedErrors];
+
+export type McpMeShipsUsedResponses = {
+    /**
+     * OK
+     */
+    200: ShipsUsedOutput;
+};
+
+export type McpMeShipsUsedResponse = McpMeShipsUsedResponses[keyof McpMeShipsUsedResponses];
+
+export type McpMeTimelineData = {
+    body: MeTimelineInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/me_timeline';
+};
+
+export type McpMeTimelineErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMeTimelineError = McpMeTimelineErrors[keyof McpMeTimelineErrors];
+
+export type McpMeTimelineResponses = {
+    /**
+     * OK
+     */
+    200: EntityTimelineOutput;
+};
+
+export type McpMeTimelineResponse = McpMeTimelineResponses[keyof McpMeTimelineResponses];
+
+export type McpMetaPulseData = {
+    body: MetaPulseInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/meta_pulse';
+};
+
+export type McpMetaPulseErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpMetaPulseError = McpMetaPulseErrors[keyof McpMetaPulseErrors];
+
+export type McpMetaPulseResponses = {
+    /**
+     * OK
+     */
+    200: MetaPulseOutput;
+};
+
+export type McpMetaPulseResponse = McpMetaPulseResponses[keyof McpMetaPulseResponses];
+
+export type McpPilotEfficiencyData = {
+    body: PilotEfficiencyInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/pilot_efficiency';
+};
+
+export type McpPilotEfficiencyErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpPilotEfficiencyError = McpPilotEfficiencyErrors[keyof McpPilotEfficiencyErrors];
+
+export type McpPilotEfficiencyResponses = {
+    /**
+     * OK
+     */
+    200: PilotEfficiencyOutput;
+};
+
+export type McpPilotEfficiencyResponse = McpPilotEfficiencyResponses[keyof McpPilotEfficiencyResponses];
+
+export type McpPreysOnData = {
+    body: CharacterIntelInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/preys_on';
+};
+
+export type McpPreysOnErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpPreysOnError = McpPreysOnErrors[keyof McpPreysOnErrors];
+
+export type McpPreysOnResponses = {
+    /**
+     * OK
+     */
+    200: CharacterIntelOutput;
+};
+
+export type McpPreysOnResponse = McpPreysOnResponses[keyof McpPreysOnResponses];
+
+export type McpRouteDangerData = {
+    body: RouteDangerInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/route_danger';
+};
+
+export type McpRouteDangerErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpRouteDangerError = McpRouteDangerErrors[keyof McpRouteDangerErrors];
+
+export type McpRouteDangerResponses = {
+    /**
+     * OK
+     */
+    200: RouteDangerOutput;
+};
+
+export type McpRouteDangerResponse = McpRouteDangerResponses[keyof McpRouteDangerResponses];
+
+export type McpSearchData = {
+    body: SearchInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/search';
+};
+
+export type McpSearchErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpSearchError = McpSearchErrors[keyof McpSearchErrors];
+
+export type McpSearchResponses = {
+    /**
+     * OK
+     */
+    200: SearchOutput;
+};
+
+export type McpSearchResponse = McpSearchResponses[keyof McpSearchResponses];
+
+export type McpShipCompareData = {
+    body: ShipCompareInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/ship_compare';
+};
+
+export type McpShipCompareErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpShipCompareError = McpShipCompareErrors[keyof McpShipCompareErrors];
+
+export type McpShipCompareResponses = {
+    /**
+     * OK
+     */
+    200: ShipCompareOutput;
+};
+
+export type McpShipCompareResponse = McpShipCompareResponses[keyof McpShipCompareResponses];
+
+export type McpShipInfoData = {
+    body: ShipInfoInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/ship_info';
+};
+
+export type McpShipInfoErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpShipInfoError = McpShipInfoErrors[keyof McpShipInfoErrors];
+
+export type McpShipInfoResponses = {
+    /**
+     * OK
+     */
+    200: ShipInfoOutput;
+};
+
+export type McpShipInfoResponse = McpShipInfoResponses[keyof McpShipInfoResponses];
+
+export type McpShipsUsedData = {
+    body: ShipsUsedInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/ships_used';
+};
+
+export type McpShipsUsedErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpShipsUsedError = McpShipsUsedErrors[keyof McpShipsUsedErrors];
+
+export type McpShipsUsedResponses = {
+    /**
+     * OK
+     */
+    200: ShipsUsedOutput;
+};
+
+export type McpShipsUsedResponse = McpShipsUsedResponses[keyof McpShipsUsedResponses];
+
+export type McpSystemInfoData = {
+    body: SystemInfoInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/system_info';
+};
+
+export type McpSystemInfoErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpSystemInfoError = McpSystemInfoErrors[keyof McpSystemInfoErrors];
+
+export type McpSystemInfoResponses = {
+    /**
+     * OK
+     */
+    200: SystemInfoOutput;
+};
+
+export type McpSystemInfoResponse = McpSystemInfoResponses[keyof McpSystemInfoResponses];
+
+export type McpSystemPulseData = {
+    body: SystemPulseInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/system_pulse';
+};
+
+export type McpSystemPulseErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpSystemPulseError = McpSystemPulseErrors[keyof McpSystemPulseErrors];
+
+export type McpSystemPulseResponses = {
+    /**
+     * OK
+     */
+    200: SystemPulseOutput;
+};
+
+export type McpSystemPulseResponse = McpSystemPulseResponses[keyof McpSystemPulseResponses];
+
+export type McpWarReportData = {
+    body: WarReportInputWritable;
+    path?: never;
+    query?: never;
+    url: '/mcp/tools/war_report';
+};
+
+export type McpWarReportErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type McpWarReportError = McpWarReportErrors[keyof McpWarReportErrors];
+
+export type McpWarReportResponses = {
+    /**
+     * OK
+     */
+    200: WarReportOutput;
+};
+
+export type McpWarReportResponse = McpWarReportResponses[keyof McpWarReportResponses];
 
 export type MeData = {
     body?: never;

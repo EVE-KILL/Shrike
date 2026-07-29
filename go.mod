@@ -11,8 +11,10 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.39.0
 	github.com/deepteams/webp v1.2.7
 	github.com/go-chi/chi/v5 v5.3.1
+	github.com/google/jsonschema-go v0.4.3
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
+	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.4
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/redis/go-redis/v9 v9.21.0
@@ -29,6 +31,12 @@ require (
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.40.0
+)
+
+require (
+	github.com/segmentio/asm v1.2.1 // indirect
+	github.com/segmentio/encoding v0.5.4 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 )
 
 require (

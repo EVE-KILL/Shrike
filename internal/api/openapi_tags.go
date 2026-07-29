@@ -7,7 +7,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 )
 
-// The rendered reference groups 43 tags into sections.
+// The rendered reference groups 44 tags into sections.
 //
 // Without this the sidebar is one flat alphabetical list, which puts /health
 // next to /admin and gives a reader no way to tell the public read API from
@@ -37,6 +37,7 @@ var tagGroups = []tagGroup{
 	}},
 	{"Static data", []string{"sde", "market"}},
 	{"Community", []string{"fittings", "comments", "blog", "scans", "boards"}},
+	{"MCP", []string{"mcp"}},
 	{"Account", []string{
 		"account", "auth", "announcements", "notifications", "wallet",
 	}},
@@ -88,6 +89,7 @@ var tagDescriptions = map[string]string{
 	"killmails":           "Killmails: listings, detail, ESI form, and the fitting they carried.",
 	"map":                 "Region and constellation map data.",
 	"market":              "Market groups and bulk type prices.",
+	"mcp":                 "Typed HTTP mirrors of every read-only MCP tool. The MCP transport itself is served at mcp.eve-kill.com/mcp.",
 	"notifications":       "Comment replies addressed to the signed-in character.",
 	"scans":               "Directional and local scan parsing and analysis.",
 	"sde":                 "The EVE Static Data Export: types, groups, systems, stations, and more.",

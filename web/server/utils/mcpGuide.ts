@@ -13,6 +13,7 @@ interface Tool {
         properties?: Record<string, any>
         required?: string[]
     }
+    outputSchema?: Record<string, any>
 }
 
 interface ToolsListResponse {
@@ -52,7 +53,8 @@ function renderTool(t: Tool): string {
     const props = t.inputSchema?.properties ?? {}
     const params = Object.entries(props).map(([k, v]) => formatParam(k, v, req.has(k)))
     const paramBlock = params.length > 0 ? `\nArguments:\n${params.join('\n')}` : '\nArguments: none'
-    return `### ${t.name}\n${t.description}${paramBlock}`
+    const outputType = t.outputSchema?.title || t.outputSchema?.type || (t.outputSchema ? 'typed object' : 'unspecified')
+    return `### ${t.name}\n${t.description}${paramBlock}\nReturns: ${outputType} (see tools/list outputSchema or /api/docs for the full schema)`
 }
 
 export async function buildMcpGuide(mcpBase: string): Promise<string> {
@@ -139,8 +141,8 @@ export async function buildMcpGuide(mcpBase: string): Promise<string> {
     lines.push('    POST /mcp  {"jsonrpc":"2.0","id":3,"method":"tools/call",')
     lines.push('                "params":{"name":"search","arguments":{"query":"Jita"}}}')
     lines.push('')
-    lines.push('All responses are JSON. Tool results return a `content` array of text blocks — the JSON')
-    lines.push('payload is in the `text` field of the first block (parse it as JSON on the client).')
+    lines.push('All responses are JSON. Tool results include both MCP `structuredContent` and a')
+    lines.push('JSON text block for compatibility. Every tool advertises inputSchema and outputSchema.')
     lines.push('')
     lines.push('## Usage tips for LLMs')
     lines.push('')

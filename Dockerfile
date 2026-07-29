@@ -15,6 +15,9 @@ RUN bun install --frozen-lockfile
 
 COPY web/ ./
 RUN bun run build
+RUN mkdir -p /out/dogma/src \
+    && bun build packages/dogma/src/bridge.ts --target=bun --outfile=/out/dogma/src/bridge.js \
+    && cp -R packages/dogma/dist /out/dogma/dist
 
 FROM golang:${GO_VERSION}-alpine AS go-build
 
@@ -47,6 +50,7 @@ COPY --from=go-build /out/shrike /usr/local/bin/shrike
 RUN ln -s /usr/local/bin/shrike /usr/local/bin/ek
 
 COPY --chown=bun:bun --from=web-build /src/web/.output /app/web
+COPY --chown=bun:bun --from=web-build /out/dogma /app/dogma
 COPY docker/entrypoint.sh /usr/local/bin/shrike-entrypoint
 RUN chmod 0755 /usr/local/bin/shrike-entrypoint \
     && mkdir -p /app/data \
@@ -57,6 +61,7 @@ ENV GIT_SHA=${COMMIT} \
     NODE_ENV=production \
     DATA_DIR=/app/data \
     NUXT_ENTRYPOINT=/app/web/server/index.mjs \
+    DOGMA_BRIDGE_PATH=/app/dogma/src/bridge.js \
     NUXT_SOCKET=/tmp/shrike-nuxt.sock \
     SHRIKE_API_SOCKET=/tmp/shrike-api.sock
 

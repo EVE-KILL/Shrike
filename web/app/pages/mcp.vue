@@ -10,6 +10,7 @@ interface Tool {
     name: string
     description: string
     inputSchema: ToolSchema
+    outputSchema?: Record<string, any>
 }
 
 interface ToolsListResponse {
@@ -119,6 +120,10 @@ function toolParams(t: Tool) {
     return Object.entries(props).map(([k, v]) => paramRow(k, v, req.has(k)))
 }
 
+function formattedOutputSchema(t: Tool) {
+    return JSON.stringify(t.outputSchema ?? {}, null, 2)
+}
+
 // Native HTTP MCP form — works in Claude Code, ChatGPT connectors, and
 // any client that speaks streamable-HTTP directly.
 const httpConfig = computed(() => JSON.stringify({
@@ -180,7 +185,7 @@ async function copy(text: string, key: string) {
                     </div>
                     <p class="text-sm text-gray-400 mt-3 max-w-3xl leading-relaxed">
                         Plug any MCP-compatible AI client (Claude, ChatGPT's MCP integrations, custom agents) into
-                        EVE-KILL. {{ totalTools || '26' }} purpose-built tools cover killmail lookup, character
+                        EVE-KILL. {{ totalTools || '45' }} purpose-built tools cover killmail lookup, character
                         intel, corp/alliance analytics, battle reports, Memgraph-backed relationship graphs, and
                         route danger assessment. No API key. No auth. JSON-RPC over streamable HTTP.
                     </p>
@@ -391,6 +396,12 @@ async function copy(text: string, key: string) {
                                     </div>
                                 </div>
                                 <div v-else class="p-3 text-xs text-gray-600 italic">No arguments.</div>
+                                <div v-if="t.outputSchema" class="border-t border-white/[0.05] p-3">
+                                    <div class="text-[10px] uppercase tracking-wider text-gray-600 mb-2">
+                                        Output schema
+                                    </div>
+                                    <pre class="max-h-72 overflow-auto rounded bg-black/30 p-3 text-[10px] leading-relaxed text-gray-400">{{ formattedOutputSchema(t) }}</pre>
+                                </div>
                             </div>
                         </div>
                     </div>

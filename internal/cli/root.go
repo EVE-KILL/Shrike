@@ -136,6 +136,7 @@ func init() {
 		esiCmd,
 		killmailCmd,
 		imagesCmd,
+		mcpCmd,
 		openAPICmd,
 		completionCmd,
 	)
