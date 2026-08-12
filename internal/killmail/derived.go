@@ -137,6 +137,7 @@ func UpdateLastActive(ctx context.Context, tx pgx.Tx, p Parsed) error {
 	if len(order) == 0 {
 		return nil
 	}
+	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
 
 	ids := make([]int32, 0, len(order))
 	secs := make([]*float64, 0, len(order))
@@ -146,6 +147,19 @@ func UpdateLastActive(ctx context.Context, tx pgx.Tx, p Parsed) error {
 	}
 
 	killTime := p.Killmail.KillmailTime.UTC()
+	// UPDATE ... FROM does not guarantee the order in which it locks rows.
+	// Lock every participating character by primary key first so concurrent
+	// killmail and achievement workers cannot take overlapping rows in
+	// opposite orders and deadlock.
+	if _, err := tx.Exec(ctx, `
+        SELECT character_id
+        FROM characters
+        WHERE character_id = ANY($1::int[])
+        ORDER BY character_id
+        FOR UPDATE`, ids); err != nil {
+		return fmt.Errorf("lock characters for last_active update: %w", err)
+	}
+
 	_, err := tx.Exec(ctx, `
         UPDATE characters c
         SET last_active = $3::timestamptz,

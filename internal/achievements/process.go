@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -223,16 +224,33 @@ func syncPoints(ctx context.Context, pool *pgxpool.Pool, awards []award) error {
 			ids = append(ids, a.characterID)
 		}
 	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 
-	_, err := pool.Exec(ctx, `
-        UPDATE characters c
-        SET achievement_points = COALESCE(sums.total, 0)
-        FROM (
-            SELECT entity_id, SUM(points)::int AS total
-            FROM entity_achievements
-            WHERE entity_id = ANY($1::int[])
-            GROUP BY entity_id
-        ) sums
-        WHERE c.character_id = sums.entity_id`, ids)
-	return err
+	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		// UPDATE ... FROM does not guarantee its row-lock order. Take the
+		// character locks explicitly, in the same primary-key order used by
+		// killmail last-active updates, before refreshing the totals.
+		if _, err := tx.Exec(ctx, `
+            SELECT character_id
+            FROM characters
+            WHERE character_id = ANY($1::int[])
+            ORDER BY character_id
+            FOR UPDATE`, ids); err != nil {
+			return fmt.Errorf("lock characters for achievement point sync: %w", err)
+		}
+
+		if _, err := tx.Exec(ctx, `
+            UPDATE characters c
+            SET achievement_points = COALESCE(sums.total, 0)
+            FROM (
+                SELECT entity_id, SUM(points)::int AS total
+                FROM entity_achievements
+                WHERE entity_id = ANY($1::int[])
+                GROUP BY entity_id
+            ) sums
+            WHERE c.character_id = sums.entity_id`, ids); err != nil {
+			return fmt.Errorf("sync character achievement points: %w", err)
+		}
+		return nil
+	})
 }
