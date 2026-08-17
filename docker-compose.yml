@@ -12,7 +12,7 @@ services:
   postgres:
     # Pinned to the next production patch (18.4, Debian build) rather than :18,
     # so local and CI validation happen before the production database moves.
-    image: postgres:18.4
+    image: postgres:18.6
     environment:
       POSTGRES_USER: evekill
       POSTGRES_PASSWORD: evekill
