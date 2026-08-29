@@ -109,6 +109,7 @@ type collapsedResponse struct {
 type cachedResponse struct {
 	ContentType string
 	Body        []byte
+	FreshUntil  time.Time
 }
 
 // cacheKey namespaces entries to Shrike and to this build.
@@ -139,6 +140,17 @@ func cacheLoad(ctx context.Context, cache *ResponseCache, key string) (cachedRes
 		return cachedResponse{}, false
 	}
 	return cache.Load(ctx, key)
+}
+
+func cacheLoadState(
+	ctx context.Context,
+	cache *ResponseCache,
+	key string,
+) (cachedResponse, bool, bool) {
+	if cache == nil {
+		return cachedResponse{}, false, false
+	}
+	return cache.LoadState(ctx, key)
 }
 
 func cacheStore(

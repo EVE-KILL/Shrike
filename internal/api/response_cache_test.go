@@ -213,6 +213,22 @@ func TestResponseCacheNormalizesContentTypeInBothTiers(t *testing.T) {
 	}
 }
 
+func TestResponseCacheRetainsStaleEntry(t *testing.T) {
+	cache := newResponseCache(nil, 1024)
+	cache.StoreStale(context.Background(), "response", cachedResponse{
+		Body: []byte(`{"ok":true}`),
+	}, time.Millisecond, time.Minute)
+
+	time.Sleep(2 * time.Millisecond)
+	if _, ok := cache.Load(context.Background(), "response"); ok {
+		t.Fatal("stale entry was returned as fresh")
+	}
+	entry, fresh, ok := cache.LoadState(context.Background(), "response")
+	if !ok || fresh || string(entry.Body) != `{"ok":true}` {
+		t.Fatalf("stale entry = %q, fresh %v, found %v", entry.Body, fresh, ok)
+	}
+}
+
 func TestResponseCacheDeleteMatchingInvalidatesBothTiers(t *testing.T) {
 	shared := newFakeResponseCacheBackend()
 	cache := newResponseCache(shared, 4096)

@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"context"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -52,6 +53,17 @@ func (c *ResponseCache) LoadOnce(
 	}
 }
 
+// Refresh starts one detached load for a key in this process. Callers use it
+// after serving a stale response, so the client request never owns the refresh.
+func (c *ResponseCache) Refresh(key string, load func() (any, error)) {
+	if c == nil {
+		return
+	}
+	go func() {
+		_, _, _ = c.loads.Do(key, load)
+	}()
+}
+
 // NewResponseCache builds an L1 cache over a shared Valkey L2.
 //
 // maxBytes is a hard payload ceiling for this process. Zero disables L1 but
@@ -76,21 +88,30 @@ func (c *ResponseCache) Load(
 	ctx context.Context,
 	key string,
 ) (cachedResponse, bool) {
+	entry, fresh, ok := c.LoadState(ctx, key)
+	return entry, ok && fresh
+}
+
+// LoadState returns fresh and stale entries while their retention TTL lasts.
+func (c *ResponseCache) LoadState(
+	ctx context.Context,
+	key string,
+) (cachedResponse, bool, bool) {
 	if c == nil {
-		return cachedResponse{}, false
+		return cachedResponse{}, false, false
 	}
 	if entry, ok := c.local.Get(key, time.Now()); ok {
-		return entry, true
+		return entry, responseIsFresh(entry, time.Now()), true
 	}
 	if c.shared == nil {
-		return cachedResponse{}, false
+		return cachedResponse{}, false, false
 	}
 	entry, ttl, ok := c.shared.Load(ctx, key)
 	if !ok {
-		return cachedResponse{}, false
+		return cachedResponse{}, false, false
 	}
 	c.local.Put(key, entry, ttl, time.Now())
-	return cloneCachedResponse(entry), true
+	return cloneCachedResponse(entry), responseIsFresh(entry, time.Now()), true
 }
 
 func (c *ResponseCache) Store(
@@ -99,15 +120,39 @@ func (c *ResponseCache) Store(
 	entry cachedResponse,
 	ttl time.Duration,
 ) {
-	if c == nil || ttl <= 0 {
+	c.store(ctx, key, entry, ttl, 0)
+}
+
+// StoreStale retains an entry after its fresh TTL so a request can serve it
+// while a detached refresh replaces it.
+func (c *ResponseCache) StoreStale(
+	ctx context.Context,
+	key string,
+	entry cachedResponse,
+	freshTTL time.Duration,
+	staleTTL time.Duration,
+) {
+	c.store(ctx, key, entry, freshTTL, staleTTL)
+}
+
+func (c *ResponseCache) store(
+	ctx context.Context,
+	key string,
+	entry cachedResponse,
+	freshTTL time.Duration,
+	staleTTL time.Duration,
+) {
+	if c == nil || freshTTL <= 0 {
 		return
 	}
 	if entry.ContentType == "" {
 		entry.ContentType = "application/json"
 	}
-	c.local.Put(key, entry, ttl, time.Now())
+	entry.FreshUntil = time.Now().Add(freshTTL)
+	retentionTTL := freshTTL + staleTTL
+	c.local.Put(key, entry, retentionTTL, time.Now())
 	if c.shared != nil {
-		c.shared.Store(ctx, key, entry, ttl)
+		c.shared.Store(ctx, key, entry, retentionTTL)
 	}
 }
 
@@ -134,14 +179,14 @@ func (c *redisResponseCache) Load(
 	key string,
 ) (cachedResponse, time.Duration, bool) {
 	pipe := c.client.Pipeline()
-	values := pipe.HMGet(ctx, key, "content_type", "body")
+	values := pipe.HMGet(ctx, key, "content_type", "body", "fresh_until")
 	remaining := pipe.PTTL(ctx, key)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return cachedResponse{}, 0, false
 	}
 
 	fields := values.Val()
-	if len(fields) != 2 {
+	if len(fields) != 3 {
 		return cachedResponse{}, 0, false
 	}
 	body, ok := fields[1].(string)
@@ -156,9 +201,16 @@ func (c *redisResponseCache) Load(
 	if contentType == "" {
 		contentType = "application/json"
 	}
+	var freshUntil time.Time
+	if raw, ok := fields[2].(string); ok {
+		if unixMillis, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			freshUntil = time.UnixMilli(unixMillis)
+		}
+	}
 	return cachedResponse{
 		ContentType: contentType,
 		Body:        []byte(body),
+		FreshUntil:  freshUntil,
 	}, ttl, true
 }
 
@@ -173,7 +225,11 @@ func (c *redisResponseCache) Store(
 		contentType = "application/json"
 	}
 	pipe := c.client.TxPipeline()
-	pipe.HSet(ctx, key, "content_type", contentType, "body", entry.Body)
+	pipe.HSet(ctx, key,
+		"content_type", contentType,
+		"body", entry.Body,
+		"fresh_until", entry.FreshUntil.UnixMilli(),
+	)
 	pipe.PExpire(ctx, key, ttl)
 	// The handler already produced the correct response. A cache failure must
 	// never turn that response into an application failure.
@@ -312,7 +368,12 @@ func cloneCachedResponse(entry cachedResponse) cachedResponse {
 	return cachedResponse{
 		ContentType: entry.ContentType,
 		Body:        append([]byte(nil), entry.Body...),
+		FreshUntil:  entry.FreshUntil,
 	}
+}
+
+func responseIsFresh(entry cachedResponse, now time.Time) bool {
+	return entry.FreshUntil.IsZero() || now.Before(entry.FreshUntil)
 }
 
 func cachedResponseSize(key string, entry cachedResponse) int64 {

@@ -38,15 +38,36 @@ func routeJSONCacheBy(
 			}
 			key = "shrike:web-api:" + build + ":" + keyFor(req)
 		}
-		if entry, ok := cacheLoad(ctx, opts.responseCache, key); ok {
+		entry, fresh, ok := cacheLoadState(ctx, opts.responseCache, key)
+		if ok && fresh {
 			return cachedLegacyPayload(entry, cacheControl, "HIT"), nil
+		}
+		if ok {
+			opts.responseCache.Refresh(key, func() (any, error) {
+				refreshCtx, cancel := context.WithTimeout(
+					context.WithoutCancel(ctx), 2*time.Minute,
+				)
+				defer cancel()
+				if current, currentFresh, found := cacheLoadState(
+					refreshCtx, opts.responseCache, key,
+				); found && currentFresh {
+					return cachedLegacyPayload(current, cacheControl, "HIT"), nil
+				}
+				return loadLegacyPayload(
+					refreshCtx, req, next, opts.responseCache, key,
+					ttl, ttl, cacheControl,
+				)
+			})
+			return cachedLegacyPayload(entry, cacheControl, "STALE"), nil
 		}
 
 		value, err, _ := opts.responseCache.LoadOnce(ctx, key, func() (any, error) {
 			if entry, ok := cacheLoad(ctx, opts.responseCache, key); ok {
 				return cachedLegacyPayload(entry, cacheControl, "HIT"), nil
 			}
-			return loadLegacyPayload(ctx, req, next, opts.responseCache, key, ttl, cacheControl)
+			return loadLegacyPayload(
+				ctx, req, next, opts.responseCache, key, ttl, ttl, cacheControl,
+			)
 		})
 		if err != nil {
 			return legacyPayload{}, err
@@ -66,6 +87,7 @@ func loadLegacyPayload(
 	cache *ResponseCache,
 	key string,
 	ttl time.Duration,
+	staleTTL time.Duration,
 	cacheControl string,
 ) (legacyPayload, error) {
 	payload, err := next(ctx, req)
@@ -91,10 +113,12 @@ func loadLegacyPayload(
 	if contentType == "" {
 		contentType = "application/json"
 	}
-	cacheStore(context.WithoutCancel(ctx), cache, key, cachedResponse{
-		ContentType: contentType,
-		Body:        body,
-	}, ttl)
+	if cache != nil {
+		cache.StoreStale(context.WithoutCancel(ctx), key, cachedResponse{
+			ContentType: contentType,
+			Body:        body,
+		}, ttl, staleTTL)
+	}
 
 	if payload.Headers == nil {
 		payload.Headers = make(http.Header)
