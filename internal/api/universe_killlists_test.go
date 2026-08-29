@@ -70,7 +70,10 @@ func TestUniverseItemKilllistQueryMatchesVictimAndFittedSlots(t *testing.T) {
 		"flag_id = 87",
 		"killmail_id < $2",
 		"LIMIT $3",
-		"JOIN item_kills ON item_kills.killmail_id = k.killmail_id",
+		"bounded_item_kills AS MATERIALIZED",
+		"FROM item_kills",
+		"JOIN killmails k ON k.killmail_id = item_kills.killmail_id",
+		"FROM bounded_item_kills k",
 	} {
 		if !strings.Contains(query, fragment) {
 			t.Errorf("item query missing %q:\n%s", fragment, query)
@@ -78,6 +81,9 @@ func TestUniverseItemKilllistQueryMatchesVictimAndFittedSlots(t *testing.T) {
 	}
 	if !reflect.DeepEqual(args, []any{int64(34), after, 51}) {
 		t.Errorf("item args = %#v", args)
+	}
+	if strings.Contains(query, "FROM killmails k\n\tLEFT JOIN LATERAL") {
+		t.Errorf("item enrichment is not driven by the bounded relation:\n%s", query)
 	}
 
 	shipQuery, shipArgs := universeItemKilllistQuery(587, nil, 100, false)

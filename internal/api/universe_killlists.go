@@ -414,6 +414,12 @@ func universeItemKilllistQuery(
 		return campaignKilllistSelect + " WHERE " + where +
 			" ORDER BY k.killmail_id DESC LIMIT " + limitParameter, args
 	}
+	boundedSelect := strings.Replace(
+		campaignKilllistSelect,
+		"\n\tFROM killmails k",
+		"\n\tFROM bounded_item_kills k",
+		1,
+	)
 	return fmt.Sprintf(`
 		WITH item_kills AS MATERIALIZED (
 			(
@@ -440,13 +446,19 @@ func universeItemKilllistQuery(
 			)
 			ORDER BY killmail_id DESC
 			LIMIT %s
+		),
+		bounded_item_kills AS MATERIALIZED (
+			SELECT k.*
+			FROM item_kills
+			JOIN killmails k ON k.killmail_id = item_kills.killmail_id
+			ORDER BY k.killmail_id DESC
+			LIMIT %s
 		)
 		%s
-		JOIN item_kills ON item_kills.killmail_id = k.killmail_id
 		ORDER BY k.killmail_id DESC
 		LIMIT %s`,
 		cursor, limitParameter, cursor, limitParameter, limitParameter,
-		campaignKilllistSelect, limitParameter,
+		limitParameter, boundedSelect, limitParameter,
 	), args
 }
 

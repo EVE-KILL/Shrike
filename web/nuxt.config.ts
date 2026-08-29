@@ -265,6 +265,12 @@ export default defineNuxtConfig({
           "Cache-Control": "public, s-maxage=120, stale-while-revalidate=120",
         },
       },
+      "/item/**": {
+        sitemap: { changefreq: "daily", priority: 0.5 },
+        headers: {
+          "Cache-Control": "public, s-maxage=120, stale-while-revalidate=120",
+        },
+      },
       "/wars": {
         sitemap: { changefreq: "hourly", priority: 0.6 },
         headers: {
