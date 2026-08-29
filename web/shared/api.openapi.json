@@ -15846,6 +15846,21 @@
         ],
         "type": "object"
       },
+      "ready-response": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this response.",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "$schema"
+        ],
+        "type": "object"
+      },
       "resolve-response": {
         "additionalProperties": false,
         "properties": {
@@ -66045,7 +66060,7 @@
     },
     "/health": {
       "get": {
-        "description": "Checks that the API can reach Postgres.",
+        "description": "Reports that the HTTP process is alive without consulting dependencies.",
         "operationId": "health",
         "responses": {
           "200": {
@@ -66059,7 +66074,7 @@
             "description": "OK"
           }
         },
-        "summary": "Database health check",
+        "summary": "Process liveness check",
         "tags": [
           "health"
         ],
@@ -79955,6 +79970,29 @@
         "summary": "Latest prices for a set of item types",
         "tags": [
           "market"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Checks that the API can acquire its normal Postgres pool and complete a round trip.",
+        "operationId": "ready",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ready-response"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Database readiness check",
+        "tags": [
+          "health"
         ],
         "x-audience": "public"
       }
@@ -95802,7 +95840,7 @@
       "name": "admin-wallet"
     },
     {
-      "description": "Liveness probe. Checks that the API can reach Postgres.",
+      "description": "Process liveness and Postgres-backed readiness probes.",
       "name": "health"
     },
     {

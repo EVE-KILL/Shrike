@@ -4040,6 +4040,13 @@ export type LocationResponse = {
     z: number;
 };
 
+export type ReadyResponse = {
+    /**
+     * A URL to the JSON Schema for this response.
+     */
+    readonly $schema: string;
+};
+
 export type ResolveResponse = {
     /**
      * A URL to the JSON Schema for this response.
@@ -27063,6 +27070,22 @@ export type BulkPricesResponses = {
 };
 
 export type BulkPricesResponse = BulkPricesResponses[keyof BulkPricesResponses];
+
+export type ReadyData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/ready';
+};
+
+export type ReadyResponses = {
+    /**
+     * OK
+     */
+    200: ReadyResponse;
+};
+
+export type ReadyResponse2 = ReadyResponses[keyof ReadyResponses];
 
 export type RegionCompatData = {
     body?: never;
