@@ -125,31 +125,40 @@ func loadGlobalTopList(
 	}
 	config := configs[dataType]
 	entityFilter := globalStatsEntityFilter(dataType)
+	countMetric := config.metric
+	includeISK := dataType == "dangerous_systems" || dataType == "deadliest_regions"
+	if includeISK {
+		countMetric = "kills"
+	}
+	extraAggregate := ""
+	extraSelect := ""
+	if includeISK {
+		extraAggregate = ", COALESCE(SUM(s.isk_destroyed), 0)::double precision AS isk"
+		extraSelect = ", ranked.isk"
+	}
 	rows, err := queryMaps(ctx, db, fmt.Sprintf(`
-		SELECT s.entity_id AS id, n.%s AS name,
-		       COALESCE(SUM(s.%s), 0)::double precision AS count%s
-		FROM stats s
-		INNER JOIN %s n ON s.entity_id = n.%s
-		WHERE s.entity_type = $1 AND s.period_type = 0
-		  AND s.period_start >= $2::date
-		  %s
-		GROUP BY s.entity_id, n.%s
-		ORDER BY SUM(s.%s) DESC
-		LIMIT $3`,
+		WITH ranked AS MATERIALIZED (
+			SELECT s.entity_id,
+			       COALESCE(SUM(s.%s), 0)::double precision AS count%s
+			FROM stats s
+			WHERE s.entity_type = $1 AND s.period_type = 0
+			  AND s.period_start >= $2::date%s
+			GROUP BY s.entity_id
+			ORDER BY SUM(s.%s) DESC
+			LIMIT $3
+		)
+		SELECT ranked.entity_id AS id, n.%s AS name, ranked.count%s
+		FROM ranked
+		INNER JOIN %s n ON ranked.entity_id = n.%s
+		ORDER BY ranked.count DESC`,
+		countMetric,
+		extraAggregate,
+		entityFilter,
+		config.metric,
 		config.nameColumn,
-		func() string {
-			if dataType == "dangerous_systems" || dataType == "deadliest_regions" {
-				return "kills"
-			}
-			return config.metric
-		}(),
-		func() string {
-			if dataType == "dangerous_systems" || dataType == "deadliest_regions" {
-				return ", COALESCE(SUM(s.isk_destroyed), 0)::double precision AS isk"
-			}
-			return ""
-		}(),
-		config.table, config.idColumn, entityFilter, config.nameColumn, config.metric,
+		extraSelect,
+		config.table,
+		config.idColumn,
 	), config.entityType, since, limit)
 	if err != nil {
 		return nil, err
@@ -165,7 +174,11 @@ func loadGlobalTopList(
 
 func globalStatsEntityFilter(dataType string) string {
 	if dataType == "factions" {
-		return " AND n.militia_corporation_id IS NOT NULL"
+		return ` AND EXISTS (
+			SELECT 1 FROM factions
+			WHERE factions.faction_id = s.entity_id
+			  AND factions.militia_corporation_id IS NOT NULL
+		)`
 	}
 	return ""
 }

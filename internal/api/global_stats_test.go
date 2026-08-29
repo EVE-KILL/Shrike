@@ -3,6 +3,7 @@ package api
 import (
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -140,8 +141,10 @@ func TestGlobalStatsIncludesFactionLeaderboard(t *testing.T) {
 	if _, ok := validGlobalStatsTypes["factions"]; !ok {
 		t.Fatal("factions are not an accepted global stats type")
 	}
-	if got := globalStatsEntityFilter("factions"); got != " AND n.militia_corporation_id IS NOT NULL" {
-		t.Fatalf("faction filter = %q, want joinable-faction filter", got)
+	if got := globalStatsEntityFilter("factions"); !strings.Contains(
+		got, "factions.militia_corporation_id IS NOT NULL",
+	) {
+		t.Fatalf("faction filter = %q, want militia filter", got)
 	}
 	if got := globalStatsEntityFilter("characters"); got != "" {
 		t.Fatalf("character filter = %q, want none", got)

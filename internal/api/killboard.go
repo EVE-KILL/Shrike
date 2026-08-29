@@ -637,15 +637,19 @@ func loadTopKillsFromStats(
 	}
 	spec := specs[dataType]
 	rows, err := queryMaps(ctx, db, fmt.Sprintf(`
-		SELECT s.entity_id AS id, entity.name,
-		       COALESCE(SUM(s.%s), 0)::bigint AS count
-		FROM stats s
-		JOIN %s entity ON entity.%s = s.entity_id
-		WHERE s.entity_type = $1 AND s.period_type = $2
-		  AND s.period_start >= $3::date
-		GROUP BY s.entity_id, entity.name
-		ORDER BY count DESC
-		LIMIT $4`, metric, spec.Table, spec.ID),
+		WITH ranked AS MATERIALIZED (
+			SELECT entity_id, COALESCE(SUM(%s), 0)::bigint AS count
+			FROM stats
+			WHERE entity_type = $1 AND period_type = $2
+			  AND period_start >= $3::date
+			GROUP BY entity_id
+			ORDER BY count DESC
+			LIMIT $4
+		)
+		SELECT ranked.entity_id AS id, entity.name, ranked.count
+		FROM ranked
+		JOIN %s entity ON entity.%s = ranked.entity_id
+		ORDER BY ranked.count DESC`, metric, spec.Table, spec.ID),
 		spec.EntityType, stats.PeriodDaily,
 		since.Format("2006-01-02"), limit,
 	)
