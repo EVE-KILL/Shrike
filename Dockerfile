@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG GO_VERSION=1.26.5
+ARG GO_VERSION=1.26.7
 ARG BUN_VERSION=1.3.14
 
 FROM oven/bun:${BUN_VERSION}-alpine AS web-build
