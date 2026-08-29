@@ -156,8 +156,14 @@ func TestBaselineIsNotRepeatable(t *testing.T) {
 	if st.DBVersion != BaselineVersion {
 		t.Fatalf("DBVersion = %d; want %d", st.DBVersion, BaselineVersion)
 	}
-	if len(st.Pending()) != 1 || st.Pending()[0].Version != 2 {
-		t.Fatalf("Pending = %+v; want only post-baseline migration 2", st.Pending())
+	pending := st.Pending()
+	if len(pending) != len(st.Migrations)-1 {
+		t.Fatalf("Pending = %+v; want every post-baseline migration", pending)
+	}
+	for _, migration := range pending {
+		if migration.Version <= BaselineVersion {
+			t.Fatalf("Pending = %+v; includes baseline migration", pending)
+		}
 	}
 
 	if err := Baseline(ctx, pool); !errors.Is(err, ErrAlreadyBaselined) {
@@ -165,18 +171,26 @@ func TestBaselineIsNotRepeatable(t *testing.T) {
 	}
 }
 
-// After baselining, Apply must be a safe no-op rather than executing migration 1.
+// After baselining, Apply must run later migrations without executing migration 1.
 func TestApplyAfterBaselineDoesNotRunBaseline(t *testing.T) {
 	ctx := context.Background()
 	pool := scratchDB(t, "applyafterbaseline")
 
-	if _, err := pool.Exec(ctx, `
-		CREATE TABLE pretend_existing (id int primary key);
-		CREATE TABLE custom_domain_campaigns (
-			public_on_domain boolean DEFAULT false NOT NULL
-		);
-	`); err != nil {
-		t.Fatalf("seed schema: %v", err)
+	// Build the real current schema, then remove only Goose's bookkeeping to
+	// reproduce a legacy deployment whose application tables already exist.
+	if err := Apply(ctx, pool); err != nil {
+		t.Fatalf("seed current schema: %v", err)
+	}
+	var tablesBefore int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*) FROM information_schema.tables
+		WHERE table_schema='public' AND table_type='BASE TABLE'
+		  AND table_name <> 'goose_db_version'
+	`).Scan(&tablesBefore); err != nil {
+		t.Fatalf("count seeded schema: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `DROP TABLE goose_db_version`); err != nil {
+		t.Fatalf("remove migration ledger: %v", err)
 	}
 	if err := Baseline(ctx, pool); err != nil {
 		t.Fatalf("Baseline: %v", err)
@@ -185,8 +199,8 @@ func TestApplyAfterBaselineDoesNotRunBaseline(t *testing.T) {
 		t.Fatalf("Apply after baseline: %v", err)
 	}
 
-	// Migration 1 creates ~102 tables. Migration 2 adopts the column already
-	// applied by TypeScript and records itself without changing its definition.
+	// Migration 1 creates ~102 tables and would fail against this schema. Later
+	// migrations are deliberately repeatable so adopting the schema is safe.
 	var n int
 	if err := pool.QueryRow(ctx, `
         SELECT count(*) FROM information_schema.tables
@@ -195,8 +209,8 @@ func TestApplyAfterBaselineDoesNotRunBaseline(t *testing.T) {
     `).Scan(&n); err != nil {
 		t.Fatalf("recount: %v", err)
 	}
-	if n != 2 {
-		t.Fatalf("table count = %d; want 2 — the baseline was executed despite being stamped", n)
+	if n != tablesBefore {
+		t.Fatalf("table count = %d; want %d — baseline changed the application schema", n, tablesBefore)
 	}
 }
 
