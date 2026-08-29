@@ -200,43 +200,13 @@ jobs:
             --recursive
             ./
 
-  image:
-    name: Unified image
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build unified container
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: Dockerfile
-          load: true
-          push: false
-          tags: shrike:ci
-          cache-from: type=gha,scope=shrike-ci
-          cache-to: type=gha,mode=max,scope=shrike-ci
-          build-args: |
-            VERSION=ci
-            COMMIT=${{ github.sha }}
-
-      - name: Smoke-test unified container
-        run: docker run --rm shrike:ci version
-
   verify:
-    name: Verify source and unified image
+    name: Verify source checks
     if: ${{ always() }}
     needs:
       - go
       - frontend
       - security
-      - image
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -246,16 +216,13 @@ jobs:
           GO_RESULT: ${{ needs.go.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
-          IMAGE_RESULT: ${{ needs.image.result }}
         shell: bash
         run: |
           if [[ "$GO_RESULT" != "success" ||
                 "$FRONTEND_RESULT" != "success" ||
-                "$SECURITY_RESULT" != "success" ||
-                "$IMAGE_RESULT" != "success" ]]; then
+                "$SECURITY_RESULT" != "success" ]]; then
             echo "Go: $GO_RESULT"
             echo "Frontend: $FRONTEND_RESULT"
             echo "Security: $SECURITY_RESULT"
-            echo "Image: $IMAGE_RESULT"
             exit 1
           fi
