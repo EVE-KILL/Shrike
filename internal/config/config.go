@@ -60,6 +60,9 @@ type Config struct {
 	B2ImagesBucket string
 	B2KeyID        string
 	B2AppKey       string
+	// ImageStoragePath selects durable local filesystem storage for images.
+	// When set it takes precedence over the legacy B2 image bucket.
+	ImageStoragePath string
 
 	// ImageCacheBytes bounds the encoded-response LRU owned by `shrike serve`.
 	// It is a ceiling, not a reservation, and is deliberately not used by
@@ -189,6 +192,7 @@ func Load(explicitPath string) (*Config, error) {
 	c.B2ImagesBucket = get("B2ImagesBucket", "B2_IMAGES_BUCKET", "")
 	c.B2KeyID = get("B2KeyID", "B2_KEY_ID", "")
 	c.B2AppKey = get("B2AppKey", "B2_APP_KEY", "")
+	c.ImageStoragePath = get("ImageStoragePath", "IMAGE_STORAGE_PATH", "")
 	c.ImageCacheBytes = getInt64(
 		"ImageCacheBytes",
 		"IMAGE_CACHE_BYTES",

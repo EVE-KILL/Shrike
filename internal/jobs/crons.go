@@ -74,7 +74,7 @@ var Crons = []Cron{
 	{Name: "insurance", Schedule: "1d",
 		Description: "Fetch insurance prices from EVE Ref"},
 	{Name: "image_type_sync", Schedule: "1d",
-		Description: "Mirror the latest TurtleTools type-ID image export to B2"},
+		Description: "Mirror the latest TurtleTools type-ID image export to image storage"},
 	{Name: "killmail_delayed", Schedule: "1m",
 		Description: "Dispatch killmails whose ESI delay has expired"},
 	{Name: "kills_daily_count_reconcile", Schedule: "1d",

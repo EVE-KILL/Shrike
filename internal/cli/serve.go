@@ -424,6 +424,13 @@ func (d imageRefreshDispatcher) EnqueueImageRefresh(
 }
 
 func newImageStorage(cfg *config.Config) (images.ObjectStore, error) {
+	if cfg.ImageStoragePath != "" {
+		store, err := objectstore.NewFileStore(cfg.ImageStoragePath, 32<<20)
+		if err != nil {
+			return nil, fmt.Errorf("configure filesystem image storage: %w", err)
+		}
+		return store, nil
+	}
 	if cfg.B2ImagesPartiallyConfigured() {
 		return nil, fmt.Errorf(
 			"configure B2_ENDPOINT, B2_IMAGES_BUCKET, B2_KEY_ID, and B2_APP_KEY together",

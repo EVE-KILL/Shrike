@@ -46,6 +46,7 @@ Credentials are redacted. The SOURCE column is the point of this command:
 			{"B2ImagesBucket", "B2_IMAGES_BUCKET", cfg.B2ImagesBucket},
 			{"B2KeyID", "B2_KEY_ID", config.RedactSecret(cfg.B2KeyID)},
 			{"B2AppKey", "B2_APP_KEY", config.RedactSecret(cfg.B2AppKey)},
+			{"ImageStoragePath", "IMAGE_STORAGE_PATH", cfg.ImageStoragePath},
 			{"ImageCacheBytes", "IMAGE_CACHE_BYTES", strconv.FormatInt(cfg.ImageCacheBytes, 10)},
 			{"APICacheBytes", "API_CACHE_BYTES", strconv.FormatInt(cfg.APICacheBytes, 10)},
 			{"Port", "PORT", strconv.Itoa(cfg.Port)},

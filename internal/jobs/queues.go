@@ -141,7 +141,7 @@ var Queues = []Queue{
 	},
 	{
 		Name:        "image_refresh",
-		Description: "Refresh stale entity images from CCP into B2",
+		Description: "Refresh stale entity images from CCP into image storage",
 		Concurrency: 4, Retries: 3, BackoffDelay: 10_000,
 	},
 	{

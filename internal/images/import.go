@@ -1,11 +1,16 @@
 package images
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"mime"
 	"os"
 	"path/filepath"
@@ -15,6 +20,9 @@ import (
 	"github.com/eve-kill/shrike/internal/objectstore"
 	"golang.org/x/sync/errgroup"
 )
+
+//go:embed assetsdata/static-assets.tar.gz
+var bundledStaticAssets []byte
 
 type ImportResult struct {
 	Scanned  int64 `json:"scanned"`
@@ -119,6 +127,103 @@ func ImportStaticTree(
 		}
 	}
 	return importLocalObjects(ctx, store, objects, options)
+}
+
+// ImportBundledStatic imports the UI, Dust 514, and overlay assets shipped in
+// the Shrike binary. Map images are generated from PostgreSQL separately.
+func ImportBundledStatic(ctx context.Context, store ObjectStore, options ImportOptions) (ImportResult, error) {
+	if store == nil {
+		return ImportResult{}, unavailable()
+	}
+	gz, err := gzip.NewReader(bytes.NewReader(bundledStaticAssets))
+	if err != nil {
+		return ImportResult{}, fmt.Errorf("open bundled static assets: %w", err)
+	}
+	defer gz.Close()
+	reader := tar.NewReader(gz)
+	var objects []importObject
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return ImportResult{}, fmt.Errorf("read bundled static assets: %w", err)
+		}
+		if header.FileInfo().IsDir() {
+			continue
+		}
+		name := filepath.ToSlash(header.Name)
+		if !safeRelativePath(name) {
+			return ImportResult{}, fmt.Errorf("unsafe bundled static asset path %q", name)
+		}
+		parts := strings.SplitN(name, "/", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		prefix := map[string]string{"ui": "static/ui", "dust514": "types/dust514", "overlays": "types/overlays"}[parts[0]]
+		if prefix == "" {
+			continue
+		}
+		body, err := readBounded(reader, defaultMaximumObject)
+		if err != nil {
+			return ImportResult{}, fmt.Errorf("read bundled asset %q: %w", name, err)
+		}
+		contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(name)))
+		if contentType == "" {
+			contentType = "application/octet-stream"
+		}
+		objects = append(objects, importObject{Key: prefix + "/" + parts[1], Body: body, ContentType: contentType})
+	}
+	return importObjects(ctx, store, objects, options)
+}
+
+func importObjects(ctx context.Context, store ObjectStore, objects []importObject, options ImportOptions) (ImportResult, error) {
+	concurrency := options.Concurrency
+	if concurrency <= 0 {
+		concurrency = 8
+	}
+	group, groupCtx := errgroup.WithContext(ctx)
+	input := make(chan importObject, concurrency)
+	var scanned, uploaded, skipped, uploadedBytes atomic.Int64
+	for range concurrency {
+		group.Go(func() error {
+			for object := range input {
+				changed, err := putIfChanged(groupCtx, store, object)
+				if err != nil {
+					return err
+				}
+				scanned.Add(1)
+				if changed {
+					uploaded.Add(1)
+					uploadedBytes.Add(int64(len(object.Body)))
+				} else {
+					skipped.Add(1)
+				}
+				if options.Progress != nil && scanned.Load()%1_000 == 0 {
+					options.Progress(ImportResult{Scanned: scanned.Load(), Uploaded: uploaded.Load(), Skipped: skipped.Load(), Bytes: uploadedBytes.Load()})
+				}
+			}
+			return nil
+		})
+	}
+	group.Go(func() error {
+		defer close(input)
+		for _, object := range objects {
+			select {
+			case input <- object:
+			case <-groupCtx.Done():
+				return groupCtx.Err()
+			}
+		}
+		return nil
+	})
+	err := group.Wait()
+	result := ImportResult{Scanned: scanned.Load(), Uploaded: uploaded.Load(), Skipped: skipped.Load(), Bytes: uploadedBytes.Load()}
+	if options.Progress != nil {
+		options.Progress(result)
+	}
+	return result, err
 }
 
 func importLocalObjects(

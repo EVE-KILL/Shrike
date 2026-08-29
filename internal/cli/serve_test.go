@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/config"
+	"github.com/eve-kill/shrike/internal/objectstore"
 )
 
 func TestRequestDeadlineExemptsSSE(t *testing.T) {
@@ -116,7 +117,7 @@ func TestNewImageStorageAllowsDisabledLocalConfiguration(t *testing.T) {
 		t.Fatalf("newImageStorage: %v", err)
 	}
 	if store != nil {
-		t.Fatalf("store = %T, want nil when B2 images are disabled", store)
+		t.Fatalf("store = %T, want nil when image storage is disabled", store)
 	}
 }
 
@@ -148,5 +149,18 @@ func TestNewImageStorageBuildsUncachedStore(t *testing.T) {
 	}
 	if store == nil {
 		t.Fatal("store is nil for complete image B2 configuration")
+	}
+}
+
+func TestNewImageStoragePrefersFilesystem(t *testing.T) {
+	store, err := newImageStorage(&config.Config{
+		ImageStoragePath: t.TempDir(),
+		B2ImagesBucket:   "incomplete-is-ignored",
+	})
+	if err != nil {
+		t.Fatalf("newImageStorage: %v", err)
+	}
+	if _, ok := store.(*objectstore.FileStore); !ok {
+		t.Fatalf("store = %T", store)
 	}
 }

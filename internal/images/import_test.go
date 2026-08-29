@@ -63,6 +63,29 @@ func TestImportStaticTreeMapsAssetsAndSkipsMatchingHashes(t *testing.T) {
 	}
 }
 
+func TestImportBundledStatic(t *testing.T) {
+	store := newMemoryStore()
+	result, err := ImportBundledStatic(
+		context.Background(), store, ImportOptions{Concurrency: 4},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Uploaded < 2500 {
+		t.Fatalf("uploaded = %d", result.Uploaded)
+	}
+	for _, key := range []string{
+		"static/ui/align-time.png",
+		"types/dust514/350916.png",
+		"types/overlays/t1.png",
+		"types/overlays/ids.json",
+	} {
+		if store.objects[key] == nil {
+			t.Errorf("missing %s", key)
+		}
+	}
+}
+
 func TestImportOldCharactersPreservesShardContract(t *testing.T) {
 	archivePath := filepath.Join(t.TempDir(), "old.zip")
 	file, err := os.Create(archivePath)

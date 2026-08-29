@@ -63,7 +63,7 @@ func TestKillmailSocialRendersAndPersistsImmutablePNG(t *testing.T) {
 		t.Fatalf("social image = %s %dx%d", format, config.Width, config.Height)
 	}
 	if store.objects["social/killmails/v1/123456789.png"] == nil {
-		t.Fatal("social image was not persisted to B2")
+		t.Fatal("social image was not persisted to image storage")
 	}
 	second, err := service.KillmailSocial(context.Background(), 123456789)
 	if err != nil {

@@ -1,4 +1,4 @@
-// Package images implements the B2-backed EVE-KILL image surface.
+// Package images implements the durable EVE-KILL image surface.
 package images
 
 import (

@@ -14,7 +14,7 @@ import (
 
 var imagesCmd = &cobra.Command{
 	Use:   "images",
-	Short: "Manage the Backblaze B2 image library",
+	Short: "Manage the durable image library",
 	Long: `Imports durable source assets and synchronizes generated EVE images.
 
 HTTP serving happens inside "shrike serve"; these commands intentionally do not
@@ -30,26 +30,32 @@ var (
 	flagOldImagesForce       bool
 	flagTypeSyncArchive      string
 	flagTypeSyncConcurrency  int
+	flagMapKind              string
+	flagMapID                int64
+	flagMapSize              int
+	flagMapSmallSize         int
+	flagMapConcurrency       int
 )
 
 var imagesImportStaticCmd = &cobra.Command{
 	Use:   "import-static",
-	Short: "Upload map, UI, Dust 514, and overlay assets to B2",
+	Short: "Import map, UI, Dust 514, and overlay assets",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		store, err := openImageStore()
 		if err != nil {
 			return err
 		}
 		start := time.Now()
-		result, err := images.ImportStaticTree(
-			cmd.Context(),
-			store,
-			flagImagesSource,
-			images.ImportOptions{
-				Concurrency: flagImagesConcurrency,
-				Progress:    reportImageProgress,
-			},
-		)
+		options := images.ImportOptions{
+			Concurrency: flagImagesConcurrency,
+			Progress:    reportImageProgress,
+		}
+		var result images.ImportResult
+		if flagImagesSource == "" {
+			result, err = images.ImportBundledStatic(cmd.Context(), store, options)
+		} else {
+			result, err = images.ImportStaticTree(cmd.Context(), store, flagImagesSource, options)
+		}
 		if err != nil {
 			return err
 		}
@@ -59,10 +65,10 @@ var imagesImportStaticCmd = &cobra.Command{
 
 var imagesImportOldCharactersCmd = &cobra.Command{
 	Use:   "import-old-characters",
-	Short: "Upload the static EVE Ref legacy portrait archive to B2",
+	Short: "Import the static EVE Ref legacy portrait archive",
 	Long: `Downloads OldCharPortraits_256.zip from EVE Ref, or reads --archive,
-and uploads each portrait under its sharded B2 key. Remote downloads resume
-from the local cache, and completed B2 shards are skipped on restart.`,
+and stores each portrait under its sharded object key. Remote downloads resume
+from the local cache, and completed shards are skipped on restart.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		store, err := openImageStore()
 		if err != nil {
@@ -91,7 +97,7 @@ from the local cache, and completed B2 shards are skipped on restart.`,
 
 var imagesSyncTypesCmd = &cobra.Command{
 	Use:   "sync-types",
-	Short: "Synchronize the latest TurtleTools Image Export Collection to B2",
+	Short: "Synchronize the latest TurtleTools Image Export Collection",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		store, err := openImageStore()
 		if err != nil {
@@ -133,6 +139,45 @@ var imagesSyncTypesCmd = &cobra.Command{
 	},
 }
 
+var imagesGenerateMapsCmd = &cobra.Command{
+	Use:   "generate-maps",
+	Short: "Generate system, constellation, and region images from the SDE",
+	Long: `Renders map PNGs from the solar_systems, solar_system_jumps, and
+celestials tables and writes them directly to the configured image storage.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		store, err := openImageStore()
+		if err != nil {
+			return err
+		}
+		pool, err := openPool(cmd)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		kind := images.MapKind(flagMapKind)
+		if flagMapKind == "all" {
+			kind = ""
+		}
+		if flagMapID > 0 && kind == "" {
+			return fmt.Errorf("--id requires --type system, constellation, or region")
+		}
+		start := time.Now()
+		result, err := images.GenerateMapImages(cmd.Context(), pool, store, images.MapGenerateOptions{
+			Kind: kind, ID: flagMapID, Size: flagMapSize, SmallSize: flagMapSmallSize,
+			Concurrency: flagMapConcurrency,
+			Progress: func(done, total int64) {
+				if !ui.JSONMode {
+					ui.Printf("  %s / %s rendered\r", fmtCount(done), fmtCount(total))
+				}
+			},
+		})
+		if err != nil {
+			return err
+		}
+		return reportImageImport("Map images", result, time.Since(start))
+	},
+}
+
 func openImageStore() (images.ObjectStore, error) {
 	if err := requireConfig(); err != nil {
 		return nil, err
@@ -143,7 +188,7 @@ func openImageStore() (images.ObjectStore, error) {
 	}
 	if store == nil {
 		return nil, fmt.Errorf(
-			"image storage is disabled; configure B2_ENDPOINT, B2_IMAGES_BUCKET, B2_KEY_ID, and B2_APP_KEY",
+			"image storage is disabled; configure IMAGE_STORAGE_PATH or the B2 image settings",
 		)
 	}
 	return store, nil
@@ -219,14 +264,14 @@ func init() {
 	imagesImportStaticCmd.Flags().StringVar(
 		&flagImagesSource,
 		"source",
-		"../imageserver",
-		"Path to the existing image-server asset tree",
+		"",
+		"Optional asset tree override (default: assets bundled with Shrike)",
 	)
 	imagesImportStaticCmd.Flags().IntVar(
 		&flagImagesConcurrency,
 		"concurrency",
 		8,
-		"Concurrent B2 uploads",
+		"Concurrent object writes",
 	)
 	imagesImportOldCharactersCmd.Flags().StringVar(
 		&flagImagesArchive,
@@ -238,7 +283,7 @@ func init() {
 		&flagOldImagesConcurrency,
 		"concurrency",
 		64,
-		"Concurrent B2 uploads",
+		"Concurrent object writes",
 	)
 	imagesImportOldCharactersCmd.Flags().StringVar(
 		&flagOldImagesCacheDir,
@@ -262,12 +307,18 @@ func init() {
 		&flagTypeSyncConcurrency,
 		"concurrency",
 		32,
-		"Concurrent B2 uploads",
+		"Concurrent object writes",
 	)
+	imagesGenerateMapsCmd.Flags().StringVarP(&flagMapKind, "type", "t", "all", "system, constellation, region, or all")
+	imagesGenerateMapsCmd.Flags().Int64VarP(&flagMapID, "id", "i", 0, "Generate one ID (requires a single type)")
+	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapSize, "size", "s", 128, "Base image size in pixels")
+	imagesGenerateMapsCmd.Flags().IntVar(&flagMapSmallSize, "small", 32, "Also generate this smaller size (0 disables)")
+	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapConcurrency, "concurrency", "c", 16, "Parallel render workers")
 	imagesCmd.AddCommand(
 		imagesImportStaticCmd,
 		imagesImportOldCharactersCmd,
 		imagesSyncTypesCmd,
+		imagesGenerateMapsCmd,
 	)
 }
 
