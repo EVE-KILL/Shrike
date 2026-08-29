@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/sync/singleflight"
 )
 
 // ResponseCache is the API response cache.
@@ -20,12 +21,35 @@ import (
 type ResponseCache struct {
 	local  *responseLRU
 	shared responseCacheBackend
+	loads  singleflight.Group
 }
 
 type responseCacheBackend interface {
 	Load(context.Context, string) (cachedResponse, time.Duration, bool)
 	Store(context.Context, string, cachedResponse, time.Duration)
 	DeleteMatching(context.Context, string)
+}
+
+// LoadOnce collapses concurrent cache misses for the same key in this process.
+// The shared Valkey cache handles reuse across replicas; this guard prevents a
+// burst inside one replica from running the same expensive database query for
+// every waiting request before the first response reaches Valkey.
+func (c *ResponseCache) LoadOnce(
+	ctx context.Context,
+	key string,
+	load func() (any, error),
+) (any, error, bool) {
+	if c == nil {
+		value, err := load()
+		return value, err, false
+	}
+	result := c.loads.DoChan(key, load)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err(), false
+	case value := <-result:
+		return value.Val, value.Err, value.Shared
+	}
 }
 
 // NewResponseCache builds an L1 cache over a shared Valkey L2.

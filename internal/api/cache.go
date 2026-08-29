@@ -49,33 +49,53 @@ func responseCache(
 			return
 		}
 
-		recorder := newCacheRecorder()
-		next.ServeHTTP(recorder, r)
-		cachedBody := recorder.body.Bytes()
-		copyResponseHeaders(w.Header(), recorder.header)
+		value, err, _ := cache.LoadOnce(r.Context(), key, func() (any, error) {
+			recorder := newCacheRecorder()
+			next.ServeHTTP(recorder, r)
+			result := collapsedResponse{
+				status: recorder.status,
+				header: recorder.header.Clone(),
+				body:   append([]byte(nil), recorder.body.Bytes()...),
+			}
+			if result.status == http.StatusOK {
+				cacheStore(context.WithoutCancel(r.Context()), cache, key, cachedResponse{
+					ContentType: result.header.Get("Content-Type"),
+					Body:        result.body,
+				}, policy.TTL)
+			}
+			return result, nil
+		})
+		if err != nil {
+			return
+		}
+		result := value.(collapsedResponse)
+		cachedBody := result.body
+		copyResponseHeaders(w.Header(), result.header)
 		w.Header().Set("X-Cache", "MISS")
 		body := cachedBody
-		if recorder.status >= 200 && recorder.status < 300 {
+		if result.status >= 200 && result.status < 300 {
 			body = addResponseSchema(r, w.Header(), body, schemaPath)
 		}
-		if recorder.status == http.StatusOK {
+		if result.status == http.StatusOK {
 			etag := responseETag(body)
 			w.Header().Set("ETag", etag)
 			if policy.CacheControl != "" {
 				w.Header().Set("Cache-Control", policy.CacheControl)
 			}
-			cacheStore(context.WithoutCancel(r.Context()), cache, key, cachedResponse{
-				ContentType: recorder.header.Get("Content-Type"),
-				Body:        cachedBody,
-			}, policy.TTL)
 			if ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
 				w.WriteHeader(http.StatusNotModified)
 				return
 			}
 		}
-		w.WriteHeader(recorder.status)
+		w.WriteHeader(result.status)
 		_, _ = w.Write(body)
 	})
+}
+
+type collapsedResponse struct {
+	status int
+	header http.Header
+	body   []byte
 }
 
 // cachedResponse is what gets stored: the bytes plus the content type that

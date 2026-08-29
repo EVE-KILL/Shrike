@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -107,6 +108,51 @@ func TestResponseCachePromotesL2HitIntoL1(t *testing.T) {
 	}
 	if shared.loads != 1 {
 		t.Fatalf("L2 loads = %d, want 1 after promotion", shared.loads)
+	}
+}
+
+func TestResponseCacheCollapsesConcurrentLoads(t *testing.T) {
+	cache := newResponseCache(nil, 1024)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var calls atomic.Int32
+
+	load := func() (any, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+		}
+		<-release
+		return "database", nil
+	}
+
+	const requests = 12
+	results := make(chan string, requests)
+	var ready sync.WaitGroup
+	ready.Add(requests)
+	for range requests {
+		go func() {
+			ready.Done()
+			value, err, _ := cache.LoadOnce(context.Background(), "same-key", load)
+			if err != nil {
+				results <- err.Error()
+				return
+			}
+			results <- value.(string)
+		}()
+	}
+	ready.Wait()
+	<-started
+	// Give every ready goroutine time to join the in-flight singleflight call.
+	// The loader remains blocked, so this wait cannot hide duplicate execution.
+	time.Sleep(20 * time.Millisecond)
+	close(release)
+	for range requests {
+		if got := <-results; got != "database" {
+			t.Fatalf("result = %q, want database", got)
+		}
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("loader calls = %d, want 1", got)
 	}
 }
 

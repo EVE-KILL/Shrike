@@ -39,56 +39,89 @@ func routeJSONCacheBy(
 			key = "shrike:web-api:" + build + ":" + keyFor(req)
 		}
 		if entry, ok := cacheLoad(ctx, opts.responseCache, key); ok {
-			headers := make(http.Header)
-			headers.Set("X-Cache", "HIT")
-			if cacheControl != "" {
-				headers.Set("Cache-Control", cacheControl)
-			}
-			return legacyPayload{
-				RawBody:     entry.Body,
-				ContentType: entry.ContentType,
-				Headers:     headers,
-			}, nil
+			return cachedLegacyPayload(entry, cacheControl, "HIT"), nil
 		}
 
-		payload, err := next(ctx, req)
+		value, err, _ := opts.responseCache.LoadOnce(ctx, key, func() (any, error) {
+			if entry, ok := cacheLoad(ctx, opts.responseCache, key); ok {
+				return cachedLegacyPayload(entry, cacheControl, "HIT"), nil
+			}
+			return loadLegacyPayload(ctx, req, next, opts.responseCache, key, ttl, cacheControl)
+		})
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		status := payload.Status
-		if status == 0 {
-			status = http.StatusOK
+		payload := value.(legacyPayload)
+		if payload.Headers != nil {
+			payload.Headers = payload.Headers.Clone()
 		}
-		if status != http.StatusOK {
-			return payload, nil
-		}
-
-		body := payload.RawBody
-		if body == nil {
-			body, err = json.Marshal(normalizeJSON(payload.Body))
-			if err != nil {
-				return legacyPayload{}, err
-			}
-		}
-		contentType := payload.ContentType
-		if contentType == "" {
-			contentType = "application/json"
-		}
-		cacheStore(context.WithoutCancel(ctx), opts.responseCache, key, cachedResponse{
-			ContentType: contentType,
-			Body:        body,
-		}, ttl)
-
-		if payload.Headers == nil {
-			payload.Headers = make(http.Header)
-		}
-		payload.Headers.Set("X-Cache", "MISS")
-		if cacheControl != "" {
-			payload.Headers.Set("Cache-Control", cacheControl)
-		}
-		payload.RawBody = body
-		payload.Body = nil
-		payload.ContentType = contentType
 		return payload, nil
+	}
+}
+
+func loadLegacyPayload(
+	ctx context.Context,
+	req *legacyRequest,
+	next legacyHandler,
+	cache *ResponseCache,
+	key string,
+	ttl time.Duration,
+	cacheControl string,
+) (legacyPayload, error) {
+	payload, err := next(ctx, req)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	status := payload.Status
+	if status == 0 {
+		status = http.StatusOK
+	}
+	if status != http.StatusOK {
+		return payload, nil
+	}
+
+	body := payload.RawBody
+	if body == nil {
+		body, err = json.Marshal(normalizeJSON(payload.Body))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+	}
+	contentType := payload.ContentType
+	if contentType == "" {
+		contentType = "application/json"
+	}
+	cacheStore(context.WithoutCancel(ctx), cache, key, cachedResponse{
+		ContentType: contentType,
+		Body:        body,
+	}, ttl)
+
+	if payload.Headers == nil {
+		payload.Headers = make(http.Header)
+	}
+	payload.Headers.Set("X-Cache", "MISS")
+	if cacheControl != "" {
+		payload.Headers.Set("Cache-Control", cacheControl)
+	}
+	payload.RawBody = body
+	payload.Body = nil
+	payload.ContentType = contentType
+	return payload, nil
+}
+
+func cachedLegacyPayload(
+	entry cachedResponse,
+	cacheControl string,
+	cacheStatus string,
+) legacyPayload {
+	headers := make(http.Header)
+	headers.Set("X-Cache", cacheStatus)
+	if cacheControl != "" {
+		headers.Set("Cache-Control", cacheControl)
+	}
+	return legacyPayload{
+		RawBody:     entry.Body,
+		ContentType: entry.ContentType,
+		Headers:     headers,
 	}
 }
