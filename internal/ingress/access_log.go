@@ -44,6 +44,26 @@ func (h *accessLogHandler) ServeHTTP(
 	next caddyhttp.Handler,
 ) error {
 	started := time.Now()
+	if isWebSocketUpgrade(r) {
+		err := next.ServeHTTP(w, r)
+		status := http.StatusSwitchingProtocols
+		if err != nil {
+			var handlerErr caddyhttp.HandlerError
+			if errors.As(err, &handlerErr) && handlerErr.StatusCode != 0 {
+				status = handlerErr.StatusCode
+			} else {
+				status = http.StatusInternalServerError
+			}
+		}
+		line := nginxAccessLine(r, status, 0, started, time.Since(started))
+		if err != nil {
+			h.log.Error().Err(err).Msg(line)
+		} else {
+			h.log.Info().Msg(line)
+		}
+		return err
+	}
+
 	recorder := caddyhttp.NewResponseRecorder(w, nil, nil)
 	err := next.ServeHTTP(recorder, r)
 
@@ -74,6 +94,22 @@ func (h *accessLogHandler) ServeHTTP(
 		h.log.Info().Msg(line)
 	}
 	return err
+}
+
+func isWebSocketUpgrade(r *http.Request) bool {
+	return strings.EqualFold(strings.TrimSpace(r.Header.Get("Upgrade")), "websocket") &&
+		headerContainsToken(r.Header.Values("Connection"), "upgrade")
+}
+
+func headerContainsToken(values []string, want string) bool {
+	for _, value := range values {
+		for token := range strings.SplitSeq(value, ",") {
+			if strings.EqualFold(strings.TrimSpace(token), want) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func nginxAccessLine(

@@ -145,3 +145,33 @@ func TestAccessLogHandlerSuppressesOnlyHealthyProbe(t *testing.T) {
 		})
 	}
 }
+
+func TestAccessLogHandlerDoesNotWrapWebSocketUpgrade(t *testing.T) {
+	var output bytes.Buffer
+	handler := &accessLogHandler{log: zerolog.New(&output)}
+	request := httptest.NewRequest(http.MethodGet, "http://eve-kill.test/ws/status", nil)
+	request.Header.Set("Connection", "keep-alive, Upgrade")
+	request.Header.Set("Upgrade", "websocket")
+	response := httptest.NewRecorder()
+
+	err := handler.ServeHTTP(response, request, caddyhttp.HandlerFunc(
+		func(w http.ResponseWriter, _ *http.Request) error {
+			if w != response {
+				t.Fatalf("websocket response writer was wrapped as %T", w)
+			}
+			return nil
+		},
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var record map[string]any
+	if decodeErr := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); decodeErr != nil {
+		t.Fatalf("decode log %q: %v", output.String(), decodeErr)
+	}
+	message, _ := record["message"].(string)
+	if !strings.Contains(message, " 101 0 ") {
+		t.Errorf("message %q does not contain websocket handshake status", message)
+	}
+}
