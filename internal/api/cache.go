@@ -44,7 +44,34 @@ func responseCache(
 			return
 		}
 		key := cacheKey(build, r)
-		if entry, ok := cacheLoad(r.Context(), cache, key); ok {
+		entry, fresh, found := cacheLoadState(r.Context(), cache, key)
+		if found && fresh {
+			writeCacheHit(w, r, entry, policy, schemaPath)
+			return
+		}
+		staleTTL := min(policy.TTL, 10*time.Minute)
+		if found {
+			cache.Refresh(key, func() (any, error) {
+				refreshCtx, cancel := context.WithTimeout(
+					context.WithoutCancel(r.Context()), 2*time.Minute,
+				)
+				defer cancel()
+				refreshRequest := r.Clone(refreshCtx)
+				recorder := newCacheRecorder()
+				next.ServeHTTP(recorder, refreshRequest)
+				result := collapsedResponse{
+					status: recorder.status,
+					header: recorder.header.Clone(),
+					body:   append([]byte(nil), recorder.body.Bytes()...),
+				}
+				if result.status == http.StatusOK {
+					cache.StoreStale(refreshCtx, key, cachedResponse{
+						ContentType: result.header.Get("Content-Type"),
+						Body:        result.body,
+					}, policy.TTL, staleTTL)
+				}
+				return result, nil
+			})
 			writeCacheHit(w, r, entry, policy, schemaPath)
 			return
 		}
@@ -58,10 +85,10 @@ func responseCache(
 				body:   append([]byte(nil), recorder.body.Bytes()...),
 			}
 			if result.status == http.StatusOK {
-				cacheStore(context.WithoutCancel(r.Context()), cache, key, cachedResponse{
+				cache.StoreStale(context.WithoutCancel(r.Context()), key, cachedResponse{
 					ContentType: result.header.Get("Content-Type"),
 					Body:        result.body,
-				}, policy.TTL)
+				}, policy.TTL, staleTTL)
 			}
 			return result, nil
 		})

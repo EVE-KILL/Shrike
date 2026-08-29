@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -51,6 +52,49 @@ func TestCacheHitPreservesANonJSONContentType(t *testing.T) {
 	if response.Body.String() != string(entry.Body) {
 		t.Errorf("body was rewritten: %q", response.Body)
 	}
+}
+
+func TestResponseCacheServesStaleWhileRefreshing(t *testing.T) {
+	cache := newResponseCache(nil, 4096)
+	request := httptest.NewRequest(
+		http.MethodGet, "http://api.example/stats?dataType=characters", nil,
+	)
+	key := cacheKey("test", request)
+	cache.local.Put(key, cachedResponse{
+		ContentType: "text/plain",
+		Body:        []byte("stale"),
+		FreshUntil:  time.Now().Add(-time.Minute),
+	}, time.Minute, time.Now())
+
+	refreshed := make(chan struct{})
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("fresh"))
+		close(refreshed)
+	})
+	schemas := &responseSchemaResolver{routes: []responseSchemaRoute{{
+		method: http.MethodGet, path: "/stats",
+	}}}
+
+	response := httptest.NewRecorder()
+	responseCache(cache, schemas, "test", next).ServeHTTP(response, request)
+	if got := response.Body.String(); got != "stale" {
+		t.Fatalf("body = %q, want stale", got)
+	}
+	select {
+	case <-refreshed:
+	case <-time.After(time.Second):
+		t.Fatal("background refresh did not run")
+	}
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		entry, ok := cache.Load(context.Background(), key)
+		if ok && string(entry.Body) == "fresh" {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("fresh response was not stored")
 }
 
 // Two requests that differ only in query string must not share an entry, and
