@@ -36,7 +36,11 @@ func New(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("parse DATABASE_URL: %w", err)
 	}
 
-	poolCfg.MaxConns = defaultMaxConns
+	maxConns := cfg.DatabaseMaxConnections
+	if maxConns <= 0 {
+		maxConns = defaultMaxConns
+	}
+	poolCfg.MaxConns = int32(maxConns)
 	poolCfg.MinConns = defaultMinConns
 	poolCfg.MaxConnLifetime = time.Hour
 	poolCfg.MaxConnIdleTime = 30 * time.Minute

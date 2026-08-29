@@ -23,7 +23,8 @@ const (
 type Config struct {
 	// Postgres. api/src/db.ts falls back to a local socket URL; we keep the
 	// same default so `doctor` behaves identically to the TS services.
-	DatabaseURL string
+	DatabaseURL            string
+	DatabaseMaxConnections int
 
 	// Shared Valkey. River stores jobs in Postgres, so one Valkey now owns the
 	// disposable response caches, coordination state, and pub/sub channels.
@@ -159,6 +160,7 @@ func Load(explicitPath string) (*Config, error) {
 	}
 
 	c.DatabaseURL = get("DatabaseURL", "DATABASE_URL", "postgresql://localhost:5432/evekill")
+	c.DatabaseMaxConnections = getInt("DatabaseMaxConnections", "DB_MAX_CONNS", 10)
 	c.RedisHost = get("RedisHost", "REDIS_HOST", "localhost")
 	c.RedisPort = getInt("RedisPort", "REDIS_PORT", 6379)
 	c.RedisPassword = get("RedisPassword", "REDIS_PASSWORD", "")

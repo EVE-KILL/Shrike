@@ -5,9 +5,36 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/config"
 )
+
+func TestRequestDeadlineExemptsSSE(t *testing.T) {
+	tests := []struct {
+		path         string
+		wantDeadline bool
+	}{
+		{path: "/api/killmail/42", wantDeadline: true},
+		{path: "/api/feed/stream", wantDeadline: false},
+	}
+	for _, test := range tests {
+		t.Run(test.path, func(t *testing.T) {
+			var gotDeadline bool
+			handler := withRequestDeadline(http.HandlerFunc(func(
+				_ http.ResponseWriter, r *http.Request,
+			) {
+				_, gotDeadline = r.Context().Deadline()
+			}), time.Second)
+			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(
+				http.MethodGet, "http://example.test"+test.path, nil,
+			))
+			if gotDeadline != test.wantDeadline {
+				t.Fatalf("deadline = %t, want %t", gotDeadline, test.wantDeadline)
+			}
+		})
+	}
+}
 
 func TestDevRendererHostAdoptsForwardedHost(t *testing.T) {
 	for _, test := range []struct {

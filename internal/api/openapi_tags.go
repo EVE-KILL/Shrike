@@ -83,7 +83,7 @@ var tagDescriptions = map[string]string{
 	"faction-war":         "Faction warfare matchups, systems, members, and intelligence.",
 	"feed":                "The live killmail feed, by poll or by server-sent events.",
 	"fittings":            "Ship fittings: the catalog, search, ratings, and trends.",
-	"health":              "Liveness probe. Checks that the API can reach Postgres.",
+	"health":              "Process liveness and Postgres-backed readiness probes.",
 	"history":             "Daily killmail totals, by date.",
 	"images":              "Character, corporation, alliance, and type images, plus social cards.",
 	"killmails":           "Killmails: listings, detail, ESI form, and the fitting they carried.",

@@ -593,6 +593,26 @@ func TestHealthPreservesEstablishedContract(t *testing.T) {
 	}
 }
 
+type failingPingDatabase struct{ stubDatabase }
+
+func (failingPingDatabase) Ping(context.Context) error { return context.DeadlineExceeded }
+
+func TestHealthIsIndependentAndReadyChecksDatabase(t *testing.T) {
+	handler := Site(Options{DB: failingPingDatabase{}})
+
+	health := httptest.NewRecorder()
+	handler.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "http://example.com/health", nil))
+	if health.Code != http.StatusOK {
+		t.Fatalf("health status = %d, want 200", health.Code)
+	}
+
+	ready := httptest.NewRecorder()
+	handler.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "http://example.com/ready", nil))
+	if ready.Code < 500 {
+		t.Fatalf("ready status = %d, want dependency failure", ready.Code)
+	}
+}
+
 func TestNormalizeJSONUsesJavaScriptMillisecondTimestamps(t *testing.T) {
 	value := map[string]any{
 		"whole": time.Date(2026, 7, 26, 12, 34, 56, 0, time.FixedZone("test", 7200)),

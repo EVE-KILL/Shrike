@@ -295,7 +295,7 @@ func (m *Manager) Status() Status {
 //
 // The route table is ordered, and the order carries the routing policy:
 //
-//  1. /health goes through the same-origin API adapter.
+//  1. /health and /ready go through the same-origin API adapter.
 //     Kubernetes probes by pod IP with no useful Host header, so this route
 //     matches on path alone rather than relying on DNS.
 //  2. /ws bypasses Nuxt and reaches the WebSocket relay.
@@ -341,10 +341,10 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil
 	}
 
-	// Path-only liveness keeps probes independent of DNS and Host.
+	// Path-only probes keep Kubernetes independent of DNS and Host.
 	if err := surfaceRoute(
-		map[string]any{"path": []string{"/health"}},
-		"path /health", SurfaceSameOrigin,
+		map[string]any{"path": []string{"/health", "/ready"}},
+		"path /health, /ready", SurfaceSameOrigin,
 	); err != nil {
 		return nil, nil, nil, err
 	}
@@ -397,6 +397,9 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 				"upstreams": []any{map[string]any{
 					"dial": dial,
 				}},
+				"transport": map[string]any{
+					"protocol": "http", "response_header_timeout": "30s",
+				},
 			}),
 			"terminal": true,
 		})

@@ -153,7 +153,7 @@ func setRootNamespaceServers(document *huma.OpenAPI) {
 	}
 }
 
-// Site serves /api, /auth, /images, and /health on the frontend origin.
+// Site serves /api, /auth, /images, /health, and /ready on the frontend origin.
 func (s *Service) Site() http.Handler {
 	return s.site
 }
@@ -201,7 +201,7 @@ func sitePaths(next http.Handler) http.Handler {
 		case r.URL.Path == "/images", strings.HasPrefix(r.URL.Path, "/images/"):
 			publicImages.ServeHTTP(w, r)
 		case r.URL.Path == "/auth", strings.HasPrefix(r.URL.Path, "/auth/"),
-			r.URL.Path == "/health":
+			r.URL.Path == "/health", r.URL.Path == "/ready":
 			prefixed.ServeHTTP(w, r)
 		default:
 			w.Header().Set("Content-Type", "application/json")

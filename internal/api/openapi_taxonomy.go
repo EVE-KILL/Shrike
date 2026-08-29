@@ -59,6 +59,7 @@ var resourceAliases = map[string]string{
 	"matchup":         "ships",
 	"overview":        "admin",
 	"prices":          "market",
+	"ready":           "health",
 	"resolve":         "search",
 	"tools":           "scans",
 }

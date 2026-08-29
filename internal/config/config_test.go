@@ -33,6 +33,9 @@ func TestLoadDefaults(t *testing.T) {
 	if c.Port != 4000 {
 		t.Errorf("Port = %d, want 4000", c.Port)
 	}
+	if c.DatabaseMaxConnections != 10 {
+		t.Errorf("DatabaseMaxConnections = %d, want 10", c.DatabaseMaxConnections)
+	}
 }
 
 func TestSharedValkeyUsesOneAddress(t *testing.T) {
@@ -195,7 +198,7 @@ func TestRedactSecret(t *testing.T) {
 func clearEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
-		"DATABASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_DB",
+		"DATABASE_URL", "DB_MAX_CONNS", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_DB",
 		"REDIS_CACHE_HOST", "REDIS_CACHE_PORT", "VALKEY_QUEUE", "VALKEY_CACHE",
 		"MEMGRAPH_URL", "PORT",
 		"EVE_CLIENT_ID", "EVE_CLIENT_SECRET", "EVE_CALLBACK_URL", "ESI_USER_AGENT",

@@ -63,7 +63,8 @@ var operationDescriptions = map[string]string{
 	"sde-custom-prices":      "Every price EVE-KILL applies on top of market data, in one unpaginated response. Market history is unusable for items that rarely or never trade — titans, faction capitals, officer modules — so killmail values use these overrides where they exist. `valid_until` is the last date an override applies to; open-ended ones carry the 9999-12-31 sentinel, and a type may have several rows if its override changed over time.",
 
 	// --- Newly written ---
-	"health":                    "Verifies the API can reach Postgres. Returns ok and a timestamp. Used as the Kubernetes liveness probe, and matched on path alone so it answers on any hostname.",
+	"health":                    "Reports process liveness without consulting external dependencies.",
+	"ready":                     "Verifies that the API can acquire its normal Postgres pool and complete a round trip.",
 	"history":                   "One row per day with the number of killmails recorded. Use it to find days worth fetching before calling /history/{date}.",
 	"characters":                "Cursor-paginated list of every known character. Pass limit (1-100, default 50) and cursor from the previous response.",
 	"character-kills":           "Killmails where this character was an attacker, newest first. Cursor-paginated.",

@@ -85,8 +85,22 @@ func registerHealthRoute(a huma.API, opts Options) {
 		OperationID: "health",
 		Method:      http.MethodGet,
 		Path:        "/health",
-		Summary:     "Database health check",
-		Description: "Checks that the API can reach Postgres.",
+		Summary:     "Process liveness check",
+		Description: "Reports that the HTTP process is alive without consulting dependencies.",
+		Tags:        []string{"health"},
+	}, func(ctx context.Context, _ *legacyRequest) (legacyPayload, error) {
+		return jsonPayload(map[string]any{
+			"ok":        true,
+			"timestamp": javascriptTimestamp(time.Now()),
+		}), nil
+	})
+
+	registerLegacy(a, huma.Operation{
+		OperationID: "ready",
+		Method:      http.MethodGet,
+		Path:        "/ready",
+		Summary:     "Database readiness check",
+		Description: "Checks that the API can acquire its normal Postgres pool and complete a round trip.",
 		Tags:        []string{"health"},
 	}, func(ctx context.Context, _ *legacyRequest) (legacyPayload, error) {
 		if opts.DB == nil {
@@ -96,8 +110,7 @@ func registerHealthRoute(a huma.API, opts Options) {
 			return legacyPayload{}, err
 		}
 		return jsonPayload(map[string]any{
-			"ok":        true,
-			"timestamp": javascriptTimestamp(time.Now()),
+			"ok": true, "timestamp": javascriptTimestamp(time.Now()),
 		}), nil
 	})
 }

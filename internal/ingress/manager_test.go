@@ -58,7 +58,7 @@ func TestRouteOrder(t *testing.T) {
 	}
 
 	want := []RouteStatus{
-		{Match: "path /health", Surface: SurfaceSameOrigin},
+		{Match: "path /health, /ready", Surface: SurfaceSameOrigin},
 		{Match: "path /ws, /ws/*", Surface: SurfaceWS},
 		{
 			Match:   "path /api, /api/*, /auth, /auth/*, /images, /images/*",
@@ -446,6 +446,7 @@ func TestServesEachSurface(t *testing.T) {
 		code int
 	}{
 		{"health has no host requirement", "", "/health", SurfaceSameOrigin, 200},
+		{"readiness has no host requirement", "", "/ready", SurfaceSameOrigin, 200},
 		{"websocket path health is not special", "eve-kill.test", "/health", SurfaceSameOrigin, 200},
 		{"websocket root path", "eve-kill.test", "/ws", SurfaceWS, 200},
 		{"websocket endpoint path", "eve-kill.test", "/ws/killlist", SurfaceWS, 200},

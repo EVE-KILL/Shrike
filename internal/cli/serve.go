@@ -224,7 +224,7 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			},
 		}
 		apiService := api.New(opts)
-		siteHandler := apiService.Site()
+		siteHandler := withRequestDeadline(apiService.Site(), 30*time.Second)
 		surfaces := map[string]http.Handler{
 			ingress.SurfaceSameOrigin: siteHandler,
 			ingress.SurfaceWS:         wsServer,
@@ -360,6 +360,21 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			}
 			return fmt.Errorf("private SSR API stopped unexpectedly")
 		}
+	})
+}
+
+// withRequestDeadline ensures a slow or abandoned HTTP request cannot hold a
+// database connection indefinitely. The SSE feed is intentionally long-lived
+// and manages its own cancellation through the client connection.
+func withRequestDeadline(next http.Handler, timeout time.Duration) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/feed/stream" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
