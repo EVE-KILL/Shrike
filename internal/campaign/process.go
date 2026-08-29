@@ -69,8 +69,12 @@ func Process(ctx context.Context, pool *pgxpool.Pool, campaignID string) (*Resul
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
 
-	if _, err := tx.Exec(ctx,
-		`SELECT set_config('statement_timeout', $1, true)`,
+	// Campaign aggregation is the one bounded workload that benefits from more
+	// memory than the shared server default. Keep the override transaction-local
+	// so concurrent API queries and queue workers retain the conservative limit.
+	if _, err := tx.Exec(ctx, `
+        SELECT set_config('statement_timeout', $1, true),
+               set_config('work_mem', '256MB', true)`,
 		fmt.Sprint(ProcessingTimeout.Milliseconds())); err != nil {
 		return nil, err
 	}

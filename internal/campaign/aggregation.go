@@ -151,20 +151,44 @@ func attributeSides(ctx context.Context, tx pgx.Tx, campaignID string) error {
         UPDATE campaign_scratch_killmails killmail
         SET attacker_mask = matched.mask
         FROM (
-            SELECT attacker.killmail_id,
-                   bit_or(1 << entity.side_index::int)::int AS mask
-            FROM campaign_scratch_killmails scratch
-            JOIN killmail_attackers attacker
-              ON attacker.killmail_id = scratch.killmail_id
-            JOIN campaign_side_entities entity
-              ON entity.campaign_id = $1
-             AND (
-                    (entity.entity_type = $2 AND entity.entity_id = attacker.character_id)
-                 OR (entity.entity_type = $3 AND entity.entity_id = attacker.corporation_id)
-                 OR (entity.entity_type = $4 AND entity.entity_id = attacker.alliance_id)
-             )
-            WHERE scratch.campaign_id = $1
-            GROUP BY attacker.killmail_id
+            SELECT participant.killmail_id,
+                   bit_or(1 << participant.side_index::int)::int AS mask
+            FROM (
+                SELECT attacker.killmail_id, entity.side_index
+                FROM campaign_scratch_killmails scratch
+                JOIN killmail_attackers attacker
+                  ON attacker.killmail_id = scratch.killmail_id
+                JOIN campaign_side_entities entity
+                  ON entity.campaign_id = $1
+                 AND entity.entity_type = $2
+                 AND entity.entity_id = attacker.character_id
+                WHERE scratch.campaign_id = $1
+
+                UNION ALL
+
+                SELECT attacker.killmail_id, entity.side_index
+                FROM campaign_scratch_killmails scratch
+                JOIN killmail_attackers attacker
+                  ON attacker.killmail_id = scratch.killmail_id
+                JOIN campaign_side_entities entity
+                  ON entity.campaign_id = $1
+                 AND entity.entity_type = $3
+                 AND entity.entity_id = attacker.corporation_id
+                WHERE scratch.campaign_id = $1
+
+                UNION ALL
+
+                SELECT attacker.killmail_id, entity.side_index
+                FROM campaign_scratch_killmails scratch
+                JOIN killmail_attackers attacker
+                  ON attacker.killmail_id = scratch.killmail_id
+                JOIN campaign_side_entities entity
+                  ON entity.campaign_id = $1
+                 AND entity.entity_type = $4
+                 AND entity.entity_id = attacker.alliance_id
+                WHERE scratch.campaign_id = $1
+            ) participant
+            GROUP BY participant.killmail_id
         ) matched
         WHERE killmail.campaign_id = $1
           AND killmail.killmail_id = matched.killmail_id`,
