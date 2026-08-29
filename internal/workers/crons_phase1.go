@@ -128,7 +128,6 @@ func (d *Deps) cronEntityHistoryBackfill(ctx context.Context) (string, error) {
 		table: "characters", idColumn: "character_id",
 		fetchedColumn: "corporation_history_fetched_at",
 		queuedColumn:  "corporation_history_queued_at",
-		historyTable:  "character_corporation_history",
 		order:         "c.last_active DESC NULLS LAST, c.character_id",
 		limit:         historyCharactersPerTick,
 	})
@@ -154,7 +153,6 @@ func (d *Deps) cronEntityHistoryBackfill(ctx context.Context) (string, error) {
 		table: "corporations", idColumn: "corporation_id",
 		fetchedColumn: "alliance_history_fetched_at",
 		queuedColumn:  "alliance_history_queued_at",
-		historyTable:  "corporation_alliance_history",
 		order:         "c.updated_at DESC NULLS LAST, c.corporation_id",
 		limit:         historyCorporationsPerTick,
 		playerOnly:    true,
@@ -189,13 +187,12 @@ type historyBatch struct {
 	idColumn      string
 	fetchedColumn string
 	queuedColumn  string
-	historyTable  string
 	order         string
 	limit         int
 	playerOnly    bool
 }
 
-// claimHistoryBatch selects entities with no history.
+// claimHistoryBatch selects entities whose history fetch has not completed.
 //
 // The marker is written only after the River dispatch succeeds. Marking first
 // would park a batch for six hours if insertion failed.
@@ -214,11 +211,10 @@ func (d *Deps) claimHistoryBatch(ctx context.Context, b historyBatch) ([]int32, 
           AND c.%[3]s IS NULL
           AND (c.%[4]s IS NULL OR c.%[4]s < now() - interval '6 hours')
           %[5]s
-          AND NOT EXISTS (SELECT 1 FROM %[6]s h WHERE h.%[1]s = c.%[1]s)
-        ORDER BY %[7]s
-        LIMIT %[8]d`,
+        ORDER BY %[6]s
+        LIMIT %[7]d`,
 		b.idColumn, b.table, b.fetchedColumn, b.queuedColumn, playerFilter,
-		b.historyTable, b.order, b.limit))
+		b.order, b.limit))
 	if err != nil {
 		return nil, err
 	}
