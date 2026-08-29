@@ -95776,7 +95776,7 @@
       "name": "boards"
     },
     {
-      "description": "Typed HTTP mirrors of every read-only MCP tool. The MCP transport itself is served at mcp.eve-kill.com/mcp.",
+      "description": "Typed HTTP mirrors of every read-only MCP tool. The MCP transport itself is served at eve-kill.com/api/mcp.",
       "name": "mcp"
     },
     {

@@ -8,7 +8,7 @@
  */
 export default defineEventHandler(async (event) => {
     const config = useRuntimeConfig()
-    const mcpBase = config.public.publicMcpUrl || 'https://mcp.eve-kill.com'
+    const mcpBase = config.public.publicMcpUrl || 'https://eve-kill.com/api'
     const body = await buildMcpGuide(mcpBase)
 
     setResponseHeaders(event, {

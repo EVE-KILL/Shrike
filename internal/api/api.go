@@ -17,6 +17,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/eve-kill/shrike/internal/images"
+	"github.com/eve-kill/shrike/internal/mcpserver"
 	"github.com/go-chi/chi/v5"
 	"github.com/redis/go-redis/v9"
 )
@@ -117,6 +118,13 @@ func New(opts Options) *Service {
 	applyOperationDescriptions(a.OpenAPI())
 	applyOperationParameters(a.OpenAPI())
 	registerLegacyMethodGuards(mux)
+	mcpTransport, err := mcpserver.Handler(mcpserver.Dependencies{
+		DB: opts.DB, Graph: opts.Graph, BaseURL: "https://eve-kill.com",
+	}, opts.Version, nil)
+	if err != nil {
+		panic("register MCP transport: " + err.Error())
+	}
+	mux.Handle("/mcp", mcpTransport)
 	mux.HandleFunc("/", legacyFallback)
 	mux.NotFound(legacyFallback)
 

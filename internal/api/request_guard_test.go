@@ -38,6 +38,18 @@ func TestRequestGuardRequiresUserAgentOnlyForAPI(t *testing.T) {
 		t.Fatalf("API rejection CORS origin = %q", got)
 	}
 
+	mcpResponse := httptest.NewRecorder()
+	handler.ServeHTTP(
+		mcpResponse,
+		httptest.NewRequest(http.MethodPost, "http://example.test/api/mcp", nil),
+	)
+	if mcpResponse.Code != http.StatusNoContent {
+		t.Fatalf("MCP transport without User-Agent returned %d", mcpResponse.Code)
+	}
+	if mcpResponse.Header().Get("RateLimit-Limit") == "" {
+		t.Fatal("MCP transport did not retain API rate limiting")
+	}
+
 	for _, path := range []string{"/images/types/42/icon", "/auth/eve", "/health"} {
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(

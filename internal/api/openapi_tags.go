@@ -89,7 +89,7 @@ var tagDescriptions = map[string]string{
 	"killmails":           "Killmails: listings, detail, ESI form, and the fitting they carried.",
 	"map":                 "Region and constellation map data.",
 	"market":              "Market groups and bulk type prices.",
-	"mcp":                 "Typed HTTP mirrors of every read-only MCP tool. The MCP transport itself is served at mcp.eve-kill.com/mcp.",
+	"mcp":                 "Typed HTTP mirrors of every read-only MCP tool. The MCP transport itself is served at eve-kill.com/api/mcp.",
 	"notifications":       "Comment replies addressed to the signed-in character.",
 	"scans":               "Directional and local scan parsing and analysis.",
 	"sde":                 "The EVE Static Data Export: types, groups, systems, stations, and more.",

@@ -378,8 +378,8 @@ export default defineNuxtConfig({
       publicApiUrl: "/api",
       // Public MCP base URL — used by the /mcp page to load the live
       // tool list. Override with NUXT_PUBLIC_PUBLIC_MCP_URL=http://localhost:4010
-      // when running the mcp server locally.
-      publicMcpUrl: "https://mcp.eve-kill.com",
+      // when running the standalone mcp command locally.
+      publicMcpUrl: "https://eve-kill.com/api",
     },
   },
 

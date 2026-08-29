@@ -21,7 +21,7 @@ interface ToolsListResponse {
 }
 
 const config = useRuntimeConfig()
-const baseUrl = ref<string>(config.public.publicMcpUrl || 'https://mcp.eve-kill.com')
+const baseUrl = ref<string>(config.public.publicMcpUrl || 'https://eve-kill.com/api')
 
 const tools = ref<Tool[]>([])
 const loading = ref(true)

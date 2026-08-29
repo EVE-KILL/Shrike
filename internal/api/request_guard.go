@@ -83,7 +83,7 @@ func (g *RequestGuard) Wrap(next http.Handler) http.Handler {
 			)
 			return
 		}
-		if r.Method != http.MethodOptions &&
+		if r.Method != http.MethodOptions && r.URL.Path != "/api/mcp" &&
 			strings.TrimSpace(r.Header.Get("User-Agent")) == "" {
 			writeRequestGuardError(
 				w,
