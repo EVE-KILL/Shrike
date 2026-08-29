@@ -260,20 +260,37 @@ func storeEntityTotals(ctx context.Context, tx pgx.Tx, campaignID string) error 
 	}
 
 	if _, err := tx.Exec(ctx, `
-        WITH totals AS (
-            SELECT entity.id,
-                   count(killmail.killmail_id)::int AS losses,
-                   coalesce(sum(killmail.adj_value), 0) AS isk_lost
+        WITH matched AS (
+            SELECT entity.id, killmail.killmail_id, killmail.adj_value
             FROM campaign_side_entities entity
-            LEFT JOIN campaign_scratch_killmails killmail
+            JOIN campaign_scratch_killmails killmail
               ON killmail.campaign_id = entity.campaign_id
-             AND (
-                    (entity.entity_type = $2 AND killmail.victim_character_id = entity.entity_id)
-                 OR (entity.entity_type = $3 AND killmail.victim_corporation_id = entity.entity_id)
-                 OR (entity.entity_type = $4 AND killmail.victim_alliance_id = entity.entity_id)
-             )
-            WHERE entity.campaign_id = $1
-            GROUP BY entity.id
+             AND killmail.victim_character_id = entity.entity_id
+            WHERE entity.campaign_id = $1 AND entity.entity_type = $2
+
+            UNION ALL
+
+            SELECT entity.id, killmail.killmail_id, killmail.adj_value
+            FROM campaign_side_entities entity
+            JOIN campaign_scratch_killmails killmail
+              ON killmail.campaign_id = entity.campaign_id
+             AND killmail.victim_corporation_id = entity.entity_id
+            WHERE entity.campaign_id = $1 AND entity.entity_type = $3
+
+            UNION ALL
+
+            SELECT entity.id, killmail.killmail_id, killmail.adj_value
+            FROM campaign_side_entities entity
+            JOIN campaign_scratch_killmails killmail
+              ON killmail.campaign_id = entity.campaign_id
+             AND killmail.victim_alliance_id = entity.entity_id
+            WHERE entity.campaign_id = $1 AND entity.entity_type = $4
+        ),
+        totals AS (
+            SELECT id, count(killmail_id)::int AS losses,
+                   coalesce(sum(adj_value), 0) AS isk_lost
+            FROM matched
+            GROUP BY id
         )
         UPDATE campaign_side_entities entity
         SET losses = totals.losses,
@@ -289,20 +306,48 @@ func storeEntityTotals(ctx context.Context, tx pgx.Tx, campaignID string) error 
 	}
 
 	if _, err := tx.Exec(ctx, `
-        WITH distinct_kills AS (
-            SELECT DISTINCT entity.id, scratch.killmail_id, scratch.adj_value
+        WITH matched AS (
+            SELECT entity.id, entity.side_index,
+                   scratch.killmail_id, scratch.adj_value, scratch.victim_side
             FROM campaign_scratch_killmails scratch
             JOIN killmail_attackers attacker
               ON attacker.killmail_id = scratch.killmail_id
             JOIN campaign_side_entities entity
               ON entity.campaign_id = $1
-             AND (
-                    (entity.entity_type = $2 AND entity.entity_id = attacker.character_id)
-                 OR (entity.entity_type = $3 AND entity.entity_id = attacker.corporation_id)
-                 OR (entity.entity_type = $4 AND entity.entity_id = attacker.alliance_id)
-             )
+             AND entity.entity_type = $2
+             AND entity.entity_id = attacker.character_id
             WHERE scratch.campaign_id = $1
-              AND scratch.victim_side IS DISTINCT FROM entity.side_index
+
+            UNION ALL
+
+            SELECT entity.id, entity.side_index,
+                   scratch.killmail_id, scratch.adj_value, scratch.victim_side
+            FROM campaign_scratch_killmails scratch
+            JOIN killmail_attackers attacker
+              ON attacker.killmail_id = scratch.killmail_id
+            JOIN campaign_side_entities entity
+              ON entity.campaign_id = $1
+             AND entity.entity_type = $3
+             AND entity.entity_id = attacker.corporation_id
+            WHERE scratch.campaign_id = $1
+
+            UNION ALL
+
+            SELECT entity.id, entity.side_index,
+                   scratch.killmail_id, scratch.adj_value, scratch.victim_side
+            FROM campaign_scratch_killmails scratch
+            JOIN killmail_attackers attacker
+              ON attacker.killmail_id = scratch.killmail_id
+            JOIN campaign_side_entities entity
+              ON entity.campaign_id = $1
+             AND entity.entity_type = $4
+             AND entity.entity_id = attacker.alliance_id
+            WHERE scratch.campaign_id = $1
+        ),
+        distinct_kills AS (
+            SELECT DISTINCT id, killmail_id, adj_value
+            FROM matched
+            WHERE victim_side IS DISTINCT FROM side_index
         ),
         totals AS (
             SELECT id, count(*)::int AS kills,
