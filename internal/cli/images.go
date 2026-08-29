@@ -243,7 +243,7 @@ func init() {
 	imagesImportOldCharactersCmd.Flags().StringVar(
 		&flagOldImagesCacheDir,
 		"cache-dir",
-		filepath.Join(".data", "images"),
+		defaultOldImagesCacheDirectory(".data", os.TempDir()),
 		"Directory for the resumable archive download",
 	)
 	imagesImportOldCharactersCmd.Flags().BoolVar(
@@ -269,4 +269,11 @@ func init() {
 		imagesImportOldCharactersCmd,
 		imagesSyncTypesCmd,
 	)
+}
+
+func defaultOldImagesCacheDirectory(dataRoot, temporaryRoot string) string {
+	if info, err := os.Stat(dataRoot); err == nil && info.IsDir() {
+		return filepath.Join(dataRoot, "images")
+	}
+	return filepath.Join(temporaryRoot, "shrike", "images")
 }
