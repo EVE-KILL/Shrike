@@ -37,7 +37,7 @@ func Delay(ctx context.Context, pool *pgxpool.Pool, km Ref, hours int) error {
 	}
 	_, err := pool.Exec(ctx, `
         INSERT INTO esi_killmail_delayed (killmail_id, killmail_hash, delayed_until)
-        VALUES ($1, $2, now() + ($3 || ' hours')::interval)
+        VALUES ($1, $2, now() + make_interval(hours => $3))
         ON CONFLICT (killmail_id) DO UPDATE SET
             killmail_hash = EXCLUDED.killmail_hash,
             delayed_until = LEAST(esi_killmail_delayed.delayed_until, EXCLUDED.delayed_until)`,

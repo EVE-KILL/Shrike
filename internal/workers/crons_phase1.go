@@ -81,7 +81,7 @@ func (d *Deps) cronCorporationUpdate(ctx context.Context) (string, error) {
         SELECT corporation_id FROM corporations
         WHERE deleted IS NOT TRUE
           AND corporation_id >= $1
-          AND (updated_at IS NULL OR updated_at < now() - ($2 || ' days')::interval)
+          AND (updated_at IS NULL OR updated_at < now() - make_interval(days => $2))
         LIMIT $3`, entities.PlayerCorporationIDMin, staleDays, batch)
 	if err != nil {
 		return "", err

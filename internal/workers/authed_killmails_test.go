@@ -102,3 +102,33 @@ func TestAuthenticatedKillmailFetchWritesOperationalLog(t *testing.T) {
 		t.Errorf("new_item_ids = %v", newIDs)
 	}
 }
+
+func TestDelayedKillmailAcceptsIntegerHours(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	ref := killmail.Ref{
+		KillmailID:   2_100_000_001,
+		KillmailHash: "shrike-delay-interval-test",
+	}
+	_, _ = pool.Exec(ctx,
+		`DELETE FROM esi_killmail_delayed WHERE killmail_id = $1`, ref.KillmailID)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM esi_killmail_delayed WHERE killmail_id = $1`, ref.KillmailID)
+	})
+
+	if err := killmail.Delay(ctx, pool, ref, 3); err != nil {
+		t.Fatalf("Delay with integer hours: %v", err)
+	}
+
+	var remainingSeconds int64
+	if err := pool.QueryRow(ctx, `
+        SELECT extract(epoch FROM delayed_until - now())::bigint
+        FROM esi_killmail_delayed
+		WHERE killmail_id = $1`, ref.KillmailID).Scan(&remainingSeconds); err != nil {
+		t.Fatal(err)
+	}
+	if remainingSeconds < 3*60*60-60 || remainingSeconds > 3*60*60 {
+		t.Errorf("remaining delay = %ds, want approximately 3h", remainingSeconds)
+	}
+}
