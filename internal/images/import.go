@@ -139,7 +139,7 @@ func ImportBundledStatic(ctx context.Context, store ObjectStore, options ImportO
 	if err != nil {
 		return ImportResult{}, fmt.Errorf("open bundled static assets: %w", err)
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 	reader := tar.NewReader(gz)
 	var objects []importObject
 	for {

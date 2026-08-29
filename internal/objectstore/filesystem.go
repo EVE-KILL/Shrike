@@ -40,7 +40,7 @@ func NewFileStore(root string, maximum int64) (*FileStore, error) {
 	if maximum <= 0 {
 		maximum = defaultMaximumBytes
 	}
-	if err := os.MkdirAll(abs, 0o755); err != nil {
+	if err := os.MkdirAll(abs, 0o750); err != nil {
 		return nil, fmt.Errorf("create filesystem object storage root: %w", err)
 	}
 	return &FileStore{root: abs, maximum: maximum}, nil
@@ -61,7 +61,8 @@ func (s *FileStore) GetObject(_ context.Context, key string) (*Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	body, err := os.ReadFile(path)
+	// path is rooted beneath s.root by objectPath's traversal validation.
+	body, err := os.ReadFile(path) // #nosec G304
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}
@@ -115,7 +116,7 @@ func (s *FileStore) PutWithOptions(_ context.Context, key string, body []byte, o
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return fmt.Errorf("create object directory: %w", err)
 	}
 	meta, err := json.Marshal(fileMetadata{ContentType: options.ContentType,
@@ -151,7 +152,7 @@ func atomicWrite(path string, body []byte, mode os.FileMode) error {
 		return err
 	}
 	tmpName := tmp.Name()
-	defer os.Remove(tmpName)
+	defer func() { _ = os.Remove(tmpName) }()
 	if err = tmp.Chmod(mode); err == nil {
 		_, err = tmp.Write(body)
 	}
@@ -168,7 +169,8 @@ func atomicWrite(path string, body []byte, mode os.FileMode) error {
 }
 
 func readFileMetadata(path string) (fileMetadata, error) {
-	body, err := os.ReadFile(path)
+	// Metadata paths are derived from an already validated object path.
+	body, err := os.ReadFile(path) // #nosec G304
 	if errors.Is(err, os.ErrNotExist) {
 		return fileMetadata{}, nil
 	}

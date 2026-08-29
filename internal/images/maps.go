@@ -316,9 +316,10 @@ func renderSystem(points []mapPoint, size int) image.Image {
 	var sun mapPoint
 	var planets []mapPoint
 	for _, p := range points {
-		if p.group == 6 {
+		switch p.group {
+		case 6:
 			sun = p
-		} else if p.group == 7 {
+		case 7:
 			planets = append(planets, p)
 		}
 	}
