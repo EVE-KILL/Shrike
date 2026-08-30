@@ -46,6 +46,8 @@ interface ToolLink {
 function buildToolLinks(k: KillToolContext): ToolLink[] {
     const links: ToolLink[] = []
 
+    const capsuleersMapName = (name: string | null) => encodeURIComponent((name || '').replaceAll(' ', '_'))
+
     // DOTLAN
     links.push({
         name: 'DOTLAN', icon: '/remotes/dotlan.png',
@@ -107,6 +109,19 @@ function buildToolLinks(k: KillToolContext): ToolLink[] {
             { label: 'Character', desc: k.characterName, url: `https://evewho.com/character/${k.characterId}`, external: true, disabled: !k.characterId },
             { label: 'Corporation', desc: k.corporationName, url: `https://evewho.com/corporation/${k.corporationId}`, external: true, disabled: !k.corporationId },
             { label: 'Alliance', desc: k.allianceName, url: `https://evewho.com/alliance/${k.allianceId}`, external: true, disabled: !k.allianceId },
+        ],
+    })
+
+    // Capsuleers.app
+    links.push({
+        name: 'Capsuleers.app', icon: '',
+        items: [
+            { label: 'Character', desc: k.characterName, url: `https://capsuleers.app/character/${k.characterId}`, external: true, disabled: !k.characterId },
+            { label: 'Corporation', desc: k.corporationName, url: `https://capsuleers.app/corporation/${k.corporationId}`, external: true, disabled: !k.corporationId },
+            { label: 'Alliance', desc: k.allianceName, url: `https://capsuleers.app/alliance/${k.allianceId}`, external: true, disabled: !k.allianceId },
+            { label: 'Ship', desc: k.shipName, url: `https://capsuleers.app/items/${k.shipTypeId}`, external: true, disabled: !k.shipTypeId },
+            { label: 'Region', desc: k.regionName, url: `https://capsuleers.app/tools/map/${capsuleersMapName(k.regionName)}`, external: true, disabled: !k.regionName },
+            { label: 'System', desc: k.systemName, url: `https://capsuleers.app/tools/map/${capsuleersMapName(k.regionName)}?system=${capsuleersMapName(k.systemName)}`, external: true, disabled: !k.regionName || !k.systemName },
         ],
     })
 

@@ -166,6 +166,8 @@ func TestAdminESILogPageQueryKeepsCountPageAndSourcesInOneRequest(t *testing.T) 
 		"source_options AS",
 		"named_page AS",
 		"endpoint_entity_name",
+		"stored_item_ids",
+		"JOIN killmails stored",
 		"LIMIT $2 OFFSET $3",
 	} {
 		if !strings.Contains(query, fragment) {

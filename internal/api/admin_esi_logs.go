@@ -178,6 +178,14 @@ const adminESILogColumns = `
 	log.items_returned,
 	log.new_items,
 	log.new_item_ids,
+	COALESCE((
+	  SELECT JSONB_AGG(discovered.killmail_id::bigint ORDER BY discovered.ordinality)
+	  FROM JSONB_ARRAY_ELEMENTS_TEXT(
+	    COALESCE(log.new_item_ids, '[]'::jsonb)
+	  ) WITH ORDINALITY AS discovered(killmail_id, ordinality)
+	  JOIN killmails stored
+	    ON stored.killmail_id = discovered.killmail_id::bigint
+	), '[]'::jsonb) AS stored_item_ids,
 	log.source,
 	log.request_duration_ms,
 	log.esi_error_limit_remain,

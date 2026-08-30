@@ -24,6 +24,7 @@ export interface EsiLogRow {
     items_returned: number | null
     new_items: number | null
     new_item_ids?: number[] | null
+    stored_item_ids?: number[] | null
     character_id?: number | null
     character_name?: string | null
 }

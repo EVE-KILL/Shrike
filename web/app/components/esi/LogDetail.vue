@@ -19,6 +19,12 @@ const props = defineProps<{
 const open = defineModel<boolean>({ required: true })
 
 const newItemIds = computed(() => Array.isArray(props.row?.new_item_ids) ? props.row!.new_item_ids! : [])
+const storedItemIds = computed(() => new Set(
+    Array.isArray(props.row?.stored_item_ids)
+        ? props.row.stored_item_ids.map(Number)
+        : [],
+))
+const isStored = (killmailId: number) => storedItemIds.value.has(Number(killmailId))
 </script>
 
 <template>
@@ -92,16 +98,23 @@ const newItemIds = computed(() => Array.isArray(props.row?.new_item_ids) ? props
                 <div v-if="showEntity && (row.new_items ?? 0) > 0">
                     <div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 mb-1.5 flex items-center gap-1.5">
                         <Icon name="lucide:sparkles" class="text-xs" />
-                        New Killmails
+                        Discovered Killmails
                         <span class="text-gray-600 font-normal normal-case tracking-normal">({{ row.new_items }})</span>
                     </div>
                     <div v-if="newItemIds.length" class="flex flex-wrap gap-1.5 bg-blue-500/[0.04] rounded-lg px-3 py-2">
-                        <NuxtLink
-                            v-for="kmId in newItemIds" :key="kmId"
-                            :to="`/kill/${kmId}`"
-                            target="_blank"
-                            class="text-xs font-mono tabular-nums px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors"
-                        >{{ kmId }}</NuxtLink>
+                        <template v-for="kmId in newItemIds" :key="kmId">
+                            <NuxtLink
+                                v-if="isStored(kmId)"
+                                :to="`/kill/${kmId}`"
+                                target="_blank"
+                                class="text-xs font-mono tabular-nums px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors"
+                            >{{ kmId }}</NuxtLink>
+                            <span
+                                v-else
+                                class="text-xs font-mono tabular-nums px-1.5 py-0.5 rounded bg-white/[0.05] text-gray-500"
+                                title="Discovered by ESI, but not stored yet"
+                            >{{ kmId }} <span class="font-sans">pending</span></span>
+                        </template>
                     </div>
                     <div v-else class="text-xs text-gray-500 italic bg-white/[0.02] rounded-lg px-3 py-2">
                         Item IDs not recorded for this request (logged before tracking was added).
