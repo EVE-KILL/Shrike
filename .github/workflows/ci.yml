@@ -86,6 +86,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
+          install-mode: goinstall
           args: >-
             --new-from-rev=${{
               github.event_name == 'pull_request'
