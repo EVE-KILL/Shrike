@@ -4,22 +4,31 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version tag to create after main CI passes"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.inputs.version || github.ref }}
   cancel-in-progress: false
 
 jobs:
   validate:
     name: Validate release
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 35
     permissions:
       actions: read
-      contents: read
+      contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
 
     steps:
       - name: Check out release source
@@ -27,34 +36,83 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate release tag
+      - name: Resolve release
+        id: release
         shell: bash
+        env:
+          REQUESTED_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            tag="$REQUESTED_VERSION"
+            sha="$GITHUB_SHA"
+          else
+            tag="$GITHUB_REF_NAME"
+            sha="$GITHUB_SHA"
+          fi
+
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "Release tags must use vMAJOR.MINOR.PATCH or a SemVer prerelease."
             exit 1
           fi
 
           git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
             echo "Release tags must point to a commit on main."
             exit 1
           fi
 
-      - name: Verify tagged commit passed CI
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          successful_runs=$(
-            gh api \
-              "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=completed&per_page=20" \
-              --jq '[.workflow_runs[] | select(.conclusion == "success")] | length'
-          )
-          if [[ "$successful_runs" -lt 1 ]]; then
-            echo "The tagged commit does not have a successful main CI run."
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]] &&
+             git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Release tag $tag already exists."
             exit 1
           fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for release commit CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 120); do
+            run=$(
+              gh api \
+                "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$RELEASE_SHA&event=push&per_page=20" \
+                --jq '.workflow_runs | sort_by(.created_at) | reverse | .[0] // {}'
+            )
+            status=$(jq -r '.status // "missing"' <<< "$run")
+            conclusion=$(jq -r '.conclusion // ""' <<< "$run")
+            url=$(jq -r '.html_url // ""' <<< "$run")
+
+            if [[ "$status" == "completed" && "$conclusion" == "success" ]]; then
+              echo "CI passed: $url"
+              exit 0
+            fi
+            if [[ "$status" == "completed" ]]; then
+              echo "CI completed with $conclusion: $url"
+              exit 1
+            fi
+
+            echo "Waiting for CI on $RELEASE_SHA (status: $status, attempt: $attempt/120)"
+            sleep 15
+          done
+
+          echo "Timed out waiting for CI on $RELEASE_SHA."
+          exit 1
+
+      - name: Create requested release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "Release $RELEASE_TAG"
+          git push origin "refs/tags/$RELEASE_TAG"
 
   build:
     name: Build ${{ matrix.platform }}
@@ -78,6 +136,8 @@ jobs:
     steps:
       - name: Check out release source
         uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
 
       - name: Resolve image name
         id: image
@@ -116,8 +176,8 @@ jobs:
           provenance: mode=max
           sbom: true
           build-args: |
-            VERSION=${{ github.ref_name }}
-            COMMIT=${{ github.sha }}
+            VERSION=${{ needs.validate.outputs.tag }}
+            COMMIT=${{ needs.validate.outputs.sha }}
 
       - name: Export image digest
         shell: bash
@@ -137,7 +197,9 @@ jobs:
 
   publish:
     name: Publish unified image
-    needs: build
+    needs:
+      - validate
+      - build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -173,12 +235,12 @@ jobs:
         with:
           images: ${{ steps.image.outputs.name }}
           tags: |
-            type=raw,value=${{ github.ref_name }}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,format=long,prefix=sha-
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+            type=raw,value=${{ needs.validate.outputs.tag }}
+            type=semver,value=${{ needs.validate.outputs.tag }},pattern={{version}}
+            type=semver,value=${{ needs.validate.outputs.tag }},pattern={{major}}.{{minor}}
+            type=semver,value=${{ needs.validate.outputs.tag }},pattern={{major}}
+            type=raw,value=sha-${{ needs.validate.outputs.sha }}
+            type=raw,value=latest,enable=${{ !contains(needs.validate.outputs.tag, '-') }}
 
       - name: Create and publish manifest
         id: manifest
@@ -204,7 +266,7 @@ jobs:
           done
           docker buildx imagetools create "${tag_args[@]}" "${image_refs[@]}"
           digest=$(docker buildx imagetools inspect \
-            "$IMAGE_NAME:${{ steps.metadata.outputs.version }}" \
+            "$IMAGE_NAME:${{ needs.validate.outputs.tag }}" \
             --format '{{json .Manifest.Digest}}' | jq -r .)
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
@@ -215,8 +277,8 @@ jobs:
           {
             echo "## Shrike image"
             echo
-            echo "- Tag: \`$GITHUB_REF_NAME\`"
-            echo "- Commit: \`$GITHUB_SHA\`"
+            echo "- Tag: \`${{ needs.validate.outputs.tag }}\`"
+            echo "- Commit: \`${{ needs.validate.outputs.sha }}\`"
             echo "- Digest: \`$IMAGE_DIGEST\`"
             echo "- Platforms: \`linux/amd64\`, \`linux/arm64\`"
             echo

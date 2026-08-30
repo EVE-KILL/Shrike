@@ -27,17 +27,19 @@ image` check before merging.
 
 Release tags use Semantic Versioning with a `v` prefix.
 
-1. Update local `main`.
-2. Confirm that CI passed for the release commit.
-3. Create an annotated tag.
-4. Push the tag.
+Start the release promotion immediately after you push the release commit:
 
 ```bash
-git switch main
-git pull --ff-only
-git tag -a v1.0.0 -m "Shrike v1.0.0"
-git push origin v1.0.0
+gh workflow run release.yml --ref main -f version=v1.0.0
 ```
+
+The workflow pins the current `origin/main` commit. It waits for the push CI run
+for that exact commit. When CI passes, it creates the annotated tag and publishes
+the image. You do not have to wait locally before you request the release.
+
+If CI fails or times out, the workflow fails and does not create the tag. Run the
+command again with a new patch version after you fix the source. Do not reuse a
+tag that already exists.
 
 The `Release` workflow accepts stable tags and prerelease tags.
 
@@ -48,10 +50,18 @@ v1.0.0
 v1.1.0-rc.1
 ```
 
-The release commit must exist on `main`.
+The release commit must be the current commit on `main` when you start the
+workflow.
 
-The workflow confirms that the tagged commit passed the `main` CI workflow. It
-does not rerun CI.
+The workflow waits for the existing `main` CI workflow. It does not rerun CI.
+
+Manual annotated tag pushes remain supported for recovery. Before you push a
+manual tag, confirm that CI passed for its commit:
+
+```bash
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
 
 Stable releases update `latest`. Prereleases do not update `latest`.
 
