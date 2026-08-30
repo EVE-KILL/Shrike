@@ -201,13 +201,13 @@ func TestCacheNotModifiedKeepsCORSAndSchemaLink(t *testing.T) {
 		t.Fatalf("status = %d, want 304", response.Code)
 	}
 	for name, want := range map[string]string{
-		"Access-Control-Allow-Origin":  "*",
-		"Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
-		"Access-Control-Allow-Headers": "Content-Type, If-None-Match, Last-Event-ID",
+		"Access-Control-Allow-Origin":   "*",
+		"Access-Control-Allow-Methods":  "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
+		"Access-Control-Allow-Headers":  "Content-Type, If-None-Match, Last-Event-ID",
 		"Access-Control-Expose-Headers": "ETag, Link, X-Cache",
-		"Cache-Control": "public, max-age=60",
-		"Link":          `</schemas/sde-regions-response.json>; rel="describedBy"`,
-		"X-Cache":       "HIT",
+		"Cache-Control":                 "public, max-age=60",
+		"Link":                          `</schemas/sde-regions-response.json>; rel="describedBy"`,
+		"X-Cache":                       "HIT",
 	} {
 		if got := response.Header().Get(name); got != want {
 			t.Errorf("%s = %q, want %q", name, got, want)

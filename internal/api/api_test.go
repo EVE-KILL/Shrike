@@ -495,11 +495,11 @@ func TestFeedStreamOptionsPreserveSSEHeaders(t *testing.T) {
 		t.Fatalf("status = %d, want 204", rec.Code)
 	}
 	for name, want := range map[string]string{
-		"Access-Control-Allow-Origin":  "*",
-		"Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
-		"Access-Control-Allow-Headers": "Content-Type, If-None-Match, Last-Event-ID",
+		"Access-Control-Allow-Origin":   "*",
+		"Access-Control-Allow-Methods":  "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
+		"Access-Control-Allow-Headers":  "Content-Type, If-None-Match, Last-Event-ID",
 		"Access-Control-Expose-Headers": "ETag, Link, X-Cache",
-		"Access-Control-Max-Age": "86400",
+		"Access-Control-Max-Age":        "86400",
 	} {
 		if got := rec.Header().Get(name); got != want {
 			t.Errorf("%s = %q, want %q", name, got, want)
