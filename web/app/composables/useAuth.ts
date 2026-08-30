@@ -34,7 +34,7 @@ export function useAuth() {
 
         // Seed with hint immediately — this triggers after hydration
         // so ClientOnly will pick it up on its first client render. The
-        // background /api/auth/me fetch below replaces this with the full
+        // background /auth/me fetch below replaces this with the full
         // server-authoritative shape (incl. lastSeenNotificationId).
         if (!user.value) {
             user.value = {
@@ -52,7 +52,7 @@ export function useAuth() {
         }
 
         // Fetch full auth data in background
-        apiFetch<{ user: AuthUser | null }>("/api/auth/me")
+        apiFetch<{ user: AuthUser | null }>("/auth/me")
             .then((data) => {
                 user.value = data.user ?? null;
             })
@@ -67,7 +67,7 @@ export function useAuth() {
             charKm: opts.charKm !== false,
             corpKm: opts.corpKm !== false,
         });
-        const data = await apiFetch<{ url: string }>("/api/auth/login", {
+        const data = await apiFetch<{ url: string }>("/auth/login", {
             params: {
                 redirect: currentPath,
                 charKm: opts.charKm === false ? "0" : "1",
@@ -79,7 +79,7 @@ export function useAuth() {
     }
 
     async function logout() {
-        await apiFetch("/api/auth/logout", { method: "POST" });
+        await apiFetch("/auth/logout", { method: "POST" });
         user.value = null;
         _fullAuthFetched = false;
         navigateTo("/");
