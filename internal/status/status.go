@@ -556,6 +556,7 @@ func (c *Collector) databaseInfo(ctx context.Context) *DatabaseInfo {
 		       count(*) FILTER (
 		           WHERE activity.datname = current_database()
 		             AND activity.wait_event_type IS NOT NULL
+		             AND activity.wait_event_type <> 'Client'
 		       ),
 		       current_setting('max_connections')::bigint,
 		       coalesce(round(
