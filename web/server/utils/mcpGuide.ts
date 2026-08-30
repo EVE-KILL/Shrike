@@ -85,7 +85,7 @@ export async function buildMcpGuide(mcpBase: string): Promise<string> {
     lines.push('')
     lines.push(`Endpoint: ${mcpBase}/mcp  (JSON-RPC over streamable HTTP)`)
     lines.push(`Protocol: MCP 2025-06-18`)
-    lines.push(`Rate limit: 20 requests/second per IP (no auth, no API key)`)
+    lines.push(`No auth or API key required; send an identifying User-Agent header`)
     lines.push('')
     lines.push('## What this server does')
     lines.push('')

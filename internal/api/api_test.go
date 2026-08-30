@@ -327,7 +327,7 @@ func TestSiteOpenAPIDocumentsAudienceAndServers(t *testing.T) {
 		"## Contract and data freshness",
 		"## Responsible use",
 		"User-Agent",
-		"Retry-After",
+		"network edge",
 	} {
 		if !strings.Contains(document.Info.Description, section) {
 			t.Errorf("API introduction does not contain %q", section)
@@ -498,9 +498,7 @@ func TestFeedStreamOptionsPreserveSSEHeaders(t *testing.T) {
 		"Access-Control-Allow-Origin":  "*",
 		"Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
 		"Access-Control-Allow-Headers": "Content-Type, If-None-Match, Last-Event-ID",
-		"Access-Control-Expose-Headers": "ETag, Link, X-Cache, RateLimit-Limit, " +
-			"RateLimit-Remaining, RateLimit-Reset, Retry-After, X-RateLimit-Limit, " +
-			"X-RateLimit-Remaining, X-RateLimit-Reset",
+		"Access-Control-Expose-Headers": "ETag, Link, X-Cache",
 		"Access-Control-Max-Age": "86400",
 	} {
 		if got := rec.Header().Get(name); got != want {

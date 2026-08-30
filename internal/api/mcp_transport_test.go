@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestMCPTransportInitializesWithoutUserAgent(t *testing.T) {
+func TestMCPTransportInitializesWithUserAgent(t *testing.T) {
 	service := New(Options{
 		Version:      "test",
 		RequestGuard: NewRequestGuard(),
@@ -31,6 +31,7 @@ func TestMCPTransportInitializesWithoutUserAgent(t *testing.T) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Accept", "application/json, text/event-stream")
 	request.Header.Set("MCP-Protocol-Version", "2025-06-18")
+	request.Header.Set("User-Agent", "evekill-mcp-test/1.0")
 	response := httptest.NewRecorder()
 
 	service.Site().ServeHTTP(response, request)

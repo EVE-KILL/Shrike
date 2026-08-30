@@ -168,9 +168,7 @@ func TestCacheHitAndMissHaveIdenticalResponseMetadata(t *testing.T) {
 		t.Errorf("Access-Control-Allow-Headers = %q", got)
 	}
 	if got := hit.Header().Get("Access-Control-Expose-Headers"); got !=
-		"ETag, Link, X-Cache, RateLimit-Limit, RateLimit-Remaining, "+
-			"RateLimit-Reset, Retry-After, X-RateLimit-Limit, "+
-			"X-RateLimit-Remaining, X-RateLimit-Reset" {
+		"ETag, Link, X-Cache" {
 		t.Errorf("Access-Control-Expose-Headers = %q", got)
 	}
 	if hit.Body.String() != miss.Body.String() {
@@ -206,9 +204,7 @@ func TestCacheNotModifiedKeepsCORSAndSchemaLink(t *testing.T) {
 		"Access-Control-Allow-Origin":  "*",
 		"Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS",
 		"Access-Control-Allow-Headers": "Content-Type, If-None-Match, Last-Event-ID",
-		"Access-Control-Expose-Headers": "ETag, Link, X-Cache, RateLimit-Limit, " +
-			"RateLimit-Remaining, RateLimit-Reset, Retry-After, X-RateLimit-Limit, " +
-			"X-RateLimit-Remaining, X-RateLimit-Reset",
+		"Access-Control-Expose-Headers": "ETag, Link, X-Cache",
 		"Cache-Control": "public, max-age=60",
 		"Link":          `</schemas/sde-regions-response.json>; rel="describedBy"`,
 		"X-Cache":       "HIT",

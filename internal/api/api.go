@@ -94,11 +94,9 @@ can be corrected when better source data becomes available.
 ## Responsible use
 
 Every /api request must send an identifying **User-Agent**; use an application name and a way
-to contact its operator. The origin allows 600 API requests per client IP in each one-minute
-window and reports the current budget through **RateLimit-Limit**,
-**RateLimit-Remaining**, and **RateLimit-Reset**. Reuse responses according to their cache
-headers, prefer the live feed for continuous consumption, and back off when a response includes
-**Retry-After** or returns **429 Too Many Requests**.`
+to contact its operator. Reuse responses according to their cache headers and prefer the live
+feed for continuous consumption. Traffic shaping and rate limiting, when enabled, are enforced
+at the network edge rather than by the Shrike origin.`
 
 // New builds the shared API once.
 func New(opts Options) *Service {

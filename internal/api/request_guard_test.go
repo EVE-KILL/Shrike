@@ -3,13 +3,11 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
-	"time"
 )
 
 func TestRequestGuardRequiresUserAgentOnlyForAPI(t *testing.T) {
-	guard := newRequestGuard(10, time.Minute, time.Now)
+	guard := NewRequestGuard()
 	handler := guard.Wrap(http.HandlerFunc(func(
 		w http.ResponseWriter,
 		_ *http.Request,
@@ -17,146 +15,51 @@ func TestRequestGuardRequiresUserAgentOnlyForAPI(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 
-	apiRequest := httptest.NewRequest(
-		http.MethodGet,
-		"http://example.test/api/killmails",
-		nil,
-	)
-	apiResponse := httptest.NewRecorder()
-	handler.ServeHTTP(apiResponse, apiRequest)
-	if apiResponse.Code != http.StatusBadRequest {
-		t.Fatalf(
-			"API without User-Agent returned %d: %s",
-			apiResponse.Code,
-			apiResponse.Body.String(),
-		)
-	}
-	if got := apiResponse.Header().Get("Cache-Control"); got != "no-store" {
-		t.Fatalf("API rejection Cache-Control = %q", got)
-	}
-	if got := apiResponse.Header().Get("Access-Control-Allow-Origin"); got != "*" {
-		t.Fatalf("API rejection CORS origin = %q", got)
-	}
-
-	mcpResponse := httptest.NewRecorder()
-	handler.ServeHTTP(
-		mcpResponse,
-		httptest.NewRequest(http.MethodPost, "http://example.test/api/mcp", nil),
-	)
-	if mcpResponse.Code != http.StatusNoContent {
-		t.Fatalf("MCP transport without User-Agent returned %d", mcpResponse.Code)
-	}
-	if mcpResponse.Header().Get("RateLimit-Limit") == "" {
-		t.Fatal("MCP transport did not retain API rate limiting")
+	for _, path := range []string{"/api/killmails", "/api/mcp", "/api"} {
+		request := httptest.NewRequest(http.MethodGet, "http://example.test"+path, nil)
+		request.Header.Del("User-Agent")
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest {
+			t.Errorf("%s without User-Agent returned %d: %s", path, response.Code, response.Body.String())
+		}
+		if got := response.Header().Get("Cache-Control"); got != "no-store" {
+			t.Errorf("%s rejection Cache-Control = %q", path, got)
+		}
+		if got := response.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+			t.Errorf("%s rejection CORS origin = %q", path, got)
+		}
 	}
 
 	for _, path := range []string{"/images/types/42/icon", "/auth/eve", "/health"} {
+		request := httptest.NewRequest(http.MethodGet, "http://example.test"+path, nil)
+		request.Header.Del("User-Agent")
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(
-			response,
-			httptest.NewRequest(http.MethodGet, "http://example.test"+path, nil),
-		)
+		handler.ServeHTTP(response, request)
 		if response.Code != http.StatusNoContent {
 			t.Errorf("%s without User-Agent returned %d", path, response.Code)
 		}
-		if response.Header().Get("RateLimit-Limit") != "" {
-			t.Errorf("%s unexpectedly has API rate-limit headers", path)
+	}
+
+	identified := httptest.NewRequest(http.MethodGet, "http://example.test/api/killmails", nil)
+	identified.Header.Set("User-Agent", "evekill-guard-test/1.0")
+	identifiedResponse := httptest.NewRecorder()
+	handler.ServeHTTP(identifiedResponse, identified)
+	if identifiedResponse.Code != http.StatusNoContent {
+		t.Fatalf("identified API request returned %d", identifiedResponse.Code)
+	}
+	for _, header := range []string{
+		"RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "Retry-After",
+		"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset",
+	} {
+		if got := identifiedResponse.Header().Get(header); got != "" {
+			t.Errorf("identified API response unexpectedly has %s = %q", header, got)
 		}
 	}
 
 	preflight := httptest.NewRecorder()
-	handler.ServeHTTP(
-		preflight,
-		httptest.NewRequest(
-			http.MethodOptions,
-			"http://example.test/api/killmails",
-			nil,
-		),
-	)
+	handler.ServeHTTP(preflight, httptest.NewRequest(http.MethodOptions, "http://example.test/api/killmails", nil))
 	if preflight.Code != http.StatusNoContent {
 		t.Fatalf("API preflight returned %d", preflight.Code)
-	}
-}
-
-func TestRequestGuardLimitsEachClientAddressIndependently(t *testing.T) {
-	now := time.Date(2026, 7, 27, 14, 0, 0, 0, time.UTC)
-	guard := newRequestGuard(2, time.Minute, func() time.Time {
-		return now
-	})
-	handler := guard.Wrap(http.HandlerFunc(func(
-		w http.ResponseWriter,
-		_ *http.Request,
-	) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-
-	request := func(address string) *httptest.ResponseRecorder {
-		r := httptest.NewRequest(
-			http.MethodGet,
-			"http://example.test/api/killmails",
-			nil,
-		)
-		r.Header.Set("User-Agent", "evekill-guard-test/1.0")
-		r.Header.Set("CF-Connecting-IP", address)
-		w := httptest.NewRecorder()
-		handler.ServeHTTP(w, r)
-		return w
-	}
-
-	first := request("192.0.2.10")
-	if first.Code != http.StatusNoContent ||
-		first.Header().Get("RateLimit-Limit") != "2" ||
-		first.Header().Get("RateLimit-Remaining") != "1" ||
-		first.Header().Get("RateLimit-Reset") != "60" {
-		t.Fatalf("first response = %d, headers %v", first.Code, first.Header())
-	}
-	second := request("192.0.2.10")
-	if second.Code != http.StatusNoContent ||
-		second.Header().Get("RateLimit-Remaining") != "0" {
-		t.Fatalf("second response = %d, headers %v", second.Code, second.Header())
-	}
-	limited := request("192.0.2.10")
-	if limited.Code != http.StatusTooManyRequests ||
-		limited.Header().Get("Retry-After") != "60" ||
-		limited.Header().Get("X-RateLimit-Remaining") != "0" ||
-		limited.Header().Get("Access-Control-Allow-Origin") != "*" {
-		t.Fatalf("limited response = %d, headers %v", limited.Code, limited.Header())
-	}
-	if got := limited.Header().Get("Access-Control-Expose-Headers"); !strings.Contains(got, "Retry-After") ||
-		!strings.Contains(got, "RateLimit-Remaining") {
-		t.Fatalf("limited response does not expose rate headers: %q", got)
-	}
-
-	otherClient := request("192.0.2.11")
-	if otherClient.Code != http.StatusNoContent {
-		t.Fatalf("other client returned %d", otherClient.Code)
-	}
-
-	now = now.Add(time.Minute)
-	reset := request("192.0.2.10")
-	if reset.Code != http.StatusNoContent ||
-		reset.Header().Get("RateLimit-Remaining") != "1" {
-		t.Fatalf("reset response = %d, headers %v", reset.Code, reset.Header())
-	}
-}
-
-func TestClientAddressPrefersValidatedForwardingHeaders(t *testing.T) {
-	request := httptest.NewRequest(
-		http.MethodGet,
-		"http://example.test/api",
-		nil,
-	)
-	request.RemoteAddr = "127.0.0.1:1234"
-	request.Header.Set("X-Forwarded-For", "198.51.100.8, 127.0.0.1")
-	if got := clientAddress(request); got != "198.51.100.8" {
-		t.Fatalf("forwarded address = %q", got)
-	}
-	request.Header.Set("CF-Connecting-IP", "2001:db8::42")
-	if got := clientAddress(request); got != "2001:db8::42" {
-		t.Fatalf("Cloudflare address = %q", got)
-	}
-	request.Header.Set("CF-Connecting-IP", "not-an-ip")
-	if got := clientAddress(request); got != "198.51.100.8" {
-		t.Fatalf("invalid Cloudflare fallback = %q", got)
 	}
 }

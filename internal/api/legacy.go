@@ -255,9 +255,7 @@ func setCrossOriginAPIHeaders(header http.Header) {
 	)
 	header.Set(
 		"Access-Control-Expose-Headers",
-		"ETag, Link, X-Cache, RateLimit-Limit, RateLimit-Remaining, "+
-			"RateLimit-Reset, Retry-After, X-RateLimit-Limit, "+
-			"X-RateLimit-Remaining, X-RateLimit-Reset",
+		"ETag, Link, X-Cache",
 	)
 }
 
