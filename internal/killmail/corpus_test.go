@@ -63,7 +63,7 @@ type fixture struct {
 	Prices       map[string]map[string]float64 `json:"prices"`
 }
 
-func loadFixture(t *testing.T) (*eve.Cache, *fixture) {
+func loadFixture(t testing.TB) (*eve.Cache, *fixture) {
 	t.Helper()
 
 	raw, err := os.ReadFile(sdeFixturePath)
@@ -122,7 +122,7 @@ func loadFixture(t *testing.T) (*eve.Cache, *fixture) {
 
 // pricesFor builds a resolver seeded with the day's snapshot, so no database is
 // consulted and the price of every type is exactly what it was on the day.
-func (f *fixture) pricesFor(t *testing.T, cache *eve.Cache, date string) *eve.Prices {
+func (f *fixture) pricesFor(t testing.TB, cache *eve.Cache, date string) *eve.Prices {
 	t.Helper()
 	market := map[int32]float64{}
 	for id, v := range f.Prices[date] {
@@ -133,7 +133,7 @@ func (f *fixture) pricesFor(t *testing.T, cache *eve.Cache, date string) *eve.Pr
 	return p
 }
 
-func atoi32(t *testing.T, s string) int32 {
+func atoi32(t testing.TB, s string) int32 {
 	t.Helper()
 	n, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
@@ -149,7 +149,7 @@ type corpusEntry struct {
 	raw  []byte
 }
 
-func loadCorpus(t *testing.T) []corpusEntry {
+func loadCorpus(t testing.TB) []corpusEntry {
 	t.Helper()
 
 	manifestRaw, err := os.ReadFile(manifestPath)
@@ -186,6 +186,56 @@ func loadCorpus(t *testing.T) []corpusEntry {
 		out = append(out, corpusEntry{id: km.KillmailID, kind: manifest[id], esi: km, raw: raw})
 	}
 	return out
+}
+
+var (
+	benchmarkDecoded ESIKillmail
+	benchmarkParsed  *Parsed
+)
+
+func BenchmarkDecodeESIKillmail(b *testing.B) {
+	entries := loadCorpus(b)
+	largest := entries[0]
+	for _, entry := range entries[1:] {
+		if len(entry.raw) > len(largest.raw) {
+			largest = entry
+		}
+	}
+
+	b.ReportAllocs()
+	b.SetBytes(int64(len(largest.raw)))
+	b.ResetTimer()
+	for b.Loop() {
+		var decoded ESIKillmail
+		if err := json.Unmarshal(largest.raw, &decoded); err != nil {
+			b.Fatal(err)
+		}
+		benchmarkDecoded = decoded
+	}
+}
+
+func BenchmarkParseESIKillmail(b *testing.B) {
+	cache, fixture := loadFixture(b)
+	entries := loadCorpus(b)
+	largest := entries[0]
+	for _, entry := range entries[1:] {
+		if len(entry.raw) > len(largest.raw) {
+			largest = entry
+		}
+	}
+	date := largest.esi.KillmailTime.UTC().Format("2006-01-02")
+	prices := fixture.pricesFor(b, cache, date)
+	ctx := context.Background()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		parsed, err := Parse(ctx, cache, prices, &largest.esi, largest.esi.KillmailHash, 0)
+		if err != nil {
+			b.Fatal(err)
+		}
+		benchmarkParsed = parsed
+	}
 }
 
 // countESIItems walks the raw tree, which is the independent count the parser's
