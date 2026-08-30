@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -131,5 +132,43 @@ func TestListenLoopbackServesAndLeavesNoSocket(t *testing.T) {
 	// Close must not fail trying to unlink a socket that never existed.
 	if err := server.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
+	}
+}
+
+func TestPrivateServerExposesOnlyGoroutineLeakProfile(t *testing.T) {
+	handler := privateDiagnostics(http.NotFoundHandler())
+
+	request := func(path string) *http.Response {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		return recorder.Result()
+	}
+
+	response := request("/debug/pprof/goroutineleak?debug=1")
+	defer response.Body.Close() //nolint:errcheck
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("goroutine leak profile status = %d, want 200", response.StatusCode)
+	}
+	if contentType := response.Header.Get("Content-Type"); contentType == "" {
+		t.Fatal("goroutine leak profile has no content type")
+	}
+
+	if response := request("/debug/pprof/"); response.StatusCode != http.StatusNotFound {
+		_ = response.Body.Close()
+		t.Fatalf("pprof index status = %d, want 404", response.StatusCode)
+	} else {
+		_ = response.Body.Close()
+	}
+}
+
+func TestPrivateServerLimitsHeaderValues(t *testing.T) {
+	server, err := ListenLoopback("127.0.0.1:0", http.NotFoundHandler())
+	if err != nil {
+		t.Fatalf("ListenLoopback: %v", err)
+	}
+	defer server.Close() //nolint:errcheck
+	if got := server.http.MaxHeaderValueCount; got != 64 {
+		t.Fatalf("MaxHeaderValueCount = %d, want 64", got)
 	}
 }

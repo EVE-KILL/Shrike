@@ -85,13 +85,14 @@ read-only tools backed by Postgres and Memgraph.`,
 			})
 
 			server := &http.Server{
-				Addr:              fmt.Sprintf(":%d", port),
-				Handler:           mux,
-				ReadHeaderTimeout: 10 * time.Second,
-				ReadTimeout:       2 * time.Minute,
-				WriteTimeout:      2 * time.Minute,
-				IdleTimeout:       5 * time.Minute,
-				MaxHeaderBytes:    64 << 10,
+				Addr:                fmt.Sprintf(":%d", port),
+				Handler:             mux,
+				ReadHeaderTimeout:   10 * time.Second,
+				ReadTimeout:         2 * time.Minute,
+				WriteTimeout:        2 * time.Minute,
+				IdleTimeout:         5 * time.Minute,
+				MaxHeaderBytes:      64 << 10,
+				MaxHeaderValueCount: 64,
 			}
 			errs := make(chan error, 1)
 			go func() {

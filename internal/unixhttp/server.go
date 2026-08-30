@@ -12,11 +12,14 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 )
+
+const maxHeaderValueCount = 64
 
 // Server is an HTTP server on one private listener.
 type Server struct {
@@ -96,8 +99,9 @@ func serve(
 ) *Server {
 	server := &Server{
 		http: &http.Server{
-			Handler:           handler,
-			ReadHeaderTimeout: 10 * time.Second,
+			Handler:             privateDiagnostics(handler),
+			ReadHeaderTimeout:   10 * time.Second,
+			MaxHeaderValueCount: maxHeaderValueCount,
 		},
 		socket: socket,
 		addr:   addr,
@@ -114,6 +118,19 @@ func serve(
 		close(server.done)
 	}()
 	return server
+}
+
+// privateDiagnostics adds the Go 1.27 goroutine leak profile to the private
+// listener. It deliberately exposes no other pprof surface.
+func privateDiagnostics(next http.Handler) http.Handler {
+	profile := pprof.Handler("goroutineleak")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/debug/pprof/goroutineleak" {
+			profile.ServeHTTP(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Socket returns the absolute socket path, or the empty string for a loopback
