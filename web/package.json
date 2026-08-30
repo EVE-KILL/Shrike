@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "nuxt build",
+    "build": "nuxt build && test -f .output/server/node_modules/srvx/dist/adapters/node.mjs",
     "dev": "nuxt dev",
     "generate:api": "bun install --cwd tools/api-codegen --frozen-lockfile && bun run --cwd tools/api-codegen generate",
     "preview": "nuxt preview",

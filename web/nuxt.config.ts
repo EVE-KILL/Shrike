@@ -176,6 +176,14 @@ export default defineNuxtConfig({
     sourceMap: false,
     errorHandler: fileURLToPath(new URL("./server/error.ts", import.meta.url)),
 
+    // IPX loads its Node compatibility adapter through a runtime require.
+    // Nitro's file tracer cannot discover that dynamic subpath on its own and
+    // otherwise only ships srvx's Bun adapter, making every /_ipx request fail
+    // with "Cannot find module 'srvx/node'" in the production image.
+    externals: {
+      traceInclude: ["node_modules/srvx/dist/adapters/node.mjs"],
+    },
+
     // Esbuild minification
     esbuild: {
       options: {
