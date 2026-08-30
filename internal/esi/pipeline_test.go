@@ -133,6 +133,9 @@ func TestConditionalRequestOn304(t *testing.T) {
 	if res.Status != http.StatusNotModified {
 		t.Errorf("status = %d, want 304", res.Status)
 	}
+	if !res.OK() {
+		t.Error("a 304 response backed by cached data must be successful")
+	}
 	if res.Data == nil || res.Data.Name != "Unchanged" {
 		t.Fatalf("a 304 must serve the cached body, got %+v", res.Data)
 	}

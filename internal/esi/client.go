@@ -86,8 +86,12 @@ type Response[T any] struct {
 	Cached bool `json:"cached,omitempty"`
 }
 
-// OK reports whether the response carries usable data.
-func (r Response[T]) OK() bool { return r.Status == http.StatusOK && r.Data != nil }
+// OK reports whether ESI supplied usable data. A conditional request returns
+// 304 when the cached representation is still current; finishGet attaches that
+// cached body, so callers must treat it as a successful response too.
+func (r Response[T]) OK() bool {
+	return (r.Status == http.StatusOK || r.Status == http.StatusNotModified) && r.Data != nil
+}
 
 // Permanent reports whether retrying could ever produce a different answer.
 // A 404 or 422 on a killmail means the id and hash do not go together; no amount
