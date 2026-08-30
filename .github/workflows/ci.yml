@@ -20,10 +20,99 @@ env:
   TEST_REDIS_ADDR: 127.0.0.1:6379
 
 jobs:
-  go:
-    name: Go lint, schemas, and race tests
+  go-quality:
+    name: Go formatting, lint, vet, and build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "These Go files are not formatted:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Run golangci-lint on new issues
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+          args: >-
+            --new-from-rev=${{
+              github.event_name == 'pull_request'
+              && format('origin/{0}', github.base_ref)
+              || github.event.before
+            }}
+            --timeout=5m
+
+      - name: Run Go vet
+        run: go vet ./...
+
+      - name: Compile Go commands
+        run: go build ./...
+
+  go-generated:
+    name: Go generated code
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install API generator modules
+        run: bun install --cwd web/tools/api-codegen --frozen-lockfile
+
+      - name: Check generated API contract
+        run: make check-api-client
+
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+
+      - name: Check generated sqlc code
+        run: |
+          sqlc generate
+          if ! git diff --quiet -- internal/dbgen; then
+            echo "sqlc-generated code is out of date."
+            echo "Run 'sqlc generate' locally and commit the result."
+            git diff --stat -- internal/dbgen
+            exit 1
+          fi
+
+  go-race:
+    name: Go race tests (shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - 0
+          - 1
 
     services:
       postgres:
@@ -53,68 +142,12 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Download Go modules
-        run: go mod download
-
-      - name: Install API generator modules
-        run: bun install --cwd web/tools/api-codegen --frozen-lockfile
-
-      - name: Check formatting
-        run: |
-          unformatted=$(gofmt -l .)
-          if [ -n "$unformatted" ]; then
-            echo "These Go files are not formatted:"
-            echo "$unformatted"
-            exit 1
-          fi
-
-      - name: Run golangci-lint on new issues
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.13.2
-          args: >-
-            --new-from-rev=${{
-              github.event_name == 'pull_request'
-              && format('origin/{0}', github.base_ref)
-              || github.event.before
-            }}
-            --timeout=5m
-
-      - name: Check generated API contract
-        run: make check-api-client
-
-      - name: Run Go vet
-        run: go vet ./...
-
-      - name: Compile Go commands
-        run: go build ./...
-
-      - name: Install sqlc
-        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
-
-      - name: Check generated sqlc code
-        run: |
-          sqlc generate
-          if ! git diff --quiet -- internal/dbgen; then
-            echo "sqlc-generated code is out of date."
-            echo "Run 'sqlc generate' locally and commit the result."
-            git diff --stat -- internal/dbgen
-            exit 1
-          fi
 
       - name: Create application schema
         env:
@@ -127,7 +160,18 @@ jobs:
         run: go run ./cmd/shrike queue:migrate
 
       - name: Run Go tests with race detector
-        run: go test -race -count=1 ./...
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARD_COUNT: 2
+        shell: bash
+        run: |
+          mapfile -t packages < <(
+            go list ./... | awk -v shard="$SHARD" -v count="$SHARD_COUNT" \
+              '(NR - 1) % count == shard'
+          )
+          printf 'Testing %d packages in shard %s/%s\n' \
+            "${#packages[@]}" "$SHARD" "$SHARD_COUNT"
+          go test -race -count=1 "${packages[@]}"
 
   frontend:
     name: Frontend
@@ -204,7 +248,9 @@ jobs:
     name: Verify source checks
     if: ${{ always() }}
     needs:
-      - go
+      - go-quality
+      - go-generated
+      - go-race
       - frontend
       - security
     runs-on: ubuntu-latest
@@ -213,15 +259,21 @@ jobs:
     steps:
       - name: Require every CI lane
         env:
-          GO_RESULT: ${{ needs.go.result }}
+          GO_QUALITY_RESULT: ${{ needs.go-quality.result }}
+          GO_GENERATED_RESULT: ${{ needs.go-generated.result }}
+          GO_RACE_RESULT: ${{ needs.go-race.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
         shell: bash
         run: |
-          if [[ "$GO_RESULT" != "success" ||
+          if [[ "$GO_QUALITY_RESULT" != "success" ||
+                "$GO_GENERATED_RESULT" != "success" ||
+                "$GO_RACE_RESULT" != "success" ||
                 "$FRONTEND_RESULT" != "success" ||
                 "$SECURITY_RESULT" != "success" ]]; then
-            echo "Go: $GO_RESULT"
+            echo "Go quality: $GO_QUALITY_RESULT"
+            echo "Go generated: $GO_GENERATED_RESULT"
+            echo "Go race: $GO_RACE_RESULT"
             echo "Frontend: $FRONTEND_RESULT"
             echo "Security: $SECURITY_RESULT"
             exit 1
