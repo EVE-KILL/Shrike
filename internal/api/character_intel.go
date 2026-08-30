@@ -59,16 +59,8 @@ func loadCharacterIntel(
 		       count(*) FILTER (WHERE k.attacker_count BETWEEN 16 AND 50) AS fleet,
 		       count(*) FILTER (WHERE k.attacker_count > 50) AS blob,
 		       count(*) AS total,
-		       round(avg(k.attacker_count)::numeric, 1)::double precision AS avg_fleet_size
-		FROM killmail_attackers a
-		JOIN killmails k ON k.killmail_id = a.killmail_id
-		WHERE a.character_id = $1
-		  AND a.killmail_time > now() - make_interval(days => $2)`, id, days)
-	if err != nil {
-		return nil, err
-	}
-	fc, err := queryMap(ctx, opts.DB, `
-		SELECT count(*) FILTER (WHERE a.ship_type_id = 45534) AS monitor_appearances,
+		       round(avg(k.attacker_count)::numeric, 1)::double precision AS avg_fleet_size,
+		       count(*) FILTER (WHERE a.ship_type_id = 45534) AS monitor_appearances,
 		       count(*) FILTER (
 		         WHERE a.damage_done = 0 AND k.attacker_count >= 10
 		       ) AS zero_dmg_fleet,
@@ -130,17 +122,6 @@ func loadCharacterIntel(
 	if err != nil {
 		return nil, err
 	}
-	cyno, err := queryMap(ctx, opts.DB, `
-		SELECT count(DISTINCT k.killmail_id)::int AS cyno_deaths
-		FROM killmails k
-		JOIN killmail_items ki ON ki.killmail_id = k.killmail_id
-		WHERE k.victim_character_id = $1
-		  AND k.killmail_time > now() - make_interval(days => $2)
-		  AND ki.type_id IN (21096, 28646, 52694)
-		  AND ki.flag_id BETWEEN 11 AND 34`, id, days)
-	if err != nil {
-		return nil, err
-	}
 	bait, err := queryMap(ctx, opts.DB, `
 		WITH cheap_deaths AS (
 		  SELECT killmail_id, killmail_time, solar_system_id FROM killmails
@@ -170,6 +151,19 @@ func loadCharacterIntel(
 		  JOIN solar_systems s ON s.solar_system_id = k.solar_system_id
 		  WHERE atk.character_id = $1
 		    AND atk.killmail_time > now() - interval '90 days'
+		), cyno_counts AS (
+		  SELECT count(DISTINCT k.killmail_id) FILTER (
+		           WHERE k.killmail_time > now() - interval '90 days'
+		         )::int AS cyno_losses_90d,
+		         count(DISTINCT k.killmail_id) FILTER (
+		           WHERE k.killmail_time > now() - make_interval(days => $2)
+		         )::int AS cyno_deaths
+		  FROM killmails k
+		  JOIN killmail_items ki ON ki.killmail_id = k.killmail_id
+		  WHERE k.victim_character_id = $1
+		    AND k.killmail_time > now() - make_interval(days => greatest($2, 90))
+		    AND ki.type_id IN (21096, 28646, 52694)
+		    AND ki.flag_id BETWEEN 11 AND 34
 		)
 		SELECT count(*) FILTER (WHERE security >= 0.5)::int AS hs_kms,
 		       count(*) FILTER (WHERE security > 0 AND security < 0.5)::int AS ls_kms,
@@ -186,14 +180,9 @@ func loadCharacterIntel(
 		       (SELECT coalesce(
 		           birthday > now() - interval '180 days', false
 		         ) FROM characters WHERE character_id = $1) AS is_new_char,
-		       (SELECT count(DISTINCT k.killmail_id)::int
-		         FROM killmails k
-		         JOIN killmail_items ki ON ki.killmail_id = k.killmail_id
-		         WHERE k.victim_character_id = $1
-		           AND k.killmail_time > now() - interval '90 days'
-		           AND ki.type_id IN (21096, 28646, 52694)
-		           AND ki.flag_id BETWEEN 11 AND 34) AS cyno_losses_90d
-		FROM atk_kms`, id)
+		       max(cyno_counts.cyno_losses_90d) AS cyno_losses_90d,
+		       max(cyno_counts.cyno_deaths) AS cyno_deaths
+		FROM atk_kms CROSS JOIN cyno_counts`, id, days)
 	if err != nil {
 		return nil, err
 	}
@@ -228,9 +217,9 @@ func loadCharacterIntel(
 		}
 	}
 
-	monitor, _ := int64Value(fc["monitor_appearances"])
-	zeroDamage, _ := int64Value(fc["zero_dmg_fleet"])
-	appearances, _ := int64Value(fc["total_appearances"])
+	monitor, _ := int64Value(playstyle["monitor_appearances"])
+	zeroDamage, _ := int64Value(playstyle["zero_dmg_fleet"])
+	appearances, _ := int64Value(playstyle["total_appearances"])
 	if appearances == 0 {
 		appearances = 1
 	}
@@ -245,22 +234,15 @@ func loadCharacterIntel(
 	}
 	tags := deriveIntelTags(graph.Timestamps, archetype)
 
-	charNames, err := intelNames(ctx, opts.DB, "characters", "character_id",
-		graphFieldIDs(graph.FleetPartners, "id"))
-	if err != nil {
-		return nil, err
-	}
-	corpNames, err := intelNames(ctx, opts.DB, "corporations", "corporation_id",
-		graphFieldIDs(graph.FleetPartners, "corp_id"))
-	if err != nil {
-		return nil, err
-	}
 	allianceIDs := append(
 		graphFieldIDs(graph.FleetPartners, "alliance_id"),
 		graphFieldIDs(graph.GroupsFlownWith, "alliance_id")...,
 	)
-	allianceNames, err := intelNames(
-		ctx, opts.DB, "alliances", "alliance_id", allianceIDs,
+	charNames, corpNames, allianceNames, err := intelEntityNames(
+		ctx, opts.DB,
+		graphFieldIDs(graph.FleetPartners, "id"),
+		graphFieldIDs(graph.FleetPartners, "corp_id"),
+		allianceIDs,
 	)
 	if err != nil {
 		return nil, err
@@ -268,7 +250,7 @@ func loadCharacterIntel(
 
 	baited, _ := int64Value(bait["baited_deaths"])
 	awoxKills, _ := int64Value(awox["awox_kills"])
-	cynoDeaths, _ := int64Value(cyno["cyno_deaths"])
+	cynoDeaths, _ := int64Value(archetype["cyno_deaths"])
 	return map[string]any{
 		"character_id": id, "days": days,
 		"playstyle": playstyleOutput, "dominant_style": dominant,
@@ -308,20 +290,17 @@ func loadGraphIntel(
 	if err != nil {
 		return empty
 	}
-	bridge, err := graph.Read(ctx, `
-		MATCH (c:Character {id: $id})-[:FLEW_WITH]-(p:Character)
-		WHERE p.alliance_id IS NOT NULL
-		RETURN count(DISTINCT p.alliance_id) AS cnt`, map[string]any{"id": id})
-	if err != nil {
-		return empty
-	}
-	groups, err := graph.Read(ctx, `
+	groupRows, err := graph.Read(ctx, `
 		MATCH (c:Character {id: $id})-[:FLEW_WITH]-(p:Character)
 		WHERE p.alliance_id IS NOT NULL
 		WITH p.alliance_id AS alliance_id,
 		     count(DISTINCT p) AS shared_partners
-		RETURN alliance_id, shared_partners
-		ORDER BY shared_partners DESC LIMIT 10`, map[string]any{"id": id})
+		ORDER BY shared_partners DESC
+		WITH collect({
+		  alliance_id: alliance_id,
+		  shared_partners: shared_partners
+		}) AS groups
+		RETURN size(groups) AS cnt, groups[..10] AS groups`, map[string]any{"id": id})
 	if err != nil {
 		return empty
 	}
@@ -342,13 +321,29 @@ func loadGraphIntel(
 		}
 	}
 	score := int64(0)
-	if len(bridge) > 0 {
-		score, _ = int64Value(bridge[0]["cnt"])
+	groups := []map[string]any{}
+	if len(groupRows) > 0 {
+		score, _ = int64Value(groupRows[0]["cnt"])
+		groups = graphMapList(groupRows[0]["groups"])
 	}
 	return graphIntel{
 		FleetPartners: partners, GroupsFlownWith: groups,
 		BridgeScore: score, Timestamps: timestamps,
 	}
+}
+
+func graphMapList(value any) []map[string]any {
+	values, ok := value.([]any)
+	if !ok {
+		return []map[string]any{}
+	}
+	result := make([]map[string]any, 0, len(values))
+	for _, value := range values {
+		if row, ok := value.(map[string]any); ok {
+			result = append(result, row)
+		}
+	}
+	return result
 }
 
 func emptyGraphTimestamps() map[string]string {
@@ -451,28 +446,44 @@ func graphFieldIDs(rows []map[string]any, field string) []int32 {
 	return int32Slice(values...)
 }
 
-func intelNames(
+func intelEntityNames(
 	ctx context.Context,
 	db Database,
-	table, idColumn string,
-	ids []int32,
-) (map[int64]string, error) {
-	if len(ids) == 0 {
-		return map[int64]string{}, nil
+	characterIDs, corporationIDs, allianceIDs []int32,
+) (map[int64]string, map[int64]string, map[int64]string, error) {
+	characters := map[int64]string{}
+	corporations := map[int64]string{}
+	alliances := map[int64]string{}
+	if len(characterIDs) == 0 && len(corporationIDs) == 0 && len(allianceIDs) == 0 {
+		return characters, corporations, alliances, nil
 	}
-	rows, err := queryMaps(ctx, db,
-		`SELECT `+idColumn+` AS id, name FROM `+table+`
-		 WHERE `+idColumn+` = ANY($1::int[])`, ids)
+	rows, err := queryMaps(ctx, db, `
+		SELECT 'character' AS kind, character_id AS id, name
+		FROM characters WHERE character_id = ANY($1::int[])
+		UNION ALL
+		SELECT 'corporation', corporation_id, name
+		FROM corporations WHERE corporation_id = ANY($2::int[])
+		UNION ALL
+		SELECT 'alliance', alliance_id, name
+		FROM alliances WHERE alliance_id = ANY($3::int[])`,
+		characterIDs, corporationIDs, allianceIDs)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	result := map[int64]string{}
 	for _, row := range rows {
 		id, _ := int64Value(row["id"])
 		name, _ := stringValue(row["name"])
-		result[id] = name
+		kind, _ := stringValue(row["kind"])
+		switch kind {
+		case "character":
+			characters[id] = name
+		case "corporation":
+			corporations[id] = name
+		case "alliance":
+			alliances[id] = name
+		}
 	}
-	return result, nil
+	return characters, corporations, alliances, nil
 }
 
 func intelFleetPartners(
