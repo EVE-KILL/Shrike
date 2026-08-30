@@ -92,8 +92,8 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => {
+    defineBreadcrumb(computed(() => ({
+        itemListElement: (() => {
             const s = system.value
             if (!s) return [{ name: 'Home', item: '/' }]
             return [
@@ -102,8 +102,8 @@ useSchemaOrg([
                 { name: s.constellation_name ?? 'Constellation', item: `/constellation/${s.constellation_id}` },
                 { name: s.system_name, item: `/system/${id}` },
             ]
-        }),
-    }),
+        })(),
+    }))),
     {
         '@type': 'Place',
         'name': computed(() => system.value?.system_name || 'Solar System'),

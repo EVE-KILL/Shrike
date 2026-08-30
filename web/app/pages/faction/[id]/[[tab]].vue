@@ -43,12 +43,12 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => [
+    defineBreadcrumb(computed(() => ({
+        itemListElement: [
             { name: 'Home', item: '/' },
             { name: faction.value?.name || 'Faction', item: `/faction/${id}` },
-        ]),
-    }),
+        ],
+    }))),
 ])
 
 const factionLogo = computed(() => faction.value

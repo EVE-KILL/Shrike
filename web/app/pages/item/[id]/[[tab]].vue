@@ -120,8 +120,8 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => {
+    defineBreadcrumb(computed(() => ({
+        itemListElement: (() => {
             const i = item.value
             if (!i) return [{ name: 'Home', item: '/' }]
             return [
@@ -129,8 +129,8 @@ useSchemaOrg([
                 { name: i.group_name ?? 'Group', item: '/market' },
                 { name: i.name, item: `/item/${id}` },
             ]
-        }),
-    }),
+        })(),
+    }))),
     {
         '@type': 'Product',
         'name': computed(() => item.value?.name || 'Item'),

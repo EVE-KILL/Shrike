@@ -76,8 +76,8 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => {
+    defineBreadcrumb(computed(() => ({
+        itemListElement: (() => {
             const crumbs: { name: string; item: string }[] = [{ name: 'Home', item: '/' }]
             const c = corp.value
             if (c?.alliance_id && c.alliance_name) {
@@ -85,8 +85,8 @@ useSchemaOrg([
             }
             crumbs.push({ name: c?.name ? `${c.name} [${c.ticker}]` : 'Corporation', item: `/corporation/${id}` })
             return crumbs
-        }),
-    }),
+        })(),
+    }))),
     {
         '@type': 'Organization',
         'name': computed(() => corp.value ? `${corp.value.name} [${corp.value.ticker}]` : 'Corporation'),

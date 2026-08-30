@@ -243,16 +243,16 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => {
+    defineBreadcrumb(computed(() => ({
+        itemListElement: (() => {
             const crumbs: { name: string; item: string }[] = [
                 { name: 'Home', item: '/' },
                 { name: 'Kills', item: '/kills/latest' },
             ]
             crumbs.push({ name: killTitle.value, item: `/kill/${id.value}` })
             return crumbs
-        }),
-    }),
+        })(),
+    }))),
     defineArticle({
         headline: computed(() => killTitle.value),
         description: computed(() => killDescription.value),

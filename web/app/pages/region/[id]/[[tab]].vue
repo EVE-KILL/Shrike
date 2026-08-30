@@ -76,16 +76,16 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => {
+    defineBreadcrumb(computed(() => ({
+        itemListElement: (() => {
             const r = region.value
             if (!r) return [{ name: 'Home', item: '/' }]
             return [
                 { name: 'Home', item: '/' },
                 { name: r.name, item: `/region/${id}` },
             ]
-        }),
-    }),
+        })(),
+    }))),
 ])
 
 const tabs = [

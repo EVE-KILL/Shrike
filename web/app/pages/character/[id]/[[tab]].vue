@@ -69,8 +69,8 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => {
+    defineBreadcrumb(computed(() => ({
+        itemListElement: (() => {
             const crumbs: { name: string; item: string }[] = [{ name: 'Home', item: '/' }]
             const c = char.value
             if (c?.alliance_id && c.alliance_name) {
@@ -81,8 +81,8 @@ useSchemaOrg([
             }
             crumbs.push({ name: c?.name || 'Character', item: `/character/${id}` })
             return crumbs
-        }),
-    }),
+        })(),
+    }))),
     {
         '@type': 'ProfilePage',
         'mainEntity': {

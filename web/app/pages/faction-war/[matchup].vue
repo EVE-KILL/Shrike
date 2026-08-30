@@ -119,13 +119,13 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => [
+    defineBreadcrumb(computed(() => ({
+        itemListElement: [
             { name: 'Home', item: '/' },
             { name: 'Wars', item: '/wars' },
             { name: side1.value && side2.value ? `${side1.value.name} vs ${side2.value.name}` : 'Faction War', item: `/faction-war/${matchup}` },
-        ]),
-    }),
+        ],
+    }))),
     {
         '@type': 'Event',
         'name': computed(() => side1.value && side2.value

@@ -94,8 +94,8 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => {
+    defineBreadcrumb(computed(() => ({
+        itemListElement: (() => {
             const c = constellation.value
             if (!c) return [{ name: 'Home', item: '/' }]
             return [
@@ -103,8 +103,8 @@ useSchemaOrg([
                 { name: c.region_name ?? 'Region', item: `/region/${c.region_id}` },
                 { name: c.constellation_name, item: `/constellation/${id}` },
             ]
-        }),
-    }),
+        })(),
+    }))),
 ])
 
 const tabs = [

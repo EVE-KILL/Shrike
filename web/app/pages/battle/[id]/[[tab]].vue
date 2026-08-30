@@ -213,13 +213,13 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => [
+    defineBreadcrumb(computed(() => ({
+        itemListElement: [
             { name: 'Home', item: '/' },
             { name: 'Battles', item: '/battles' },
             { name: battle.value ? `Battle in ${battle.value.solar_system_name}` : 'Battle', item: `/battle/${id}` },
-        ]),
-    }),
+        ],
+    }))),
     {
         '@type': 'Event',
         'name': computed(() => battleTitle.value),

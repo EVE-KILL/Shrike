@@ -137,13 +137,13 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => [
+    defineBreadcrumb(computed(() => ({
+        itemListElement: [
             { name: 'Home', item: '/' },
             { name: 'Wars', item: '/wars' },
             { name: war.value ? `War #${war.value.war_id}` : 'War', item: `/war/${id}` },
-        ]),
-    }),
+        ],
+    }))),
     {
         '@type': 'Event',
         'name': computed(() => {

@@ -57,12 +57,12 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => [
+    defineBreadcrumb(computed(() => ({
+        itemListElement: [
             { name: 'Home', item: '/' },
             { name: ally.value?.name ? `${ally.value.name} [${ally.value.ticker}]` : 'Alliance', item: `/alliance/${id}` },
-        ]),
-    }),
+        ],
+    }))),
     {
         '@type': 'Organization',
         'name': computed(() => ally.value ? `${ally.value.name} [${ally.value.ticker}]` : 'Alliance'),

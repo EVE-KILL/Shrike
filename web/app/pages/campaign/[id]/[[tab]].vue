@@ -292,13 +292,13 @@ useSeoMeta({
 })
 
 useSchemaOrg([
-    defineBreadcrumb({
-        itemListElement: computed(() => [
+    defineBreadcrumb(computed(() => ({
+        itemListElement: [
             { name: 'Home', item: '/' },
             { name: 'Campaigns', item: '/campaigns' },
             { name: campaign.value?.name ?? 'Campaign', item: `/campaign/${campaignId}` },
-        ]),
-    }),
+        ],
+    }))),
     {
         '@type': 'Event',
         'name': computed(() => campaignSeoTitle.value),
