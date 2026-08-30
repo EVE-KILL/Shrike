@@ -100,7 +100,7 @@ func registerHealthRoute(a huma.API, opts Options) {
 		Method:      http.MethodGet,
 		Path:        "/ready",
 		Summary:     "Database readiness check",
-		Description: "Checks that the API can acquire its normal Postgres pool and complete a round trip.",
+		Description: "Checks that the API can acquire its read and primary Postgres pools and complete a round trip.",
 		Tags:        []string{"health"},
 	}, func(ctx context.Context, _ *legacyRequest) (legacyPayload, error) {
 		if opts.DB == nil {
@@ -108,6 +108,11 @@ func registerHealthRoute(a huma.API, opts Options) {
 		}
 		if err := opts.DB.Ping(ctx); err != nil {
 			return legacyPayload{}, err
+		}
+		if opts.Primary != nil {
+			if err := opts.Primary.Ping(ctx); err != nil {
+				return legacyPayload{}, err
+			}
 		}
 		return jsonPayload(map[string]any{
 			"ok": true, "timestamp": javascriptTimestamp(time.Now()),

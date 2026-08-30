@@ -17,7 +17,6 @@ import (
 	campaignengine "github.com/eve-kill/shrike/internal/campaign"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/sso"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -69,7 +68,7 @@ func newWalletAuthorizationService(
 		service.userAgent = "EVE-Kill/2.0 (https://eve-kill.com)"
 	}
 	service.db, service.storeErr = mutationDatabase(opts)
-	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
+	if pool := primaryPool(opts); pool != nil {
 		service.queue, service.queueErr = queue.New(queue.Options{Pool: pool})
 	} else {
 		service.queueErr = errors.New("wallet queue is not configured")

@@ -166,13 +166,22 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 		if err != nil {
 			return err
 		}
-		pool, err := db.New(ctx, cfg)
+		primaryPool, err := db.New(ctx, cfg)
 		if err != nil {
-			return fmt.Errorf("connect API database: %w", err)
+			return fmt.Errorf("connect API primary database: %w", err)
 		}
-		defer pool.Close()
+		defer primaryPool.Close()
 
-		imageQueue, err := queue.New(queue.Options{Pool: pool})
+		readPool := primaryPool
+		if cfg.DatabaseReadURL != cfg.DatabaseURL {
+			readPool, err = db.NewRead(ctx, cfg)
+			if err != nil {
+				return fmt.Errorf("connect API read database: %w", err)
+			}
+			defer readPool.Close()
+		}
+
+		imageQueue, err := queue.New(queue.Options{Pool: primaryPool})
 		if err != nil {
 			return fmt.Errorf("configure image refresh queue: %w", err)
 		}
@@ -180,7 +189,7 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			Store: imageStorage, UserAgent: cfg.ESIUserAgent,
 			CacheBytes: cfg.ImageCacheBytes,
 			Refresh:    imageRefreshDispatcher{Queue: imageQueue},
-			Social:     images.PostgresSocialLoader{DB: pool},
+			Social:     images.PostgresSocialLoader{DB: readPool},
 		})
 
 		var graphClient *graph.Client
@@ -205,12 +214,15 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 		wsServer.Start(ctx)
 		defer wsServer.Close()
 
-		feed := api.NewFeedManager(pool, sharedRedis)
+		// A Redis notification can beat physical replication, so live feed
+		// hydration deliberately reads from the primary.
+		feed := api.NewFeedManager(primaryPool, sharedRedis)
 		feed.Start(ctx)
 
 		opts := api.Options{
 			Version: ui.Version, Commit: ui.Commit,
-			DB: pool, Graph: graphClient, Feed: feed, Cache: sharedRedis,
+			DB: readPool, Primary: primaryPool, PrimaryPool: primaryPool,
+			Graph: graphClient, Feed: feed, Cache: sharedRedis,
 			ResponseCacheBytes: cfg.APICacheBytes,
 			DomainAssets:       domainAssets,
 			Images:             imageService,

@@ -389,7 +389,7 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		campaign, err := queryMap(ctx, s.db, `
+		campaign, err := queryMap(ctx, s.consistent, `
 			SELECT c.*,
 			       pool.campaign_id IS NOT NULL AS has_prize_pool,
 			       pool.rules_locked_at
@@ -708,7 +708,7 @@ func (s *campaignService) campaignContributeHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, walletAPIError(err)
 		}
-		campaign, err := queryMap(ctx, s.db, `
+		campaign, err := queryMap(ctx, s.consistent, `
 			SELECT campaign_id, name, visibility, created_by_character_id
 			FROM campaigns WHERE campaign_id = $1 LIMIT 1`, id)
 		if err != nil {
@@ -720,7 +720,7 @@ func (s *campaignService) campaignContributeHandler() legacyHandler {
 			)
 		}
 		if err := requireCampaignView(
-			ctx, s.db, req, campaign, principal,
+			ctx, s.consistent, req, campaign, principal,
 		); err != nil {
 			return legacyPayload{}, err
 		}
@@ -775,7 +775,7 @@ func (s *campaignService) campaignClaimHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		campaign, err := queryMap(ctx, s.db, `
+		campaign, err := queryMap(ctx, s.consistent, `
 			SELECT campaign_id, visibility, created_by_character_id
 			FROM campaigns WHERE campaign_id = $1 LIMIT 1`, id)
 		if err != nil {
@@ -787,7 +787,7 @@ func (s *campaignService) campaignClaimHandler() legacyHandler {
 			)
 		}
 		if err := requireCampaignView(
-			ctx, s.db, req, campaign, principal,
+			ctx, s.consistent, req, campaign, principal,
 		); err != nil {
 			return legacyPayload{}, err
 		}
@@ -874,7 +874,7 @@ func (s *campaignService) adminCampaignListHandler() legacyHandler {
 		}
 		limit := add(campaignAdminPageSize + 1)
 		offset := add((page - 1) * campaignAdminPageSize)
-		rows, err := queryMaps(ctx, s.db, fmt.Sprintf(`
+		rows, err := queryMaps(ctx, s.consistent, fmt.Sprintf(`
 			SELECT c.campaign_id, c.name, c.status, c.visibility,
 			       c.created_by_character_id,
 			       creator.character_name AS creator_name,
@@ -1178,7 +1178,7 @@ func (s *campaignService) findFundedCampaign(
 	characterID int32,
 	amount string,
 ) (map[string]any, error) {
-	row, err := queryMap(ctx, s.db, `
+	row, err := queryMap(ctx, s.consistent, `
 		SELECT wallet_tx.character_id, wallet_tx.type,
 		       wallet_tx.amount::text AS amount, wallet_tx.campaign_id,
 		       campaign.estimated_killmails

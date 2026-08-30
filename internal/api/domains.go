@@ -15,7 +15,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/eve-kill/shrike/internal/queue"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -113,12 +112,12 @@ type domainUpdateInput struct {
 func newDomainService(opts Options) *domainService {
 	service := &domainService{
 		auth:   newAuthService(opts),
-		db:     opts.DB,
+		db:     primaryDatabase(opts),
 		assets: opts.DomainAssets,
 		now:    time.Now,
 	}
 	service.mutations, service.storeErr = mutationDatabase(opts)
-	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
+	if pool := primaryPool(opts); pool != nil {
 		if client, err := queue.New(queue.Options{Pool: pool}); err == nil {
 			service.dispatcher = &riverDomainAssetEventDispatcher{
 				client: client,

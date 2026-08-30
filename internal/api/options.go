@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // AuthOptions configures EVE SSO and the browser session cookie.
@@ -48,10 +49,30 @@ type MutationDatabase interface {
 }
 
 func mutationDatabase(opts Options) (MutationDatabase, error) {
+	if opts.Primary != nil {
+		return opts.Primary, nil
+	}
 	db, ok := opts.DB.(MutationDatabase)
 	if !ok || db == nil {
 		return nil, apiError(http.StatusServiceUnavailable,
 			"API database is not configured")
 	}
 	return db, nil
+}
+
+// primaryDatabase returns the primary when one is configured and preserves the
+// single-database behavior used by focused tests and older callers otherwise.
+func primaryDatabase(opts Options) Database {
+	if opts.Primary != nil {
+		return opts.Primary
+	}
+	return opts.DB
+}
+
+func primaryPool(opts Options) *pgxpool.Pool {
+	if opts.PrimaryPool != nil {
+		return opts.PrimaryPool
+	}
+	pool, _ := opts.DB.(*pgxpool.Pool)
+	return pool
 }

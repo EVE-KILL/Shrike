@@ -16,6 +16,7 @@ type adminService struct {
 // route is session-authenticated and also verifies the principal's admin bit;
 // OpenAPI security alone is documentation, not authorization.
 func registerAdminRoutes(a huma.API, opts Options) {
+	opts.DB = primaryDatabase(opts)
 	service := &adminService{opts: opts, auth: newAuthService(opts)}
 	requiredSession := []map[string][]string{{"eveSession": {}}}
 	for _, route := range []struct {

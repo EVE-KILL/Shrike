@@ -16,7 +16,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -179,7 +178,7 @@ func newCommentService(opts Options) *commentService {
 		opts.OpenAIAPIKey,
 	)
 	service.klipy = newKlipyClient(opts.Cache, httpClient, opts.KlipyAPIKey)
-	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
+	if pool := primaryPool(opts); pool != nil {
 		if client, queueErr := queue.New(queue.Options{Pool: pool}); queueErr == nil {
 			service.dispatcher = &riverCommentEventDispatcher{client: client}
 		}

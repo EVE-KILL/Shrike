@@ -34,6 +34,8 @@ Credentials are redacted. The SOURCE column is the point of this command:
 		}{
 			{"DatabaseURL", "DATABASE_URL", config.RedactURL(cfg.DatabaseURL)},
 			{"DatabaseMaxConnections", "DB_MAX_CONNS", strconv.Itoa(cfg.DatabaseMaxConnections)},
+			{"DatabaseReadURL", "DATABASE_READ_URL", config.RedactURL(cfg.DatabaseReadURL)},
+			{"DatabaseReadMaxConnections", "DB_READ_MAX_CONNS", strconv.Itoa(cfg.DatabaseReadMaxConnections)},
 			{"RedisHost", "REDIS_HOST", cfg.RedisHost},
 			{"RedisPort", "REDIS_PORT", strconv.Itoa(cfg.RedisPort)},
 			{"RedisPassword", "REDIS_PASSWORD", config.RedactSecret(cfg.RedisPassword)},

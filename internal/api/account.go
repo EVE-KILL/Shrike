@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/queue"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -290,7 +289,7 @@ func newAccountService(opts Options) *accountService {
 	} else {
 		service.store = &postgresAccountStore{db: db}
 	}
-	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
+	if pool := primaryPool(opts); pool != nil {
 		if client, err := queue.New(queue.Options{Pool: pool}); err == nil {
 			service.dispatch = &riverBioEventDispatcher{client: client}
 		}

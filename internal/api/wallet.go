@@ -13,7 +13,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/eve-kill/shrike/internal/campaign"
 	"github.com/eve-kill/shrike/internal/queue"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -47,9 +46,9 @@ type walletService struct {
 func newWalletService(opts Options) *walletService {
 	service := &walletService{
 		auth: newAuthService(opts),
-		db:   opts.DB,
+		db:   primaryDatabase(opts),
 	}
-	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
+	if pool := primaryPool(opts); pool != nil {
 		service.queue, service.queueErr = queue.New(queue.Options{Pool: pool})
 	} else {
 		service.queueErr = fmt.Errorf("wallet queue is not configured")

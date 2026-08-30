@@ -64,7 +64,7 @@ var operationDescriptions = map[string]string{
 
 	// --- Newly written ---
 	"health":                    "Reports process liveness without consulting external dependencies.",
-	"ready":                     "Verifies that the API can acquire its normal Postgres pool and complete a round trip.",
+	"ready":                     "Verifies that the API can acquire its read and primary Postgres pools and complete a round trip.",
 	"history":                   "One row per day with the number of killmails recorded. Use it to find days worth fetching before calling /history/{date}.",
 	"characters":                "Cursor-paginated list of every known character. Pass limit (1-100, default 50) and cursor from the previous response.",
 	"character-kills":           "Killmails where this character was an attacker, newest first. Cursor-paginated.",

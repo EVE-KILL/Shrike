@@ -16,7 +16,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	campaignengine "github.com/eve-kill/shrike/internal/campaign"
 	"github.com/eve-kill/shrike/internal/queue"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -57,23 +56,25 @@ var campaignPrizeMetricLabels = map[int16]string{
 }
 
 type campaignService struct {
-	auth      *authService
-	db        Database
-	mutations MutationDatabase
-	storeErr  error
-	queue     *queue.Client
-	queueErr  error
-	now       func() time.Time
+	auth       *authService
+	db         Database
+	consistent Database
+	mutations  MutationDatabase
+	storeErr   error
+	queue      *queue.Client
+	queueErr   error
+	now        func() time.Time
 }
 
 func newCampaignService(opts Options) *campaignService {
 	service := &campaignService{
-		auth: newAuthService(opts),
-		db:   opts.DB,
-		now:  time.Now,
+		auth:       newAuthService(opts),
+		db:         opts.DB,
+		consistent: primaryDatabase(opts),
+		now:        time.Now,
 	}
 	service.mutations, service.storeErr = mutationDatabase(opts)
-	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
+	if pool := primaryPool(opts); pool != nil {
 		service.queue, service.queueErr = queue.New(queue.Options{Pool: pool})
 	} else {
 		service.queueErr = fmt.Errorf("campaign queue is not configured")

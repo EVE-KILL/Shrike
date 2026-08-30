@@ -13,7 +13,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const announcementColumns = `
@@ -101,7 +100,7 @@ func newAnnouncementsAdminService(opts Options) *announcementsAdminService {
 	} else {
 		service.store = &postgresAnnouncementAdminStore{db: db}
 	}
-	if pool, ok := opts.DB.(*pgxpool.Pool); ok && pool != nil {
+	if pool := primaryPool(opts); pool != nil {
 		if client, err := queue.New(queue.Options{Pool: pool}); err == nil {
 			service.dispatch = &riverAnnouncementEventDispatcher{
 				client: client,

@@ -36,6 +36,32 @@ func TestLoadDefaults(t *testing.T) {
 	if c.DatabaseMaxConnections != 10 {
 		t.Errorf("DatabaseMaxConnections = %d, want 10", c.DatabaseMaxConnections)
 	}
+	if c.DatabaseReadURL != c.DatabaseURL {
+		t.Errorf("DatabaseReadURL = %q, want DATABASE_URL fallback %q", c.DatabaseReadURL, c.DatabaseURL)
+	}
+	if c.DatabaseReadMaxConnections != 10 {
+		t.Errorf("DatabaseReadMaxConnections = %d, want 10", c.DatabaseReadMaxConnections)
+	}
+}
+
+func TestReadDatabaseCanBeConfiguredSeparately(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("DATABASE_URL", "postgresql://writer@primary/evekill")
+	t.Setenv("DATABASE_READ_URL", "postgresql://reader@replicas/evekill")
+	t.Setenv("DB_MAX_CONNS", "7")
+	t.Setenv("DB_READ_MAX_CONNS", "19")
+
+	c, err := Load("")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.DatabaseReadURL != "postgresql://reader@replicas/evekill" {
+		t.Errorf("DatabaseReadURL = %q", c.DatabaseReadURL)
+	}
+	if c.DatabaseMaxConnections != 7 || c.DatabaseReadMaxConnections != 19 {
+		t.Errorf("database connection limits = write:%d read:%d, want 7 and 19",
+			c.DatabaseMaxConnections, c.DatabaseReadMaxConnections)
+	}
 }
 
 func TestSharedValkeyUsesOneAddress(t *testing.T) {
@@ -198,7 +224,8 @@ func TestRedactSecret(t *testing.T) {
 func clearEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range []string{
-		"DATABASE_URL", "DB_MAX_CONNS", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_DB",
+		"DATABASE_URL", "DATABASE_READ_URL", "DB_MAX_CONNS", "DB_READ_MAX_CONNS",
+		"REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_DB",
 		"REDIS_CACHE_HOST", "REDIS_CACHE_PORT", "VALKEY_QUEUE", "VALKEY_CACHE",
 		"MEMGRAPH_URL", "PORT",
 		"EVE_CLIENT_ID", "EVE_CLIENT_SECRET", "EVE_CALLBACK_URL", "ESI_USER_AGENT",

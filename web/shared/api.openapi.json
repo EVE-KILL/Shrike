@@ -79976,7 +79976,7 @@
     },
     "/ready": {
       "get": {
-        "description": "Checks that the API can acquire its normal Postgres pool and complete a round trip.",
+        "description": "Checks that the API can acquire its read and primary Postgres pools and complete a round trip.",
         "operationId": "ready",
         "responses": {
           "200": {

@@ -9,7 +9,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/eve-kill/shrike/internal/queue"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 )
 
@@ -49,8 +48,8 @@ func registerKillmailSubmissionRoute(a huma.API, opts Options) {
 }
 
 func newKillmailSubmissionDispatcher(opts Options) killmailSubmissionDispatcher {
-	pool, ok := opts.DB.(*pgxpool.Pool)
-	if !ok || pool == nil {
+	pool := primaryPool(opts)
+	if pool == nil {
 		// Focused tests and development configurations may have a read-only
 		// database facade. This matches the site's old no-dispatch development
 		// behavior: valid submissions are still acknowledged.
@@ -106,7 +105,7 @@ func killmailSubmissionHandler(
 		for _, killmail := range parsed {
 			ids = append(ids, killmail.ID)
 		}
-		rows, err := queryMaps(ctx, opts.DB, `
+		rows, err := queryMaps(ctx, primaryDatabase(opts), `
 			SELECT killmail_id
 			FROM killmails
 			WHERE killmail_id = ANY($1::bigint[])`,

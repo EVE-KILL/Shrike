@@ -19,6 +19,7 @@ import (
 	"github.com/eve-kill/shrike/internal/images"
 	"github.com/eve-kill/shrike/internal/mcpserver"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -31,9 +32,14 @@ type Options struct {
 	Version string
 	Commit  string
 	DB      Database
-	Graph   GraphDatabase
-	Feed    *FeedManager
-	Cache   *redis.Client
+	// Primary is used for mutations and reads that require read-after-write
+	// consistency. PrimaryPool is the same connection exposed concretely for
+	// River, whose client requires *pgxpool.Pool.
+	Primary     MutationDatabase
+	PrimaryPool *pgxpool.Pool
+	Graph       GraphDatabase
+	Feed        *FeedManager
+	Cache       *redis.Client
 	// ResponseCacheBytes bounds the process-local L1. Cache remains the shared
 	// Valkey client used as L2 and by non-response coordination features.
 	ResponseCacheBytes int64

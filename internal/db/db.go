@@ -31,12 +31,22 @@ const (
 // after a successful round trip, so callers never receive a pool that merely
 // looks valid.
 func New(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
-	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	return newPool(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConnections, "primary")
+}
+
+// NewRead opens the API's read pool. DATABASE_READ_URL deliberately falls back
+// to DATABASE_URL, allowing the application change to ship before replicas do.
+func NewRead(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
+	return newPool(ctx, cfg.DatabaseReadURL, cfg.DatabaseReadMaxConnections, "read")
+}
+
+func newPool(ctx context.Context, url string, configuredMax int, role string) (*pgxpool.Pool, error) {
+	poolCfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
-		return nil, fmt.Errorf("parse DATABASE_URL: %w", err)
+		return nil, fmt.Errorf("parse %s database URL: %w", role, err)
 	}
 
-	maxConns := cfg.DatabaseMaxConnections
+	maxConns := configuredMax
 	if maxConns <= 0 {
 		maxConns = defaultMaxConns
 	}
@@ -44,6 +54,9 @@ func New(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	poolCfg.MinConns = defaultMinConns
 	poolCfg.MaxConnLifetime = time.Hour
 	poolCfg.MaxConnIdleTime = 30 * time.Minute
+	if poolCfg.ConnConfig.RuntimeParams["application_name"] == "" {
+		poolCfg.ConnConfig.RuntimeParams["application_name"] = "shrike-" + role
+	}
 
 	// Statement caching is left at pgx's default (QueryExecModeCacheStatement).
 	// That is safe against the production bouncer, which was verified to run in
@@ -60,7 +73,7 @@ func New(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	defer cancel()
 	if err := pool.Ping(pingCtx); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("connect to postgres: %w", err)
+		return nil, fmt.Errorf("connect to %s postgres: %w", role, err)
 	}
 	return pool, nil
 }
