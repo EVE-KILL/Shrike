@@ -347,6 +347,33 @@ func TestBatchInsertMatchesSingleInsert(t *testing.T) {
 	}
 }
 
+func TestBatchCollapsesDuplicatesWithinTheSameInsert(t *testing.T) {
+	pool := testPool(t)
+	clearTestJobs(t, pool)
+	ctx := context.Background()
+
+	c, err := New(Options{Pool: pool})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM river_job WHERE kind = 'esi_alliance'`)
+	}()
+
+	batch := []river.JobArgs{
+		AllianceArgs{AllianceID: 2_100_000_013},
+		AllianceArgs{AllianceID: 2_100_000_013},
+		AllianceArgs{AllianceID: 2_100_000_014},
+	}
+	n, err := DispatchMany(ctx, c, batch, queuePriorityForTest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Fatalf("inserted %d jobs, want 2 distinct jobs", n)
+	}
+}
+
 func TestBatchDuplicateDispatchPromotesAvailableJobs(t *testing.T) {
 	pool := testPool(t)
 	clearTestJobs(t, pool)

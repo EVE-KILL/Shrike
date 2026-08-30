@@ -2,8 +2,10 @@ package queue
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 )
@@ -78,7 +80,33 @@ func DispatchMany(ctx context.Context, c *Client, batch []river.JobArgs, priorit
 
 	results, err := c.InsertMany(ctx, params)
 	if err != nil {
-		return 0, err
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || (pgErr.Code != "21000" && pgErr.Code != "23505") {
+			return 0, err
+		}
+
+		// River's fast multi-row upsert cannot update the same unique job twice
+		// in one statement. Concurrent discovery sources can also race its
+		// unique index. Split only the conflicting batch, retaining bulk inserts
+		// for the normal path and reducing an exceptional collision to small
+		// independent statements.
+		if len(batch) == 1 {
+			res, insertErr := Dispatch(ctx, c, batch[0], priority)
+			if insertErr != nil {
+				return 0, insertErr
+			}
+			if res.Duplicate {
+				return 0, nil
+			}
+			return 1, nil
+		}
+		mid := len(batch) / 2
+		left, leftErr := DispatchMany(ctx, c, batch[:mid], priority)
+		if leftErr != nil {
+			return left, leftErr
+		}
+		right, rightErr := DispatchMany(ctx, c, batch[mid:], priority)
+		return left + right, rightErr
 	}
 
 	inserted := 0
