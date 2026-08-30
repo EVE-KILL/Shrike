@@ -199,6 +199,40 @@ func TestValidateConflictSaveTeamsRejectsCrossSideCorporation(t *testing.T) {
 	}
 }
 
+func TestAssignBattleFactionCorporationsIncludesVictimsAndPlayerAttackers(t *testing.T) {
+	assignment := battle.TeamAssignment{CorpTeam: map[int32]int{}}
+	err := assignBattleFactionCorporations(
+		&assignment,
+		map[int32]int{500001: 0, 500002: 1},
+		[]battle.Killmail{{
+			KillmailID: 1, VictimCorporationID: 10, VictimFactionID: 500001,
+		}},
+		map[int64][]battle.Attacker{1: {
+			{CharacterID: 20, CorporationID: 30, FactionID: 500002},
+			{CharacterID: 0, CorporationID: 40, FactionID: 500002},
+		}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(assignment.CorpTeam, map[int32]int{10: 0, 30: 1}) {
+		t.Fatalf("corporation teams = %#v", assignment.CorpTeam)
+	}
+}
+
+func TestAssignBattleFactionCorporationsRejectsCrossSideOverlap(t *testing.T) {
+	assignment := battle.TeamAssignment{CorpTeam: map[int32]int{10: 1}}
+	err := assignBattleFactionCorporations(
+		&assignment,
+		map[int32]int{500001: 0},
+		[]battle.Killmail{{VictimCorporationID: 10, VictimFactionID: 500001}},
+		nil,
+	)
+	if err == nil {
+		t.Fatal("expected conflicting faction assignment error")
+	}
+}
+
 func TestConflictBattleAssignmentEntitiesDeduplicatesAlliances(t *testing.T) {
 	corps, alliances := conflictBattleAssignmentEntities(
 		battle.TeamAssignment{

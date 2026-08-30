@@ -28,6 +28,17 @@ interface CampaignAllowedEntity {
     name: string | null
 }
 
+interface CampaignEditEntity {
+    type: 'character' | 'corporation' | 'alliance'
+    id: number
+    name: string | null
+}
+
+interface CampaignEditSide {
+    name: string
+    entities: CampaignEditEntity[]
+}
+
 interface CampaignPrizeResult {
     rank: number
     character_id: number
@@ -741,7 +752,12 @@ const editVisibility = ref(0)
 const saving = ref(false)
 const editError = ref<string | null>(null)
 const reauthRequired = ref(false)
-const confirmDelete = ref(false)
+const deleteModalOpen = ref(false)
+const deleting = ref(false)
+const actionError = ref<string | null>(null)
+const actionMessage = ref<string | null>(null)
+const editSides = ref<CampaignEditSide[]>([])
+const originalSidesJSON = ref('')
 
 // Killboard grants editor (area campaigns only — sides imply the audience
 // otherwise). SearchPicker handles the lookup; only list state lives here.
@@ -758,6 +774,42 @@ const removeEditAllowed = (e: CampaignAllowedEntity) => {
     editAllowed.value = editAllowed.value.filter(x => !(x.type === e.type && x.id === e.id))
 }
 
+const campaignEntityType = (type: number): CampaignEditEntity['type'] =>
+    type === 0 ? 'character' : type === 1 ? 'corporation' : 'alliance'
+
+const normalizedEditSides = () => editSides.value.map(side => ({
+    name: side.name.trim(),
+    entities: side.entities.map(entity => ({ type: entity.type, id: entity.id })),
+}))
+
+const editSidesDirty = computed(() => JSON.stringify(normalizedEditSides()) !== originalSidesJSON.value)
+const editSidesValid = computed(() => isAreaCampaign.value || (
+    editSides.value.length > 0
+    && editSides.value.length <= 4
+    && editSides.value.every(side => side.entities.length > 0 && side.entities.length <= 15)
+))
+
+const addEditParticipant = (sideIndex: number, picked: { type: string; id: number; name: string }) => {
+    const type = picked.type as CampaignEditEntity['type']
+    for (const side of editSides.value) {
+        side.entities = side.entities.filter(entity => !(entity.type === type && entity.id === picked.id))
+    }
+    editSides.value[sideIndex]?.entities.push({ type, id: picked.id, name: picked.name })
+}
+
+const removeEditParticipant = (sideIndex: number, entity: CampaignEditEntity) => {
+    const side = editSides.value[sideIndex]
+    if (side) side.entities = side.entities.filter(item => !(item.type === entity.type && item.id === entity.id))
+}
+
+const addEditSide = () => {
+    if (editSides.value.length < 4) editSides.value.push({ name: `Side ${editSides.value.length + 1}`, entities: [] })
+}
+
+const removeEditSide = (sideIndex: number) => {
+    editSides.value.splice(sideIndex, 1)
+}
+
 const openEdit = () => {
     if (!campaign.value) return
     editName.value = campaign.value.name
@@ -766,12 +818,25 @@ const openEdit = () => {
     editEndTime.value = isoToEveInput(campaign.value.end_time)
     editVisibility.value = campaign.value.visibility
     editAllowed.value = [...(campaign.value.allowed_entities ?? [])]
+    editSides.value = campaign.value.sides.map(side => ({
+        name: side.name,
+        entities: side.entities.map(entity => ({
+            type: campaignEntityType(entity.entity_type),
+            id: entity.entity_id,
+            name: entity.name,
+        })),
+    }))
+    originalSidesJSON.value = JSON.stringify(normalizedEditSides())
     editError.value = null
     reauthRequired.value = false
     editing.value = true
 }
 
 const saveEdit = async () => {
+	if (!editSidesValid.value) {
+		editError.value = 'Every side must contain 1–15 participants.'
+		return
+	}
     saving.value = true
     editError.value = null
     try {
@@ -783,6 +848,7 @@ const saveEdit = async () => {
                 endTime: editOngoing.value ? null : (editEndTime.value ? eveInputToIso(editEndTime.value) : null),
                 visibility: editVisibility.value,
                 allowedEntities: editAllowed.value,
+                ...(editSidesDirty.value ? { sides: normalizedEditSides() } : {}),
             },
         })
         editing.value = false
@@ -801,12 +867,17 @@ const saveEdit = async () => {
 const toggleArchive = async () => {
     if (!campaign.value) return
     saving.value = true
+    actionError.value = null
+    actionMessage.value = null
     try {
         await apiFetch(`/api/campaign/${campaignId}/update`, {
             method: 'POST',
             body: { archived: campaign.value.status !== 2 },
         })
         await refresh()
+        actionMessage.value = campaign.value?.status === 2 ? 'Campaign archived.' : 'Campaign reactivated.'
+    } catch (e: any) {
+        actionError.value = extractFetchError(e, 'Failed to update campaign archive status')
     } finally {
         saving.value = false
     }
@@ -826,13 +897,17 @@ const resumeProcessing = async () => {
 }
 
 const deleteCampaign = async () => {
-    if (!confirmDelete.value) {
-        confirmDelete.value = true
-        setTimeout(() => { confirmDelete.value = false }, 4000)
-        return
+    deleting.value = true
+    actionError.value = null
+    try {
+        await apiFetch(`/api/campaign/${campaignId}`, { method: 'DELETE' })
+        deleteModalOpen.value = false
+        await navigateTo('/campaigns')
+    } catch (e: any) {
+        actionError.value = extractFetchError(e, 'Failed to delete campaign')
+    } finally {
+        deleting.value = false
     }
-    await apiFetch(`/api/campaign/${campaignId}`, { method: 'DELETE' })
-    await navigateTo('/campaigns')
 }
 </script>
 
@@ -908,13 +983,9 @@ const deleteCampaign = async () => {
                             <button v-if="!campaign.prize_pool" @click="toggleArchive" :disabled="saving" class="px-2.5 py-1.5 rounded-lg text-xs bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-amber-500/[0.08] hover:text-amber-400 transition-colors" v-tooltip="campaign.status === 2 ? 'Reactivate' : 'Archive'">
                                 <Icon :name="campaign.status === 2 ? 'lucide:archive-restore' : 'lucide:archive'" class="text-xs" />
                             </button>
-                            <button v-if="!campaign.prize_pool || Number(campaign.prize_pool.funded_total) === 0" @click="deleteCampaign" class="px-2.5 py-1.5 rounded-lg text-xs border transition-colors"
-                                :class="confirmDelete
-                                    ? 'bg-red-500/20 text-red-400 border-red-500/40'
-                                    : 'bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-red-500/[0.08] hover:text-red-400'"
-                                v-tooltip="confirmDelete ? 'Click again to confirm' : 'Delete'">
+                            <button v-if="!campaign.prize_pool || Number(campaign.prize_pool.funded_total) === 0" @click="deleteModalOpen = true" class="px-2.5 py-1.5 rounded-lg text-xs border transition-colors bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-red-500/[0.08] hover:text-red-400"
+                                v-tooltip="'Delete'">
                                 <Icon name="lucide:trash-2" class="text-xs" />
-                                <span v-if="confirmDelete" class="ml-1">Confirm?</span>
                             </button>
                         </div>
                     </ClientOnly>
@@ -950,6 +1021,37 @@ const deleteCampaign = async () => {
                     <label class="text-fine text-gray-500 mb-1 block">Description</label>
                     <textarea v-model="editDescription" rows="3" class="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-gray-300 focus:border-blue-500/40 focus:outline-none" />
                 </div>
+                <div v-if="!isAreaCampaign" class="space-y-2">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <label class="text-fine text-gray-500 block">Sides and participants</label>
+                            <p class="text-fine text-gray-600 mt-0.5">Changing participants triggers a full campaign recompute.</p>
+                        </div>
+                        <button v-if="editSides.length < 4 && !campaign.prize_pool?.rules_locked_at" type="button" class="px-2 py-1 rounded bg-white/[0.05] text-fine text-gray-400 hover:text-blue-300" @click="addEditSide">Add side</button>
+                    </div>
+                    <div v-if="campaign.prize_pool?.rules_locked_at" class="rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-300">
+                        Participants are locked because this prize campaign has received funding.
+                    </div>
+                    <div v-for="(side, sideIndex) in editSides" :key="sideIndex" class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-3 space-y-2">
+                        <div class="flex items-center gap-2">
+                            <input v-model="side.name" type="text" maxlength="50" :disabled="!!campaign.prize_pool?.rules_locked_at" class="flex-1 min-w-0 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:border-blue-500/40 focus:outline-none disabled:opacity-50" />
+                            <span class="text-fine text-gray-600 tabular-nums">{{ side.entities.length }}/15</span>
+                            <button v-if="editSides.length > 1 && !campaign.prize_pool?.rules_locked_at" type="button" class="text-gray-600 hover:text-red-400" @click="removeEditSide(sideIndex)"><Icon name="lucide:trash-2" class="text-xs" /></button>
+                        </div>
+                        <SearchPicker v-if="!campaign.prize_pool?.rules_locked_at" :types="['alliance', 'corporation', 'character']"
+                            :disabled="side.entities.length >= 15"
+                            :placeholder="side.entities.length >= 15 ? 'Maximum 15 participants' : 'Add a participant to this side'"
+                            :is-picked="(type, id) => side.entities.some(entity => entity.type === type && entity.id === id)"
+                            @select="addEditParticipant(sideIndex, $event)" />
+                        <div class="flex flex-wrap gap-1.5">
+                            <div v-for="entity in side.entities" :key="`${entity.type}-${entity.id}`" class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-white/[0.08] bg-white/[0.04] text-xs text-gray-300">
+                                {{ entity.name ?? `#${entity.id}` }}
+                                <button v-if="!campaign.prize_pool?.rules_locked_at" type="button" class="text-gray-600 hover:text-red-400" @click="removeEditParticipant(sideIndex, entity)"><Icon name="lucide:x" class="text-fine" /></button>
+                            </div>
+                            <span v-if="!side.entities.length" class="text-fine text-red-400">This side needs at least one participant.</span>
+                        </div>
+                    </div>
+                </div>
                 <div>
                     <label class="text-fine text-gray-500 mb-1 block">Visibility</label>
                     <select v-model.number="editVisibility"
@@ -980,14 +1082,31 @@ const deleteCampaign = async () => {
                     <button v-if="reauthRequired" class="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 font-medium" @click="login({ redirect: route.fullPath })">Sign in again</button>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button @click="saveEdit" :disabled="saving" class="px-4 py-2 rounded-lg text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+                    <button @click="saveEdit" :disabled="saving || !editSidesValid" class="px-4 py-2 rounded-lg text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-40">
                         {{ saving ? 'Saving…' : 'Save changes' }}
                     </button>
                     <button @click="editing = false" class="glass-panel px-4 py-2 text-xs text-gray-400">Cancel</button>
-                    <span class="text-fine text-gray-600">Changing the end time triggers a full recompute</span>
+                    <span class="text-fine text-gray-600">Changing the end time or participants triggers a full recompute</span>
                 </div>
             </div>
+            <div v-if="actionError || actionMessage" class="mt-3 text-xs" :class="actionError ? 'text-red-400' : 'text-isk'">
+                {{ actionError ?? actionMessage }}
+            </div>
         </div>
+
+        <Modal v-model="deleteModalOpen" title="Delete campaign">
+            <p class="text-sm text-gray-300">Delete <span class="font-semibold text-white">{{ campaign.name }}</span>? This permanently removes the campaign and its computed statistics.</p>
+            <p class="text-xs text-gray-500 mt-2">This cannot be undone.</p>
+            <p v-if="actionError" class="mt-3 text-xs text-red-400">{{ actionError }}</p>
+            <template #footer>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="px-3 py-2 rounded-lg text-xs text-gray-400 bg-white/[0.04] hover:bg-white/[0.08]" :disabled="deleting" @click="deleteModalOpen = false">Cancel</button>
+                    <button type="button" class="px-3 py-2 rounded-lg text-xs font-medium text-white bg-red-600 hover:bg-red-500 disabled:opacity-50" :disabled="deleting" @click="deleteCampaign">
+                        {{ deleting ? 'Deleting…' : 'Delete campaign' }}
+                    </button>
+                </div>
+            </template>
+        </Modal>
 
         <!-- Prize pool details stay out of the campaign flow until requested. -->
         <Modal v-if="campaign.prize_pool" v-model="prizePanelOpen" max-width="max-w-4xl" no-padding>

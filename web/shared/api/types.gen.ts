@@ -14885,6 +14885,17 @@ export type CampaignUpdateLegacyData = {
         endTime?: string | null;
         name?: string;
         resumeProcessing?: boolean;
+        sides?: Array<{
+            entities: Array<{
+                /**
+                 * An integer. A numeric string is accepted for compatibility.
+                 */
+                id: number | string;
+                name?: string;
+                type: 'character' | 'corporation' | 'alliance';
+            }>;
+            name?: string;
+        }>;
         /**
          * An integer. A numeric string is accepted for compatibility.
          */
@@ -15037,6 +15048,17 @@ export type CampaignUpdateBrowserLegacyData = {
         endTime?: string | null;
         name?: string;
         resumeProcessing?: boolean;
+        sides?: Array<{
+            entities: Array<{
+                /**
+                 * An integer. A numeric string is accepted for compatibility.
+                 */
+                id: number | string;
+                name?: string;
+                type: 'character' | 'corporation' | 'alliance';
+            }>;
+            name?: string;
+        }>;
         /**
          * An integer. A numeric string is accepted for compatibility.
          */
@@ -15572,6 +15594,17 @@ export type CampaignUpdateData = {
         endTime?: string | null;
         name?: string;
         resumeProcessing?: boolean;
+        sides?: Array<{
+            entities: Array<{
+                /**
+                 * An integer. A numeric string is accepted for compatibility.
+                 */
+                id: number | string;
+                name?: string;
+                type: 'character' | 'corporation' | 'alliance';
+            }>;
+            name?: string;
+        }>;
         /**
          * An integer. A numeric string is accepted for compatibility.
          */

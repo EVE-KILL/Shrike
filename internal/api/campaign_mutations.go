@@ -59,6 +59,7 @@ type campaignUpdateBody struct {
 	Visibility       json.RawMessage `json:"visibility,omitempty" doc:"New visibility."`
 	EndTime          json.RawMessage `json:"endTime,omitempty" doc:"New end time."`
 	AllowedEntities  json.RawMessage `json:"allowedEntities,omitempty" doc:"Replacement viewer list."`
+	Sides            json.RawMessage `json:"sides,omitempty" doc:"Replacement campaign sides and participants."`
 	Archived         json.RawMessage `json:"archived,omitempty" doc:"Archive or restore the campaign."`
 	ResumeProcessing json.RawMessage `json:"resumeProcessing,omitempty" doc:"Resume killmail processing after an edit."`
 }
@@ -416,6 +417,21 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 		hasPrize := boolFrom(campaign["has_prize_pool"])
 		updates := map[string]any{}
 		needsRecompute := false
+		var replacementSides []campaignSideInput
+		if raw, found := rawJSONField(body.Sides); found {
+			location := campaignLocationFrom(campaign["location"])
+			replacementSides, err = parseCampaignSides(raw, location.HasFilter())
+			if err != nil {
+				return legacyPayload{}, err
+			}
+			if campaign["rules_locked_at"] != nil {
+				return legacyPayload{}, apiError(
+					http.StatusBadRequest,
+					"Campaign participants are locked because its prize pool has received funding",
+				)
+			}
+			needsRecompute = true
+		}
 		if value, found := rawJSONField(body.Name); found {
 			name := strings.TrimSpace(jsonString(value))
 			if runeLength(name) < 3 || runeLength(name) > campaignMaximumNameLength {
@@ -506,6 +522,8 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 			}
 			if archived {
 				updates["status"] = campaignengine.StatusArchived
+				updates["processing_paused"] = true
+				updates["processing_note"] = "Archived by " + principal.CharacterName
 			} else if int16From(campaign["status"]) ==
 				campaignengine.StatusArchived {
 				needsRecompute = true
@@ -548,6 +566,50 @@ func (s *campaignService) campaignUpdateHandler() legacyHandler {
 			return legacyPayload{}, err
 		}
 		defer tx.Rollback(ctx) //nolint:errcheck
+		if replacementSides != nil {
+			var rulesLockedAt *time.Time
+			if err := tx.QueryRow(ctx, `
+				SELECT pool.rules_locked_at
+				FROM campaigns campaign
+				LEFT JOIN campaign_prize_pools pool
+				  ON pool.campaign_id = campaign.campaign_id
+				WHERE campaign.campaign_id = $1
+				FOR UPDATE OF campaign`, id).Scan(&rulesLockedAt); err != nil {
+				return legacyPayload{}, err
+			}
+			if rulesLockedAt != nil {
+				return legacyPayload{}, apiError(
+					http.StatusBadRequest,
+					"Campaign participants are locked because its prize pool has received funding",
+				)
+			}
+			if _, err := tx.Exec(ctx,
+				`DELETE FROM campaign_side_entities WHERE campaign_id = $1`, id,
+			); err != nil {
+				return legacyPayload{}, err
+			}
+			if _, err := tx.Exec(ctx,
+				`DELETE FROM campaign_sides WHERE campaign_id = $1`, id,
+			); err != nil {
+				return legacyPayload{}, err
+			}
+			for _, side := range replacementSides {
+				if _, err := tx.Exec(ctx, `
+					INSERT INTO campaign_sides (campaign_id, side_index, name)
+					VALUES ($1, $2, $3)`, id, side.Index, side.Name); err != nil {
+					return legacyPayload{}, err
+				}
+				for _, entity := range side.Entities {
+					if _, err := tx.Exec(ctx, `
+						INSERT INTO campaign_side_entities (
+						  campaign_id, side_index, entity_type, entity_id
+						) VALUES ($1, $2, $3, $4)`,
+						id, side.Index, entity.Type, entity.ID); err != nil {
+						return legacyPayload{}, err
+					}
+				}
+			}
+		}
 		becomingPublicOngoing := nextVisibility == campaignVisibilityPublic &&
 			nextEnd == nil &&
 			(int16From(campaign["visibility"]) != campaignVisibilityPublic ||

@@ -181,6 +181,32 @@ func battleGeneratorEntitiesHandler(opts Options) bodyHandler[conflictBattleGene
 		if err != nil {
 			return legacyPayload{}, err
 		}
+		factionRows, err := queryMaps(ctx, opts.DB, `
+			WITH battle_kills AS MATERIALIZED (
+				SELECT killmail_id, victim_faction_id
+				FROM killmails
+				WHERE solar_system_id = ANY($1::int[])
+				  AND killmail_time >= $2 AND killmail_time <= $3
+			), faction_ids AS (
+				SELECT victim_faction_id AS faction_id
+				FROM battle_kills
+				WHERE victim_faction_id IS NOT NULL
+				UNION
+				SELECT attacker.faction_id
+				FROM killmail_attackers attacker
+				JOIN battle_kills kill ON kill.killmail_id = attacker.killmail_id
+				WHERE attacker.faction_id IS NOT NULL
+				  AND attacker.character_id IS NOT NULL
+				  AND attacker.killmail_time >= $2
+				  AND attacker.killmail_time <= $3
+			)
+			SELECT faction.faction_id, faction.name
+			FROM faction_ids entity
+			JOIN factions faction ON faction.faction_id = entity.faction_id
+			ORDER BY faction.name`, systemIDs, start, end)
+		if err != nil {
+			return legacyPayload{}, err
+		}
 		count, err := queryMap(ctx, opts.DB, `
 			SELECT COUNT(*)::int AS count
 			FROM killmails
@@ -220,8 +246,17 @@ func battleGeneratorEntitiesHandler(opts Options) bodyHandler[conflictBattleGene
 			return conflictString(alliances[i], "name") <
 				conflictString(alliances[j], "name")
 		})
+		factions := make([]map[string]any, 0, len(factionRows))
+		for _, row := range factionRows {
+			factions = append(factions, map[string]any{
+				"id":   conflictInt(row, "faction_id"),
+				"name": conflictString(row, "name"),
+				"type": "faction",
+			})
+		}
 		return conflictNoStorePayload(map[string]any{
 			"alliances": alliances, "corporations": corporations,
+			"factions":  factions,
 			"killCount": conflictInt(count, "count"),
 		}), nil
 	}
@@ -247,6 +282,7 @@ func battleGeneratorPreviewHandler(opts Options) bodyHandler[conflictBattleGener
 			CorpTeam: map[int32]int{}, CorpAlliance: map[int32]int32{},
 		}
 		allianceTeams := map[int32]int{}
+		factionTeams := map[int32]int{}
 		for index, side := range body.Sides {
 			for _, entity := range side.Entities {
 				if entity.ID <= 0 {
@@ -273,6 +309,15 @@ func battleGeneratorPreviewHandler(opts Options) bodyHandler[conflictBattleGener
 						)
 					}
 					allianceTeams[entity.ID] = index
+				case "faction":
+					if previous, exists := factionTeams[entity.ID]; exists &&
+						previous != index {
+						return legacyPayload{}, apiError(
+							http.StatusBadRequest,
+							"A faction cannot be on both sides",
+						)
+					}
+					factionTeams[entity.ID] = index
 				default:
 					return legacyPayload{}, apiError(
 						http.StatusBadRequest, "Invalid side entity type",
@@ -319,6 +364,11 @@ func battleGeneratorPreviewHandler(opts Options) bodyHandler[conflictBattleGener
 			if team, exists := allianceTeams[allianceID]; exists {
 				assignment.CorpTeam[corporationID] = team
 			}
+		}
+		if err := assignBattleFactionCorporations(
+			&assignment, factionTeams, kills, attackers,
+		); err != nil {
+			return legacyPayload{}, err
 		}
 		teams := battle.ComputeTeamStats(kills, attackers, assignment)
 		window := conflictBattleWindow{
@@ -386,6 +436,46 @@ func battleGeneratorPreviewHandler(opts Options) bodyHandler[conflictBattleGener
 		}
 		return conflictNoStorePayload(result), nil
 	}
+}
+
+func assignBattleFactionCorporations(
+	assignment *battle.TeamAssignment,
+	factionTeams map[int32]int,
+	kills []battle.Killmail,
+	attackers map[int64][]battle.Attacker,
+) error {
+	assign := func(corporationID, factionID int32) error {
+		if corporationID == 0 || factionID == 0 {
+			return nil
+		}
+		team, selected := factionTeams[factionID]
+		if !selected {
+			return nil
+		}
+		if previous, assigned := assignment.CorpTeam[corporationID]; assigned && previous != team {
+			return apiError(http.StatusBadRequest,
+				"Selected entities assign a corporation to both sides")
+		}
+		assignment.CorpTeam[corporationID] = team
+		return nil
+	}
+	for _, kill := range kills {
+		if err := assign(kill.VictimCorporationID, kill.VictimFactionID); err != nil {
+			return err
+		}
+	}
+	for _, killAttackers := range attackers {
+		for _, attacker := range killAttackers {
+			// Faction NPCs are environmental damage, not selectable belligerents.
+			if attacker.CharacterID == 0 {
+				continue
+			}
+			if err := assign(attacker.CorporationID, attacker.FactionID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func battleGeneratorSaveHandler(opts Options) legacyHandler {

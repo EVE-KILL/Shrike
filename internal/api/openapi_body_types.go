@@ -63,6 +63,7 @@ type campaignUpdateDocument struct {
 	EndTime          optional[string]                    `json:"endTime,omitempty" format:"date-time"`
 	Visibility       jsInt                               `json:"visibility,omitempty" minimum:"0" maximum:"2"`
 	AllowedEntities  requestList[campaignEntityDocument] `json:"allowedEntities,omitempty" maxItems:"10"`
+	Sides            requestList[campaignSideDocument]   `json:"sides,omitempty" maxItems:"4"`
 	Archived         bool                                `json:"archived,omitempty"`
 	ResumeProcessing bool                                `json:"resumeProcessing,omitempty"`
 }

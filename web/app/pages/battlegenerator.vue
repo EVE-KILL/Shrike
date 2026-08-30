@@ -14,7 +14,7 @@ interface SearchResponse {
 interface BattleEntity {
     id: number
     name: string
-    type: 'alliance' | 'corporation'
+    type: 'alliance' | 'corporation' | 'faction'
     alliance_id?: number | null
     alliance_name?: string | null
 }
@@ -136,7 +136,7 @@ const undecided = computed(() => {
 const loadEntities = async () => {
     loadingEntities.value = true
     try {
-        const result = await apiFetch<{ alliances: BattleEntity[]; corporations: BattleEntity[] }>('/api/battle/generator/entities', {
+        const result = await apiFetch<{ alliances: BattleEntity[]; corporations: BattleEntity[]; factions: BattleEntity[] }>('/api/battle/generator/entities', {
             method: 'POST',
             body: {
                 systemIds: systems.value.map(s => s.id),
@@ -146,7 +146,7 @@ const loadEntities = async () => {
         })
 
         // Alliances first, then standalone corps
-        const entities: BattleEntity[] = []
+        const entities: BattleEntity[] = [...result.factions]
         const allianceCorpIds = new Set<number>()
 
         for (const a of result.alliances) {
@@ -358,6 +358,7 @@ const saveBattle = async () => {
 
 const entityImage = (entity: BattleEntity): string => {
     if (entity.type === 'alliance') return `/images/alliances/${entity.id}/logo?size=64`
+    if (entity.type === 'faction') return `/images/factions/${entity.id}/logo?size=64`
     return `/images/corporations/${entity.id}/logo?size=64`
 }
 

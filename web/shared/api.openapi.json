@@ -40723,6 +40723,64 @@
                   "resumeProcessing": {
                     "type": "boolean"
                   },
+                  "sides": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "entities": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "description": "An integer. A numeric string is accepted for compatibility.",
+                                "minimum": 1,
+                                "oneOf": [
+                                  {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "pattern": "^-?\\d+$",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "name": {
+                                "maxLength": 100,
+                                "type": "string"
+                              },
+                              "type": {
+                                "enum": [
+                                  "character",
+                                  "corporation",
+                                  "alliance"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 15,
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "name": {
+                          "maxLength": 50,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "entities"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 4,
+                    "type": "array"
+                  },
                   "visibility": {
                     "description": "An integer. A numeric string is accepted for compatibility.",
                     "maximum": 2,
@@ -41280,6 +41338,64 @@
                   },
                   "resumeProcessing": {
                     "type": "boolean"
+                  },
+                  "sides": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "entities": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "description": "An integer. A numeric string is accepted for compatibility.",
+                                "minimum": 1,
+                                "oneOf": [
+                                  {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "pattern": "^-?\\d+$",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "name": {
+                                "maxLength": 100,
+                                "type": "string"
+                              },
+                              "type": {
+                                "enum": [
+                                  "character",
+                                  "corporation",
+                                  "alliance"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 15,
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "name": {
+                          "maxLength": 50,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "entities"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 4,
+                    "type": "array"
                   },
                   "visibility": {
                     "description": "An integer. A numeric string is accepted for compatibility.",
@@ -43528,6 +43644,64 @@
                   },
                   "resumeProcessing": {
                     "type": "boolean"
+                  },
+                  "sides": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "entities": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "description": "An integer. A numeric string is accepted for compatibility.",
+                                "minimum": 1,
+                                "oneOf": [
+                                  {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "pattern": "^-?\\d+$",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "name": {
+                                "maxLength": 100,
+                                "type": "string"
+                              },
+                              "type": {
+                                "enum": [
+                                  "character",
+                                  "corporation",
+                                  "alliance"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type",
+                              "id"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 15,
+                          "minItems": 1,
+                          "type": "array"
+                        },
+                        "name": {
+                          "maxLength": 50,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "entities"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 4,
+                    "type": "array"
                   },
                   "visibility": {
                     "description": "An integer. A numeric string is accepted for compatibility.",
