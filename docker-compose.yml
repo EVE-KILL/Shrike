@@ -47,6 +47,8 @@ services:
       - maintenance_work_mem=512MB
       - -c
       - max_connections=200
+      - -c
+      - shared_preload_libraries=pg_stat_statements
       # fsync=off trades crash safety for import speed. Acceptable only because
       # this volume is reproducible from the SDE importer at any time.
       - -c

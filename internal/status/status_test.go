@@ -18,8 +18,18 @@ func TestStatusJSONContract(t *testing.T) {
 		Timestamp: "2026-07-26T04:00:01.000Z",
 		Database: &DatabaseInfo{
 			Size: "1 GB", Version: "18.6", Role: "primary",
-			UptimeSeconds: 3600,
-			Connections:   DatabaseConnectionInfo{Total: 10, Active: 2, Max: 100},
+			SampledAt: "2026-07-26T04:00:01.000Z", UptimeSeconds: 3600,
+			Connections: DatabaseConnectionInfo{
+				Total: 10, Active: 2, IdleInTransaction: 1, Waiting: 1, Max: 100,
+			},
+			Cluster: DatabaseClusterInfo{
+				Replicas: 2, Streaming: 2, Synchronous: 1, MaxLagBytes: 1024, MaxLagSeconds: 0.25,
+			},
+			Workload: &DatabaseWorkloadInfo{
+				TransactionsPerSecond: 42.5, RollbackPercent: 0.1,
+				WALBytesPerSecond: 1024, ReadBytesPerSecond: 2048, WriteBytesPerSecond: 512,
+			},
+			Statements:    &DatabaseStatementInfo{QueriesPerSecond: 125, AverageLatencyMS: 3.25},
 			CacheHitRatio: 99.95,
 			Tables: map[string]DatabaseTableInfo{
 				"killmails": {TotalSize: "1 GB", DataSize: "900 MB", Rows: 42},
@@ -61,6 +71,14 @@ func TestStatusJSONContract(t *testing.T) {
 	if connections["active"] != float64(2) || connections["max"] != float64(100) {
 		t.Fatalf("database connection payload = %#v", connections)
 	}
+	cluster := database["cluster"].(map[string]any)
+	if cluster["streaming"] != float64(2) || cluster["max_lag_bytes"] != float64(1024) {
+		t.Fatalf("database cluster payload = %#v", cluster)
+	}
+	statements := database["statements"].(map[string]any)
+	if statements["queries_per_second"] != float64(125) || statements["average_latency_ms"] != float64(3.25) {
+		t.Fatalf("database statement payload = %#v", statements)
+	}
 	if _, ok := database["tables"].(map[string]any)["killmails"]; !ok {
 		t.Fatalf("database payload = %#v", database)
 	}
@@ -72,6 +90,21 @@ func TestStatusJSONContract(t *testing.T) {
 	}
 	if decoded["wallet"].(map[string]any)["total_balance"] != "123.45" {
 		t.Fatalf("wallet payload = %#v", decoded["wallet"])
+	}
+}
+
+func TestCounterDeltaHandlesStatisticsReset(t *testing.T) {
+	if got := counterDelta(20, 15); got != 5 {
+		t.Fatalf("counter delta = %d, want 5", got)
+	}
+	if got := counterDelta(2, 15); got != 0 {
+		t.Fatalf("reset counter delta = %d, want 0", got)
+	}
+	if got := floatCounterDelta(2.5, 1.25); got != 1.25 {
+		t.Fatalf("float counter delta = %f, want 1.25", got)
+	}
+	if got := floatCounterDelta(0.5, 1.25); got != 0 {
+		t.Fatalf("reset float counter delta = %f, want 0", got)
 	}
 }
 
@@ -124,5 +157,43 @@ func TestCollectorAgainstServices(t *testing.T) {
 	}
 	if payload.Coverage == nil {
 		t.Fatal("coverage stats were not collected")
+	}
+}
+
+func TestDatabaseMetricsAgainstPostgres(t *testing.T) {
+	if os.Getenv("STATUS_INTEGRATION_TEST") != "1" {
+		t.Skip("set STATUS_INTEGRATION_TEST=1")
+	}
+
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = "postgresql://evekill:" + "evekill@127.0.0.1:5432/evekill"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	collector := NewCollector(pool, nil)
+	first := collector.databaseInfo(ctx)
+	if first == nil || collector.dbSnapshot == nil {
+		t.Fatal("initial database metrics were not collected")
+	}
+	collector.dbSnapshot.at = collector.dbSnapshot.at.Add(-time.Second)
+	if _, err := pool.Exec(ctx, `SELECT 1`); err != nil {
+		t.Fatal(err)
+	}
+	second := collector.databaseInfo(ctx)
+	if second == nil || second.Workload == nil {
+		t.Fatal("database workload rates were not collected")
+	}
+	if second.Statements == nil {
+		t.Fatal("pg_stat_statements rates were not collected")
+	}
+	if second.SampledAt == "" || second.Role == "" {
+		t.Fatalf("database identity metrics = %#v", second)
 	}
 }

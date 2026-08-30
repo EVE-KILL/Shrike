@@ -4,3 +4,4 @@
 -- and the % operator (api/src/routes/search.ts). Without it, every search query
 -- fails rather than merely running slowly.
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;

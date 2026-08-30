@@ -81,17 +81,58 @@ type DatabaseInfo struct {
 	Size          string                       `json:"size"`
 	Version       string                       `json:"version"`
 	Role          string                       `json:"role"`
+	SampledAt     string                       `json:"sampled_at"`
 	UptimeSeconds int64                        `json:"uptime_seconds"`
 	Connections   DatabaseConnectionInfo       `json:"connections"`
+	Cluster       DatabaseClusterInfo          `json:"cluster"`
+	Workload      *DatabaseWorkloadInfo        `json:"workload"`
+	Statements    *DatabaseStatementInfo       `json:"statements"`
 	CacheHitRatio float64                      `json:"cache_hit_ratio"`
 	WaitingLocks  int64                        `json:"waiting_locks"`
 	Tables        map[string]DatabaseTableInfo `json:"tables"`
 }
 
 type DatabaseConnectionInfo struct {
-	Total  int64 `json:"total"`
-	Active int64 `json:"active"`
-	Max    int64 `json:"max"`
+	Total             int64 `json:"total"`
+	Active            int64 `json:"active"`
+	IdleInTransaction int64 `json:"idle_in_transaction"`
+	Waiting           int64 `json:"waiting"`
+	Max               int64 `json:"max"`
+}
+
+type DatabaseClusterInfo struct {
+	Replicas      int64   `json:"replicas"`
+	Streaming     int64   `json:"streaming"`
+	Synchronous   int64   `json:"synchronous"`
+	MaxLagBytes   int64   `json:"max_lag_bytes"`
+	MaxLagSeconds float64 `json:"max_lag_seconds"`
+}
+
+type DatabaseWorkloadInfo struct {
+	TransactionsPerSecond float64 `json:"transactions_per_second"`
+	RollbackPercent       float64 `json:"rollback_percent"`
+	WALBytesPerSecond     float64 `json:"wal_bytes_per_second"`
+	ReadBytesPerSecond    float64 `json:"read_bytes_per_second"`
+	WriteBytesPerSecond   float64 `json:"write_bytes_per_second"`
+	Deadlocks             int64   `json:"deadlocks"`
+}
+
+type DatabaseStatementInfo struct {
+	QueriesPerSecond float64 `json:"queries_per_second"`
+	AverageLatencyMS float64 `json:"average_latency_ms"`
+}
+
+type databaseSnapshot struct {
+	at                  time.Time
+	transactions        int64
+	rollbacks           int64
+	deadlocks           int64
+	walBytes            int64
+	readBytes           int64
+	writeBytes          int64
+	statementCalls      int64
+	statementExecTimeMS float64
+	statementsAvailable bool
 }
 
 type DatabaseTableInfo struct {
@@ -198,6 +239,7 @@ type Collector struct {
 	queues       map[string]QueueInfo
 	lastQueues   time.Time
 	database     *DatabaseInfo
+	dbSnapshot   *databaseSnapshot
 	tokens       *ESITokenInfo
 	wallet       *WalletInfo
 	lastSlow     time.Time
@@ -507,6 +549,14 @@ func (c *Collector) databaseInfo(ctx context.Context) *DatabaseInfo {
 		           WHERE activity.datname = current_database()
 		             AND activity.state = 'active'
 		       ),
+		       count(*) FILTER (
+		           WHERE activity.datname = current_database()
+		             AND activity.state = 'idle in transaction'
+		       ),
+		       count(*) FILTER (
+		           WHERE activity.datname = current_database()
+		             AND activity.wait_event_type IS NOT NULL
+		       ),
 		       current_setting('max_connections')::bigint,
 		       coalesce(round(
 		           100.0 * stats.blks_hit / nullif(stats.blks_hit + stats.blks_read, 0),
@@ -526,13 +576,114 @@ func (c *Collector) databaseInfo(ctx context.Context) *DatabaseInfo {
 		&out.UptimeSeconds,
 		&out.Connections.Total,
 		&out.Connections.Active,
+		&out.Connections.IdleInTransaction,
+		&out.Connections.Waiting,
 		&out.Connections.Max,
 		&out.CacheHitRatio,
 		&out.WaitingLocks,
 	); err != nil {
 		return nil
 	}
+	out.SampledAt = time.Now().UTC().Format(isoMillisLayout)
+
+	// Replicas are deliberately anonymous. Names, addresses, users, slots, and
+	// application names are not part of the public status contract.
+	_ = c.Pool.QueryRow(ctx, `
+		SELECT count(*),
+		       count(*) FILTER (WHERE state = 'streaming'),
+		       count(*) FILTER (WHERE sync_state IN ('sync', 'quorum')),
+		       coalesce(max(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)), 0)::bigint,
+		       coalesce(max(extract(epoch FROM replay_lag)), 0)::float8
+		FROM pg_stat_replication`).Scan(
+		&out.Cluster.Replicas,
+		&out.Cluster.Streaming,
+		&out.Cluster.Synchronous,
+		&out.Cluster.MaxLagBytes,
+		&out.Cluster.MaxLagSeconds,
+	)
+
+	if snapshot := c.databaseStatsSnapshot(ctx); snapshot != nil {
+		if previous := c.dbSnapshot; previous != nil {
+			seconds := snapshot.at.Sub(previous.at).Seconds()
+			if seconds > 0 {
+				transactions := counterDelta(snapshot.transactions, previous.transactions)
+				rollbacks := counterDelta(snapshot.rollbacks, previous.rollbacks)
+				out.Workload = &DatabaseWorkloadInfo{
+					TransactionsPerSecond: float64(transactions) / seconds,
+					WALBytesPerSecond:     float64(counterDelta(snapshot.walBytes, previous.walBytes)) / seconds,
+					ReadBytesPerSecond:    float64(counterDelta(snapshot.readBytes, previous.readBytes)) / seconds,
+					WriteBytesPerSecond:   float64(counterDelta(snapshot.writeBytes, previous.writeBytes)) / seconds,
+					Deadlocks:             counterDelta(snapshot.deadlocks, previous.deadlocks),
+				}
+				if transactions > 0 {
+					out.Workload.RollbackPercent = 100 * float64(rollbacks) / float64(transactions)
+				}
+				if snapshot.statementsAvailable && previous.statementsAvailable {
+					calls := counterDelta(snapshot.statementCalls, previous.statementCalls)
+					execTime := floatCounterDelta(snapshot.statementExecTimeMS, previous.statementExecTimeMS)
+					out.Statements = &DatabaseStatementInfo{QueriesPerSecond: float64(calls) / seconds}
+					if calls > 0 {
+						out.Statements.AverageLatencyMS = execTime / float64(calls)
+					}
+				}
+			}
+		}
+		c.dbSnapshot = snapshot
+	}
 	return out
+}
+
+func (c *Collector) databaseStatsSnapshot(ctx context.Context) *databaseSnapshot {
+	snapshot := &databaseSnapshot{at: time.Now().UTC()}
+	if err := c.Pool.QueryRow(ctx, `
+		SELECT stats.xact_commit + stats.xact_rollback,
+		       stats.xact_rollback,
+		       stats.deadlocks,
+		       (SELECT wal_bytes::bigint FROM pg_stat_wal),
+		       (SELECT coalesce(sum(read_bytes), 0)::bigint FROM pg_stat_io),
+		       (SELECT coalesce(sum(write_bytes), 0)::bigint FROM pg_stat_io)
+		FROM pg_stat_database stats
+		WHERE stats.datname = current_database()`).Scan(
+		&snapshot.transactions,
+		&snapshot.rollbacks,
+		&snapshot.deadlocks,
+		&snapshot.walBytes,
+		&snapshot.readBytes,
+		&snapshot.writeBytes,
+	); err != nil {
+		return nil
+	}
+
+	var statementsInstalled bool
+	if err := c.Pool.QueryRow(ctx,
+		`SELECT to_regclass('public.pg_stat_statements') IS NOT NULL`).Scan(&statementsInstalled); err != nil || !statementsInstalled {
+		return snapshot
+	}
+	if err := c.Pool.QueryRow(ctx, `
+		SELECT coalesce(sum(calls), 0)::bigint,
+		       coalesce(sum(total_exec_time), 0)::float8
+		FROM pg_stat_statements
+		WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())`).Scan(
+		&snapshot.statementCalls,
+		&snapshot.statementExecTimeMS,
+	); err == nil {
+		snapshot.statementsAvailable = true
+	}
+	return snapshot
+}
+
+func counterDelta(current, previous int64) int64 {
+	if current < previous {
+		return 0
+	}
+	return current - previous
+}
+
+func floatCounterDelta(current, previous float64) float64 {
+	if current < previous {
+		return 0
+	}
+	return current - previous
 }
 
 func (c *Collector) coverageInfo(ctx context.Context) *CoverageInfo {
