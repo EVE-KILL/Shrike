@@ -53,7 +53,12 @@ func Parse(
 	// is valued with the same numbers as one at 23:30.
 	killDate := km.KillmailTime.UTC().Format("2006-01-02")
 
-	items := flattenItems(km.Victim.Items, km.KillmailID, nil, NoParent)
+	items := flattenItems(
+		km.Victim.Items,
+		km.KillmailID,
+		make([]Item, 0, countItems(km.Victim.Items)),
+		NoParent,
+	)
 
 	// Every type whose price has to be asked of the market, gathered before a
 	// single query goes out. Blueprint copies are left out: they are priced by
@@ -157,6 +162,14 @@ func Parse(
 	}
 
 	return &Parsed{Killmail: row, Attackers: attackers, Items: items}, nil
+}
+
+func countItems(items []ESIItem) int {
+	count := len(items)
+	for _, item := range items {
+		count += countItems(item.Items)
+	}
+	return count
 }
 
 // resolveAttackerShip fills in a missing hull from the weapon.

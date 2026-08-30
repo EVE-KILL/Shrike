@@ -50,6 +50,30 @@ type PointsAttacker struct {
 	ShipTypeID  int32
 }
 
+type pointsItem interface {
+	pointsItemFields() (typeID, flag int32, dropped, destroyed int64)
+}
+
+func (item PointsItem) pointsItemFields() (int32, int32, int64, int64) {
+	return item.TypeID, item.Flag, item.QuantityDropped, item.QuantityDestroyed
+}
+
+func (item ESIItem) pointsItemFields() (int32, int32, int64, int64) {
+	return item.ItemTypeID, item.Flag, item.QuantityDropped, item.QuantityDestroyed
+}
+
+type pointsAttacker interface {
+	pointsAttackerFields() (characterID, shipTypeID int32)
+}
+
+func (attacker PointsAttacker) pointsAttackerFields() (int32, int32) {
+	return attacker.CharacterID, attacker.ShipTypeID
+}
+
+func (attacker ESIAttacker) pointsAttackerFields() (int32, int32) {
+	return attacker.CharacterID, attacker.ShipTypeID
+}
+
 // PointsInput is everything the score depends on.
 //
 // Neutral between the two sources that produce it: a freshly fetched ESI
@@ -68,51 +92,46 @@ type PointsInput struct {
 }
 
 func calculatePoints(cache *eve.Cache, km *ESIKillmail) int32 {
-	in := PointsInput{VictimShipTypeID: km.Victim.ShipTypeID}
-	for _, item := range km.Victim.Items {
-		in.Items = append(in.Items, PointsItem{
-			TypeID:            item.ItemTypeID,
-			Flag:              item.Flag,
-			QuantityDropped:   item.QuantityDropped,
-			QuantityDestroyed: item.QuantityDestroyed,
-		})
-	}
-	for _, att := range km.Attackers {
-		in.Attackers = append(in.Attackers, PointsAttacker{
-			CharacterID: att.CharacterID,
-			ShipTypeID:  att.ShipTypeID,
-		})
-	}
-	return Points(cache, in)
+	return scorePoints(cache, km.Victim.ShipTypeID, km.Victim.Items, km.Attackers)
 }
 
 // Points is the zKillboard score for one killmail.
 func Points(cache *eve.Cache, km PointsInput) int32 {
-	if km.VictimShipTypeID == 0 {
+	return scorePoints(cache, km.VictimShipTypeID, km.Items, km.Attackers)
+}
+
+func scorePoints[I pointsItem, A pointsAttacker](
+	cache *eve.Cache,
+	victimShipTypeID int32,
+	items []I,
+	attackers []A,
+) int32 {
+	if victimShipTypeID == 0 {
 		return 1
 	}
 
-	victimRigSize := rigSize(cache, km.VictimShipTypeID)
+	victimRigSize := rigSize(cache, victimShipTypeID)
 	basePoints := math.Pow(5, victimRigSize)
 
 	dangerFactor := 0.0
-	for _, item := range km.Items {
-		t, ok := cache.Type(item.TypeID)
+	for _, item := range items {
+		typeID, flag, dropped, destroyed := item.pointsItemFields()
+		t, ok := cache.Type(typeID)
 		if !ok || t.CategoryID != categoryModule {
 			continue
 		}
-		if !isModuleSlot(item.Flag) {
+		if !isModuleSlot(flag) {
 			continue
 		}
 
-		qty := float64(item.QuantityDestroyed + item.QuantityDropped)
+		qty := float64(destroyed + dropped)
 
-		metaLevel, _ := cache.Dogma(item.TypeID, eve.AttrMetaLevel)
+		metaLevel, _ := cache.Dogma(typeID, eve.AttrMetaLevel)
 		meta := 1 + math.Floor(metaLevel/2)
 
 		// A module that generates heat damage is one that can be overheated,
 		// which is the cheapest available proxy for "this was a combat module".
-		if heat, ok := cache.Dogma(item.TypeID, eve.AttrHeatDamage); ok && heat > 0 {
+		if heat, ok := cache.Dogma(typeID, eve.AttrHeatDamage); ok && heat > 0 {
 			dangerFactor += qty * meta
 		}
 		if t.GroupID == groupSmartbomb {
@@ -129,8 +148,9 @@ func Points(cache *eve.Cache, km PointsInput) int32 {
 	points *= math.Max(0.01, math.Min(1, dangerFactor/4))
 
 	playerAttackers := 0
-	for _, att := range km.Attackers {
-		if att.CharacterID != 0 {
+	for _, att := range attackers {
+		characterID, _ := att.pointsAttackerFields()
+		if characterID != 0 {
 			playerAttackers++
 		}
 	}
@@ -142,23 +162,24 @@ func Points(cache *eve.Cache, km PointsInput) int32 {
 
 	hasPlayer := false
 	totalSize := 0.0
-	for _, att := range km.Attackers {
-		if att.CharacterID != 0 {
+	for _, att := range attackers {
+		characterID, shipTypeID := att.pointsAttackerFields()
+		if characterID != 0 {
 			hasPlayer = true
 		}
 		// The raw ship_type_id, not the weapon-inferred hull used for the
 		// attacker rows: an attacker with no ship contributes no size.
-		if att.ShipTypeID == 0 {
+		if shipTypeID == 0 {
 			continue
 		}
-		attType, _ := cache.Type(att.ShipTypeID)
+		attType, _ := cache.Type(shipTypeID)
 		// A structure on the mail voids scoring entirely. Structures have
 		// absurd effective hull sizes and would dominate the average.
 		if attType.CategoryID == categoryStructure {
 			return 1
 		}
 		if attType.GroupID != groupCapsule {
-			totalSize += math.Pow(5, rigSize(cache, att.ShipTypeID))
+			totalSize += math.Pow(5, rigSize(cache, shipTypeID))
 		} else {
 			// A pod among the attackers is scored as one size class above the
 			// victim, so podding does not deflate the average.
