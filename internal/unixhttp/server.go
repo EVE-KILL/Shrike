@@ -120,13 +120,42 @@ func serve(
 	return server
 }
 
-// privateDiagnostics adds the Go 1.27 goroutine leak profile to the private
-// listener. It deliberately exposes no other pprof surface.
+// privateDiagnostics adds Go runtime profiles to the private listener. The
+// production listener is a Unix socket shared only with the Nuxt renderer.
 func privateDiagnostics(next http.Handler) http.Handler {
-	profile := pprof.Handler("goroutineleak")
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /debug/pprof/", pprof.Index)
+	mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("POST /debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
+	for _, name := range []string{
+		"allocs",
+		"block",
+		"goroutine",
+		"goroutineleak",
+		"heap",
+		"mutex",
+		"threadcreate",
+	} {
+		mux.Handle("GET /debug/pprof/"+name, pprof.Handler(name))
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/debug/pprof/goroutineleak" {
-			profile.ServeHTTP(w, r)
+		if r.URL.Path == "/debug/pprof/" ||
+			r.URL.Path == "/debug/pprof/cmdline" ||
+			r.URL.Path == "/debug/pprof/profile" ||
+			r.URL.Path == "/debug/pprof/symbol" ||
+			r.URL.Path == "/debug/pprof/trace" ||
+			r.URL.Path == "/debug/pprof/allocs" ||
+			r.URL.Path == "/debug/pprof/block" ||
+			r.URL.Path == "/debug/pprof/goroutine" ||
+			r.URL.Path == "/debug/pprof/goroutineleak" ||
+			r.URL.Path == "/debug/pprof/heap" ||
+			r.URL.Path == "/debug/pprof/mutex" ||
+			r.URL.Path == "/debug/pprof/threadcreate" {
+			mux.ServeHTTP(w, r)
 			return
 		}
 		next.ServeHTTP(w, r)

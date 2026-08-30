@@ -135,7 +135,7 @@ func TestListenLoopbackServesAndLeavesNoSocket(t *testing.T) {
 	}
 }
 
-func TestPrivateServerExposesOnlyGoroutineLeakProfile(t *testing.T) {
+func TestPrivateServerExposesRuntimeProfiles(t *testing.T) {
 	handler := privateDiagnostics(http.NotFoundHandler())
 
 	request := func(path string) *http.Response {
@@ -145,18 +145,27 @@ func TestPrivateServerExposesOnlyGoroutineLeakProfile(t *testing.T) {
 		return recorder.Result()
 	}
 
-	response := request("/debug/pprof/goroutineleak?debug=1")
-	defer response.Body.Close() //nolint:errcheck
-	if response.StatusCode != http.StatusOK {
-		t.Fatalf("goroutine leak profile status = %d, want 200", response.StatusCode)
-	}
-	if contentType := response.Header.Get("Content-Type"); contentType == "" {
-		t.Fatal("goroutine leak profile has no content type")
+	for _, path := range []string{
+		"/debug/pprof/",
+		"/debug/pprof/goroutineleak?debug=1",
+		"/debug/pprof/heap?debug=1",
+		"/debug/pprof/mutex?debug=1",
+	} {
+		response := request(path)
+		if response.StatusCode != http.StatusOK {
+			_ = response.Body.Close()
+			t.Errorf("%s status = %d, want 200", path, response.StatusCode)
+			continue
+		}
+		if contentType := response.Header.Get("Content-Type"); contentType == "" {
+			t.Errorf("%s has no content type", path)
+		}
+		_ = response.Body.Close()
 	}
 
-	if response := request("/debug/pprof/"); response.StatusCode != http.StatusNotFound {
+	if response := request("/debug/pprof/not-a-profile"); response.StatusCode != http.StatusNotFound {
 		_ = response.Body.Close()
-		t.Fatalf("pprof index status = %d, want 404", response.StatusCode)
+		t.Fatalf("unknown profile status = %d, want 404", response.StatusCode)
 	} else {
 		_ = response.Body.Close()
 	}
