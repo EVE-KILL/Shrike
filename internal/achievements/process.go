@@ -3,6 +3,7 @@ package achievements
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -224,7 +225,7 @@ func syncPoints(ctx context.Context, pool *pgxpool.Pool, awards []award) error {
 			ids = append(ids, a.characterID)
 		}
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		// UPDATE ... FROM does not guarantee its row-lock order. Take the

@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"slices"
 	"sort"
 	"time"
 )
@@ -146,7 +147,7 @@ func ComputeTeamStats(killmails []Killmail, attackersByKill map[int64][]Attacker
 	}
 	// Sorted so the output is stable between runs, which matters because these
 	// rows are stored and compared.
-	sort.Slice(corps, func(i, j int) bool { return corps[i] < corps[j] })
+	slices.Sort(corps)
 
 	for _, id := range corps {
 		s := stats[id]

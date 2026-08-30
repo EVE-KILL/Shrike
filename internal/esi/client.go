@@ -104,9 +104,9 @@ func (r Response[T]) Permanent() bool {
 	return false
 }
 
-// raw is the pipeline's output before it is typed. The pipeline is written
-// against JSON bytes because Go has no generic methods, and duplicating it per
-// response type would be far worse than one decode at the edge.
+// raw is the pipeline's output before it is typed. Cache coordination and HTTP
+// retries operate on JSON bytes regardless of the response type, so decoding
+// once at the typed edge keeps the shared pipeline small.
 type raw struct {
 	Body       json.RawMessage
 	Status     int

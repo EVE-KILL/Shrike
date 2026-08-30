@@ -12,7 +12,10 @@
 // by a short slug rather than by their display name.
 package achievements
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // Rarity is the badge tier, escalating with the threshold.
 type Rarity string
@@ -72,12 +75,7 @@ func (d Definition) SignedBasePoints() int32 {
 
 // MatchesGroup reports whether a ship group is one this definition counts.
 func (d Definition) MatchesGroup(groupID int32) bool {
-	for _, g := range d.GroupIDs {
-		if g == groupID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(d.GroupIDs, groupID)
 }
 
 // shipCategory is one hull class with its escalating thresholds.

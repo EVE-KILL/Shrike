@@ -13,6 +13,7 @@ package killtype
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -271,10 +272,8 @@ func RegionBucket(regionID int32) string {
 	if regionID == PochvenRegionID {
 		return "pochven"
 	}
-	for _, j := range JoveRegionIDs {
-		if regionID == j {
-			return "jove"
-		}
+	if slices.Contains(JoveRegionIDs, regionID) {
+		return "jove"
 	}
 	if regionID >= AbyssalRegionMin && regionID <= AbyssalRegionMax {
 		return "abyssal"

@@ -24,6 +24,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -209,7 +210,7 @@ func Extract(cache *eve.Cache, shipTypeID int32, items []Item) *Fitting {
 	for s := range buckets {
 		slots = append(slots, s)
 	}
-	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	slices.Sort(slots)
 
 	exact := []string{fmt.Sprint(shipTypeID)}
 	family := []string{fmt.Sprint(shipTypeID)}
@@ -253,7 +254,7 @@ func Extract(cache *eve.Cache, shipTypeID int32, items []Item) *Fitting {
 	for t := range droneByType {
 		droneTypes = append(droneTypes, t)
 	}
-	sort.Slice(droneTypes, func(i, j int) bool { return droneTypes[i] < droneTypes[j] })
+	slices.Sort(droneTypes)
 
 	for i, typeID := range droneTypes {
 		out = append(out, ExtractedItem{
