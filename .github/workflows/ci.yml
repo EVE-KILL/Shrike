@@ -104,15 +104,16 @@ jobs:
           fi
 
   go-race:
-    name: Go race tests (shard ${{ matrix.shard }})
+    name: Go race tests (${{ matrix.lane }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        shard:
-          - 0
-          - 1
+        lane:
+          - shard-0
+          - shard-1
+          - api
 
     services:
       postgres:
@@ -166,16 +167,22 @@ jobs:
 
       - name: Run Go tests with race detector
         env:
-          SHARD: ${{ matrix.shard }}
+          LANE: ${{ matrix.lane }}
           SHARD_COUNT: 2
         shell: bash
         run: |
-          mapfile -t packages < <(
-            go list ./... | awk -v shard="$SHARD" -v count="$SHARD_COUNT" \
-              '(NR - 1) % count == shard'
-          )
-          printf 'Testing %d packages in shard %s/%s\n' \
-            "${#packages[@]}" "$SHARD" "$SHARD_COUNT"
+          if [[ "$LANE" == "api" ]]; then
+            packages=("github.com/eve-kill/shrike/internal/api")
+          else
+            shard="${LANE#shard-}"
+            mapfile -t packages < <(
+              go list ./... |
+                awk '$0 != "github.com/eve-kill/shrike/internal/api"' |
+                awk -v shard="$shard" -v count="$SHARD_COUNT" \
+                  '(NR - 1) % count == shard'
+            )
+          fi
+          printf 'Testing %d packages in %s\n' "${#packages[@]}" "$LANE"
           go test -race -count=1 "${packages[@]}"
 
   frontend:
