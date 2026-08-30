@@ -15,6 +15,8 @@ RUN bun install --frozen-lockfile
 
 COPY web/ ./
 RUN bun run build
+RUN cp -R node_modules/@img/. .output/server/node_modules/@img/ \
+    && bun -e 'import sharp from "./.output/server/node_modules/sharp/dist/index.mjs"; const output = await sharp({ create: { width: 2, height: 2, channels: 4, background: "#000" } }).resize(1, 1).png().toBuffer(); if (output.length === 0) throw new Error("sharp resize produced no output")'
 RUN mkdir -p /out/dogma/src \
     && bun build packages/dogma/src/bridge.ts --target=bun --outfile=/out/dogma/src/bridge.js \
     && cp -R packages/dogma/dist /out/dogma/dist
