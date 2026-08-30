@@ -760,7 +760,7 @@ const secLabel = (sec: number | null): string => {
                 </div>
                 <div
                     v-else
-                    class="killlist-desktop-row relative hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 items-center border-b border-white/[0.03] hover:bg-blue-500/[0.06] transition-colors group"
+                    class="relative hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 items-center border-b border-white/[0.03] hover:bg-blue-500/[0.06] transition-colors group"
                     :class="sideRowClass(row.kill) || (isLoss(row.kill) ? 'loss-row loss-row-hover' : warRowClass(row.kill) || (row.visualIdx % 2 === 0 ? 'bg-white/[0.02]' : ''))"
                     :style="sideRowStyle(row.kill)"
                 >
@@ -769,7 +769,7 @@ const secLabel = (sec: number | null): string => {
                          NuxtLinks use relative+z-10 to render above and capture clicks. -->
                     <NuxtLink
                         :to="`/kill/${row.kill.killmail_id}`"
-                        class="killlist-row-link absolute inset-0 z-0"
+                        class="absolute inset-0 z-0"
                         :aria-label="`Killmail: ${row.kill.ship_name || 'ship'} — ${formatIsk(row.kill.total_value)} ISK`"
                     />
 
@@ -799,10 +799,10 @@ const secLabel = (sec: number | null): string => {
                             <Icon name="lucide:building" class="text-sm text-gray-500" />
                         </div>
                         <div v-if="row.kill.victim_corporation_id || row.kill.victim_alliance_id" class="flex-shrink-0 flex flex-col gap-[2px]">
-                            <NuxtLink v-if="row.kill.victim_corporation_id" :to="`/corporation/${row.kill.victim_corporation_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.victim_corporation_name || row.kill.victim_corporation_id}`">
+                            <NuxtLink v-if="row.kill.victim_corporation_id" :to="`/corporation/${row.kill.victim_corporation_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.victim_corporation_name || row.kill.victim_corporation_id}`">
                                 <EveImage :src="`/images/corporations/${row.kill.victim_corporation_id}/logo?size=32`" :alt="row.kill.victim_corporation_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
-                            <NuxtLink v-if="row.kill.victim_alliance_id" :to="`/alliance/${row.kill.victim_alliance_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.victim_alliance_name || row.kill.victim_alliance_id}`">
+                            <NuxtLink v-if="row.kill.victim_alliance_id" :to="`/alliance/${row.kill.victim_alliance_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.victim_alliance_name || row.kill.victim_alliance_id}`">
                                 <EveImage :src="`/images/alliances/${row.kill.victim_alliance_id}/logo?size=32`" :alt="row.kill.victim_alliance_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
                         </div>
@@ -827,10 +827,10 @@ const secLabel = (sec: number | null): string => {
                             <Icon name="lucide:crosshair" class="text-sm text-gray-500" />
                         </div>
                         <div v-if="row.kill.final_blow_corporation_id || row.kill.final_blow_alliance_id" class="flex-shrink-0 flex flex-col gap-[2px]">
-                            <NuxtLink v-if="row.kill.final_blow_corporation_id" :to="`/corporation/${row.kill.final_blow_corporation_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.final_blow_corporation_name || row.kill.final_blow_corporation_id}`">
+                            <NuxtLink v-if="row.kill.final_blow_corporation_id" :to="`/corporation/${row.kill.final_blow_corporation_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.final_blow_corporation_name || row.kill.final_blow_corporation_id}`">
                                 <EveImage :src="`/images/corporations/${row.kill.final_blow_corporation_id}/logo?size=32`" :alt="row.kill.final_blow_corporation_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
-                            <NuxtLink v-if="row.kill.final_blow_alliance_id" :to="`/alliance/${row.kill.final_blow_alliance_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.final_blow_alliance_name || row.kill.final_blow_alliance_id}`">
+                            <NuxtLink v-if="row.kill.final_blow_alliance_id" :to="`/alliance/${row.kill.final_blow_alliance_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.final_blow_alliance_name || row.kill.final_blow_alliance_id}`">
                                 <EveImage :src="`/images/alliances/${row.kill.final_blow_alliance_id}/logo?size=32`" :alt="row.kill.final_blow_alliance_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
                         </div>
@@ -970,15 +970,6 @@ const secLabel = (sec: number | null): string => {
 .killlist-dot:nth-child(1) { animation-delay: 0s; }
 .killlist-dot:nth-child(2) { animation-delay: 0.15s; }
 .killlist-dot:nth-child(3) { animation-delay: 0.3s; }
-
-/* The desktop table is deliberately dense, but every nested entity link still
-   needs a 24px hit area for touch, switch-control, and low-precision users. */
-.killlist-desktop-row a:not(.killlist-row-link) {
-    display: inline-flex;
-    align-items: center;
-    min-width: 24px;
-    min-height: 24px;
-}
 
 @keyframes killlist-dot-bounce {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
