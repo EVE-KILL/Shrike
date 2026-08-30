@@ -187,7 +187,38 @@ func loadCharacterIntel(
 		return nil, err
 	}
 	graph := loadGraphIntel(ctx, opts.Graph, id)
+	return finishCharacterIntel(ctx, opts.DB, id, days, playstyle, shipsFlown,
+		shipsLost, targets, awox, bait, archetype, graph)
+}
 
+func finishCharacterIntel(
+	ctx context.Context, db Database, id int64, days int,
+	playstyle map[string]any, shipsFlown, shipsLost, targets []map[string]any,
+	awox, bait, archetype map[string]any, graph graphIntel,
+) (map[string]any, error) {
+	allianceIDs := append(
+		graphFieldIDs(graph.FleetPartners, "alliance_id"),
+		graphFieldIDs(graph.GroupsFlownWith, "alliance_id")...,
+	)
+	charNames, corpNames, allianceNames, err := intelEntityNames(
+		ctx, db,
+		graphFieldIDs(graph.FleetPartners, "id"),
+		graphFieldIDs(graph.FleetPartners, "corp_id"),
+		allianceIDs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return assembleCharacterIntel(id, days, playstyle, shipsFlown, shipsLost,
+		targets, awox, bait, archetype, graph, charNames, corpNames, allianceNames), nil
+}
+
+func assembleCharacterIntel(
+	id int64, days int,
+	playstyle map[string]any, shipsFlown, shipsLost, targets []map[string]any,
+	awox, bait, archetype map[string]any, graph graphIntel,
+	charNames, corpNames, allianceNames map[int64]string,
+) map[string]any {
 	total, _ := int64Value(playstyle["total"])
 	percentDenominator := total
 	if percentDenominator == 0 {
@@ -234,20 +265,6 @@ func loadCharacterIntel(
 	}
 	tags := deriveIntelTags(graph.Timestamps, archetype)
 
-	allianceIDs := append(
-		graphFieldIDs(graph.FleetPartners, "alliance_id"),
-		graphFieldIDs(graph.GroupsFlownWith, "alliance_id")...,
-	)
-	charNames, corpNames, allianceNames, err := intelEntityNames(
-		ctx, opts.DB,
-		graphFieldIDs(graph.FleetPartners, "id"),
-		graphFieldIDs(graph.FleetPartners, "corp_id"),
-		allianceIDs,
-	)
-	if err != nil {
-		return nil, err
-	}
-
 	baited, _ := int64Value(bait["baited_deaths"])
 	awoxKills, _ := int64Value(awox["awox_kills"])
 	cynoDeaths, _ := int64Value(archetype["cyno_deaths"])
@@ -270,7 +287,7 @@ func loadCharacterIntel(
 		"awox_kills":        awoxKills, "cyno_deaths": cynoDeaths,
 		"bait": intelBaitLevel(baited), "bait_count": baited,
 		"bridge_score": graph.BridgeScore,
-	}, nil
+	}
 }
 
 func loadGraphIntel(

@@ -11029,6 +11029,158 @@
         ],
         "type": "object"
       },
+      "character-intel-batch-response": {
+        "additionalProperties": false,
+        "properties": {
+          "$schema": {
+            "description": "A URL to the JSON Schema for this response.",
+            "format": "uri",
+            "readOnly": true,
+            "type": "string"
+          },
+          "data": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "awox_kills": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "bait": {
+                  "type": "string"
+                },
+                "bait_count": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "bridge_score": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "capital_pilot": {
+                  "type": "boolean"
+                },
+                "character_id": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "cyno_deaths": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "days": {
+                  "format": "int64",
+                  "type": "integer"
+                },
+                "dominant_style": {
+                  "type": "string"
+                },
+                "fc": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "likelihood": {
+                      "type": "string"
+                    },
+                    "monitor_appearances": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                },
+                "fleet_partners": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "groups_flown_with": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "is_logi": {
+                  "type": "boolean"
+                },
+                "playstyle": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "ships_flown": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "ships_lost": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "tags": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "targets": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "character_id",
+                "days",
+                "playstyle",
+                "dominant_style",
+                "tags",
+                "fc",
+                "capital_pilot",
+                "is_logi",
+                "ships_flown",
+                "ships_lost",
+                "targets",
+                "fleet_partners",
+                "groups_flown_with",
+                "awox_kills",
+                "cyno_deaths",
+                "bait",
+                "bait_count",
+                "bridge_score"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "days": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "not_found": {
+            "items": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "data",
+          "not_found",
+          "days",
+          "$schema"
+        ],
+        "type": "object"
+      },
       "character-intel-response": {
         "additionalProperties": false,
         "properties": {
@@ -11075,8 +11227,7 @@
             "additionalProperties": true,
             "properties": {
               "likelihood": {
-                "format": "double",
-                "type": "number"
+                "type": "string"
               },
               "monitor_appearances": {
                 "format": "int64",
@@ -31169,8 +31320,7 @@
                           "additionalProperties": true,
                           "properties": {
                             "likelihood": {
-                              "format": "double",
-                              "type": "number"
+                              "type": "string"
                             },
                             "monitor_appearances": {
                               "format": "int64",
@@ -44900,8 +45050,7 @@
                           "additionalProperties": true,
                           "properties": {
                             "likelihood": {
-                              "format": "double",
-                              "type": "number"
+                              "type": "string"
                             },
                             "monitor_appearances": {
                               "format": "int64",
@@ -46287,6 +46436,63 @@
           }
         },
         "summary": "Estimated characters count",
+        "tags": [
+          "characters"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/characters/intel": {
+      "post": {
+        "description": "Full intelligence profiles for up to 100 unique characters in one set-based request, with a configurable 1-90 day look-back window.",
+        "operationId": "character-intel-batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "character_ids": {
+                    "description": "Characters to inspect, at most 100 unique IDs.",
+                    "items": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "days": {
+                    "default": 90,
+                    "description": "Look-back window in days, from 1 through 90.",
+                    "format": "int64",
+                    "maximum": 90,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "character_ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/character-intel-batch-response"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Batch character intelligence profiles",
         "tags": [
           "characters"
         ],
@@ -50469,8 +50675,7 @@
                           "additionalProperties": true,
                           "properties": {
                             "likelihood": {
-                              "format": "double",
-                              "type": "number"
+                              "type": "string"
                             },
                             "monitor_appearances": {
                               "format": "int64",
@@ -55359,8 +55564,7 @@
                           "additionalProperties": true,
                           "properties": {
                             "likelihood": {
-                              "format": "double",
-                              "type": "number"
+                              "type": "string"
                             },
                             "monitor_appearances": {
                               "format": "int64",

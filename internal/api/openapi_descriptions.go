@@ -37,6 +37,7 @@ var operationDescriptions = map[string]string{
 	"character":              "Character profile with all-time stats, recent stats, top ships, top systems, and corporation history with per-stint kill/loss counts.",
 	"character-stats":        "Kills, losses, ISK, efficiency, top ships, top systems for the chosen period.",
 	"character-intel":        "Intelligence profile derived from killmail activity: playstyle breakdown (solo/gang/fleet/blob), FC likelihood, capital pilot flag, logi pilot flag, cyno alt detection, bait detection, awox history, top ships flown & lost, target alliances, fleet partners with corp/alliance info, and groups flown with.",
+	"character-intel-batch":  "Full intelligence profiles for up to 100 unique characters in one set-based request, with a configurable 1-90 day look-back window.",
 	"characters-batch-stats": "Resolve stats for up to 100 characters in a single call.",
 	"character-analyze":      "Batch intel endpoint for fleet analysis and awoxer detection. Returns per-character 90-day stats: total_kills, total_losses, efficiency (%), gang_probability (% of kills that are gang), average_gang_size, cyno_probability (% of recent losses with a cyno fitted), and last_5_ships (each with ship_type_id, ship_name, kill_count, and last_loss { killmail_id, killmail_time } or null).",
 	"corporations-count":     "Fast pg_class.reltuples estimate. Not exact.",

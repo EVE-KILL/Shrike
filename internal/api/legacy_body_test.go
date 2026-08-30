@@ -201,3 +201,35 @@ func TestBatchStatsDocumentsTheImplementedPeriods(t *testing.T) {
 		t.Errorf("period enum = %v, want %v", got, want)
 	}
 }
+
+func TestBatchCharacterIntelContract(t *testing.T) {
+	document := New(Options{}).document
+	operation := document.Paths["/characters/intel"].Post
+	if operation == nil || operation.OperationID != "character-intel-batch" {
+		t.Fatalf("batch intel operation = %#v", operation)
+	}
+	body := operation.RequestBody
+	if body == nil || !body.Required {
+		t.Fatal("batch intel must require a JSON body")
+	}
+	ids := body.Content["application/json"].Schema.Properties["character_ids"]
+	if ids == nil || ids.MinItems == nil || *ids.MinItems != 1 || ids.MaxItems == nil || *ids.MaxItems != 100 {
+		t.Fatalf("character_ids bounds = %#v", ids)
+	}
+	days := body.Content["application/json"].Schema.Properties["days"]
+	if days == nil || days.Minimum == nil || *days.Minimum != 1 || days.Maximum == nil || *days.Maximum != 90 || days.Default != 90 {
+		t.Fatalf("days contract = %#v", days)
+	}
+
+	response := publicOperationResponseSchema("character-intel-batch")
+	for _, name := range []string{"data", "not_found", "days"} {
+		if response.Properties[name] == nil {
+			t.Errorf("batch intel response is missing %q", name)
+		}
+	}
+	intel := response.Properties["data"].Items
+	fc := intel.Properties["fc"]
+	if fc == nil || fc.Properties["likelihood"].Type != huma.TypeString {
+		t.Fatalf("fc likelihood schema = %#v, want string", fc)
+	}
+}

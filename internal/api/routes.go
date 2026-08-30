@@ -69,6 +69,7 @@ func registerSchemaLinkedRoutes(a huma.API, opts Options) {
 	registerKillmailSearchRoute(a, opts)
 	registerEntityRoutes(a, opts)
 	registerCharacterIntelRoute(a, opts)
+	registerBatchCharacterIntelRoute(a, opts)
 	registerAnalyzeRoute(a, opts)
 	registerBatchStatsRoutes(a, opts)
 	registerCoalitionRoute(a, opts)

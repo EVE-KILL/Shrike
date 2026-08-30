@@ -94,6 +94,12 @@ func publicOperationResponseSchema(operationID string) *huma.Schema {
 		return entityStatsResponseSchema()
 	case "character-intel":
 		return characterIntelSchema()
+	case "character-intel-batch":
+		return responseSchema(map[string]*huma.Schema{
+			"data":      arraySchema(characterIntelSchema()),
+			"not_found": arraySchema(intSchema()),
+			"days":      intSchema(),
+		}, "data", "not_found", "days")
 	case "character-analyze":
 		return dataSchema(arraySchema(characterAnalysisSchema()))
 	case "characters-batch-stats", "corporations-batch-stats",
@@ -560,7 +566,7 @@ func characterIntelSchema() *huma.Schema {
 		"dominant_style": stringSchema(),
 		"tags":           arraySchema(stringSchema()),
 		"fc": recordSchema(map[string]*huma.Schema{
-			"likelihood": numberSchema(), "monitor_appearances": intSchema(),
+			"likelihood": stringSchema(), "monitor_appearances": intSchema(),
 		}),
 		"capital_pilot":     boolSchema(),
 		"is_logi":           boolSchema(),

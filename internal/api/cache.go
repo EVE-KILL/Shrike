@@ -248,7 +248,7 @@ func sharedCacheControl(ttl time.Duration) string {
 
 func cachePolicyFor(path string) (responseCachePolicy, bool) {
 	switch path {
-	case "/characters/analyze", "/characters/stats", "/corporations/stats",
+	case "/characters/analyze", "/characters/intel", "/characters/stats", "/corporations/stats",
 		"/alliances/stats", "/coalitions/stats", "/killmails/search":
 		return responseCachePolicy{}, false
 	}

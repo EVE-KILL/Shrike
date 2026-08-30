@@ -2717,6 +2717,51 @@ export type CharacterAnalyzeResponse = {
     }>;
 };
 
+export type CharacterIntelBatchResponse = {
+    /**
+     * A URL to the JSON Schema for this response.
+     */
+    readonly $schema: string;
+    data: Array<{
+        awox_kills: number;
+        bait: string;
+        bait_count: number;
+        bridge_score: number;
+        capital_pilot: boolean;
+        character_id: number;
+        cyno_deaths: number;
+        days: number;
+        dominant_style: string;
+        fc: {
+            likelihood?: string;
+            monitor_appearances?: number;
+            [key: string]: unknown;
+        };
+        fleet_partners: Array<{
+            [key: string]: unknown;
+        }>;
+        groups_flown_with: Array<{
+            [key: string]: unknown;
+        }>;
+        is_logi: boolean;
+        playstyle: {
+            [key: string]: unknown;
+        };
+        ships_flown: Array<{
+            [key: string]: unknown;
+        }>;
+        ships_lost: Array<{
+            [key: string]: unknown;
+        }>;
+        tags: Array<string>;
+        targets: Array<{
+            [key: string]: unknown;
+        }>;
+    }>;
+    days: number;
+    not_found: Array<number>;
+};
+
 export type CharacterIntelResponse = {
     /**
      * A URL to the JSON Schema for this response.
@@ -2732,7 +2777,7 @@ export type CharacterIntelResponse = {
     days: number;
     dominant_style: string;
     fc: {
-        likelihood?: number;
+        likelihood?: string;
         monitor_appearances?: number;
         [key: string]: unknown;
     };
@@ -6754,6 +6799,47 @@ export type CharacterAnalyzeResponseWritable = {
     }>;
 };
 
+export type CharacterIntelBatchResponseWritable = {
+    data: Array<{
+        awox_kills: number;
+        bait: string;
+        bait_count: number;
+        bridge_score: number;
+        capital_pilot: boolean;
+        character_id: number;
+        cyno_deaths: number;
+        days: number;
+        dominant_style: string;
+        fc: {
+            likelihood?: string;
+            monitor_appearances?: number;
+            [key: string]: unknown;
+        };
+        fleet_partners: Array<{
+            [key: string]: unknown;
+        }>;
+        groups_flown_with: Array<{
+            [key: string]: unknown;
+        }>;
+        is_logi: boolean;
+        playstyle: {
+            [key: string]: unknown;
+        };
+        ships_flown: Array<{
+            [key: string]: unknown;
+        }>;
+        ships_lost: Array<{
+            [key: string]: unknown;
+        }>;
+        tags: Array<string>;
+        targets: Array<{
+            [key: string]: unknown;
+        }>;
+    }>;
+    days: number;
+    not_found: Array<number>;
+};
+
 export type CharacterIntelResponseWritable = {
     awox_kills: number;
     bait: string;
@@ -6765,7 +6851,7 @@ export type CharacterIntelResponseWritable = {
     days: number;
     dominant_style: string;
     fc: {
-        likelihood?: number;
+        likelihood?: string;
         monitor_appearances?: number;
         [key: string]: unknown;
     };
@@ -12229,7 +12315,7 @@ export type EntityPageIntelAllianceCompatResponses = {
         days: number;
         dominant_style: string;
         fc: {
-            likelihood?: number;
+            likelihood?: string;
             monitor_appearances?: number;
             [key: string]: unknown;
         };
@@ -15895,7 +15981,7 @@ export type EntityPageIntelCharacterCompatResponses = {
         days: number;
         dominant_style: string;
         fc: {
-            likelihood?: number;
+            likelihood?: string;
             monitor_appearances?: number;
             [key: string]: unknown;
         };
@@ -16266,6 +16352,31 @@ export type CharactersCountResponses = {
 };
 
 export type CharactersCountResponse2 = CharactersCountResponses[keyof CharactersCountResponses];
+
+export type CharacterIntelBatchData = {
+    body: {
+        /**
+         * Characters to inspect, at most 100 unique IDs.
+         */
+        character_ids: Array<number>;
+        /**
+         * Look-back window in days, from 1 through 90.
+         */
+        days?: number;
+    };
+    path?: never;
+    query?: never;
+    url: '/characters/intel';
+};
+
+export type CharacterIntelBatchResponses = {
+    /**
+     * OK
+     */
+    200: CharacterIntelBatchResponse;
+};
+
+export type CharacterIntelBatchResponse2 = CharacterIntelBatchResponses[keyof CharacterIntelBatchResponses];
 
 export type CharactersBatchStatsData = {
     body: {
@@ -17592,7 +17703,7 @@ export type EntityPageIntelCorporationCompatResponses = {
         days: number;
         dominant_style: string;
         fc: {
-            likelihood?: number;
+            likelihood?: string;
             monitor_appearances?: number;
             [key: string]: unknown;
         };
@@ -18971,7 +19082,7 @@ export type EntityPageIntelResponses = {
         days: number;
         dominant_style: string;
         fc: {
-            likelihood?: number;
+            likelihood?: string;
             monitor_appearances?: number;
             [key: string]: unknown;
         };
