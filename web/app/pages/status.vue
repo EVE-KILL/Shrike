@@ -106,18 +106,14 @@ onUnmounted(() => {
         </div>
 
         <div v-else class="space-y-4">
-            <StatusSummary :data="data" :ws-stats="data.websocket" />
+            <StatusSummary :data="data" />
             <StatusSystem :data="data" />
             <StatusCloudflare :data="data.cloudflare" />
             <StatusZkbIngest :data="data.zkb_ingest" />
-            <StatusCoverage :data="data.coverage" />
+            <StatusEsiOverview :coverage="data.coverage" :tokens="data.esi_tokens" />
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatusQueues :data="data" />
                 <StatusPostgres :data="data" />
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <StatusValkey :data="data" />
-                <StatusEsiTokens :data="data" />
             </div>
             <StatusImageServer :data="data.image_server" />
             <StatusWebSocketServer :data="data.websocket" />

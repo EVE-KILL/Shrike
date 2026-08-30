@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{ data: any; wsStats: any }>()
+const props = defineProps<{ data: any }>()
 
 const tqStatusColor = computed(() => {
     const s = props.data?.esi?.tq_status
@@ -39,6 +39,12 @@ const formatWalletBalance = (value: number): string => {
 const walletDisplay = computed(() =>
     walletBalance.value === null ? '— ISK' : `${formatWalletBalance(walletBalance.value)} ISK`,
 )
+
+const cacheHitRatio = computed(() => {
+    const hits = props.data?.redis?.keyspace_hits || 0
+    const misses = props.data?.redis?.keyspace_misses || 0
+    return hits + misses > 0 ? Math.round(hits / (hits + misses) * 100) : null
+})
 </script>
 
 <template>
@@ -74,9 +80,11 @@ const walletDisplay = computed(() =>
             <div class="text-xs text-gray-500">{{ Object.keys(data.database?.tables || {}).length }} tables</div>
         </div>
         <div class="glass-panel p-4 text-center">
-            <div class="text-fine uppercase tracking-wider text-gray-500 mb-1">WebSocket</div>
-            <div class="text-base font-bold text-cyan-400">{{ wsStats?.connections ?? 0 }}</div>
-            <div class="text-xs text-gray-500">connections</div>
+            <div class="text-fine uppercase tracking-wider text-gray-500 mb-1">Cache</div>
+            <div class="text-base font-bold text-cyan-400">{{ data.redis?.used_memory || '—' }}</div>
+            <div class="text-xs text-gray-500">
+                <template v-if="cacheHitRatio !== null">{{ cacheHitRatio }}% hit · </template>{{ data.redis?.connected_clients || 0 }} clients
+            </div>
         </div>
     </div>
 </template>
