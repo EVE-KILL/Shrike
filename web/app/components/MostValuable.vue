@@ -65,7 +65,7 @@ const windowLabel = computed(() => `${mvParams.value.days}d`)
                 class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
                 :class="activeTab === tab.key
                     ? 'bg-blue-500/10 text-blue-400'
-                    : 'text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.04]'"
+                    : 'text-gray-400 hover:text-blue-300 hover:bg-blue-500/[0.04]'"
                 @click="activeTab = tab.key"
             >
                 <span class="sm:hidden">{{ tab.shortLabel }}</span>

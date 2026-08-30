@@ -15,6 +15,8 @@ const shuffle = async () => {
         <button
             class="w-9 h-9 rounded-lg flex items-center justify-center transition-all"
             :class="viewerMode ? 'bg-blue-500/30 text-blue-400' : 'bg-black/50 text-gray-400 hover:text-blue-400 hover:bg-black/70'"
+            :aria-label="viewerMode ? 'Exit background viewer' : 'View background image'"
+            :aria-pressed="viewerMode"
             @click="toggleViewer"
             v-tooltip="'Toggle background view'"
         >
@@ -24,6 +26,7 @@ const shuffle = async () => {
         <!-- Shuffle button — random Reddit -->
         <button
             class="w-9 h-9 rounded-lg flex items-center justify-center bg-black/50 text-gray-400 hover:text-blue-400 hover:bg-black/70 transition-all"
+            aria-label="Choose a random background from r/eveporn"
             @click="shuffle"
             :disabled="loading"
             v-tooltip="'Random background from r/eveporn'"

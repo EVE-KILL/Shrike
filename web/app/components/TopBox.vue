@@ -100,7 +100,7 @@ const accentStyles = computed(() => {
 
 <template>
     <div v-if="isLoading || items.length > 0" class="glass-panel mb-4 p-2">
-        <div class="px-1 pb-2 mb-1 text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 border-b border-white/[0.08]">
+        <div class="px-1 pb-2 mb-1 text-fine font-bold uppercase tracking-[0.15em] text-blue-300 border-b border-white/[0.08]">
             {{ title }}
         </div>
 
@@ -120,19 +120,19 @@ const accentStyles = computed(() => {
                 class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors group"
                 :style="accentStyles[entry.id]"
             >
-                <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ idx + 1 }}</span>
+                <span class="flex-shrink-0 w-4 text-fine text-gray-400 text-right">{{ idx + 1 }}</span>
                 <div v-if="getImageUrl(entry)" class="flex-shrink-0 w-6 h-6 rounded overflow-hidden bg-white/[0.04]">
                     <EveImage :src="getImageUrl(entry)!" :size="32" :alt="entry.name" class="w-full h-full object-cover" :loading="props.eager ? 'eager' : 'lazy'" />
                 </div>
                 <div v-else class="flex-shrink-0 w-6 h-6 rounded bg-white/[0.04] flex items-center justify-center">
-                    <Icon name="lucide:map-pin" class="text-fine text-gray-600" />
+                    <Icon name="lucide:map-pin" class="text-fine text-gray-400" />
                 </div>
                 <span class="flex-1 text-xs text-gray-300 truncate" :class="pochvenClass(entry.type === 'region' ? entry.id : entry.region_id)">{{ entry.name }}</span>
-                <span class="flex-shrink-0 text-fine tabular-nums" :class="countColor || 'text-gray-500'">{{ formatCount ? formatCount(entry) : entry.count.toLocaleString('en-US') }}</span>
+                <span class="flex-shrink-0 text-fine tabular-nums" :class="countColor || 'text-gray-400'">{{ formatCount ? formatCount(entry) : entry.count.toLocaleString('en-US') }}</span>
             </NuxtLink>
         </div>
 
-        <div v-if="useApi && !hideFooter" class="px-2 pt-1.5 text-fine text-gray-700">
+        <div v-if="useApi && !hideFooter" class="px-2 pt-1.5 text-fine text-gray-400">
             Last {{ days || 7 }} days
         </div>
     </div>

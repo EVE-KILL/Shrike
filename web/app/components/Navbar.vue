@@ -505,7 +505,7 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                 : 'bg-gradient-to-b from-black/70 via-black/40 to-transparent'"
         ></div>
         <div class="relative z-10 flex items-center gap-2 h-12 px-3">
-            <NuxtLink to="/" class="flex-shrink-0 flex items-center justify-center w-8 h-8 text-white text-lg">
+            <NuxtLink to="/" class="flex-shrink-0 flex items-center justify-center w-8 h-8 text-white text-lg" aria-label="EVE-KILL home">
                 <Icon name="lucide:house" />
             </NuxtLink>
 

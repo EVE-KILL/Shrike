@@ -79,6 +79,10 @@ export async function buildMcpGuide(mcpBase: string): Promise<string> {
     const lines: string[] = []
     lines.push('# EVE-KILL MCP Server')
     lines.push('')
+    lines.push(`- [EVE-KILL](https://eve-kill.com/) — human-friendly killboard`)
+    lines.push(`- [REST API documentation](https://eve-kill.com/docs) — OpenAPI reference`)
+    lines.push(`- [MCP endpoint](${mcpBase}/mcp) — JSON-RPC over streamable HTTP`)
+    lines.push('')
     lines.push(`Endpoint: ${mcpBase}/mcp  (JSON-RPC over streamable HTTP)`)
     lines.push(`Protocol: MCP 2025-06-18`)
     lines.push(`Rate limit: 20 requests/second per IP (no auth, no API key)`)

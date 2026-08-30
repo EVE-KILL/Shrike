@@ -27,7 +27,7 @@ const eveTools = [
                         href="https://github.com/EVE-KILL"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="inline-flex items-center gap-1.5 text-gray-500 hover:text-blue-400 transition-colors"
+                        class="inline-flex items-center gap-1.5 text-gray-400 hover:text-blue-300 transition-colors"
                     >
                         <Icon name="lucide:github" class="text-base" />
                         <span>GitHub</span>
@@ -35,17 +35,17 @@ const eveTools = [
                 </div>
 
                 <!-- Center: Creator -->
-                <div class="flex-1 text-center text-gray-600">
+                <div class="flex-1 text-center text-gray-400">
                     Created by
-                    <NuxtLink to="/character/268946627" class="text-blue-400/80 hover:text-blue-400 transition-colors">
+                    <NuxtLink to="/character/268946627" class="text-blue-300 underline decoration-blue-300/60 underline-offset-2 hover:text-blue-200 transition-colors">
                         Karbowiak
                     </NuxtLink>
                 </div>
 
                 <!-- Right: Legal -->
-                <div class="flex-1 text-right text-gray-600 text-xs">
+                <div class="flex-1 text-right text-gray-400 text-xs">
                     All materials &copy;
-                    <a href="https://www.ccpgames.com/" target="_blank" rel="noopener noreferrer" class="text-blue-400/80 hover:text-blue-400 transition-colors">
+                    <a href="https://www.ccpgames.com/" target="_blank" rel="noopener noreferrer" class="text-blue-300 underline decoration-blue-300/60 underline-offset-2 hover:text-blue-200 transition-colors">
                         CCP Games
                     </a>
                 </div>
@@ -62,7 +62,7 @@ const eveTools = [
                     target="_blank"
                     rel="noopener noreferrer"
                     v-tooltip="tool.title"
-                    class="group flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg text-xs text-gray-600 opacity-70 md:opacity-40 hover:opacity-100 hover:text-blue-400 hover:bg-blue-500/[0.04] transition-all duration-300 w-1/4 sm:w-1/6 md:w-auto md:flex-1"
+                    class="group flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg text-xs text-gray-400 opacity-80 hover:opacity-100 hover:text-blue-300 hover:bg-blue-500/[0.04] transition-all duration-300 w-1/4 sm:w-1/6 md:w-auto md:flex-1"
                 >
                     <NuxtImg
                         v-if="tool.icon"

@@ -612,7 +612,7 @@ const headerDateLabel = computed(() => {
 })
 
 const secColor = (sec: number | null): string => {
-    if (sec === null) return 'text-gray-500'
+    if (sec === null) return 'text-gray-400'
     if (sec >= 0.5) return 'text-blue-400'
     if (sec > 0.0) return 'text-amber-400'
     return 'text-red-400'
@@ -654,7 +654,7 @@ const secLabel = (sec: number | null): string => {
                         v-for="opt in limitOptions"
                         :key="opt"
                         class="px-2 py-1 rounded text-xs font-medium transition-colors"
-                        :class="limit === opt ? 'bg-blue-500/10 text-blue-400' : 'text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.04]'"
+                        :class="limit === opt ? 'bg-blue-500/10 text-blue-400' : 'text-gray-400 hover:text-blue-300 hover:bg-blue-500/[0.04]'"
                         @click="setLimit(opt)"
                     >{{ opt }}</button>
                 </div>
@@ -663,7 +663,9 @@ const secLabel = (sec: number | null): string => {
                 <button
                     v-if="props.quickFilter"
                     class="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors"
-                    :class="(quickFilterOpen || hasActiveFilter) ? 'bg-blue-500/10 text-blue-400' : 'text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.04]'"
+                    :class="(quickFilterOpen || hasActiveFilter) ? 'bg-blue-500/10 text-blue-400' : 'text-gray-400 hover:text-blue-300 hover:bg-blue-500/[0.04]'"
+                    :aria-label="quickFilterOpen ? 'Hide kill list filters' : 'Show kill list filters'"
+                    :aria-expanded="quickFilterOpen"
                     v-tooltip="quickFilterOpen ? 'Hide filters' : 'Filter killlist'"
                     @click="quickFilterOpen = !quickFilterOpen"
                 >
@@ -677,7 +679,7 @@ const secLabel = (sec: number | null): string => {
                 <!-- Cursor mode — minimal prev / page N / next. The cursor
                      backend can't random-jump, so we don't pretend otherwise. -->
                 <template v-if="!isNumberedMode">
-                    <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
+                    <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
                         <Icon name="lucide:chevron-left" class="text-sm" />
                     </button>
                     <div class="px-2 text-xs text-gray-300 tabular-nums select-none flex items-center">
@@ -688,13 +690,13 @@ const secLabel = (sec: number | null): string => {
                         </template>
                         <template v-else>Page {{ currentPage }}</template>
                     </div>
-                    <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="!hasMore" @click="goNext">
+                    <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="!hasMore" @click="goNext">
                         <Icon name="lucide:chevron-right" class="text-sm" />
                     </button>
                 </template>
                 <!-- Numbered mode — full page list, requires counting-capable backend. -->
                 <template v-else>
-                    <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
+                    <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
                         <Icon name="lucide:chevron-left" class="text-sm" />
                     </button>
                     <template v-for="(p, idx) in visiblePages" :key="idx">
@@ -702,11 +704,11 @@ const secLabel = (sec: number | null): string => {
                         <button
                             v-else
                             class="h-7 min-w-7 px-2 flex items-center justify-center rounded-md font-medium tabular-nums transition-colors"
-                            :class="p === currentPage ? 'bg-blue-500/15 text-blue-400' : 'text-gray-500 hover:bg-blue-500/[0.06] hover:text-blue-400'"
+                            :class="p === currentPage ? 'bg-blue-500/15 text-blue-400' : 'text-gray-400 hover:bg-blue-500/[0.06] hover:text-blue-300'"
                             @click="goToPage(p - 1)"
                         >{{ formatPageLabel(p) }}</button>
                     </template>
-                    <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="currentPage >= (effectiveTotalPages ?? 0)" @click="goNext">
+                    <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="currentPage >= (effectiveTotalPages ?? 0)" @click="goNext">
                         <Icon name="lucide:chevron-right" class="text-sm" />
                     </button>
                 </template>
@@ -736,7 +738,7 @@ const secLabel = (sec: number | null): string => {
         <!-- Kill rows -->
         <div v-else>
             <!-- Desktop header -->
-            <div class="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 text-fine font-bold uppercase tracking-wider text-gray-600 border-b border-white/[0.08]">
+            <div class="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 text-fine font-bold uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
                 <div>Ship</div>
                 <div>Victim</div>
                 <div>Final Blow</div>
@@ -758,7 +760,7 @@ const secLabel = (sec: number | null): string => {
                 </div>
                 <div
                     v-else
-                    class="relative hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 items-center border-b border-white/[0.03] hover:bg-blue-500/[0.06] transition-colors group"
+                    class="killlist-desktop-row relative hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 items-center border-b border-white/[0.03] hover:bg-blue-500/[0.06] transition-colors group"
                     :class="sideRowClass(row.kill) || (isLoss(row.kill) ? 'loss-row loss-row-hover' : warRowClass(row.kill) || (row.visualIdx % 2 === 0 ? 'bg-white/[0.02]' : ''))"
                     :style="sideRowStyle(row.kill)"
                 >
@@ -767,7 +769,7 @@ const secLabel = (sec: number | null): string => {
                          NuxtLinks use relative+z-10 to render above and capture clicks. -->
                     <NuxtLink
                         :to="`/kill/${row.kill.killmail_id}`"
-                        class="absolute inset-0 z-0"
+                        class="killlist-row-link absolute inset-0 z-0"
                         :aria-label="`Killmail: ${row.kill.ship_name || 'ship'} — ${formatIsk(row.kill.total_value)} ISK`"
                     />
 
@@ -797,10 +799,10 @@ const secLabel = (sec: number | null): string => {
                             <Icon name="lucide:building" class="text-sm text-gray-500" />
                         </div>
                         <div v-if="row.kill.victim_corporation_id || row.kill.victim_alliance_id" class="flex-shrink-0 flex flex-col gap-[2px]">
-                            <NuxtLink v-if="row.kill.victim_corporation_id" :to="`/corporation/${row.kill.victim_corporation_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]">
+                            <NuxtLink v-if="row.kill.victim_corporation_id" :to="`/corporation/${row.kill.victim_corporation_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.victim_corporation_name || row.kill.victim_corporation_id}`">
                                 <EveImage :src="`/images/corporations/${row.kill.victim_corporation_id}/logo?size=32`" :alt="row.kill.victim_corporation_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
-                            <NuxtLink v-if="row.kill.victim_alliance_id" :to="`/alliance/${row.kill.victim_alliance_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]">
+                            <NuxtLink v-if="row.kill.victim_alliance_id" :to="`/alliance/${row.kill.victim_alliance_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.victim_alliance_name || row.kill.victim_alliance_id}`">
                                 <EveImage :src="`/images/alliances/${row.kill.victim_alliance_id}/logo?size=32`" :alt="row.kill.victim_alliance_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
                         </div>
@@ -825,10 +827,10 @@ const secLabel = (sec: number | null): string => {
                             <Icon name="lucide:crosshair" class="text-sm text-gray-500" />
                         </div>
                         <div v-if="row.kill.final_blow_corporation_id || row.kill.final_blow_alliance_id" class="flex-shrink-0 flex flex-col gap-[2px]">
-                            <NuxtLink v-if="row.kill.final_blow_corporation_id" :to="`/corporation/${row.kill.final_blow_corporation_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]">
+                            <NuxtLink v-if="row.kill.final_blow_corporation_id" :to="`/corporation/${row.kill.final_blow_corporation_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.final_blow_corporation_name || row.kill.final_blow_corporation_id}`">
                                 <EveImage :src="`/images/corporations/${row.kill.final_blow_corporation_id}/logo?size=32`" :alt="row.kill.final_blow_corporation_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
-                            <NuxtLink v-if="row.kill.final_blow_alliance_id" :to="`/alliance/${row.kill.final_blow_alliance_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]">
+                            <NuxtLink v-if="row.kill.final_blow_alliance_id" :to="`/alliance/${row.kill.final_blow_alliance_id}`" class="w-6 h-6 p-[2.5px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.final_blow_alliance_name || row.kill.final_blow_alliance_id}`">
                                 <EveImage :src="`/images/alliances/${row.kill.final_blow_alliance_id}/logo?size=32`" :alt="row.kill.final_blow_alliance_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                             </NuxtLink>
                         </div>
@@ -844,7 +846,7 @@ const secLabel = (sec: number | null): string => {
 
                     <!-- Location -->
                     <div class="relative z-10 flex items-center gap-2 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-                        <NuxtLink :to="`/system/${row.kill.solar_system_id}`" class="flex-shrink-0">
+                        <NuxtLink :to="`/system/${row.kill.solar_system_id}`" class="flex-shrink-0" :aria-label="`System: ${row.kill.solar_system_name}`">
                             <EveImage :src="`/images/systems/${row.kill.solar_system_id}?size=32`" alt="" class="w-6 h-6 rounded" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
                         </NuxtLink>
                         <div class="min-w-0">
@@ -906,7 +908,7 @@ const secLabel = (sec: number | null): string => {
                         </div>
                         <div class="text-fine text-gray-400 truncate">
                             {{ row.kill.victim_character_name || row.kill.victim_corporation_name || 'Unknown' }}
-                            <span v-if="row.kill.victim_character_name && row.kill.victim_corporation_name" class="text-gray-500"> &middot; {{ row.kill.victim_corporation_name }}</span>
+                            <span v-if="row.kill.victim_character_name && row.kill.victim_corporation_name" class="text-gray-400"> &middot; {{ row.kill.victim_corporation_name }}</span>
                         </div>
                         <div class="flex items-center justify-between mt-0.5">
                             <span class="text-fine">
@@ -923,16 +925,16 @@ const secLabel = (sec: number | null): string => {
         <!-- Bottom pagination -->
         <div v-if="kills.length > 0" class="flex items-center justify-end gap-0.5 mt-2 text-xs">
             <template v-if="!isNumberedMode">
-                <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
+                <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
                     <Icon name="lucide:chevron-left" class="text-sm" />
                 </button>
                 <div class="px-2 text-xs text-gray-300 tabular-nums select-none">Page {{ currentPage }}</div>
-                <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="!hasMore" @click="goNext">
+                <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="!hasMore" @click="goNext">
                     <Icon name="lucide:chevron-right" class="text-sm" />
                 </button>
             </template>
             <template v-else>
-                <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
+                <button aria-label="Previous page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="pageIndex <= 0" @click="goPrev">
                     <Icon name="lucide:chevron-left" class="text-sm" />
                 </button>
                 <template v-for="(p, idx) in visiblePages" :key="`b-${idx}`">
@@ -940,11 +942,11 @@ const secLabel = (sec: number | null): string => {
                     <button
                         v-else
                         class="h-7 min-w-7 px-2 flex items-center justify-center rounded-md font-medium tabular-nums transition-colors"
-                        :class="p === currentPage ? 'bg-blue-500/15 text-blue-400' : 'text-gray-500 hover:bg-blue-500/[0.06] hover:text-blue-400'"
+                        :class="p === currentPage ? 'bg-blue-500/15 text-blue-400' : 'text-gray-400 hover:bg-blue-500/[0.06] hover:text-blue-300'"
                         @click="goToPage(p - 1)"
                     >{{ formatPageLabel(p) }}</button>
                 </template>
-                <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-500 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="currentPage >= (effectiveTotalPages ?? 0)" @click="goNext">
+                <button aria-label="Next page" class="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed" :disabled="currentPage >= (effectiveTotalPages ?? 0)" @click="goNext">
                     <Icon name="lucide:chevron-right" class="text-sm" />
                 </button>
             </template>
@@ -968,6 +970,15 @@ const secLabel = (sec: number | null): string => {
 .killlist-dot:nth-child(1) { animation-delay: 0s; }
 .killlist-dot:nth-child(2) { animation-delay: 0.15s; }
 .killlist-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* The desktop table is deliberately dense, but every nested entity link still
+   needs a 24px hit area for touch, switch-control, and low-precision users. */
+.killlist-desktop-row a:not(.killlist-row-link) {
+    display: inline-flex;
+    align-items: center;
+    min-width: 24px;
+    min-height: 24px;
+}
 
 @keyframes killlist-dot-bounce {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
