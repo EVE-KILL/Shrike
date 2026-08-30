@@ -15,9 +15,9 @@ const route = useRoute()
 const router = useRouter()
 const { user, isAuthenticated, isAdmin } = useAuth()
 
-// On direct navigation the auth hint seeds isAdmin=false before /api/auth/me resolves.
+// On direct navigation the auth hint seeds isAdmin=false before /auth/me resolves.
 // Await the real auth state from the server before deciding to redirect.
-const { data: authCheck } = await useApiFetch('/api/auth/me')
+const { data: authCheck } = await useApiFetch('/auth/me')
 useState('auth-user').value = authCheck.value?.user ?? null
 const isAdminSession = authCheck.value?.user?.isAdmin === true
 // Logged out gets the login gate (and returns here after SSO); a logged-in

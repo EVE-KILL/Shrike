@@ -3,7 +3,7 @@
  *
  * Read state is server-authoritative via `users.last_seen_notification_id`
  * so the unread cursor stays consistent across devices. localStorage is a
- * write-through cache that gives instant UI before /api/auth/me lands and
+ * write-through cache that gives instant UI before /auth/me lands and
  * smooths the optimistic mark-read flow. The server uses GREATEST() in the
  * UPDATE so a stale tab can't accidentally regress the cursor.
  *
@@ -145,7 +145,7 @@ export function useNotifications() {
         initialized = true
 
         // Read cursor: server is source of truth, localStorage is a fast cache
-        // for the brief moment between hydration and the /api/auth/me response.
+        // for the brief moment between hydration and the /auth/me response.
         // Take whichever is higher so we never regress an already-acknowledged
         // cursor; the user-watch below resyncs when the full auth lands.
         let bootstrap = 0

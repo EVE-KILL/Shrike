@@ -5,7 +5,7 @@ const { user, isAuthenticated, logout } = useAuth()
 
 // Await real auth state before rendering — the client-side auth hint can be
 // stale (expired session), so it must not decide between page and login gate.
-const { data: authCheck } = await useApiFetch('/api/auth/me')
+const { data: authCheck } = await useApiFetch('/auth/me')
 useState('auth-user').value = authCheck.value?.user ?? null
 
 // Sections
@@ -37,7 +37,7 @@ const setSection = (id: SectionId) => {
 // ── Data fetching ───────────────────────────────────────────────────────────
 const { data: overview } = await useApiFetch('/api/user/overview')
 
-const { data: tokenInfo } = await useApiFetch('/api/auth/token-info', {
+const { data: tokenInfo } = await useApiFetch('/auth/token-info', {
     immediate: isAuthenticated.value,
 }) as { data: Ref<{ scopes: string[]; token_expiry: string | null } | null> }
 

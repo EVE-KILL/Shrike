@@ -4,7 +4,7 @@ const { isAuthenticated, isAdmin } = useAuth()
 
 // Auth check — logged out gets the login gate (and returns here after SSO);
 // a logged-in non-admin is bounced to the frontpage.
-const { data: authCheck } = await useApiFetch<{ user: any }>('/api/auth/me')
+const { data: authCheck } = await useApiFetch<{ user: any }>('/auth/me')
 useState('auth-user').value = authCheck.value?.user ?? null
 const isAdminSession = authCheck.value?.user?.isAdmin === true
 if (authCheck.value?.user && !isAdminSession) {

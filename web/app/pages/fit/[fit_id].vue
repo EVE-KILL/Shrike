@@ -48,7 +48,7 @@ const fitId = computed(() => String(route.params.fit_id ?? ""));
 // Owner check — drives the navbar mode and the rating widget's
 // "interactive" flag (everyone with view access can rate; only owners
 // edit/save). When the auth user hasn't loaded yet (initial paint
-// before /api/auth/me resolves) we default to viewer mode so we don't
+// before /auth/me resolves) we default to viewer mode so we don't
 // briefly show owner controls to a non-owner.
 const isOwner = computed(() => {
     const ownerId = currentFitOwnerId.value;

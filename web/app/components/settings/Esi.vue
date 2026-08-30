@@ -6,7 +6,7 @@
 import type { EsiLogRow } from '~/utils/esiLog'
 
 defineProps<{
-    /** `/api/auth/token-info` payload — fetched eagerly (awaited) by the settings page. */
+    /** `/auth/token-info` payload — fetched eagerly (awaited) by the settings page. */
     tokenInfo: { scopes: string[]; token_expiry: string | null } | null
 }>()
 

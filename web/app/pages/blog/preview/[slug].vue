@@ -23,8 +23,8 @@ interface BlogPost {
     updated_at: string
 }
 
-// Gate: await full admin status from /api/auth/me (cookie hint lacks isAdmin).
-const { data: authCheck } = await useApiFetch('/api/auth/me')
+// Gate: await full admin status from /auth/me (cookie hint lacks isAdmin).
+const { data: authCheck } = await useApiFetch('/auth/me')
 if (!authCheck.value?.user?.isAdmin) {
     throw createError({ statusCode: 404, statusMessage: 'Not found', fatal: true })
 }
