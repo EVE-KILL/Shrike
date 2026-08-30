@@ -113,9 +113,12 @@ onUnmounted(() => {
             <StatusCoverage :data="data.coverage" />
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatusQueues :data="data" />
+                <StatusPostgres :data="data" />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <StatusValkey :data="data" />
                 <StatusEsiTokens :data="data" />
             </div>
-            <StatusValkey :data="data" />
             <StatusImageServer :data="data.image_server" />
             <StatusWebSocketServer :data="data.websocket" />
             <StatusDatabaseTables :data="data" />

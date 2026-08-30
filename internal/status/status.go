@@ -54,7 +54,6 @@ type Status struct {
 	Queues    map[string]QueueInfo `json:"queues"`
 	ESI       *ESIInfo             `json:"esi"`
 	Redis     *RedisInfo           `json:"redis"`
-	Cache     *RedisInfo           `json:"redis_cache"`
 	ZkbIngest *zkb.IngestStats     `json:"zkb_ingest"`
 	Coverage  *CoverageInfo        `json:"coverage"`
 	ESITokens *ESITokenInfo        `json:"esi_tokens"`
@@ -79,8 +78,20 @@ type SystemInfo struct {
 
 // DatabaseInfo is the expensive tier: table sizes and row estimates.
 type DatabaseInfo struct {
-	Size   string                       `json:"size"`
-	Tables map[string]DatabaseTableInfo `json:"tables"`
+	Size          string                       `json:"size"`
+	Version       string                       `json:"version"`
+	Role          string                       `json:"role"`
+	UptimeSeconds int64                        `json:"uptime_seconds"`
+	Connections   DatabaseConnectionInfo       `json:"connections"`
+	CacheHitRatio float64                      `json:"cache_hit_ratio"`
+	WaitingLocks  int64                        `json:"waiting_locks"`
+	Tables        map[string]DatabaseTableInfo `json:"tables"`
+}
+
+type DatabaseConnectionInfo struct {
+	Total  int64 `json:"total"`
+	Active int64 `json:"active"`
+	Max    int64 `json:"max"`
 }
 
 type DatabaseTableInfo struct {
@@ -180,7 +191,6 @@ type CoverageAlliances struct {
 type Collector struct {
 	Pool  *pgxpool.Pool
 	Redis *redis.Client
-	Cache *redis.Client
 
 	startedAt time.Time
 
@@ -199,11 +209,10 @@ type Collector struct {
 }
 
 // NewCollector returns a collector that reports uptime from now.
-func NewCollector(pool *pgxpool.Pool, coordination, cache *redis.Client) *Collector {
+func NewCollector(pool *pgxpool.Pool, sharedRedis *redis.Client) *Collector {
 	return &Collector{
 		Pool:      pool,
-		Redis:     coordination,
-		Cache:     cache,
+		Redis:     sharedRedis,
 		startedAt: time.Now().UTC(),
 	}
 }
@@ -225,8 +234,7 @@ func (c *Collector) Collect(ctx context.Context) Status {
 		System:    systemInfo(),
 
 		ESI:   c.esiInfo(ctx),
-		Redis: redisInfo(ctx, c.Redis),
-		Cache: redisInfo(ctx, c.Cache)}
+		Redis: redisInfo(ctx, c.Redis)}
 	if stats, err := zkb.ReadIngestStats(ctx, c.Redis); err == nil {
 		s.ZkbIngest = stats
 	}
@@ -489,8 +497,39 @@ func (c *Collector) databaseInfo(ctx context.Context) *DatabaseInfo {
 		return nil
 	}
 
-	if err := c.Pool.QueryRow(ctx,
-		`SELECT pg_size_pretty(pg_database_size(current_database()))`).Scan(&out.Size); err != nil {
+	if err := c.Pool.QueryRow(ctx, `
+		SELECT pg_size_pretty(pg_database_size(current_database())),
+		       current_setting('server_version'),
+		       CASE WHEN pg_is_in_recovery() THEN 'replica' ELSE 'primary' END,
+		       extract(epoch FROM clock_timestamp() - pg_postmaster_start_time())::bigint,
+		       count(*) FILTER (WHERE activity.datname = current_database()),
+		       count(*) FILTER (
+		           WHERE activity.datname = current_database()
+		             AND activity.state = 'active'
+		       ),
+		       current_setting('max_connections')::bigint,
+		       coalesce(round(
+		           100.0 * stats.blks_hit / nullif(stats.blks_hit + stats.blks_read, 0),
+		           2
+		       ), 0)::float8,
+		       count(*) FILTER (
+		           WHERE activity.datname = current_database()
+		             AND activity.wait_event_type = 'Lock'
+		       )
+		FROM pg_stat_database stats
+		LEFT JOIN pg_stat_activity activity ON true
+		WHERE stats.datname = current_database()
+		GROUP BY stats.blks_hit, stats.blks_read`).Scan(
+		&out.Size,
+		&out.Version,
+		&out.Role,
+		&out.UptimeSeconds,
+		&out.Connections.Total,
+		&out.Connections.Active,
+		&out.Connections.Max,
+		&out.CacheHitRatio,
+		&out.WaitingLocks,
+	); err != nil {
 		return nil
 	}
 	return out

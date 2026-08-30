@@ -28,7 +28,7 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 	r := cron.NewRegistry()
 
 	// One collector for the life of the registry — see cronStatusUpdate.
-	d.statusCollector = status.NewCollector(d.Pool, d.Redis, d.Redis)
+	d.statusCollector = status.NewCollector(d.Pool, d.Redis)
 
 	register := func(name string, fn cron.RunFunc) {
 		if err := r.Register(name, fn); err != nil {

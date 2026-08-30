@@ -17,7 +17,10 @@ func TestStatusJSONContract(t *testing.T) {
 		StartedAt: "2026-07-26T04:00:00.000Z",
 		Timestamp: "2026-07-26T04:00:01.000Z",
 		Database: &DatabaseInfo{
-			Size: "1 GB",
+			Size: "1 GB", Version: "18.6", Role: "primary",
+			UptimeSeconds: 3600,
+			Connections:   DatabaseConnectionInfo{Total: 10, Active: 2, Max: 100},
+			CacheHitRatio: 99.95,
 			Tables: map[string]DatabaseTableInfo{
 				"killmails": {TotalSize: "1 GB", DataSize: "900 MB", Rows: 42},
 			},
@@ -51,6 +54,13 @@ func TestStatusJSONContract(t *testing.T) {
 	}
 
 	database := decoded["database"].(map[string]any)
+	if database["role"] != "primary" || database["version"] != "18.6" {
+		t.Fatalf("database identity payload = %#v", database)
+	}
+	connections := database["connections"].(map[string]any)
+	if connections["active"] != float64(2) || connections["max"] != float64(100) {
+		t.Fatalf("database connection payload = %#v", connections)
+	}
 	if _, ok := database["tables"].(map[string]any)["killmails"]; !ok {
 		t.Fatalf("database payload = %#v", database)
 	}
@@ -99,7 +109,7 @@ func TestCollectorAgainstServices(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	payload := NewCollector(pool, rdb, rdb).Collect(ctx)
+	payload := NewCollector(pool, rdb).Collect(ctx)
 	if payload.Database == nil || len(payload.Database.Tables) == 0 {
 		t.Fatal("database stats were not collected")
 	}
