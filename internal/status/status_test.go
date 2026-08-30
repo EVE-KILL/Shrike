@@ -28,8 +28,13 @@ func TestStatusJSONContract(t *testing.T) {
 			Workload: &DatabaseWorkloadInfo{
 				TransactionsPerSecond: 42.5, RollbackPercent: 0.1,
 				WALBytesPerSecond: 1024, ReadBytesPerSecond: 2048, WriteBytesPerSecond: 512,
+				ReadLatencyMS: 0.2, WriteLatencyMS: 0.4, RowsChangedPerSecond: 50, TempBytesPerSecond: 128,
 			},
-			Statements:    &DatabaseStatementInfo{QueriesPerSecond: 125, AverageLatencyMS: 3.25},
+			Statements:  &DatabaseStatementInfo{QueriesPerSecond: 125, AverageLatencyMS: 3.25},
+			Maintenance: &DatabaseMaintenanceInfo{Checkpoints: 1, ActiveAutovacuums: 2, DeadRows: 1000},
+			History: []DatabaseHistoryPoint{{
+				Timestamp: "2026-07-26T04:00:01.000Z", QueriesPerSecond: 125, TransactionsPerSecond: 42.5,
+			}},
 			CacheHitRatio: 99.95,
 			Tables: map[string]DatabaseTableInfo{
 				"killmails": {TotalSize: "1 GB", DataSize: "900 MB", Rows: 42},
@@ -78,6 +83,9 @@ func TestStatusJSONContract(t *testing.T) {
 	statements := database["statements"].(map[string]any)
 	if statements["queries_per_second"] != float64(125) || statements["average_latency_ms"] != float64(3.25) {
 		t.Fatalf("database statement payload = %#v", statements)
+	}
+	if len(database["history"].([]any)) != 1 {
+		t.Fatalf("database history payload = %#v", database["history"])
 	}
 	if _, ok := database["tables"].(map[string]any)["killmails"]; !ok {
 		t.Fatalf("database payload = %#v", database)
@@ -192,6 +200,9 @@ func TestDatabaseMetricsAgainstPostgres(t *testing.T) {
 	}
 	if second.Statements == nil {
 		t.Fatal("pg_stat_statements rates were not collected")
+	}
+	if second.Maintenance == nil || len(second.History) != 1 {
+		t.Fatalf("database maintenance/history metrics = %#v", second)
 	}
 	if second.SampledAt == "" || second.Role == "" {
 		t.Fatalf("database identity metrics = %#v", second)

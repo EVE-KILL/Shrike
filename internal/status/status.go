@@ -33,6 +33,8 @@ const (
 	SlowInterval             = 60 * time.Second
 	CoverageInterval         = 15 * time.Minute
 	KillmailCoverageInterval = 10 * time.Minute
+	// Six points describe the five complete one-minute intervals from t-5m to now.
+	databaseHistorySamples = 6
 
 	eveKillCorporationID = 98779905
 	isoMillisLayout      = "2006-01-02T15:04:05.000Z"
@@ -87,6 +89,8 @@ type DatabaseInfo struct {
 	Cluster       DatabaseClusterInfo          `json:"cluster"`
 	Workload      *DatabaseWorkloadInfo        `json:"workload"`
 	Statements    *DatabaseStatementInfo       `json:"statements"`
+	Maintenance   *DatabaseMaintenanceInfo     `json:"maintenance"`
+	History       []DatabaseHistoryPoint       `json:"history"`
 	CacheHitRatio float64                      `json:"cache_hit_ratio"`
 	WaitingLocks  int64                        `json:"waiting_locks"`
 	Tables        map[string]DatabaseTableInfo `json:"tables"`
@@ -114,6 +118,10 @@ type DatabaseWorkloadInfo struct {
 	WALBytesPerSecond     float64 `json:"wal_bytes_per_second"`
 	ReadBytesPerSecond    float64 `json:"read_bytes_per_second"`
 	WriteBytesPerSecond   float64 `json:"write_bytes_per_second"`
+	ReadLatencyMS         float64 `json:"read_latency_ms"`
+	WriteLatencyMS        float64 `json:"write_latency_ms"`
+	RowsChangedPerSecond  float64 `json:"rows_changed_per_second"`
+	TempBytesPerSecond    float64 `json:"temp_bytes_per_second"`
 	Deadlocks             int64   `json:"deadlocks"`
 }
 
@@ -122,17 +130,46 @@ type DatabaseStatementInfo struct {
 	AverageLatencyMS float64 `json:"average_latency_ms"`
 }
 
+type DatabaseMaintenanceInfo struct {
+	Checkpoints             int64   `json:"checkpoints"`
+	RequestedCheckpoints    int64   `json:"requested_checkpoints"`
+	AverageCheckpointTimeMS float64 `json:"average_checkpoint_time_ms"`
+	ActiveAutovacuums       int64   `json:"active_autovacuums"`
+	DeadRows                int64   `json:"dead_rows"`
+}
+
+type DatabaseHistoryPoint struct {
+	Timestamp             string  `json:"timestamp"`
+	TransactionsPerSecond float64 `json:"transactions_per_second"`
+	QueriesPerSecond      float64 `json:"queries_per_second"`
+	AverageLatencyMS      float64 `json:"average_latency_ms"`
+	ReadBytesPerSecond    float64 `json:"read_bytes_per_second"`
+	WriteBytesPerSecond   float64 `json:"write_bytes_per_second"`
+	WALBytesPerSecond     float64 `json:"wal_bytes_per_second"`
+}
+
 type databaseSnapshot struct {
-	at                  time.Time
-	transactions        int64
-	rollbacks           int64
-	deadlocks           int64
-	walBytes            int64
-	readBytes           int64
-	writeBytes          int64
-	statementCalls      int64
-	statementExecTimeMS float64
-	statementsAvailable bool
+	at                   time.Time
+	transactions         int64
+	rollbacks            int64
+	deadlocks            int64
+	walBytes             int64
+	readBytes            int64
+	writeBytes           int64
+	readOperations       int64
+	writeOperations      int64
+	readTimeMS           float64
+	writeTimeMS          float64
+	tempBytes            int64
+	rowsChanged          int64
+	checkpoints          int64
+	requestedCheckpoints int64
+	checkpointTimeMS     float64
+	activeAutovacuums    int64
+	deadRows             int64
+	statementCalls       int64
+	statementExecTimeMS  float64
+	statementsAvailable  bool
 }
 
 type DatabaseTableInfo struct {
@@ -240,6 +277,7 @@ type Collector struct {
 	lastQueues   time.Time
 	database     *DatabaseInfo
 	dbSnapshot   *databaseSnapshot
+	dbHistory    []DatabaseHistoryPoint
 	tokens       *ESITokenInfo
 	wallet       *WalletInfo
 	lastSlow     time.Time
@@ -609,15 +647,35 @@ func (c *Collector) databaseInfo(ctx context.Context) *DatabaseInfo {
 			if seconds > 0 {
 				transactions := counterDelta(snapshot.transactions, previous.transactions)
 				rollbacks := counterDelta(snapshot.rollbacks, previous.rollbacks)
+				readOperations := counterDelta(snapshot.readOperations, previous.readOperations)
+				writeOperations := counterDelta(snapshot.writeOperations, previous.writeOperations)
+				checkpoints := counterDelta(snapshot.checkpoints, previous.checkpoints)
 				out.Workload = &DatabaseWorkloadInfo{
 					TransactionsPerSecond: float64(transactions) / seconds,
 					WALBytesPerSecond:     float64(counterDelta(snapshot.walBytes, previous.walBytes)) / seconds,
 					ReadBytesPerSecond:    float64(counterDelta(snapshot.readBytes, previous.readBytes)) / seconds,
 					WriteBytesPerSecond:   float64(counterDelta(snapshot.writeBytes, previous.writeBytes)) / seconds,
+					RowsChangedPerSecond:  float64(counterDelta(snapshot.rowsChanged, previous.rowsChanged)) / seconds,
+					TempBytesPerSecond:    float64(counterDelta(snapshot.tempBytes, previous.tempBytes)) / seconds,
 					Deadlocks:             counterDelta(snapshot.deadlocks, previous.deadlocks),
+				}
+				if readOperations > 0 {
+					out.Workload.ReadLatencyMS = floatCounterDelta(snapshot.readTimeMS, previous.readTimeMS) / float64(readOperations)
+				}
+				if writeOperations > 0 {
+					out.Workload.WriteLatencyMS = floatCounterDelta(snapshot.writeTimeMS, previous.writeTimeMS) / float64(writeOperations)
 				}
 				if transactions > 0 {
 					out.Workload.RollbackPercent = 100 * float64(rollbacks) / float64(transactions)
+				}
+				out.Maintenance = &DatabaseMaintenanceInfo{
+					Checkpoints:          checkpoints,
+					RequestedCheckpoints: counterDelta(snapshot.requestedCheckpoints, previous.requestedCheckpoints),
+					ActiveAutovacuums:    snapshot.activeAutovacuums,
+					DeadRows:             snapshot.deadRows,
+				}
+				if checkpoints > 0 {
+					out.Maintenance.AverageCheckpointTimeMS = floatCounterDelta(snapshot.checkpointTimeMS, previous.checkpointTimeMS) / float64(checkpoints)
 				}
 				if snapshot.statementsAvailable && previous.statementsAvailable {
 					calls := counterDelta(snapshot.statementCalls, previous.statementCalls)
@@ -627,10 +685,27 @@ func (c *Collector) databaseInfo(ctx context.Context) *DatabaseInfo {
 						out.Statements.AverageLatencyMS = execTime / float64(calls)
 					}
 				}
+
+				point := DatabaseHistoryPoint{
+					Timestamp:             snapshot.at.Format(isoMillisLayout),
+					TransactionsPerSecond: out.Workload.TransactionsPerSecond,
+					ReadBytesPerSecond:    out.Workload.ReadBytesPerSecond,
+					WriteBytesPerSecond:   out.Workload.WriteBytesPerSecond,
+					WALBytesPerSecond:     out.Workload.WALBytesPerSecond,
+				}
+				if out.Statements != nil {
+					point.QueriesPerSecond = out.Statements.QueriesPerSecond
+					point.AverageLatencyMS = out.Statements.AverageLatencyMS
+				}
+				c.dbHistory = append(c.dbHistory, point)
+				if len(c.dbHistory) > databaseHistorySamples {
+					c.dbHistory = append([]DatabaseHistoryPoint(nil), c.dbHistory[len(c.dbHistory)-databaseHistorySamples:]...)
+				}
 			}
 		}
 		c.dbSnapshot = snapshot
 	}
+	out.History = append([]DatabaseHistoryPoint(nil), c.dbHistory...)
 	return out
 }
 
@@ -640,17 +715,39 @@ func (c *Collector) databaseStatsSnapshot(ctx context.Context) *databaseSnapshot
 		SELECT stats.xact_commit + stats.xact_rollback,
 		       stats.xact_rollback,
 		       stats.deadlocks,
+		       stats.temp_bytes,
+		       stats.tup_inserted + stats.tup_updated + stats.tup_deleted,
 		       (SELECT wal_bytes::bigint FROM pg_stat_wal),
 		       (SELECT coalesce(sum(read_bytes), 0)::bigint FROM pg_stat_io),
-		       (SELECT coalesce(sum(write_bytes), 0)::bigint FROM pg_stat_io)
+		       (SELECT coalesce(sum(write_bytes), 0)::bigint FROM pg_stat_io),
+		       (SELECT coalesce(sum(reads), 0)::bigint FROM pg_stat_io),
+		       (SELECT coalesce(sum(writes), 0)::bigint FROM pg_stat_io),
+		       (SELECT coalesce(sum(read_time), 0)::float8 FROM pg_stat_io),
+		       (SELECT coalesce(sum(write_time), 0)::float8 FROM pg_stat_io),
+		       (SELECT num_done FROM pg_stat_checkpointer),
+		       (SELECT num_requested FROM pg_stat_checkpointer),
+		       (SELECT write_time + sync_time FROM pg_stat_checkpointer),
+		       (SELECT count(*) FROM pg_stat_activity WHERE backend_type = 'autovacuum worker'),
+		       (SELECT coalesce(sum(n_dead_tup), 0)::bigint FROM pg_stat_user_tables)
 		FROM pg_stat_database stats
 		WHERE stats.datname = current_database()`).Scan(
 		&snapshot.transactions,
 		&snapshot.rollbacks,
 		&snapshot.deadlocks,
+		&snapshot.tempBytes,
+		&snapshot.rowsChanged,
 		&snapshot.walBytes,
 		&snapshot.readBytes,
 		&snapshot.writeBytes,
+		&snapshot.readOperations,
+		&snapshot.writeOperations,
+		&snapshot.readTimeMS,
+		&snapshot.writeTimeMS,
+		&snapshot.checkpoints,
+		&snapshot.requestedCheckpoints,
+		&snapshot.checkpointTimeMS,
+		&snapshot.activeAutovacuums,
+		&snapshot.deadRows,
 	); err != nil {
 		return nil
 	}
