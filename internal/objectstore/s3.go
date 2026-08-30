@@ -310,7 +310,7 @@ func (s *S3Store) request(
 	digest := sha256.Sum256(body)
 	payloadHash := hex.EncodeToString(digest[:])
 
-	for attempt := 0; attempt < defaultRequestAttempts; attempt++ {
+	for attempt := range defaultRequestAttempts {
 		var reader io.Reader
 		if body != nil {
 			reader = bytes.NewReader(body)

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/eve-kill/shrike/internal/jobs"
 	"github.com/eve-kill/shrike/internal/ui"
@@ -67,11 +68,12 @@ func joinFlags(flags []string) string {
 	if len(flags) == 0 {
 		return ui.Dim("—")
 	}
-	out := flags[0]
+	var out strings.Builder
+	out.WriteString(flags[0])
 	for _, f := range flags[1:] {
-		out += " " + f
+		out.WriteString(" " + f)
 	}
-	return out
+	return out.String()
 }
 
 func init() {

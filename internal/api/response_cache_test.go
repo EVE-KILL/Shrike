@@ -100,7 +100,7 @@ func TestResponseCachePromotesL2HitIntoL1(t *testing.T) {
 	}
 	cache := newResponseCache(shared, 1024)
 
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		got, ok := cache.Load(context.Background(), "response")
 		if !ok || string(got.Body) != `{"source":"valkey"}` {
 			t.Fatalf("load %d = %q, %v", i, got.Body, ok)

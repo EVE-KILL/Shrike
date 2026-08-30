@@ -83,8 +83,7 @@ func registerCanonicalAnnouncementsRoute(
 	) (*announcementsOutput, error) {
 		body, cacheStatus, err := service.loadCanonicalAnnouncements(ctx, opts)
 		if err != nil {
-			var apiErr *legacyAPIError
-			if errors.As(err, &apiErr) {
+			if apiErr, ok := errors.AsType[*legacyAPIError](err); ok {
 				return nil, huma.NewError(apiErr.Status, apiErr.Message)
 			}
 			return nil, err
@@ -191,8 +190,7 @@ func registerCanonicalAnnouncementAccountRoutes(
 }
 
 func humaAccountError(err error) error {
-	var apiErr *legacyAPIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*legacyAPIError](err); ok {
 		return huma.NewError(apiErr.Status, apiErr.Message)
 	}
 	return err

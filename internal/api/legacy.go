@@ -199,8 +199,7 @@ func writeLegacyPayload(ctx huma.Context, payload legacyPayload) {
 func writeLegacyError(ctx huma.Context, err error) {
 	status := http.StatusInternalServerError
 	message := "Internal server error"
-	var apiErr *legacyAPIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*legacyAPIError](err); ok {
 		status = apiErr.Status
 		message = apiErr.Message
 	} else if errors.Is(err, context.Canceled) {
@@ -321,10 +320,7 @@ func positiveInt4(raw string) *int64 {
 	if n <= 0 || math.IsInf(n, 0) || math.IsNaN(n) {
 		return nil
 	}
-	value := int64(math.Floor(n))
-	if value > pgInt4Max {
-		value = pgInt4Max
-	}
+	value := min(int64(math.Floor(n)), pgInt4Max)
 	return &value
 }
 
@@ -363,7 +359,6 @@ func queryMapsConcurrent(
 	result := make([][]map[string]any, len(queries))
 	group, groupCtx := errgroup.WithContext(ctx)
 	for i, query := range queries {
-		i, query := i, query
 		group.Go(func() (err error) {
 			result[i], err = queryMaps(groupCtx, db, query.SQL, query.Args...)
 			return

@@ -134,14 +134,14 @@ func renderCommandHelp(cmd *cobra.Command) {
 
 	if cmd.Long != "" {
 		ui.Section("Help")
-		for _, line := range strings.Split(strings.TrimSpace(cmd.Long), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(cmd.Long), "\n") {
 			fmt.Printf("  %s\n", line)
 		}
 	}
 
 	if cmd.Example != "" {
 		ui.Section("Examples")
-		for _, line := range strings.Split(strings.TrimSpace(cmd.Example), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSpace(cmd.Example), "\n") {
 			fmt.Printf("  %s\n", line)
 		}
 	}

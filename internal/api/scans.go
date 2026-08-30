@@ -190,7 +190,7 @@ func analyzeDirectionalScanHandler(opts Options) legacyHandler {
 
 		typeCounts := make(map[string]int64)
 		typeOrder := make([]string, 0)
-		for _, line := range strings.Split(dscan, "\n") {
+		for line := range strings.SplitSeq(dscan, "\n") {
 			if strings.TrimSpace(line) == "" {
 				continue
 			}

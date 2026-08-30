@@ -84,10 +84,8 @@ func TestAcquireIsAtomicUnderConcurrency(t *testing.T) {
 	var wg sync.WaitGroup
 	start := make(chan struct{})
 
-	for i := 0; i < callers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range callers {
+		wg.Go(func() {
 			// Released together, so the acquires genuinely contend rather than
 			// arriving in a queue.
 			<-start
@@ -95,7 +93,7 @@ func TestAcquireIsAtomicUnderConcurrency(t *testing.T) {
 			if err == nil && wait == 0 {
 				granted.inc()
 			}
-		}()
+		})
 	}
 	close(start)
 	wg.Wait()

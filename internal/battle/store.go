@@ -93,7 +93,7 @@ func mergeHotspotWindows(hours []HotspotWindow) []HotspotWindow {
 // for every window. Requiring the minimum segment count over the whole window
 // is a loose bound — a system can pass here and still have no active segment —
 // but it turns thousands of systems into a handful.
-func FindCandidates(ctx context.Context, pool *pgxpool.Pool, from, to interface{}) ([]Candidate, error) {
+func FindCandidates(ctx context.Context, pool *pgxpool.Pool, from, to any) ([]Candidate, error) {
 	rows, err := pool.Query(ctx, `
         SELECT solar_system_id, count(*)
         FROM killmails
@@ -120,7 +120,7 @@ func FindCandidates(ctx context.Context, pool *pgxpool.Pool, from, to interface{
 }
 
 // LoadSystem reads one system's killmails and attackers for a window.
-func LoadSystem(ctx context.Context, pool *pgxpool.Pool, systemID int32, from, to interface{}) ([]Killmail, map[int64][]Attacker, error) {
+func LoadSystem(ctx context.Context, pool *pgxpool.Pool, systemID int32, from, to any) ([]Killmail, map[int64][]Attacker, error) {
 	rows, err := pool.Query(ctx, `
         WITH latest_custom AS (
             SELECT DISTINCT ON (type_id) type_id, price
@@ -226,7 +226,7 @@ func LoadSystem(ctx context.Context, pool *pgxpool.Pool, systemID int32, from, t
 //
 // Custom battles are never touched: a person assembled those, and the detector
 // does not get to overrule them.
-func ClearWindow(ctx context.Context, pool *pgxpool.Pool, from, to interface{}) ([]int64, error) {
+func ClearWindow(ctx context.Context, pool *pgxpool.Pool, from, to any) ([]int64, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return nil, err

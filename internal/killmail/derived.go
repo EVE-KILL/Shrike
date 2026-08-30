@@ -3,6 +3,7 @@ package killmail
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -137,7 +138,7 @@ func UpdateLastActive(ctx context.Context, tx pgx.Tx, p Parsed) error {
 	if len(order) == 0 {
 		return nil
 	}
-	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })
+	slices.Sort(order)
 
 	ids := make([]int32, 0, len(order))
 	secs := make([]*float64, 0, len(order))

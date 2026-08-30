@@ -302,11 +302,11 @@ func characterKills(ctx context.Context, deps Dependencies, input CharacterIntel
 }
 
 func compareCharacters(ctx context.Context, deps Dependencies, input CompareInput) (CompareOutput, error) {
-	a, err := resolveCharacter(ctx, deps, input.A, entityTypePointer(EntityCharacter))
+	a, err := resolveCharacter(ctx, deps, input.A, new(EntityCharacter))
 	if err != nil {
 		return CompareOutput{}, fmt.Errorf("could not resolve a: %w", err)
 	}
-	b, err := resolveCharacter(ctx, deps, input.B, entityTypePointer(EntityCharacter))
+	b, err := resolveCharacter(ctx, deps, input.B, new(EntityCharacter))
 	if err != nil {
 		return CompareOutput{}, fmt.Errorf("could not resolve b: %w", err)
 	}

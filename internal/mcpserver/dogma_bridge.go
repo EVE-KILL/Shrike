@@ -92,7 +92,7 @@ func evaluateDogma(ctx context.Context, fit EsfFit, noSkills bool) (HullStats, e
 func (bridge *dogmaBridgeProcess) evaluate(ctx context.Context, fit EsfFit, noSkills bool) (HullStats, error) {
 	bridge.mu.Lock()
 	defer bridge.mu.Unlock()
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		if err := bridge.ensureStarted(ctx); err != nil {
 			return HullStats{}, err
 		}

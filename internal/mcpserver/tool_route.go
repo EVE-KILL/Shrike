@@ -84,14 +84,14 @@ func registerRouteTool(registry *Registry) error {
 }
 
 func routeDanger(ctx context.Context, deps Dependencies, input RouteDangerInput) (RouteDangerOutput, error) {
-	from, err := resolveEntity(ctx, deps, input.From, entityTypePointer(EntitySystem))
+	from, err := resolveEntity(ctx, deps, input.From, new(EntitySystem))
 	if err != nil || from == nil || from.Type != EntitySystem {
 		if err != nil {
 			return RouteDangerOutput{}, err
 		}
 		return RouteDangerOutput{}, fmt.Errorf("could not resolve from to a solar system")
 	}
-	to, err := resolveEntity(ctx, deps, input.To, entityTypePointer(EntitySystem))
+	to, err := resolveEntity(ctx, deps, input.To, new(EntitySystem))
 	if err != nil || to == nil || to.Type != EntitySystem {
 		if err != nil {
 			return RouteDangerOutput{}, err
@@ -104,7 +104,7 @@ func routeDanger(ctx context.Context, deps Dependencies, input RouteDangerInput)
 	}
 	avoid := map[int64]bool{}
 	for index, reference := range input.Avoid {
-		system, resolveErr := resolveEntity(ctx, deps, reference, entityTypePointer(EntitySystem))
+		system, resolveErr := resolveEntity(ctx, deps, reference, new(EntitySystem))
 		if resolveErr != nil {
 			return RouteDangerOutput{}, resolveErr
 		}

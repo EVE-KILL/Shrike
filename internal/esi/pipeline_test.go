@@ -73,7 +73,7 @@ func TestSingleflightCollapsesConcurrentRequests(t *testing.T) {
 	var ok counter
 	results := make([]Response[character], callers)
 
-	for i := 0; i < callers; i++ {
+	for i := range callers {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -260,7 +260,7 @@ func TestErrorsAreNotCached(t *testing.T) {
 	c := testClient(t, rdb, fake.URL)
 	ctx := context.Background()
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		if _, err := Get[character](ctx, c, "/latest/characters/4400/"); err != nil {
 			t.Fatal(err)
 		}

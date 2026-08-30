@@ -595,11 +595,9 @@ func TestImportTypeExportImagesResumesWithoutManifest(t *testing.T) {
 	store := newMemoryStore()
 	store.objects["types/41_64.png"] = &objectstore.Object{
 		Body: icon,
-		ObjectInfo: objectstore.ObjectInfo{
-			Key: "types/41_64.png",
-			Metadata: map[string]string{
-				"sha256": digest,
-			},
+		Key:  "types/41_64.png",
+		Metadata: map[string]string{
+			"sha256": digest,
 		},
 	}
 	result, hashes, err := importTypeExportImages(

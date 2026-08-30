@@ -52,7 +52,7 @@ func TestResolveGroup(t *testing.T) {
 // The longer prefix has to win, and Go's random map iteration makes that a real
 // risk — this is the test that catches a regression to unordered matching.
 func TestResolveGroupPrefersLongerPrefix(t *testing.T) {
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		if got := ResolveGroup("/latest/characters/1/corporationhistory/").Name; got != "characters-corporationhistory" {
 			t.Fatalf("iteration %d resolved to %s", i, got)
 		}
@@ -198,7 +198,7 @@ func TestKillmailPath(t *testing.T) {
 // The 2026-07-21 corporation schema renamed and rescaled fields. Reading the
 // wrong one shows a 10% corporation as taxing 1000%.
 func TestCorporationSchemaStraddle(t *testing.T) {
-	old := Corporation{TaxRate: ptr(0.1), FactionID: 500001}
+	old := Corporation{TaxRate: new(0.1), FactionID: 500001}
 	if got := old.TaxRateFraction(); got != 0.1 {
 		t.Errorf("legacy tax rate = %v, want 0.1", got)
 	}
@@ -209,11 +209,11 @@ func TestCorporationSchemaStraddle(t *testing.T) {
 		t.Errorf("legacy faction = %d", got)
 	}
 
-	current := Corporation{EnlistedFactionID: 500002}
-	current.TaxRates = &struct {
-		ISK          float64 `json:"isk"`
-		LoyaltyPoint float64 `json:"loyalty_point"`
-	}{ISK: 10, LoyaltyPoint: 25}
+	current := Corporation{EnlistedFactionID: 500002,
+		TaxRates: &struct {
+			ISK          float64 `json:"isk"`
+			LoyaltyPoint float64 `json:"loyalty_point"`
+		}{ISK: 10, LoyaltyPoint: 25}}
 
 	if got := current.TaxRateFraction(); got != 0.1 {
 		t.Errorf("current tax rate = %v, want 0.1 (10%% expressed as a fraction)", got)
@@ -231,8 +231,6 @@ func TestCorporationSchemaStraddle(t *testing.T) {
 		t.Errorf("empty corporation tax = %v", got)
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func TestFullURL(t *testing.T) {
 	c := &Client{BaseURL: "https://example.test"}

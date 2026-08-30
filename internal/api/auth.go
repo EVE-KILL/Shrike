@@ -694,7 +694,7 @@ func (s *authService) beginLogin(
 	}
 
 	var id, binding string
-	for attempts := 0; attempts < 3; attempts++ {
+	for range 3 {
 		id, err = randomBase64(s.random, 32)
 		if err != nil {
 			return "", nil, err

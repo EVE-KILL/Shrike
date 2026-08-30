@@ -67,7 +67,6 @@ func registerBattleRoutes(a huma.API, opts Options) {
 		{"corporation-battles", "/battles/corporation/{id}", "Corporation battles", "corporation_id"},
 		{"alliance-battles", "/battles/alliance/{id}", "Alliance battles", "alliance_id"},
 	} {
-		spec := spec
 		registerLegacy(a, entityIDOperation(spec.id, spec.path, spec.summary, "battles"),
 			func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 				id, err := parseID(req.Param("id"))

@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -76,7 +77,7 @@ func killsWith(ctx context.Context, deps Dependencies, input KillsWithInput) (Ki
 	if err != nil {
 		return KillsWithOutput{}, err
 	}
-	partner, err := resolveCharacter(ctx, deps, input.Partner, entityTypePointer(EntityCharacter))
+	partner, err := resolveCharacter(ctx, deps, input.Partner, new(EntityCharacter))
 	if err != nil {
 		return KillsWithOutput{}, err
 	}
@@ -265,10 +266,8 @@ func optionalTypedEntity(ctx context.Context, deps Dependencies, reference *Stri
 	if entity == nil {
 		return nil, fmt.Errorf("could not resolve %s", label)
 	}
-	for _, entityType := range allowed {
-		if entity.Type == entityType {
-			return entity, nil
-		}
+	if slices.Contains(allowed, entity.Type) {
+		return entity, nil
 	}
 	return nil, fmt.Errorf("%s resolved to %s", label, entity.Type)
 }

@@ -296,11 +296,8 @@ func ShipClass(groupID int32) []string {
 		"frigates", "destroyers", "cruisers", "battlecruisers", "battleships",
 		"freighters", "supercarriers", "titans", "capitals",
 	} {
-		for _, g := range ShipGroups[class] {
-			if g == groupID {
-				out = append(out, class)
-				break
-			}
+		if slices.Contains(ShipGroups[class], groupID) {
+			out = append(out, class)
 		}
 	}
 	return out

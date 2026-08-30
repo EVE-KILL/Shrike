@@ -27,10 +27,10 @@ func parseAdminESILogFilters(req *legacyRequest) adminESILogFilters {
 			req.Query.Get("has_new") == "true",
 		Page:  adminBoundedNumber(req.Query.Get("page"), 1, 1, math.MaxInt32),
 		Limit: adminBoundedNumber(req.Query.Get("limit"), 50, 1, 100),
-	}
-	filters.CharacterID = optionalJavaScriptNumber(req.Query.Get("character_id"))
-	filters.CorporationID = optionalJavaScriptNumber(req.Query.Get("corporation_id"))
-	filters.AfterID = optionalJavaScriptNumber(req.Query.Get("after_id"))
+
+		CharacterID:   optionalJavaScriptNumber(req.Query.Get("character_id")),
+		CorporationID: optionalJavaScriptNumber(req.Query.Get("corporation_id")),
+		AfterID:       optionalJavaScriptNumber(req.Query.Get("after_id"))}
 	return filters
 }
 

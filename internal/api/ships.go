@@ -41,7 +41,7 @@ func parseFittingModuleIDs(raw string) []int32 {
 	}
 	result := []int32{}
 	seen := map[int32]struct{}{}
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		number, err := strconv.ParseFloat(strings.TrimSpace(part), 64)
 		if err != nil || math.IsNaN(number) || math.IsInf(number, 0) || number <= 0 {
 			continue

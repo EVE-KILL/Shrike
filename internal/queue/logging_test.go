@@ -95,8 +95,7 @@ func TestJobLogMiddlewareReportsSnoozeWithoutCallingItFailure(t *testing.T) {
 	err := middleware.Work(context.Background(), testJobRow(), func(context.Context) error {
 		return river.JobSnooze(5 * time.Minute)
 	})
-	var snoozeErr *river.JobSnoozeError
-	if !errors.As(err, &snoozeErr) {
+	if _, ok := errors.AsType[*river.JobSnoozeError](err); !ok {
 		t.Fatalf("Work returned %v, want JobSnoozeError", err)
 	}
 
@@ -138,7 +137,7 @@ func testJobRow() *rivertype.JobRow {
 func logRecords(t *testing.T, output string) []map[string]any {
 	t.Helper()
 	var records []map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(output), "\n") {
 		if line == "" {
 			continue
 		}

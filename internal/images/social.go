@@ -233,7 +233,7 @@ func (s *Service) renderKillmailSocial(
 func drawSocialBackground(canvas *image.NRGBA) {
 	from := color.NRGBA{R: 11, G: 15, B: 26, A: 255}
 	to := color.NRGBA{R: 26, G: 31, B: 46, A: 255}
-	for y := 0; y < socialHeight; y++ {
+	for y := range socialHeight {
 		ratio := float64(y) / float64(socialHeight-1)
 		line := color.NRGBA{
 			R: uint8(math.Round(float64(from.R)*(1-ratio) + float64(to.R)*ratio)),

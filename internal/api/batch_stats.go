@@ -28,7 +28,6 @@ func registerBatchStatsRoutes(a huma.API, opts Options) {
 		{key: "corporations", idColumn: "corporation_id", entityType: entityCorporation},
 		{key: "alliances", idColumn: "alliance_id", entityType: entityAlliance},
 	} {
-		config := config
 		registerLegacyJSON(a, huma.Operation{
 			OperationID: config.key + "-batch-stats",
 			Method:      http.MethodPost,

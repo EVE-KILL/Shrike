@@ -89,8 +89,7 @@ func TestWorkerDoesNotReportInvalidCronAsStarted(t *testing.T) {
 	err := worker.Work(context.Background(), &river.Job[queue.CronArgs]{
 		Args: queue.CronArgs{Name: "not_a_cron"},
 	})
-	var cancelErr *river.JobCancelError
-	if !errors.As(err, &cancelErr) {
+	if _, ok := errors.AsType[*river.JobCancelError](err); !ok {
 		t.Fatalf("Work returned %v, want JobCancelError", err)
 	}
 	if started || finished {

@@ -301,11 +301,11 @@ func redisVersion(info string) string {
 }
 
 func infoValue(info, key string) string {
-	i := strings.Index(info, key)
-	if i < 0 {
+	_, after, ok := strings.Cut(info, key)
+	if !ok {
 		return ""
 	}
-	rest := info[i+len(key):]
+	rest := after
 	if end := strings.IndexAny(rest, "\r\n"); end >= 0 {
 		return rest[:end]
 	}

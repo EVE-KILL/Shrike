@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"slices"
 	"sync"
 	"time"
 
@@ -207,7 +207,7 @@ func flewWithPairs(ids []int32) []graph.FlewWithEdge {
 		list = append(list, id)
 	}
 	// Sorted so the pairs are deterministic and always ordered low-high.
-	sort.Slice(list, func(i, j int) bool { return list[i] < list[j] })
+	slices.Sort(list)
 
 	out := make([]graph.FlewWithEdge, 0, len(list)*(len(list)-1)/2)
 	for i := range list {

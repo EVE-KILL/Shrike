@@ -18,21 +18,9 @@ func loadEntityPageMembers(
 	id int64,
 	req *legacyRequest,
 ) (any, error) {
-	page := entityPageQueryInt(req.Query.Get("page"), 1)
-	if page < 1 {
-		page = 1
-	}
-	limit := entityPageQueryInt(req.Query.Get("limit"), 100)
-	if limit < 1 {
-		limit = 1
-	}
-	if limit > 200 {
-		limit = 200
-	}
-	offset64 := int64(page-1) * int64(limit)
-	if offset64 > math.MaxInt32 {
-		offset64 = math.MaxInt32
-	}
+	page := max(entityPageQueryInt(req.Query.Get("page"), 1), 1)
+	limit := min(max(entityPageQueryInt(req.Query.Get("limit"), 100), 1), 200)
+	offset64 := min(int64(page-1)*int64(limit), math.MaxInt32)
 	sortBy := req.Query.Get("sort")
 	orderBy := "name ASC"
 	switch sortBy {
@@ -246,20 +234,8 @@ func loadEntityPageMostValuable(
 	if dataType == "" {
 		dataType = "most_valuable_kills"
 	}
-	limit := entityPageQueryInt(req.Query.Get("limit"), 8)
-	if limit < 1 {
-		limit = 1
-	}
-	if limit > 32 {
-		limit = 32
-	}
-	days := entityPageQueryInt(req.Query.Get("days"), 7)
-	if days < 1 {
-		days = 1
-	}
-	if days > 30 {
-		days = 30
-	}
+	limit := min(max(entityPageQueryInt(req.Query.Get("limit"), 8), 1), 32)
+	days := min(max(entityPageQueryInt(req.Query.Get("days"), 7), 1), 30)
 	category := 0
 	switch dataType {
 	case "most_valuable_ships":
@@ -529,10 +505,7 @@ func buildEntityKilllistScopePlan(
 	offset := int64(0)
 	if numbered {
 		order = "k.killmail_time DESC, k.killmail_id DESC"
-		offset = int64(page-1) * int64(limit)
-		if offset < 0 {
-			offset = 0
-		}
+		offset = max(int64(page-1)*int64(limit), 0)
 	}
 
 	args := []any{id}
@@ -657,13 +630,7 @@ func loadEntityPageKilllist(
 	if role != "kills" && role != "losses" && role != "combined" {
 		role = "combined"
 	}
-	limit := entityPageQueryInt(req.Query.Get("limit"), 50)
-	if limit < 10 {
-		limit = 10
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	limit := min(max(entityPageQueryInt(req.Query.Get("limit"), 50), 10), 100)
 	after := int64(entityPageQueryInt(req.Query.Get("after"), 0))
 	page := entityPageQueryInt(req.Query.Get("page"), 0)
 	shipGroup := int64(entityPageQueryInt(req.Query.Get("ship_group"), 0))
@@ -778,10 +745,7 @@ func loadEntityPageKilllist(
 	if includeTotal {
 		total := int64OrZero(firstOrEmpty(results[1])["total"])
 		if total > 0 {
-			totalPages := int64(math.Ceil(float64(total) / float64(limit)))
-			if totalPages < 1 {
-				totalPages = 1
-			}
+			totalPages := max(int64(math.Ceil(float64(total)/float64(limit))), 1)
 			response["totalPages"] = totalPages
 			if scope.Numbered {
 				response["hasMore"] = int64(page) < totalPages

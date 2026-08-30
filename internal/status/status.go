@@ -223,11 +223,10 @@ func (c *Collector) Collect(ctx context.Context) Status {
 		StartedAt: c.startedAt.Format(isoMillisLayout),
 		Timestamp: now.Format(isoMillisLayout),
 		System:    systemInfo(),
-	}
 
-	s.ESI = c.esiInfo(ctx)
-	s.Redis = redisInfo(ctx, c.Redis)
-	s.Cache = redisInfo(ctx, c.Cache)
+		ESI:   c.esiInfo(ctx),
+		Redis: redisInfo(ctx, c.Redis),
+		Cache: redisInfo(ctx, c.Cache)}
 	if stats, err := zkb.ReadIngestStats(ctx, c.Redis); err == nil {
 		s.ZkbIngest = stats
 	}
@@ -298,7 +297,7 @@ func hostMemory() (total, free uint64) {
 	if err != nil {
 		return 0, 0
 	}
-	for _, line := range strings.Split(string(raw), "\n") {
+	for line := range strings.SplitSeq(string(raw), "\n") {
 		key, value, ok := strings.Cut(line, ":")
 		if !ok {
 			continue
@@ -427,7 +426,7 @@ func redisInfo(ctx context.Context, rdb *redis.Client) *RedisInfo {
 	}
 
 	fields := map[string]string{}
-	for _, line := range strings.Split(raw, "\n") {
+	for line := range strings.SplitSeq(raw, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue

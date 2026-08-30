@@ -157,7 +157,7 @@ func TestLocalTierIsBounded(t *testing.T) {
 	c := NewCache(rdb)
 	entry := &Entry{Status: 200, Expires: time.Now().Add(time.Hour).UnixMilli()}
 
-	for i := 0; i < localCacheMax+100; i++ {
+	for i := range localCacheMax + 100 {
 		c.putLocal(string(rune(i))+"-url", entry)
 	}
 
@@ -175,7 +175,7 @@ func TestLocalTierEvictsLeastRecentlyUsed(t *testing.T) {
 	c := NewCache(nil)
 	entry := &Entry{Status: 200, Expires: time.Now().Add(time.Hour).UnixMilli()}
 
-	for i := 0; i < localCacheMax; i++ {
+	for i := range localCacheMax {
 		c.putLocal(string(rune(i))+"-url", entry)
 	}
 	oldest := string(rune(0)) + "-url"

@@ -117,7 +117,7 @@ func hasJSONResponse(op *huma.Operation) bool {
 
 func countStaticPathParts(path string) int {
 	count := 0
-	for _, part := range strings.Split(strings.Trim(path, "/"), "/") {
+	for part := range strings.SplitSeq(strings.Trim(path, "/"), "/") {
 		if !isPathParameter(part) {
 			count++
 		}

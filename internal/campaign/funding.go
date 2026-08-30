@@ -114,21 +114,21 @@ func processEntry(ctx context.Context, pool *pgxpool.Pool, e JournalEntry) (bool
 
 	switch {
 	case !parsed:
-		note = ptr("Campaign references must be exactly campaign:<14-character-id>")
+		note = new("Campaign references must be exactly campaign:<14-character-id>")
 
 	case e.CorporationID != EveKillCorporationID || e.RefType != "player_donation" || e.Amount <= 0:
 		// A corporation transfer, a market escrow release or a negative
 		// adjustment is not a donation, whatever its reason says.
-		note = ptr("Only positive player donations to EVE-KILL.com can fund campaigns")
+		note = new("Only positive player donations to EVE-KILL.com can fund campaigns")
 
 	default:
 		matched, poolStatus, endTime, err := lockPool(ctx, tx, parsedID)
 		switch {
 		case errors.Is(err, errAmbiguousPool):
-			note = ptr("Campaign reference is ambiguous")
+			note = new("Campaign reference is ambiguous")
 		case errors.Is(err, pgx.ErrNoRows):
 			status = ReferenceUnmatched
-			note = ptr("Campaign does not exist or does not have prizes enabled")
+			note = new("Campaign does not exist or does not have prizes enabled")
 		case err != nil:
 			return false, err
 		default:
@@ -139,7 +139,7 @@ func processEntry(ctx context.Context, pool *pgxpool.Pool, e JournalEntry) (bool
 			// the participants have already seen.
 			if poolStatus != PrizePoolFunding || endTime == nil || e.Date.After(*endTime) {
 				status = ReferenceLate
-				note = ptr("Campaign funding had already closed")
+				note = new("Campaign funding had already closed")
 			} else {
 				status = ReferenceMatched
 			}
@@ -273,5 +273,3 @@ func PendingJournalEntries(ctx context.Context, pool *pgxpool.Pool, corporationI
 
 // PendingJournalLimit bounds one sweep.
 const PendingJournalLimit = 5000
-
-func ptr(s string) *string { return &s }

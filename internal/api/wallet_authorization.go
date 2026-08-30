@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -108,7 +109,7 @@ func (s *authService) beginWalletAuthorization(
 	}
 	var id, binding string
 	var err error
-	for attempts := 0; attempts < 3; attempts++ {
+	for range 3 {
 		id, err = randomBase64(s.random, 32)
 		if err != nil {
 			return "", nil, err
@@ -432,12 +433,7 @@ func readWalletESIError(response *http.Response) string {
 }
 
 func walletContainsScope(values []string, expected string) bool {
-	for _, value := range values {
-		if value == expected {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, expected)
 }
 
 func isInvalidFloat(value float64) bool {

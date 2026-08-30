@@ -388,7 +388,7 @@ func requestedFormat(ctx huma.Context, fallback string) (string, error) {
 }
 
 func acceptsWebP(header string) bool {
-	for _, mediaRange := range strings.Split(strings.ToLower(header), ",") {
+	for mediaRange := range strings.SplitSeq(strings.ToLower(header), ",") {
 		parts := strings.Split(mediaRange, ";")
 		if strings.TrimSpace(parts[0]) != "image/webp" {
 			continue
@@ -419,7 +419,7 @@ func parseSize(raw string) int {
 }
 
 func etagMatches(header, etag string) bool {
-	for _, candidate := range strings.Split(header, ",") {
+	for candidate := range strings.SplitSeq(header, ",") {
 		candidate = strings.TrimSpace(candidate)
 		if candidate == "*" || candidate == etag ||
 			strings.TrimPrefix(candidate, "W/") == etag {

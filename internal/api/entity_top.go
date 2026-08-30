@@ -26,7 +26,6 @@ func registerEntityTopRoutes(a huma.API, opts Options) {
 	for _, kind := range []string{
 		entityPageCharacter, entityPageCorporation, entityPageAlliance,
 	} {
-		kind := kind
 		registerLegacy(a, huma.Operation{
 			OperationID: "entity-top-" + kind + "-compat",
 			Method:      http.MethodGet,

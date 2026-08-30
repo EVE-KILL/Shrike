@@ -81,22 +81,18 @@ func New(redisClient *redis.Client, log zerolog.Logger) *Server {
 // Start begins the Redis subscription and binds its lifetime to ctx.
 func (s *Server) Start(ctx context.Context) {
 	s.startOnce.Do(func() {
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
+		s.wg.Go(func() {
 			select {
 			case <-ctx.Done():
 				s.shutdown()
 			case <-s.ctx.Done():
 			}
-		}()
+		})
 
 		if s.openSubscription != nil {
-			s.wg.Add(1)
-			go func() {
-				defer s.wg.Done()
+			s.wg.Go(func() {
 				s.subscribe()
-			}()
+			})
 		}
 	})
 }

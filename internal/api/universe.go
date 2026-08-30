@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"maps"
 	"math"
 	"net/http"
 	"strconv"
@@ -551,9 +552,7 @@ func buildUniverseCelestials(
 			continue
 		}
 		item := make(map[string]any, len(row)+1)
-		for key, value := range row {
-			item[key] = value
-		}
+		maps.Copy(item, row)
 		item["category"] = category
 		list = append(list, item)
 	}

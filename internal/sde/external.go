@@ -468,7 +468,7 @@ func sendBatch(ctx context.Context, pool *pgxpool.Pool, batch *pgx.Batch, n int)
 		return nil
 	}
 	br := pool.SendBatch(ctx, batch)
-	for i := 0; i < n; i++ {
+	for range n {
 		if _, err := br.Exec(); err != nil {
 			br.Close()
 			return err

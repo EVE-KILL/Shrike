@@ -35,7 +35,7 @@ func TestSanitizeThemeRejectsUnknownKeysAndCSSInjection(t *testing.T) {
 
 func TestCleanBoardListNormalizesDeduplicatesAndCaps(t *testing.T) {
 	raw := []any{" Alpha ", "alpha", "board.example", "not valid!"}
-	for i := 0; i < maxBoardEntries+5; i++ {
+	for i := range maxBoardEntries + 5 {
 		raw = append(raw, "board-"+string(rune('a'+i)))
 	}
 	result := cleanBoardList(raw)

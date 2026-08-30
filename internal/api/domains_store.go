@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -372,9 +373,7 @@ func (s *domainService) updateDomain(
 	}
 
 	effective := make(map[string]any, len(existing))
-	for key, value := range existing {
-		effective[key] = value
-	}
+	maps.Copy(effective, existing)
 	if input.EntitiesPresent {
 		effective["entities"] = domainEntitiesJSON(input.Entities)
 	}

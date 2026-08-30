@@ -202,7 +202,7 @@ func registerFeedStream(a huma.API, opts Options) {
 		topicList := []string{"all"}
 		if raw := hctx.Query("topics"); raw != "" {
 			topicList = []string{}
-			for _, topic := range strings.Split(raw, ",") {
+			for topic := range strings.SplitSeq(raw, ",") {
 				if topic != "" {
 					topicList = append(topicList, topic)
 				}

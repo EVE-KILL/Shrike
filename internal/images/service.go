@@ -155,8 +155,7 @@ func statusError(status int, message string, err error) error {
 }
 
 func asStatus(err error) (int, string) {
-	var imageErr *Error
-	if errors.As(err, &imageErr) {
+	if imageErr, ok := errors.AsType[*Error](err); ok {
 		return imageErr.Status, imageErr.Message
 	}
 	return http.StatusInternalServerError, "Internal server error"

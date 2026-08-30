@@ -286,10 +286,7 @@ func (p *Prober) walkGap(ctx context.Context, gapStart, gapEnd int32, opts HoleO
 			return StopMaxMisses, nil
 		}
 
-		blockEnd := id + int32(opts.ProbeBlock) - 1
-		if blockEnd > gapEnd {
-			blockEnd = gapEnd
-		}
+		blockEnd := min(id+int32(opts.ProbeBlock)-1, gapEnd)
 
 		blockHits := 0
 		for probeID := id; probeID <= blockEnd; probeID++ {

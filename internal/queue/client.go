@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/jobs"
@@ -149,12 +150,7 @@ func wantsQueue(requested []string, name string) bool {
 	if len(requested) == 0 {
 		return true
 	}
-	for _, r := range requested {
-		if r == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(requested, name)
 }
 
 // InsertOptsFor builds the insert options for a queue at a priority.

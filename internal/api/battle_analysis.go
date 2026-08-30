@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -47,7 +49,6 @@ func registerBattleAnalysisRoutes(a huma.API, opts Options) {
 		{"timeline", "timeline", "Complete battle timeline", 2 * time.Minute, battleTimelineHandler},
 	}
 	for _, route := range routes {
-		route := route
 		registerConflictCachedGET(a, opts, huma.Operation{
 			OperationID: "battle-report-" + route.name,
 			Path:        "/battle/{id}/" + route.suffix,
@@ -215,10 +216,7 @@ func battleMostValuableHandler(
 				len(args)-1, len(args),
 			))
 		}
-		candidateLimit := limit * 6
-		if candidateLimit < 32 {
-			candidateLimit = 32
-		}
+		candidateLimit := max(limit*6, 32)
 		args = append(args, candidateLimit)
 		rows, err := queryMaps(ctx, opts.DB, `
 			SELECT k.killmail_id, k.killmail_hash, k.killmail_time,
@@ -343,12 +341,8 @@ func conflictBattleAssignmentEntities(
 	}
 	corporations = uniqueConflictIDs(corporations)
 	alliances = uniqueConflictIDs(alliances)
-	sort.Slice(corporations, func(i, j int) bool {
-		return corporations[i] < corporations[j]
-	})
-	sort.Slice(alliances, func(i, j int) bool {
-		return alliances[i] < alliances[j]
-	})
+	slices.Sort(corporations)
+	slices.Sort(alliances)
 	return corporations, alliances
 }
 
@@ -716,10 +710,7 @@ func loadBattleGraphFCs(
 		Add(-90 * 24 * time.Hour).
 		Format("2006-01-02T15:04:05.000Z")
 	for start := 0; start < len(ids); start += 5000 {
-		end := start + 5000
-		if end > len(ids) {
-			end = len(ids)
-		}
+		end := min(start+5000, len(ids))
 		graphRows, err := opts.Graph.Read(ctx, `
 			MATCH (character:Character)
 			WHERE character.id IN $ids
@@ -864,9 +855,7 @@ func formatBattleIntel(
 
 func cloneConflictMap(value map[string]any) map[string]any {
 	out := make(map[string]any, len(value)+1)
-	for key, item := range value {
-		out[key] = item
-	}
+	maps.Copy(out, value)
 	return out
 }
 

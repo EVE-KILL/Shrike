@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
 	"net/http"
 	"net/url"
@@ -1028,9 +1029,7 @@ func mergeDomainTheme(
 	incoming map[string]any,
 ) map[string]any {
 	result := make(map[string]any, len(existing)+len(incoming))
-	for key, value := range existing {
-		result[key] = value
-	}
+	maps.Copy(result, existing)
 	for key, value := range incoming {
 		if value == nil {
 			delete(result, key)

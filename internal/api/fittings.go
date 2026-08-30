@@ -160,7 +160,7 @@ type fittingItemBody struct {
 type fittingCreateBody struct {
 	ShipTypeID  *int64            `json:"ship_type_id" minimum:"1" doc:"Hull the fitting is for."`
 	Name        *string           `json:"name" doc:"Display name for the fitting."`
-	Description optional[string]  `json:"description,omitempty" doc:"Free text shown with the fitting. Null clears it."`
+	Description optional[string]  `json:"description" doc:"Free text shown with the fitting. Null clears it."`
 	Visibility  *int64            `json:"visibility" minimum:"0" maximum:"3" doc:"Who may see the fitting."`
 	Items       []fittingItemBody `json:"items" maxItems:"200" doc:"Fitted modules, charges, drones and cargo."`
 }
@@ -168,10 +168,10 @@ type fittingCreateBody struct {
 // fittingUpdateBody patches an existing fitting. Every field is optional, and
 // an absent field is left alone rather than cleared.
 type fittingUpdateBody struct {
-	Name        optional[string]            `json:"name,omitempty" doc:"New display name."`
-	Description optional[string]            `json:"description,omitempty" doc:"New description. Null clears it."`
-	Visibility  optional[int64]             `json:"visibility,omitempty" minimum:"0" maximum:"3" doc:"New visibility."`
-	Items       optional[[]fittingItemBody] `json:"items,omitempty" doc:"Replacement item list. Absent leaves the stored items alone."`
+	Name        optional[string]            `json:"name" doc:"New display name."`
+	Description optional[string]            `json:"description" doc:"New description. Null clears it."`
+	Visibility  optional[int64]             `json:"visibility" minimum:"0" maximum:"3" doc:"New visibility."`
+	Items       optional[[]fittingItemBody] `json:"items" doc:"Replacement item list. Absent leaves the stored items alone."`
 }
 
 type fittingRatingBody struct {

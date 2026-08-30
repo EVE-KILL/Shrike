@@ -215,8 +215,7 @@ func TestRedisSubscriptionFeedsConnectionsAndStops(t *testing.T) {
 }
 
 func TestClientQueueIsBounded(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	c := newClient(ctx, nil, endpoints[0])
 	for range clientQueueSize {
 		if !c.enqueue([]byte("event")) {

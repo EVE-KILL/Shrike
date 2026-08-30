@@ -45,7 +45,6 @@ func registerEntityLists(a huma.API, opts Options) {
 			nil,
 		},
 	} {
-		spec := spec
 		registerLegacy(a, huma.Operation{
 			OperationID: spec.id,
 			Method:      http.MethodGet,
@@ -386,7 +385,6 @@ func registerEntityMembers(a huma.API, opts Options) {
 			"character_id, name, corporation_id, security_status, last_active", "character_id",
 		},
 	} {
-		spec := spec
 		registerLegacy(a, entityIDOperation(spec.id, spec.path, spec.summary, strings.Split(spec.path, "/")[1]),
 			func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 				id, err := parseID(req.Param(spec.idColumn))
@@ -570,7 +568,6 @@ func registerEntityStatsRoutes(a huma.API, opts Options) {
 			"Alliance not found", "alliance_id", entityAlliance,
 		},
 	} {
-		spec := spec
 		registerLegacy(a, entityIDOperation(spec.id, spec.path, spec.summary, spec.table),
 			func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 				id, err := parseID(req.Param("id"))

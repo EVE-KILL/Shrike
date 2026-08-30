@@ -89,13 +89,10 @@ func (p *RegistryRetryPolicy) delay(kind string, attempt int) time.Duration {
 	}
 
 	jitter := 1 + RetryJitter*(2*p.random()-1)
-	delay = time.Duration(float64(delay) * jitter)
-
-	// Jitter must never produce a non-positive delay, which would retry
-	// immediately and turn a failing job into a hot loop.
-	if delay < time.Millisecond {
-		delay = time.Millisecond
-	}
+	delay = max(
+		// Jitter must never produce a non-positive delay, which would retry
+		// immediately and turn a failing job into a hot loop.
+		time.Duration(float64(delay)*jitter), time.Millisecond)
 	return delay
 }
 

@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -434,8 +435,8 @@ func addAdvancedCombatFilters(
 	case "solo":
 		query.Where = append(query.Where, "k.is_solo = true")
 	default:
-		if strings.HasSuffix(filters.AttackerCount, "+") {
-			raw := strings.TrimSuffix(filters.AttackerCount, "+")
+		if before, ok := strings.CutSuffix(filters.AttackerCount, "+"); ok {
+			raw := before
 			if count, err := strconv.ParseInt(raw, 10, 32); err == nil {
 				query.Where = append(query.Where,
 					"k.attacker_count >= "+query.bind(count))
@@ -1005,7 +1006,7 @@ func advancedFitItems(
 	for id := range droneByType {
 		droneIDs = append(droneIDs, id)
 	}
-	sort.Slice(droneIDs, func(i, j int) bool { return droneIDs[i] < droneIDs[j] })
+	slices.Sort(droneIDs)
 	drones := make([]map[string]any, 0, len(droneIDs))
 	for _, id := range droneIDs {
 		drones = append(drones, droneByType[id])

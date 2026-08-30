@@ -203,7 +203,7 @@ func TestCronRunLoggerReportsStatusFailureImmediately(t *testing.T) {
 func decodeWorkerLogs(t *testing.T, output string) []map[string]any {
 	t.Helper()
 	var records []map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(output), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(output), "\n") {
 		if line == "" {
 			continue
 		}

@@ -10,6 +10,7 @@ import (
 	"image"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -447,10 +448,8 @@ func validateSize(size int, mapAsset bool) error {
 			nil,
 		)
 	}
-	for _, allowed := range []int{8, 16, 32, 64, 128, 256, 512, 1024} {
-		if size == allowed {
-			return nil
-		}
+	if slices.Contains([]int{8, 16, 32, 64, 128, 256, 512, 1024}, size) {
+		return nil
 	}
 	return statusError(
 		http.StatusBadRequest,

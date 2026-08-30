@@ -53,8 +53,7 @@ func (m *jobLogMiddleware) Work(
 		return nil
 	}
 
-	var snoozeErr *river.JobSnoozeError
-	if errors.As(err, &snoozeErr) {
+	if snoozeErr, ok := errors.AsType[*river.JobSnoozeError](err); ok {
 		logger.Info().
 			Dur("duration", elapsed).
 			Dur("snooze_for", snoozeErr.Duration).
@@ -62,8 +61,7 @@ func (m *jobLogMiddleware) Work(
 		return err
 	}
 
-	var cancelErr *river.JobCancelError
-	if errors.As(err, &cancelErr) {
+	if _, ok := errors.AsType[*river.JobCancelError](err); ok {
 		logger.Warn().
 			Err(err).
 			Dur("duration", elapsed).

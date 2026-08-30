@@ -150,10 +150,8 @@ func TestSequentialLockAdmitsOneAtATime(t *testing.T) {
 
 	const workers = 12
 	var wg sync.WaitGroup
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range workers {
+		wg.Go(func() {
 
 			token, err := c.AcquireSequential(ctx, group)
 			if err != nil || token == "" {
@@ -169,7 +167,7 @@ func TestSequentialLockAdmitsOneAtATime(t *testing.T) {
 			inside.Add(-1)
 
 			c.ReleaseSequential(ctx, group, token)
-		}()
+		})
 	}
 	wg.Wait()
 

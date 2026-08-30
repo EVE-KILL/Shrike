@@ -1,6 +1,9 @@
 package sde
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // Key must reject 0. EVE uses 0 as the "no entity" sentinel, so importing the
 // archive's "#System" placeholder at _key 0 would make every join against an
@@ -92,12 +95,12 @@ func TestBoolAcceptsNumericAndString(t *testing.T) {
 		in   any
 		want *bool
 	}{
-		{true, ptr(true)},
-		{false, ptr(false)},
-		{1.0, ptr(true)},
-		{0.0, ptr(false)},
-		{"true", ptr(true)},
-		{"false", ptr(false)},
+		{true, new(true)},
+		{false, new(false)},
+		{1.0, new(true)},
+		{0.0, new(false)},
+		{"true", new(true)},
+		{"false", new(false)},
 		{"nonsense", nil},
 	}
 	for _, tc := range cases {
@@ -145,13 +148,7 @@ func TestTableDeclarationsAreConsistent(t *testing.T) {
 			t.Errorf("table %s has no primary key", tbl.Name)
 		}
 		for _, pk := range tbl.PK {
-			found := false
-			for _, c := range tbl.Columns {
-				if c == pk {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(tbl.Columns, pk)
 			if !found {
 				t.Errorf("table %s: primary key %q is not among its columns", tbl.Name, pk)
 			}
@@ -242,8 +239,6 @@ func TestPruneSQLUsesEveryPrimaryKeyColumn(t *testing.T) {
 		}
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func deref(s *string) string {
 	if s == nil {

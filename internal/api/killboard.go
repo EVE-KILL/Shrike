@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -427,7 +427,7 @@ func killlistRollupTotal(
 func parseKilllistFactionIDs(raw string) []int32 {
 	seen := map[int32]struct{}{}
 	result := []int32{}
-	for _, part := range strings.Split(raw, ",") {
+	for part := range strings.SplitSeq(raw, ",") {
 		part = strings.TrimSpace(part)
 		value, err := strconv.ParseInt(part, 10, 32)
 		if err != nil || value == 0 {
@@ -777,6 +777,6 @@ func sortedInt64Set(values map[int64]struct{}) []int64 {
 			result = append(result, value)
 		}
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	slices.Sort(result)
 	return result
 }

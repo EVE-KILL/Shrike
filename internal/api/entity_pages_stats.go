@@ -194,10 +194,7 @@ func loadEntityDashboardStats(
 			// Bound arithmetic to time.Duration's useful range. The stats
 			// window is already snapped to 365d, while this raw-table detail
 			// only exists for the activity visualization.
-			rawDays := days
-			if rawDays > 100000 {
-				rawDays = 100000
-			}
+			rawDays := min(days, 100000)
 			since = time.Now().UTC().AddDate(0, 0, -rawDays)
 		}
 		queries = append(queries,
@@ -352,11 +349,11 @@ func loadEntityDashboardStats(
 	heatMap := make(map[int]int64, 24)
 	killsMatrix := make([][]int64, 7)
 	lossesMatrix := make([][]int64, 7)
-	for day := 0; day < 7; day++ {
+	for day := range 7 {
 		killsMatrix[day] = make([]int64, 24)
 		lossesMatrix[day] = make([]int64, 24)
 	}
-	for hour := 0; hour < 24; hour++ {
+	for hour := range 24 {
 		heatMap[hour] = 0
 	}
 	for _, row := range results[characterResultStart] {
@@ -372,7 +369,7 @@ func loadEntityDashboardStats(
 		lossesMatrix[day][hour] = lossesAt
 	}
 	peakHour, peakCount := 0, int64(0)
-	for hour := 0; hour < 24; hour++ {
+	for hour := range 24 {
 		if heatMap[hour] > peakCount {
 			peakHour, peakCount = hour, heatMap[hour]
 		}

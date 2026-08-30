@@ -192,7 +192,7 @@ func coalitionGraph(ctx context.Context, deps Dependencies, input CoalitionGraph
 
 	var focus *ResolvedEntity
 	if input.FocusAlliance != nil && input.FocusAlliance.String() != "" {
-		focus, err = resolveEntity(ctx, deps, *input.FocusAlliance, entityTypePointer(EntityAlliance))
+		focus, err = resolveEntity(ctx, deps, *input.FocusAlliance, new(EntityAlliance))
 		if err != nil {
 			return CoalitionGraphOutput{}, err
 		}
@@ -269,7 +269,7 @@ func coalitionGraph(ctx context.Context, deps Dependencies, input CoalitionGraph
 }
 
 func characterHistory(ctx context.Context, deps Dependencies, input CharacterHistoryInput) (CharacterHistoryOutput, error) {
-	character, err := resolveCharacter(ctx, deps, input.Entity, entityTypePointer(EntityCharacter))
+	character, err := resolveCharacter(ctx, deps, input.Entity, new(EntityCharacter))
 	if err != nil {
 		return CharacterHistoryOutput{}, err
 	}
@@ -328,7 +328,7 @@ func characterHistory(ctx context.Context, deps Dependencies, input CharacterHis
 }
 
 func pilotEfficiency(ctx context.Context, deps Dependencies, input PilotEfficiencyInput) (PilotEfficiencyOutput, error) {
-	character, err := resolveCharacter(ctx, deps, input.Entity, entityTypePointer(EntityCharacter))
+	character, err := resolveCharacter(ctx, deps, input.Entity, new(EntityCharacter))
 	if err != nil {
 		return PilotEfficiencyOutput{}, err
 	}
@@ -384,10 +384,10 @@ func pilotEfficiency(ctx context.Context, deps Dependencies, input PilotEfficien
 	killCount, lossCount := valueInt64(k["kills"]), valueInt64(l["losses"])
 	destroyed, lost := valueFloat64(k["isk_destroyed"]), valueFloat64(l["isk_lost"])
 	hours, days := map[string]int64{}, map[string]int64{}
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		hours[fmt.Sprint(i)] = 0
 	}
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		days[fmt.Sprint(i)] = 0
 	}
 	for _, row := range heatmap {
@@ -395,7 +395,7 @@ func pilotEfficiency(ctx context.Context, deps Dependencies, input PilotEfficien
 		hours[hour], days[day] = hours[hour]+count, days[day]+count
 	}
 	peakHour, peakCount := 0, int64(0)
-	for i := 0; i < 24; i++ {
+	for i := range 24 {
 		if hours[fmt.Sprint(i)] > peakCount {
 			peakHour, peakCount = i, hours[fmt.Sprint(i)]
 		}

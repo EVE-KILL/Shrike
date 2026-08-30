@@ -1,6 +1,9 @@
 package sde
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 // The nested members are where a mapping mistake is least visible: they produce
 // far more rows than they read, so a wrong field name yields "0 rows" rather
@@ -18,13 +21,7 @@ func TestNestedTableDeclarationsAreConsistent(t *testing.T) {
 			t.Errorf("nested table %s is not authoritative; removed child rows would remain stale", tbl.Name)
 		}
 		for _, pk := range tbl.PK {
-			found := false
-			for _, c := range tbl.Columns {
-				if c == pk {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(tbl.Columns, pk)
 			if !found {
 				t.Errorf("nested table %s: primary key %q is not among its columns", tbl.Name, pk)
 			}

@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -159,9 +160,7 @@ func TestOAuthClientVerifyAccessToken(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			copy := make(map[string]any, len(claims))
-			for key, value := range claims {
-				copy[key] = value
-			}
+			maps.Copy(copy, claims)
 			mutate(copy)
 			raw := signedOAuthTestToken(t, privateKey, copy)
 			verifier := &OAuthClient{

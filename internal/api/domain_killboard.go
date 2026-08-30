@@ -55,7 +55,6 @@ func registerDomainKillboardRoutes(a huma.API, opts Options) {
 	}, domainKilllistCacheTTL, service.killlistHandler(domainLocation{}))
 
 	for _, location := range domainLocations {
-		location := location
 		registerDomainRead(a, opts, huma.Operation{
 			OperationID: "domain-" + location.name + "-killlist",
 			Method:      http.MethodGet,

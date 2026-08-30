@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,11 +81,10 @@ func (s *FileStore) GetObject(_ context.Context, key string) (*Object, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read metadata for %q: %w", key, err)
 	}
-	return &Object{Body: body, ObjectInfo: ObjectInfo{
+	return &Object{Body: body,
 		Key: key, Size: info.Size(), ETag: digestETag(body),
 		ContentType: meta.ContentType, CacheControl: meta.CacheControl,
-		LastModified: info.ModTime(), Metadata: cloneMetadata(meta.Metadata),
-	}}, nil
+		LastModified: info.ModTime(), Metadata: cloneMetadata(meta.Metadata)}, nil
 }
 
 func (s *FileStore) Stat(_ context.Context, key string) (*ObjectInfo, error) {
@@ -194,8 +194,6 @@ func cloneMetadata(source map[string]string) map[string]string {
 		return nil
 	}
 	copy := make(map[string]string, len(source))
-	for key, value := range source {
-		copy[key] = value
-	}
+	maps.Copy(copy, source)
 	return copy
 }

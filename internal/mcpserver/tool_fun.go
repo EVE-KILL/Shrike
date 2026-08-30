@@ -205,7 +205,7 @@ func registerFunTools(registry *Registry) error {
 }
 
 func systemPulse(ctx context.Context, deps Dependencies, input SystemPulseInput) (SystemPulseOutput, error) {
-	system, err := resolveEntity(ctx, deps, input.System, entityTypePointer(EntitySystem))
+	system, err := resolveEntity(ctx, deps, input.System, new(EntitySystem))
 	if err != nil {
 		return SystemPulseOutput{}, err
 	}
@@ -393,7 +393,7 @@ func capsuleerDossier(ctx context.Context, deps Dependencies, input DossierInput
 	if err != nil {
 		return DossierOutput{}, err
 	}
-	overview, err := entityOverview(ctx, deps, EntityOverviewInput{Entity: IntRef(character.ID), Type: entityTypePointer(EntityCharacter)})
+	overview, err := entityOverview(ctx, deps, EntityOverviewInput{Entity: IntRef(character.ID), Type: new(EntityCharacter)})
 	if err != nil {
 		return DossierOutput{}, err
 	}

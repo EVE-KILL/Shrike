@@ -272,7 +272,7 @@ func registerSDEInfoTools(registry *Registry) error {
 		Title:       "Get ship information",
 		Description: "Return static hull, slot, fitting, tank, mobility, sensor, drone, cargo, and Jita price data.",
 	}, func(ctx context.Context, input ShipInfoInput) (ShipInfoOutput, error) {
-		resolved, err := resolveEntity(ctx, registry.deps, input.Ship, entityTypePointer(EntityShip))
+		resolved, err := resolveEntity(ctx, registry.deps, input.Ship, new(EntityShip))
 		if err != nil {
 			return ShipInfoOutput{}, err
 		}
@@ -308,10 +308,6 @@ func registerSDEInfoTools(registry *Registry) error {
 	}, func(ctx context.Context, input ShipCompareInput) (ShipCompareOutput, error) {
 		return compareShips(ctx, registry.deps, input)
 	})
-}
-
-func entityTypePointer(value EntityType) *EntityType {
-	return &value
 }
 
 func loadShipInfo(
@@ -554,7 +550,7 @@ func loadSystemInfo(
 	input SystemInfoInput,
 ) (SystemInfoOutput, error) {
 	resolved, err := resolveEntity(
-		ctx, deps, input.System, entityTypePointer(EntitySystem),
+		ctx, deps, input.System, new(EntitySystem),
 	)
 	if err != nil {
 		return SystemInfoOutput{}, err
@@ -682,14 +678,14 @@ func compareShips(
 	deps Dependencies,
 	input ShipCompareInput,
 ) (ShipCompareOutput, error) {
-	first, err := resolveEntity(ctx, deps, input.A, entityTypePointer(EntityShip))
+	first, err := resolveEntity(ctx, deps, input.A, new(EntityShip))
 	if err != nil {
 		return ShipCompareOutput{}, err
 	}
 	if first == nil {
 		return ShipCompareOutput{}, fmt.Errorf("could not resolve ship a %q", input.A.String())
 	}
-	second, err := resolveEntity(ctx, deps, input.B, entityTypePointer(EntityShip))
+	second, err := resolveEntity(ctx, deps, input.B, new(EntityShip))
 	if err != nil {
 		return ShipCompareOutput{}, err
 	}

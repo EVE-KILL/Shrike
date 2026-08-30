@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"maps"
 	"testing"
 	"time"
 )
@@ -363,9 +364,7 @@ func TestDetectAllKeepsSeparateFightsInOneSystem(t *testing.T) {
 	}
 
 	all := append(first, second...)
-	for id, attackers := range secondAttackers {
-		firstAttackers[id] = attackers
-	}
+	maps.Copy(firstAttackers, secondAttackers)
 	detected := DetectAll(all, firstAttackers)
 	if len(detected) != 2 {
 		t.Fatalf("detected %d battles, want both separated fights", len(detected))

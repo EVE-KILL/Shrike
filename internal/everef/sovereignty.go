@@ -393,10 +393,7 @@ func ImportSovereigntyRange(ctx context.Context, pool *pgxpool.Pool, client *Cli
 	}
 
 	// Phase two: the daily snapshots.
-	dailyFrom := from
-	if dailyFrom < sovereigntyDailyStart {
-		dailyFrom = sovereigntyDailyStart
-	}
+	dailyFrom := max(from, sovereigntyDailyStart)
 	if dailyFrom > to {
 		total.Elapsed = time.Since(start).Round(time.Millisecond).String()
 		return total, nil

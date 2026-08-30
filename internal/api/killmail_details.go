@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"slices"
 	"sort"
 	"time"
 
@@ -258,7 +259,7 @@ func buildKillmailEditorFit(
 	for typeID := range dronesByType {
 		droneIDs = append(droneIDs, typeID)
 	}
-	sort.Slice(droneIDs, func(i, j int) bool { return droneIDs[i] < droneIDs[j] })
+	slices.Sort(droneIDs)
 	drones := make([]editorFitDrone, 0, len(droneIDs))
 	for _, typeID := range droneIDs {
 		drones = append(drones, *dronesByType[typeID])

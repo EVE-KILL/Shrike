@@ -155,7 +155,7 @@ func PathPrefix(rawURL string) string {
 	}
 
 	var segments []string
-	for _, p := range strings.Split(path, "/") {
+	for p := range strings.SplitSeq(path, "/") {
 		if p == "" || versionSegment.MatchString(p) || numericSegment.MatchString(p) || hashSegment.MatchString(p) {
 			continue
 		}

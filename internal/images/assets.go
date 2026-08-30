@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -287,10 +288,8 @@ func (s *Service) loadUpstreamType(
 	}
 	return &objectstore.Object{
 		Body: body,
-		ObjectInfo: objectstore.ObjectInfo{
-			Key: key, Size: int64(len(body)), ContentType: contentType,
-			LastModified: s.now(),
-		},
+		Key:  key, Size: int64(len(body)), ContentType: contentType,
+		LastModified: s.now(),
 	}, nil
 }
 
@@ -528,10 +527,8 @@ func (s *Service) OldCharacter(
 }
 
 func validateOldCharacterSize(size int) error {
-	for _, allowed := range []int{0, 8, 16, 32, 64, 128, 256} {
-		if size == allowed {
-			return nil
-		}
+	if slices.Contains([]int{0, 8, 16, 32, 64, 128, 256}, size) {
+		return nil
 	}
 	return statusError(
 		http.StatusBadRequest,

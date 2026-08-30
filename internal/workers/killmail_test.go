@@ -231,8 +231,7 @@ func TestWorkerCancelsAKillmailWithNoHash(t *testing.T) {
 		t.Fatal("a killmail with neither a hash nor a body was accepted")
 	}
 
-	var cancel *river.JobCancelError
-	if !errors.As(err, &cancel) {
+	if _, ok := errors.AsType[*river.JobCancelError](err); !ok {
 		t.Errorf("returned %v (%T), want a JobCancel — an unanswerable request "+
 			"should not consume the retry budget", err, err)
 	}

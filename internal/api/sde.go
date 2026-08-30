@@ -700,7 +700,6 @@ func registerSDEKillRoutes(a huma.API, opts Options) {
 		{"sde-system-kills", "/sde/systems/{id}/kills", "Killmails in a solar system", "k.solar_system_id"},
 		{"sde-region-kills", "/sde/regions/{id}/kills", "Killmails in a region", "k.region_id"},
 	} {
-		spec := spec
 		registerLegacy(a, sdeIDOperation(spec.id, spec.path, spec.summary),
 			func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 				id, err := parseID(req.Param("id"))

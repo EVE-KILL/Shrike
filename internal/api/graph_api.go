@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1195,7 +1196,7 @@ func (u *graphUnion) members(id int64) []int64 {
 	for member := range u.groups[root] {
 		result = append(result, member)
 	}
-	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	slices.Sort(result)
 	return result
 }
 
@@ -1222,9 +1223,7 @@ func (u *graphUnion) components() map[int64][]int64 {
 		result[root] = append(result[root], id)
 	}
 	for root := range result {
-		sort.Slice(result[root], func(i, j int) bool {
-			return result[root][i] < result[root][j]
-		})
+		slices.Sort(result[root])
 	}
 	return result
 }

@@ -68,7 +68,7 @@ func registerMeTools(registry *Registry) error {
 		if err != nil {
 			return DossierOutput{}, err
 		}
-		return capsuleerDossier(ctx, registry.deps, DossierInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter)})
+		return capsuleerDossier(ctx, registry.deps, DossierInput{Entity: IntRef(id), Type: new(EntityCharacter)})
 	}); err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func registerMeTools(registry *Registry) error {
 		if err != nil {
 			return EntityOverviewOutput{}, err
 		}
-		return entityOverview(ctx, registry.deps, EntityOverviewInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter)})
+		return entityOverview(ctx, registry.deps, EntityOverviewInput{Entity: IntRef(id), Type: new(EntityCharacter)})
 	}); err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func registerMeTools(registry *Registry) error {
 		if err != nil {
 			return EntityKillsOutput{}, err
 		}
-		return entityKills(ctx, registry.deps, EntityKillsInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Role: input.Role, Limit: input.Limit, Before: input.Before, From: input.From, To: input.To})
+		return entityKills(ctx, registry.deps, EntityKillsInput{Entity: IntRef(id), Type: new(EntityCharacter), Role: input.Role, Limit: input.Limit, Before: input.Before, From: input.From, To: input.To})
 	}); err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func registerMeTools(registry *Registry) error {
 			return ShipsUsedOutput{}, err
 		}
 		return shipsUsed(ctx, registry.deps, ShipsUsedInput{
-			Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Ship: input.Ship,
+			Entity: IntRef(id), Type: new(EntityCharacter), Ship: input.Ship,
 			Role: input.Role, From: input.From, To: input.To, System: input.System,
 			Region: input.Region, GroupBy: input.GroupBy, Limit: input.Limit,
 		})
@@ -124,7 +124,7 @@ func registerMeTools(registry *Registry) error {
 			return KillsWithOutput{}, err
 		}
 		return killsWith(ctx, registry.deps, KillsWithInput{
-			Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Partner: input.Partner,
+			Entity: IntRef(id), Type: new(EntityCharacter), Partner: input.Partner,
 			EntityShip: input.EntityShip, PartnerShip: input.PartnerShip, VictimShip: input.VictimShip,
 			VictimEntity: input.VictimEntity, System: input.System, Region: input.Region,
 			From: input.From, To: input.To, GroupBy: input.GroupBy, Limit: input.Limit,
@@ -140,7 +140,7 @@ func registerMeTools(registry *Registry) error {
 		if err != nil {
 			return EntityTimelineOutput{}, err
 		}
-		return entityTimeline(ctx, registry.deps, EntityTimelineInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Bucket: input.Bucket, Since: input.Since, Until: input.Until, VS: input.VS})
+		return entityTimeline(ctx, registry.deps, EntityTimelineInput{Entity: IntRef(id), Type: new(EntityCharacter), Bucket: input.Bucket, Since: input.Since, Until: input.Until, VS: input.VS})
 	})
 }
 
@@ -151,7 +151,7 @@ func registerMeIntelTools(registry *Registry) error {
 			if err != nil {
 				return FliesWithOutput{}, err
 			}
-			return fliesWith(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Limit: input.Limit})
+			return fliesWith(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: new(EntityCharacter), Limit: input.Limit})
 		}); err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func registerMeIntelTools(registry *Registry) error {
 			if err != nil {
 				return HuntsInOutput{}, err
 			}
-			return huntsIn(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Limit: input.Limit})
+			return huntsIn(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: new(EntityCharacter), Limit: input.Limit})
 		}); err != nil {
 		return err
 	}
@@ -171,7 +171,7 @@ func registerMeIntelTools(registry *Registry) error {
 			if err != nil {
 				return CharacterIntelOutput{}, err
 			}
-			return huntedBy(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Limit: input.Limit})
+			return huntedBy(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: new(EntityCharacter), Limit: input.Limit})
 		}); err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func registerMeIntelTools(registry *Registry) error {
 			if err != nil {
 				return CharacterIntelOutput{}, err
 			}
-			return preysOn(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: entityTypePointer(EntityCharacter), Limit: input.Limit})
+			return preysOn(ctx, registry.deps, CharacterIntelInput{Entity: IntRef(id), Type: new(EntityCharacter), Limit: input.Limit})
 		})
 }
 
@@ -190,7 +190,7 @@ func resolveMe(ctx context.Context, deps Dependencies, name string) (int64, erro
 	if name == "" {
 		return 0, fmt.Errorf("missing me: pass your EVE character name")
 	}
-	resolved, err := resolveEntity(ctx, deps, StringRef(name), entityTypePointer(EntityCharacter))
+	resolved, err := resolveEntity(ctx, deps, StringRef(name), new(EntityCharacter))
 	if err != nil {
 		return 0, err
 	}

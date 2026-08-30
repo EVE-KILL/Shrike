@@ -6,7 +6,7 @@ import (
 	"html"
 	"net/http"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -144,7 +144,6 @@ func entityPageTypeSet(values ...string) map[string]bool {
 // application calls. Dead /top and /fits wrappers are not carried forward.
 func registerEntityPageRoutes(a huma.API, opts Options) {
 	for _, route := range entityPageRoutes {
-		route := route
 		registerLegacy(a, huma.Operation{
 			OperationID: "entity-page-" + route.Name,
 			Method:      http.MethodGet,
@@ -895,6 +894,6 @@ func sortedMapKeys(values map[int64]bool) []int64 {
 	for value := range values {
 		out = append(out, value)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	slices.Sort(out)
 	return out
 }

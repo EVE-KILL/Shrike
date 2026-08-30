@@ -19,13 +19,7 @@ func loadEntityPageIntel(
 	req *legacyRequest,
 ) (any, error) {
 	if kind == entityPageCharacter {
-		days := entityPageQueryInt(req.Query.Get("days"), 90)
-		if days < 7 {
-			days = 7
-		}
-		if days > 365 {
-			days = 365
-		}
+		days := min(max(entityPageQueryInt(req.Query.Get("days"), 90), 7), 365)
 		return loadCharacterIntel(ctx, opts, id, days)
 	}
 	if kind != entityPageCorporation && kind != entityPageAlliance {
@@ -217,7 +211,6 @@ func loadOrganizationGraphIntel(
 	results := make([][]map[string]any, len(queries))
 	group, groupCtx := errgroup.WithContext(ctx)
 	for i, query := range queries {
-		i, query := i, query
 		group.Go(func() error {
 			var err error
 			results[i], err = opts.Graph.Read(groupCtx, query.sql, query.params)

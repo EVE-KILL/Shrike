@@ -1785,10 +1785,7 @@ func loadConflictKilllist(
 	if err != nil {
 		return legacyPayload{}, err
 	}
-	totalPages := int(math.Ceil(float64(total) / float64(limit)))
-	if totalPages < 1 {
-		totalPages = 1
-	}
+	totalPages := max(int(math.Ceil(float64(total)/float64(limit))), 1)
 
 	if page >= 1 && after == nil {
 		args = append(args, limit, (page-1)*limit)

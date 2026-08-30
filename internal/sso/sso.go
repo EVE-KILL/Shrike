@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -77,12 +78,7 @@ func (t Token) Usable() []string {
 
 // Has reports whether a usable scope is present.
 func (t Token) Has(scope string) bool {
-	for _, s := range t.Usable() {
-		if s == scope {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(t.Usable(), scope)
 }
 
 // Client refreshes tokens against EVE SSO.

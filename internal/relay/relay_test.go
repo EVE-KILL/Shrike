@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -42,12 +43,7 @@ func testKillmail() *killmail.Parsed {
 }
 
 func has(keys []string, want string) bool {
-	for _, k := range keys {
-		if k == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(keys, want)
 }
 
 // Every kill carries "all", which is what an unfiltered live feed subscribes to.

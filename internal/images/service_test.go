@@ -72,9 +72,7 @@ func TestTypeUsesDirectImageExportCollectionKey(t *testing.T) {
 	store := newMemoryStore()
 	store.objects["types/648_64.png"] = &objectstore.Object{
 		Body: icon,
-		ObjectInfo: objectstore.ObjectInfo{
-			Key: "types/648_64.png", ContentType: "image/png",
-		},
+		Key:  "types/648_64.png", ContentType: "image/png",
 	}
 	service := New(Options{Store: store})
 	result, err := service.Type(
@@ -122,11 +120,9 @@ func TestOldCharacterStoresSizedWebPVariant(t *testing.T) {
 	}
 	store := newMemoryStore()
 	store.objects["oldcharacters/0/7/7_256.jpg"] = &objectstore.Object{
-		Body: source,
-		ObjectInfo: objectstore.ObjectInfo{
-			Key:         "oldcharacters/0/7/7_256.jpg",
-			ContentType: "image/jpeg",
-		},
+		Body:        source,
+		Key:         "oldcharacters/0/7/7_256.jpg",
+		ContentType: "image/jpeg",
 	}
 	service := New(Options{Store: store})
 	result, err := service.OldCharacter(
@@ -194,12 +190,10 @@ func (s *memoryStore) PutWithOptions(
 	s.puts = append(s.puts, key)
 	s.objects[key] = &objectstore.Object{
 		Body: append([]byte(nil), body...),
-		ObjectInfo: objectstore.ObjectInfo{
-			Key: key, Size: int64(len(body)), ContentType: options.ContentType,
-			CacheControl: options.CacheControl,
-			LastModified: time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC),
-			Metadata:     options.Metadata,
-		},
+		Key:  key, Size: int64(len(body)), ContentType: options.ContentType,
+		CacheControl: options.CacheControl,
+		LastModified: time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC),
+		Metadata:     options.Metadata,
 	}
 	return nil
 }
@@ -320,9 +314,7 @@ func TestCharacterDefaultPortraitUsesLegacyArchiveSource(t *testing.T) {
 	store := newMemoryStore()
 	store.objects["oldcharacters/missing_256.jpg"] = &objectstore.Object{
 		Body: legacyPortrait,
-		ObjectInfo: objectstore.ObjectInfo{
-			Key: "oldcharacters/missing_256.jpg", ContentType: "image/jpeg",
-		},
+		Key:  "oldcharacters/missing_256.jpg", ContentType: "image/jpeg",
 	}
 	service := New(Options{Store: store, UpstreamURL: upstream.URL})
 	result, err := service.Entity(
@@ -357,9 +349,7 @@ func TestStaleEntityServesAndEnqueuesRefresh(t *testing.T) {
 	store.objects[entityPointerKey(Alliance, 7)] = &objectstore.Object{Body: pointerBody}
 	store.objects[pointer.ObjectKey] = &objectstore.Object{
 		Body: body,
-		ObjectInfo: objectstore.ObjectInfo{
-			Key: pointer.ObjectKey, ContentType: "image/png",
-		},
+		Key:  pointer.ObjectKey, ContentType: "image/png",
 	}
 	refresh := &refreshRecorder{}
 	service := New(Options{

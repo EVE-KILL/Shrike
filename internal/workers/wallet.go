@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/campaign"
@@ -228,20 +229,14 @@ func (w *CorporationWalletWorker) finishWalletError(
 		return errors.Join(cause, err)
 	}
 
-	var blocked *walletSyncBlockedError
-	if errors.As(cause, &blocked) {
+	if _, ok := errors.AsType[*walletSyncBlockedError](cause); ok {
 		return nil
 	}
 	return cause
 }
 
 func hasString(values []string, wanted string) bool {
-	for _, value := range values {
-		if value == wanted {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, wanted)
 }
 
 // cronCorporationWalletSync queues the wallets that have gone stale.

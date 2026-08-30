@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -221,7 +222,7 @@ func bulkPriceCacheKey(req *legacyRequest) string {
 		url := req.Huma.URL()
 		return url.RequestURI()
 	}
-	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	slices.Sort(ids)
 	parts := make([]string, len(ids))
 	for i, id := range ids {
 		parts[i] = strconv.FormatInt(int64(id), 10)

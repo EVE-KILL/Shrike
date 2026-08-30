@@ -231,8 +231,8 @@ func hostBoardKey(raw string) *string {
 		return nil
 	}
 	const suffix = ".eve-kill.com"
-	if strings.HasSuffix(host, suffix) {
-		host = strings.TrimSuffix(host, suffix)
+	if before, ok := strings.CutSuffix(host, suffix); ok {
+		host = before
 	}
 	if !validBoardKey(host) {
 		return nil
@@ -505,15 +505,15 @@ func rewriteEVEHref(value string) string {
 		"killReport:": "/kill/",
 		"warReport:":  "/war/",
 	} {
-		if strings.HasPrefix(value, prefix) {
-			id := strings.Split(strings.TrimPrefix(value, prefix), ":")[0]
+		if after, ok := strings.CutPrefix(value, prefix); ok {
+			id, _, _ := strings.Cut(after, ":")
 			if _, err := strconv.ParseInt(id, 10, 64); err == nil {
 				return local + id
 			}
 		}
 	}
-	if strings.HasPrefix(value, "showinfo:") {
-		parts := strings.Split(strings.TrimPrefix(value, "showinfo:"), "//")
+	if after, ok := strings.CutPrefix(value, "showinfo:"); ok {
+		parts := strings.Split(after, "//")
 		typeID, err := strconv.ParseInt(parts[0], 10, 64)
 		if err != nil {
 			return ""
