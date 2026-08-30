@@ -62,8 +62,8 @@ Set either value to `0` to disable that local cache.
 The shared Valkey uses the `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, and
 `REDIS_DB` settings.
 
-Use an `allkeys-lfu` eviction policy when Valkey has a memory limit. Hot
-coordination keys then compete with response entries by access frequency.
+Use an `allkeys-lru` eviction policy when Valkey has a memory limit. Recently
+used coordination keys then compete with response entries by recency.
 
 ## Key roles
 

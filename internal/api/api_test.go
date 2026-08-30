@@ -565,6 +565,9 @@ func TestHealthPreservesEstablishedContract(t *testing.T) {
 	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Errorf("health should not emit CORS headers, got %q", got)
 	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("health Cache-Control = %q, want no-store", got)
+	}
 
 	schemaRec := httptest.NewRecorder()
 	handler.ServeHTTP(schemaRec, httptest.NewRequest(
@@ -610,6 +613,20 @@ func TestHealthIsIndependentAndReadyChecksDatabase(t *testing.T) {
 	handler.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "http://example.com/ready", nil))
 	if ready.Code < 500 {
 		t.Fatalf("ready status = %d, want dependency failure", ready.Code)
+	}
+}
+
+func TestReadyIsNotCacheable(t *testing.T) {
+	handler := Site(Options{DB: stubDatabase{}})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(
+		http.MethodGet, "http://example.com/ready", nil,
+	))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ready status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Errorf("ready Cache-Control = %q, want no-store", got)
 	}
 }
 

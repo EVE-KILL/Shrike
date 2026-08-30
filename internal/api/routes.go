@@ -90,10 +90,12 @@ func registerHealthRoute(a huma.API, opts Options) {
 		Description: "Reports that the HTTP process is alive without consulting dependencies.",
 		Tags:        []string{"health"},
 	}, func(ctx context.Context, _ *legacyRequest) (legacyPayload, error) {
-		return jsonPayload(map[string]any{
+		payload := jsonPayload(map[string]any{
 			"ok":        true,
 			"timestamp": javascriptTimestamp(time.Now()),
-		}), nil
+		})
+		payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
+		return payload, nil
 	})
 
 	registerLegacy(a, huma.Operation{
@@ -115,8 +117,10 @@ func registerHealthRoute(a huma.API, opts Options) {
 				return legacyPayload{}, err
 			}
 		}
-		return jsonPayload(map[string]any{
+		payload := jsonPayload(map[string]any{
 			"ok": true, "timestamp": javascriptTimestamp(time.Now()),
-		}), nil
+		})
+		payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
+		return payload, nil
 	})
 }

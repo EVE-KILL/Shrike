@@ -58,7 +58,7 @@ Use Postgres for River queue state.
 
 Set a memory limit for Valkey.
 
-Set the Valkey eviction policy to `allkeys-lfu`.
+Set the Valkey eviction policy to `allkeys-lru`.
 
 Set `API_CACHE_BYTES` for each `serve` replica.
 
