@@ -13,6 +13,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 	"uuid"
@@ -46,10 +47,9 @@ type Client struct {
 	// Memgraph's MERGE can race when concurrent transactions first observe the
 	// same node or relationship. Uniqueness constraints correctly reject the
 	// duplicate node at commit, but relationships cannot be constrained and may
-	// be duplicated. Shrike deliberately has one graph consumer deployment, so
-	// serializing its short write transactions gives MERGE deterministic
-	// semantics without reducing concurrency for the other River queues.
-	ingestMu sync.Mutex
+	// be duplicated. Ordered sharded locks serialize killmails that touch any of
+	// the same graph identities while unrelated killmails still run concurrently.
+	ingestMu [256]sync.Mutex
 }
 
 // nodeLabels is the complete set of node labels keyed by an external EVE id.
@@ -265,8 +265,8 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 	if c == nil || c.driver == nil {
 		return nil
 	}
-	c.ingestMu.Lock()
-	defer c.ingestMu.Unlock()
+	unlock := c.lockIngest(km)
+	defer unlock()
 
 	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx) //nolint:errcheck // best-effort close
@@ -290,6 +290,39 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 		return fmt.Errorf("ingest killmail %d: %w", km.KillmailID, err)
 	}
 	return nil
+}
+
+func (c *Client) lockIngest(km Killmail) func() {
+	shards := map[int]bool{}
+	add := func(kind uint64, id int64) {
+		if id <= 0 {
+			return
+		}
+		// Different node labels with the same EVE id are distinct identities.
+		// The multiplicative mix also avoids clustering sequential killmail ids.
+		mixed := uint64(id)*0x9e3779b97f4a7c15 ^ kind*0xbf58476d1ce4e5b9
+		shards[int(mixed%uint64(len(c.ingestMu)))] = true
+	}
+	add(1, km.KillmailID)
+	add(2, km.SolarSystemID)
+	for _, ch := range km.Characters {
+		add(3, ch.ID)
+		add(4, ch.CorporationID)
+		add(5, ch.AllianceID)
+	}
+	ordered := make([]int, 0, len(shards))
+	for shard := range shards {
+		ordered = append(ordered, shard)
+	}
+	sort.Ints(ordered)
+	for _, shard := range ordered {
+		c.ingestMu[shard].Lock()
+	}
+	return func() {
+		for i := len(ordered) - 1; i >= 0; i-- {
+			c.ingestMu[ordered[i]].Unlock()
+		}
+	}
 }
 
 type queryRunner interface {
