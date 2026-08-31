@@ -101,8 +101,8 @@ func loadCharacterIntelBatch(ctx context.Context, opts Options, requestIDs []int
 
 func rawBatchIntelQueries(ids []int32, days int) []databaseQuery {
 	return []databaseQuery{
-		databaseQuery{SQL: `SELECT character_id FROM characters WHERE character_id = ANY($1::int[])`, Args: []any{ids}},
-		databaseQuery{SQL: `
+		{SQL: `SELECT character_id FROM characters WHERE character_id = ANY($1::int[])`, Args: []any{ids}},
+		{SQL: `
 			SELECT a.character_id,
 			 count(*) FILTER (WHERE k.attacker_count=1) AS solo,
 			 count(*) FILTER (WHERE k.attacker_count BETWEEN 2 AND 5) AS small_gang,
@@ -117,12 +117,12 @@ func rawBatchIntelQueries(ids []int32, days int) []databaseQuery {
 			FROM killmail_attackers a JOIN killmails k ON k.killmail_id=a.killmail_id
 			WHERE a.character_id=ANY($1::int[]) AND a.killmail_time>now()-make_interval(days=>$2)
 			GROUP BY a.character_id`, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelShipsFlownSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelShipsLostSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelTargetsSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelAwoxSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelBaitSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelArchetypeSQL, Args: []any{ids, days}},
+		{SQL: batchIntelShipsFlownSQL, Args: []any{ids, days}},
+		{SQL: batchIntelShipsLostSQL, Args: []any{ids, days}},
+		{SQL: batchIntelTargetsSQL, Args: []any{ids, days}},
+		{SQL: batchIntelAwoxSQL, Args: []any{ids, days}},
+		{SQL: batchIntelBaitSQL, Args: []any{ids, days}},
+		{SQL: batchIntelArchetypeSQL, Args: []any{ids, days}},
 	}
 }
 

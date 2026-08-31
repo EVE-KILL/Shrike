@@ -3,7 +3,7 @@
 -- bounded day without disturbing readers of the other days.
 
 -- +goose Up
-CREATE TABLE character_intel_daily (
+CREATE TABLE IF NOT EXISTS character_intel_daily (
     character_id integer NOT NULL,
     activity_date date NOT NULL,
     appearances integer NOT NULL DEFAULT 0,
@@ -27,10 +27,10 @@ CREATE TABLE character_intel_daily (
     PRIMARY KEY (character_id, activity_date)
 );
 
-CREATE INDEX character_intel_daily_date_idx
+CREATE INDEX IF NOT EXISTS character_intel_daily_date_idx
     ON character_intel_daily (activity_date, character_id);
 
-CREATE TABLE character_intel_ship_daily (
+CREATE TABLE IF NOT EXISTS character_intel_ship_daily (
     character_id integer NOT NULL,
     activity_date date NOT NULL,
     ship_type_id integer NOT NULL,
@@ -42,10 +42,10 @@ CREATE TABLE character_intel_ship_daily (
     PRIMARY KEY (character_id, activity_date, ship_type_id)
 );
 
-CREATE INDEX character_intel_ship_daily_date_idx
+CREATE INDEX IF NOT EXISTS character_intel_ship_daily_date_idx
     ON character_intel_ship_daily (activity_date, character_id);
 
-CREATE TABLE character_intel_target_daily (
+CREATE TABLE IF NOT EXISTS character_intel_target_daily (
     character_id integer NOT NULL,
     activity_date date NOT NULL,
     alliance_id integer NOT NULL,
@@ -53,12 +53,12 @@ CREATE TABLE character_intel_target_daily (
     PRIMARY KEY (character_id, activity_date, alliance_id)
 );
 
-CREATE INDEX character_intel_target_daily_date_idx
+CREATE INDEX IF NOT EXISTS character_intel_target_daily_date_idx
     ON character_intel_target_daily (activity_date, character_id);
 
 -- A date is readable from the rollup only after all three tables were replaced
 -- successfully in the same transaction.
-CREATE TABLE character_intel_rollup_days (
+CREATE TABLE IF NOT EXISTS character_intel_rollup_days (
     activity_date date PRIMARY KEY,
     refreshed_at timestamp with time zone NOT NULL DEFAULT now()
 );

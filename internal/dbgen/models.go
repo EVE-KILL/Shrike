@@ -322,6 +322,52 @@ type CharacterCorporationHistory struct {
 	StartDate     pgtype.Timestamptz `json:"start_date"`
 }
 
+type CharacterIntelDaily struct {
+	CharacterID        int32       `json:"character_id"`
+	ActivityDate       pgtype.Date `json:"activity_date"`
+	Appearances        int32       `json:"appearances"`
+	Solo               int32       `json:"solo"`
+	SmallGang          int32       `json:"small_gang"`
+	MidGang            int32       `json:"mid_gang"`
+	Fleet              int32       `json:"fleet"`
+	Blob               int32       `json:"blob"`
+	SumAttackerCount   int64       `json:"sum_attacker_count"`
+	MonitorAppearances int32       `json:"monitor_appearances"`
+	ZeroDamageFleet    int32       `json:"zero_damage_fleet"`
+	Highsec            int32       `json:"highsec"`
+	Lowsec             int32       `json:"lowsec"`
+	Nullsec            int32       `json:"nullsec"`
+	GankAppearances    int32       `json:"gank_appearances"`
+	AwoxKills          int32       `json:"awox_kills"`
+	Losses             int32       `json:"losses"`
+	CynoLosses         int32       `json:"cyno_losses"`
+	CheapDeaths        int32       `json:"cheap_deaths"`
+	BaitedDeaths       int32       `json:"baited_deaths"`
+}
+
+type CharacterIntelRollupDay struct {
+	ActivityDate pgtype.Date        `json:"activity_date"`
+	RefreshedAt  pgtype.Timestamptz `json:"refreshed_at"`
+}
+
+type CharacterIntelShipDaily struct {
+	CharacterID      int32              `json:"character_id"`
+	ActivityDate     pgtype.Date        `json:"activity_date"`
+	ShipTypeID       int32              `json:"ship_type_id"`
+	Appearances      int32              `json:"appearances"`
+	Losses           int32              `json:"losses"`
+	LastAppearanceAt pgtype.Timestamptz `json:"last_appearance_at"`
+	LastLossID       *int32             `json:"last_loss_id"`
+	LastLossAt       pgtype.Timestamptz `json:"last_loss_at"`
+}
+
+type CharacterIntelTargetDaily struct {
+	CharacterID  int32       `json:"character_id"`
+	ActivityDate pgtype.Date `json:"activity_date"`
+	AllianceID   int32       `json:"alliance_id"`
+	Appearances  int32       `json:"appearances"`
+}
+
 type Comment struct {
 	ID               int64              `json:"id"`
 	TargetType       int16              `json:"target_type"`
