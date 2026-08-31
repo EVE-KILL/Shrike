@@ -13,10 +13,10 @@ interface Tool {
 
 const tools: Tool[] = [
     {
-        label: 'Killmail Labels',
-        href: '/labels',
+        label: 'Killmail Categories',
+        href: '/categories',
         icon: 'lucide:tags',
-        description: 'Browse killmail classifications by space, engagement, value, hull class, and technology.',
+        description: 'Browse killmail categories by space, engagement, involvement, faction warfare, value, hull class, and technology.',
     },
     {
         label: 'Advanced Search',

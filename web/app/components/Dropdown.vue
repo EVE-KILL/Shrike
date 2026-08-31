@@ -95,12 +95,12 @@ const isMega = computed(() => !!props.columns?.length)
                 class="absolute top-full mt-2 z-50 rounded-xl border border-white/[0.10] bg-[#141414]/95 backdrop-blur-2xl shadow-2xl shadow-black/60"
                 :class="[
                     align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
-                    isMega ? 'max-h-[calc(100vh-3rem)] overflow-hidden p-5' : 'max-h-[70vh] min-w-[11rem] overflow-y-auto p-1.5',
+                    isMega ? 'max-h-[calc(100vh-3rem)] p-5' : 'max-h-[70vh] min-w-[11rem] overflow-y-auto p-1.5',
                 ]"
             >
                 <!-- ===== MEGA MENU MODE ===== -->
                 <template v-if="isMega">
-                    <div v-if="featuredItems?.length" class="absolute left-5 top-5 z-10">
+                    <div v-if="featuredItems?.length" class="absolute bottom-5 right-5 z-10 hidden lg:block">
                         <NuxtLink
                             v-for="item in featuredItems"
                             :key="item.to"
@@ -114,8 +114,19 @@ const isMega = computed(() => !!props.columns?.length)
                     </div>
                     <div
                         class="grid w-[min(56rem,calc(100vw-2rem))] grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4 lg:grid-cols-6"
-                        :class="featuredItems?.length ? 'pt-14' : ''"
                     >
+                        <div v-if="featuredItems?.length" class="col-span-full border-b border-white/[0.08] pb-3 lg:hidden">
+                            <NuxtLink
+                                v-for="item in featuredItems"
+                                :key="item.to"
+                                :to="item.to"
+                                class="flex items-center gap-2 rounded-md px-2 py-1 text-xs leading-5 text-gray-400 transition-colors hover:bg-blue-500/[0.08] hover:text-blue-400"
+                                @click="close"
+                            >
+                                <Icon v-if="item.icon" :name="item.icon" class="text-sm opacity-60" />
+                                {{ item.name }}
+                            </NuxtLink>
+                        </div>
                         <div v-for="col in columns" :key="col.label" class="min-w-0">
                             <div class="px-2 pb-2 mb-1 text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 border-b border-white/[0.08]">
                                 {{ col.label }}

@@ -9,22 +9,22 @@ interface KillmailLabel {
     search_filters: Record<string, unknown>
 }
 
-interface LabelsResponse {
+interface CategoriesResponse {
     labels: KillmailLabel[]
 }
 
-useHead({ title: 'Killmail Labels' })
+useHead({ title: 'Killmail Categories' })
 useSeoMeta({
-    description: 'Explore the classifications EVE-KILL applies to EVE Online killmails, with historical counts and direct search links.',
-    ogTitle: 'Killmail Labels — EVE-KILL',
-    ogDescription: 'Browse EVE Online killmail classifications by space, engagement, value, hull class, and technology.',
+    description: 'Browse the categories EVE-KILL applies to EVE Online killmails, with historical counts and direct search links.',
+    ogTitle: 'Killmail Categories — EVE-KILL',
+    ogDescription: 'Explore EVE Online killmail categories by space, engagement, involvement, faction warfare, value, hull class, and technology.',
 })
 
-const { data, pending, error } = await useApiFetch<LabelsResponse>('/api/labels')
+const { data, pending, error } = await useApiFetch<CategoriesResponse>('/api/labels')
 const query = ref('')
 
 const categoryOrder = [
-    'Space', 'Timezone', 'Engagement', 'Killmail Type', 'Value', 'Value Bands',
+    'Space', 'Timezone', 'Engagement', 'Killmail Type', 'Involvement', 'Faction Warfare', 'Value', 'Value Bands',
     'Victim Category', 'Victim Hull', 'Technology',
 ]
 
@@ -71,13 +71,13 @@ const formatCount = (count: number) => new Intl.NumberFormat('en-US').format(cou
                     <Icon name="lucide:tags" class="text-xl text-blue-400" />
                 </span>
                 <div>
-                    <h1 class="text-2xl font-bold text-white">Killmail Labels</h1>
-                    <p class="text-sm text-gray-500">The authoritative classifications used by EVE-KILL.</p>
+                    <h1 class="text-2xl font-bold text-white">Killmail Categories</h1>
+                    <p class="text-sm text-gray-500">Every way to explore combat across New Eden.</p>
                 </div>
             </div>
             <p class="text-sm text-gray-400 max-w-3xl">
-                Labels overlap by design: a solo titan loss worth ten billion ISK in nullsec belongs to several
-                classifications. Counts cover the complete indexed killmail history.
+                Categories overlap by design: a solo titan loss worth ten billion ISK in nullsec belongs in several
+                places. Browse a category directly or carry it into Advanced Search. Counts cover the complete indexed killmail history.
             </p>
         </header>
 
@@ -86,7 +86,7 @@ const formatCount = (count: number) => new Intl.NumberFormat('en-US').format(cou
             <input
                 v-model="query"
                 type="search"
-                placeholder="Filter labels..."
+                placeholder="Filter categories..."
                 class="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] py-2.5 pl-9 pr-3 text-sm text-gray-200 placeholder:text-gray-600 focus:border-blue-500/40 focus:outline-none"
             />
         </div>
@@ -95,16 +95,16 @@ const formatCount = (count: number) => new Intl.NumberFormat('en-US').format(cou
             Loading classifications...
         </div>
         <div v-else-if="error" class="glass-panel p-8 text-center text-sm text-red-400">
-            Unable to load killmail labels.
+            Unable to load killmail categories.
         </div>
         <div v-else-if="groups.length === 0" class="glass-panel p-8 text-center text-sm text-gray-500">
-            No labels match “{{ query }}”.
+            No categories match “{{ query }}”.
         </div>
         <div v-else class="space-y-7">
             <section v-for="group in groups" :key="group.category">
                 <div class="flex items-baseline gap-2 mb-3">
                     <h2 class="text-sm font-bold uppercase tracking-[0.14em] text-gray-300">{{ group.category }}</h2>
-                    <span class="text-fine text-gray-600">{{ group.labels.length }} labels</span>
+                    <span class="text-fine text-gray-600">{{ group.labels.length }} categories</span>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                     <article
