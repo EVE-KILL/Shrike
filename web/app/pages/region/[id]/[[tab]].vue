@@ -92,6 +92,7 @@ const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: 'lucide:layout-dashboard' },
     { id: 'kills', label: 'Kills', icon: 'lucide:skull' },
     { id: 'battles', label: 'Battles', icon: 'lucide:swords' },
+    { id: 'map', label: 'Map', icon: 'lucide:map' },
 ] as const
 
 type TabId = typeof tabs[number]['id']
@@ -122,6 +123,10 @@ useHead({ title: computed(() => {
 const setTab = (tabId: string) => {
     if (!tabIds.has(tabId as TabId)) return
     useAnalytics().track('tab.change', { entity: 'region', tab: tabId })
+    if (tabId === 'map') {
+        navigateTo(`/map/region/${id}`)
+        return
+    }
     navigateTo(tabId === 'dashboard' ? `/region/${id}` : `/region/${id}/${tabId}`)
 }
 
