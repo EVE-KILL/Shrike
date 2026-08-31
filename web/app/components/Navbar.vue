@@ -52,12 +52,17 @@ const toDropdownColumns = (link: NavbarLink): DropdownColumn[] | undefined => {
     if (!link.children?.length) return undefined
     // Multiple groups with labels = mega menu columns
     if (link.children.length > 1 || link.children[0]?.label) {
-        return link.children.map(g => ({
+        return link.children.filter(g => g.label !== 'Explore').map(g => ({
             label: g.label || '',
             items: g.items.map(i => ({ name: i.label, to: i.href, icon: i.icon })),
         }))
     }
     return undefined
+}
+
+const toDropdownFeaturedItems = (link: NavbarLink): DropdownItem[] | undefined => {
+    const featured = link.children?.find(g => g.label === 'Explore')
+    return featured?.items.map(i => ({ name: i.label, to: i.href, icon: i.icon }))
 }
 
 const toDropdownItems = (link: NavbarLink): DropdownItem[] | undefined => {
@@ -269,6 +274,7 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                         v-if="hasChildren(item)"
                         v-model="dropdownStates[idx]"
                         :columns="toDropdownColumns(item)"
+                        :featured-items="toDropdownFeaturedItems(item)"
                         :items="toDropdownItems(item)"
                     >
                         <template #trigger>

@@ -22,6 +22,8 @@ const props = defineProps<{
      * Each group has a label and items.
      */
     columns?: DropdownColumn[]
+    /** Prominent links rendered above a mega menu's column grid. */
+    featuredItems?: DropdownItem[]
     /**
      * Simple list mode: pass a flat array of items.
      * Ignored if columns is provided.
@@ -90,16 +92,31 @@ const isMega = computed(() => !!props.columns?.length)
         >
             <div
                 v-if="isOpen"
-                class="absolute top-full mt-2 z-50 rounded-xl border border-white/[0.10] bg-[#141414]/95 backdrop-blur-2xl shadow-2xl shadow-black/60 overflow-y-auto max-h-[70vh]"
+                class="absolute top-full mt-2 z-50 rounded-xl border border-white/[0.10] bg-[#141414]/95 backdrop-blur-2xl shadow-2xl shadow-black/60"
                 :class="[
                     align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left',
-                    isMega ? 'p-5' : 'p-1.5 min-w-[11rem]',
+                    isMega ? 'max-h-[calc(100vh-3rem)] overflow-hidden p-5' : 'max-h-[70vh] min-w-[11rem] overflow-y-auto p-1.5',
                 ]"
             >
                 <!-- ===== MEGA MENU MODE ===== -->
                 <template v-if="isMega">
-                    <div class="flex gap-6">
-                        <div v-for="col in columns" :key="col.label" class="min-w-[8.5rem]">
+                    <div v-if="featuredItems?.length" class="absolute left-5 top-5 z-10">
+                        <NuxtLink
+                            v-for="item in featuredItems"
+                            :key="item.to"
+                            :to="item.to"
+                            class="inline-flex items-center gap-2 rounded-md border border-blue-400/20 bg-blue-500/[0.08] px-3 py-2 text-xs font-semibold text-blue-300 transition-colors hover:border-blue-400/40 hover:bg-blue-500/[0.14] hover:text-blue-200"
+                            @click="close"
+                        >
+                            <Icon v-if="item.icon" :name="item.icon" class="text-sm" />
+                            {{ item.name }}
+                        </NuxtLink>
+                    </div>
+                    <div
+                        class="grid w-[min(56rem,calc(100vw-2rem))] grid-cols-3 gap-x-4 gap-y-5 sm:grid-cols-4 lg:grid-cols-6"
+                        :class="featuredItems?.length ? 'pt-14' : ''"
+                    >
+                        <div v-for="col in columns" :key="col.label" class="min-w-0">
                             <div class="px-2 pb-2 mb-1 text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 border-b border-white/[0.08]">
                                 {{ col.label }}
                             </div>
@@ -108,7 +125,7 @@ const isMega = computed(() => !!props.columns?.length)
                                     v-for="item in col.items"
                                     :key="item.to"
                                     :to="item.to"
-                                    class="block px-2 py-1.5 rounded-md text-xs text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.08] transition-colors"
+                                    class="block px-2 py-1 rounded-md text-xs leading-5 text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.08] transition-colors"
                                     @click="close"
                                 >
                                     {{ item.name }}

@@ -24,7 +24,7 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
             {
                 label: 'Explore',
                 items: [
-                    { label: 'All Labels', href: '/labels' },
+                    { label: 'Labels', href: '/labels', icon: 'lucide:tags' },
                 ],
             },
             {
