@@ -23,9 +23,16 @@ describe('EVE image URLs', () => {
         )
     })
 
-    test('does not request unsupported map sizes', () => {
+    test('uses the next generated map size for responsive images', () => {
         expect(eveImageSrcset('/images/systems/30000142', 128)).toBe(
-            '/images/systems/30000142?size=128',
+            '/images/systems/30000142?size=128 1x, ' +
+            '/images/systems/30000142?size=512 2x',
+        )
+    })
+
+    test('supports full-size generated maps', () => {
+        expect(eveImageURL('/images/regions/10000042', { size: 1024 })).toBe(
+            '/images/regions/10000042?size=1024',
         )
     })
 

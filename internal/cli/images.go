@@ -311,9 +311,9 @@ func init() {
 	)
 	imagesGenerateMapsCmd.Flags().StringVarP(&flagMapKind, "type", "t", "all", "system, constellation, region, or all")
 	imagesGenerateMapsCmd.Flags().Int64VarP(&flagMapID, "id", "i", 0, "Generate one ID (requires a single type)")
-	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapSize, "size", "s", 128, "Base image size in pixels")
+	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapSize, "size", "s", 1024, "Base image size in pixels")
 	imagesGenerateMapsCmd.Flags().IntVar(&flagMapSmallSize, "small", 32, "Also generate this smaller size (0 disables)")
-	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapConcurrency, "concurrency", "c", 16, "Parallel render workers")
+	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapConcurrency, "concurrency", "c", 1, "Parallel render workers")
 	imagesCmd.AddCommand(
 		imagesImportStaticCmd,
 		imagesImportOldCharactersCmd,

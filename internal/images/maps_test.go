@@ -24,6 +24,18 @@ func TestMapObjectKey(t *testing.T) {
 		t.Fatalf("key = %q", got)
 	}
 }
+
+func TestMapImageSizes(t *testing.T) {
+	for _, size := range []int{32, 64, 128, 512, 1024} {
+		if err := validateSize(size, true); err != nil {
+			t.Fatalf("size %d: %v", size, err)
+		}
+	}
+	if err := validateSize(256, true); err == nil {
+		t.Fatal("expected unsupported 256px map size to fail")
+	}
+}
+
 func TestPastelStable(t *testing.T) {
 	if got, want := pastelRGBA(30000142), pastelRGBA(30000142); got != want {
 		t.Fatalf("colors differ")

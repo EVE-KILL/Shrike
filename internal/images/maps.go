@@ -56,7 +56,7 @@ func GenerateMapImages(ctx context.Context, db MapDatabase, store ObjectStore, o
 		return ImportResult{}, unavailable()
 	}
 	if options.Size == 0 {
-		options.Size = 128
+		options.Size = 1024
 	}
 	if options.Size < 16 || options.Size > 4096 {
 		return ImportResult{}, fmt.Errorf("map image size must be between 16 and 4096")
@@ -65,7 +65,7 @@ func GenerateMapImages(ctx context.Context, db MapDatabase, store ObjectStore, o
 		return ImportResult{}, fmt.Errorf("small map image size must be positive and smaller than the base size")
 	}
 	if options.Concurrency <= 0 {
-		options.Concurrency = 16
+		options.Concurrency = 1
 	}
 	kinds := []MapKind{options.Kind}
 	if options.Kind == "" {

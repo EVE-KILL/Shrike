@@ -46,8 +46,10 @@ shrike images sync-types
 shrike images import-old-characters
 ```
 
-`generate-maps` produces systems, constellations, and regions directly from
-the imported SDE tables. `import-static` installs the UI, Dust 514, and overlay
+`generate-maps` produces 1024px systems, constellations, and regions directly
+from the imported SDE tables, one image at a time by default. The image service
+derives the supported smaller variants from those originals. `import-static`
+installs the UI, Dust 514, and overlay
 assets bundled into Shrike itself. TurtleTools
 and legacy portrait imports download their upstream archives themselves.
 
