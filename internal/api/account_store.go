@@ -17,6 +17,61 @@ type postgresAccountStore struct {
 	db MutationDatabase
 }
 
+const accountOverviewQuery = `
+		SELECT
+			u.last_login,
+			u.created_at,
+			(
+				SELECT count(*)
+				FROM esi_request_logs l
+				WHERE l.character_id = u.character_id
+			),
+			(
+				SELECT count(*)
+				FROM esi_request_logs l
+				WHERE l.character_id = u.character_id
+				  AND l.success IS FALSE
+				  AND (l.status_code IS NULL OR l.status_code <> 304)
+			),
+			(
+				SELECT coalesce(sum(l.new_items), 0)
+				FROM esi_request_logs l
+				WHERE l.character_id = u.character_id
+			),
+			(
+				SELECT max(l.created_at)
+				FROM esi_request_logs l
+				WHERE l.character_id = u.character_id
+			),
+			(
+				SELECT count(*)
+				FROM esi_request_logs l
+				WHERE l.character_id = u.character_id
+				  AND l.created_at >= $2::timestamptz - interval '24 hours'
+			),
+			(
+				SELECT count(*)
+				FROM esi_request_logs l
+				WHERE l.character_id = u.character_id
+				  AND l.success IS FALSE
+				  AND (l.status_code IS NULL OR l.status_code <> 304)
+				  AND l.created_at >= $2::timestamptz - interval '24 hours'
+			),
+			(
+				SELECT coalesce(sum(l.new_items), 0)
+				FROM esi_request_logs l
+				WHERE l.character_id = u.character_id
+				  AND l.created_at >= $2::timestamptz - interval '24 hours'
+			),
+			cardinality(t.scopes),
+			t.token_expiry,
+			t.last_fetched
+		FROM users u
+		LEFT JOIN user_esi_tokens t
+		  ON t.character_id = u.character_id
+		WHERE u.character_id = $1
+		LIMIT 1`
+
 func (s *postgresAccountStore) LoadPreferences(
 	ctx context.Context,
 	characterID int32,
@@ -164,60 +219,7 @@ func (s *postgresAccountStore) LoadOverview(
 ) (accountOverview, error) {
 	var result accountOverview
 	var scopeCount *int32
-	err := s.db.QueryRow(ctx, `
-		SELECT
-			u.last_login,
-			u.created_at,
-			(
-				SELECT count(*)
-				FROM esi_request_logs l
-				WHERE l.character_id = u.character_id
-			),
-			(
-				SELECT count(*)
-				FROM esi_request_logs l
-				WHERE l.character_id = u.character_id
-				  AND l.success IS FALSE
-				  AND (l.status_code IS NULL OR l.status_code <> 304)
-			),
-			(
-				SELECT coalesce(sum(l.new_items), 0)
-				FROM esi_request_logs l
-				WHERE l.character_id = u.character_id
-			),
-			(
-				SELECT max(l.created_at)
-				FROM esi_request_logs l
-				WHERE l.character_id = u.character_id
-			),
-			(
-				SELECT count(*)
-				FROM esi_request_logs l
-				WHERE l.character_id = u.character_id
-				  AND l.created_at >= $2 - interval '24 hours'
-			),
-			(
-				SELECT count(*)
-				FROM esi_request_logs l
-				WHERE l.character_id = u.character_id
-				  AND l.success IS FALSE
-				  AND (l.status_code IS NULL OR l.status_code <> 304)
-				  AND l.created_at >= $2 - interval '24 hours'
-			),
-			(
-				SELECT coalesce(sum(l.new_items), 0)
-				FROM esi_request_logs l
-				WHERE l.character_id = u.character_id
-				  AND l.created_at >= $2 - interval '24 hours'
-			),
-			cardinality(t.scopes),
-			t.token_expiry,
-			t.last_fetched
-		FROM users u
-		LEFT JOIN user_esi_tokens t
-		  ON t.character_id = u.character_id
-		WHERE u.character_id = $1
-		LIMIT 1`,
+	err := s.db.QueryRow(ctx, accountOverviewQuery,
 		characterID, now,
 	).Scan(
 		&result.LastLogin,
