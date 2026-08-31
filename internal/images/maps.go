@@ -112,13 +112,21 @@ func GenerateMapImages(ctx context.Context, db MapDatabase, store ObjectStore, o
 					if options.Started != nil {
 						options.Started(kind, id, startIndex, int64(len(ids)))
 					}
-					base, err := renderMapPNG(groupCtx, db, kind, id, options.Size)
+					baseImage, err := renderMap(groupCtx, db, kind, id, options.Size)
 					if err != nil {
 						return fmt.Errorf("render %s %d: %w", kind, id, err)
 					}
+					base, err := encodeMap(baseImage)
+					if err != nil {
+						return fmt.Errorf("encode %s %d: %w", kind, id, err)
+					}
 					objects := []importObject{{Key: mapObjectKey(kind, id, 0), Body: base, ContentType: "image/png"}}
 					for _, size := range options.Sizes {
-						objects = append(objects, importObject{Key: mapObjectKey(kind, id, size), Body: resizePNG(base, size), ContentType: "image/png"})
+						body, err := encodeMap(resizeMap(baseImage, size))
+						if err != nil {
+							return fmt.Errorf("encode %s %d at %dpx: %w", kind, id, size, err)
+						}
+						objects = append(objects, importObject{Key: mapObjectKey(kind, id, size), Body: body, ContentType: "image/png"})
 					}
 					for _, object := range objects {
 						changed, err := putIfChanged(groupCtx, store, object)
@@ -195,13 +203,13 @@ func mapIDs(ctx context.Context, db MapDatabase, kind MapKind, only int64) ([]in
 	return ids, rows.Err()
 }
 
-func renderMapPNG(ctx context.Context, db MapDatabase, kind MapKind, id int64, size int) ([]byte, error) {
+func renderMap(ctx context.Context, db MapDatabase, kind MapKind, id int64, size int) (image.Image, error) {
 	if kind == MapSystem {
 		points, err := loadSystemBodies(ctx, db, id)
 		if err != nil {
 			return nil, err
 		}
-		return encodeMap(renderSystem(points, size))
+		return renderSystem(points, size), nil
 	}
 	points, jumps, err := loadNetwork(ctx, db, kind, id)
 	if err != nil {
@@ -210,7 +218,7 @@ func renderMapPNG(ctx context.Context, db MapDatabase, kind MapKind, id int64, s
 	if len(points) == 0 {
 		return nil, fmt.Errorf("no systems found")
 	}
-	return encodeMap(renderNetwork(kind, points, jumps, size))
+	return renderNetwork(kind, points, jumps, size), nil
 }
 
 func loadSystemBodies(ctx context.Context, db MapDatabase, id int64) ([]mapPoint, error) {
@@ -538,7 +546,7 @@ type mapCanvas struct {
 }
 
 func newCanvas(size int) *mapCanvas {
-	scale := 4
+	scale := 2
 	return &mapCanvas{size: size, scale: scale, img: image.NewRGBA(image.Rect(0, 0, size*scale, size*scale))}
 }
 func (c *mapCanvas) disk(x, y, r float64, fill color.RGBA) { c.shapeCircle(x, y, r, fill, true, 0) }
@@ -607,14 +615,8 @@ func encodeMap(img image.Image) ([]byte, error) {
 	err := png.Encode(&out, img)
 	return out.Bytes(), err
 }
-func resizePNG(body []byte, size int) []byte {
-	src, err := png.Decode(bytes.NewReader(body))
-	if err != nil {
-		return nil
-	}
+func resizeMap(src image.Image, size int) image.Image {
 	dst := image.NewRGBA(image.Rect(0, 0, size, size))
 	xdraw.CatmullRom.Scale(dst, dst.Bounds(), src, src.Bounds(), xdraw.Over, nil)
-	var out bytes.Buffer
-	_ = png.Encode(&out, dst)
-	return out.Bytes()
+	return dst
 }

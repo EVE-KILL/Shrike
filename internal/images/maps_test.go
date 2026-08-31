@@ -2,6 +2,8 @@ package images
 
 import (
 	"bytes"
+	"image"
+	"image/color"
 	"image/png"
 	"testing"
 )
@@ -49,6 +51,19 @@ func TestMapImageSizes(t *testing.T) {
 		if err := validateSize(size, true); err != nil {
 			t.Fatalf("size %d: %v", size, err)
 		}
+	}
+}
+
+func TestResizeMapUsesRenderedImageDirectly(t *testing.T) {
+	source := image.NewRGBA(image.Rect(0, 0, 1024, 1024))
+	source.SetRGBA(512, 512, color.RGBA{R: 255, A: 255})
+
+	resized := resizeMap(source, 256)
+	if got := resized.Bounds(); got.Dx() != 256 || got.Dy() != 256 {
+		t.Fatalf("bounds = %v", got)
+	}
+	if _, _, _, alpha := resized.At(0, 0).RGBA(); alpha != 0 {
+		t.Fatalf("transparent background became opaque: alpha = %d", alpha)
 	}
 }
 
