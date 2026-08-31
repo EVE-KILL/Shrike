@@ -13,6 +13,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 	"uuid"
 
@@ -41,6 +42,14 @@ const purgeBatchesPerEdgeType = 50
 // Client wraps a Memgraph connection.
 type Client struct {
 	driver neo4j.DriverWithContext
+
+	// Memgraph's MERGE can race when concurrent transactions first observe the
+	// same node or relationship. Uniqueness constraints correctly reject the
+	// duplicate node at commit, but relationships cannot be constrained and may
+	// be duplicated. Shrike deliberately has one graph consumer deployment, so
+	// serializing its short write transactions gives MERGE deterministic
+	// semantics without reducing concurrency for the other River queues.
+	ingestMu sync.Mutex
 }
 
 // nodeLabels is the complete set of node labels keyed by an external EVE id.
@@ -256,6 +265,8 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 	if c == nil || c.driver == nil {
 		return nil
 	}
+	c.ingestMu.Lock()
+	defer c.ingestMu.Unlock()
 
 	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx) //nolint:errcheck // best-effort close

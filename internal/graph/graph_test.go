@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -11,6 +12,69 @@ func TestISOTimestampMatchesJavaScriptShape(t *testing.T) {
 	got := isoTimestamp(time.Date(2026, 7, 26, 12, 34, 56, 789_999_999, time.FixedZone("offset", 2*60*60)))
 	if got != "2026-07-26T10:34:56.789Z" {
 		t.Fatalf("isoTimestamp() = %q, want JavaScript Date.toISOString shape", got)
+	}
+}
+
+func TestConcurrentIngestDoesNotRaceMERGE(t *testing.T) {
+	url := os.Getenv("TEST_MEMGRAPH_URL")
+	if url == "" {
+		t.Skip("TEST_MEMGRAPH_URL is not set")
+	}
+	ctx := context.Background()
+	client, err := Connect(ctx, url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = client.Clear(ctx)
+		_ = client.Close(ctx)
+	})
+	if err := client.Clear(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.EnsureSchema(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	const jobs = 20
+	start := make(chan struct{})
+	errs := make(chan error, jobs)
+	var wg sync.WaitGroup
+	for i := 0; i < jobs; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			errs <- client.Ingest(ctx, Killmail{
+				KillmailID:   int64(10_000 + i),
+				KillmailTime: time.Date(2026, 8, 30, 12, 0, i, 0, time.UTC),
+				Characters: []Character{
+					{ID: 10, CorporationID: 100, AllianceID: 1000},
+					{ID: 20, CorporationID: 200, AllianceID: 2000},
+				},
+				FlewWith: []FlewWithEdge{{Lo: 10, Hi: 20}},
+			})
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	rows, err := client.Read(ctx, `
+		MATCH (a:Character {id: 10})-[r:FLEW_WITH]->(b:Character {id: 20})
+		RETURN count(a) AS characters, count(r) AS relationships,
+		       max(r.weight) AS weight`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0]["characters"] != int64(1) ||
+		rows[0]["relationships"] != int64(1) || rows[0]["weight"] != int64(jobs) {
+		t.Fatalf("concurrent merge result = %#v, want one pair, one edge, weight %d", rows, jobs)
 	}
 }
 
