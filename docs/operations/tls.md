@@ -31,7 +31,16 @@ Cloudflare enables HTTP/2 origin connections by default.
    go run ./cmd/shrike serve
    ```
 
-2. Approve the trust-store request when the operating system shows it.
+2. When using `make dev` on macOS, install the generated authority from a
+   separate foreground terminal:
+
+   ```sh
+   make dev-trust
+   ```
+
+   This command invokes `sudo` directly, so the password prompt remains attached
+   to the terminal. The embedded Caddy process does not attempt to read a
+   password through Air.
 
 3. Open `https://localhost:4001`.
 
@@ -64,8 +73,7 @@ Caddy stores the local certificate authority under
 
 Read the Caddy startup error when the browser rejects the certificate.
 
-Approve the trust-store request if Caddy could not install the local root
-certificate.
+Run `make dev-trust` if the local root certificate is not trusted on macOS.
 
 Do not commit or copy `${DATA_DIR}/caddy`. This directory contains private keys.
 

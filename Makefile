@@ -52,14 +52,33 @@ run:
 # uses, so a socket would resolve shrike.internal through DNS and fail. The
 # listener is loopback-only and serves the same handler.
 DEV_PORT     ?= 4001
-DEV_NUXT_PORT?= 3000
 DEV_API_PORT ?= 4002
+DATA_DIR     ?= data
+
+# Nuxt silently moves to another port when its requested port is occupied, but
+# Shrike cannot discover that choice and would keep proxying to the old port.
+# Resolve the first free development port ourselves so both processes receive
+# the same value. An explicit DEV_NUXT_PORT still wins.
+ifndef DEV_NUXT_PORT
+DEV_NUXT_PORT := $(shell \
+	port=3000; \
+	while [ $$port -le 3009 ]; do \
+		if ! lsof -nP -iTCP:$$port -sTCP:LISTEN -t 2>/dev/null | grep -q .; then \
+			echo $$port; \
+			break; \
+		fi; \
+		port=$$((port + 1)); \
+	done)
+endif
 
 .PHONY: dev
 dev:
 	@command -v air >/dev/null || { \
 		echo "air is required: go install github.com/air-verse/air@latest" >&2; exit 1; }
 	@command -v bun >/dev/null || { echo "bun is required" >&2; exit 1; }
+	@command -v lsof >/dev/null || { echo "lsof is required" >&2; exit 1; }
+	@test -n "$(DEV_NUXT_PORT)" || { \
+		echo "no free Nuxt port found in 3000-3009; set DEV_NUXT_PORT explicitly" >&2; exit 1; }
 	@echo "dev: https://localhost:$(DEV_PORT)  (nuxt :$(DEV_NUXT_PORT), ssr api :$(DEV_API_PORT))"
 	@NUXT_API_ORIGIN=http://127.0.0.1:$(DEV_API_PORT) \
 	NUXT_DEV_PROXY_PORT=$(DEV_PORT) \
@@ -70,6 +89,20 @@ dev:
 	SHRIKE_DEV_RENDERER=127.0.0.1:$(DEV_NUXT_PORT) \
 	SHRIKE_DEV_API_ADDR=127.0.0.1:$(DEV_API_PORT) \
 	PORT=$(DEV_PORT) air
+
+.PHONY: dev-trust
+dev-trust:
+	@case "$$(uname -s)" in \
+		Darwin) ;; \
+		*) echo "dev-trust currently supports macOS only" >&2; exit 1 ;; \
+	esac
+	@cert_path="$(DATA_DIR)/caddy/pki/authorities/local/root.crt"; \
+	case "$$cert_path" in /*) ;; *) cert_path="$(CURDIR)/$$cert_path" ;; esac; \
+	test -f "$$cert_path" || { \
+		echo "local CA not found; start make dev once to generate it" >&2; exit 1; }; \
+	echo "Installing Shrike's local development CA into the macOS system keychain."; \
+	sudo security add-trusted-cert -d -r trustRoot \
+		-k /Library/Keychains/System.keychain "$$cert_path"
 
 .PHONY: test
 test:

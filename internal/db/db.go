@@ -24,7 +24,10 @@ import (
 const (
 	defaultMaxConns = 10
 	defaultMinConns = 2
-	connectTimeout  = 10 * time.Second
+	// A cold pool opens its minimum connections through PgBouncer over
+	// Tailscale. That can take longer than ten seconds even when a direct
+	// connection is healthy, so startup needs to tolerate the full cold path.
+	connectTimeout = 30 * time.Second
 )
 
 // New opens a pool and verifies it can actually serve a query. It returns only

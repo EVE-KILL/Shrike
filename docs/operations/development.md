@@ -12,11 +12,14 @@ reloading independently.
 
 ## Procedure
 
-1. Run `make dev`.
-2. Open `https://localhost:4001`.
+1. Run `make dev`. The first run generates the local certificate authority.
+2. In another terminal, run `make dev-trust` once on macOS. Enter the password
+   in this foreground command; Caddy deliberately does not invoke `sudo` from
+   inside Air.
+3. Open `https://localhost:4001`.
 
-Accept the local certificate on the first run. Caddy issues it from its
-internal certificate authority.
+Caddy issues the certificate from its internal certificate authority. If
+`DATA_DIR` is overridden, pass the same value to `make dev-trust`.
 
 ## What runs
 
@@ -25,7 +28,7 @@ internal certificate authority.
 | Process | Port | Role |
 | --- | --- | --- |
 | `air` → `shrike dev` | 4001 | Caddy, the API, and the private API on 4002 |
-| `nuxt dev` | 3000 | The frontend, with hot module replacement |
+| `nuxt dev` | 3000–3009 | The frontend, with hot module replacement |
 
 Caddy answers `/health`, `/api`, `/auth`, `/images`, and `/ws`. It proxies
 every other path to `nuxt dev`.
@@ -96,6 +99,11 @@ Production carries the browser host to Go in the `Host` header. The Node
 `X-Forwarded-Host` as well, and the private API adopts it as the request host.
 The public listener still ignores the header, so no client can claim another
 board.
+
+`make dev` selects the first free Nuxt port from 3000 through 3009 and passes
+that exact port to both Nuxt and Shrike. This prevents Nuxt's automatic port
+fallback from leaving Shrike pointed at another process. Set `DEV_NUXT_PORT`
+explicitly to override the selection.
 
 `web/nuxt.config.ts` applies the Bun socket entry under `$production`. A
 top-level `entry` also replaces the entry that `nuxt dev` needs, which stops

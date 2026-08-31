@@ -333,12 +333,17 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 		localHTTPS := !cfg.IsProduction()
 
 		if err := manager.Start(ctx, ingress.Config{
-			Address:     fmt.Sprintf(":%d", port),
-			DataDir:     cfg.DataDir,
-			LogLevel:    cfg.LogLevel,
-			LocalHTTPS:  localHTTPS,
-			NuxtSocket:  nuxtSocket,
-			NuxtAddress: mode.DevRenderer,
+			Address:    fmt.Sprintf(":%d", port),
+			DataDir:    cfg.DataDir,
+			LogLevel:   cfg.LogLevel,
+			LocalHTTPS: localHTTPS,
+			// Air does not provide a usable terminal to the embedded Caddy
+			// process: sudo's password prompt is echoed instead of consumed.
+			// Development trust installation is therefore an explicit,
+			// foreground `make dev-trust` step.
+			SkipLocalTrustInstall: mode.Name == "dev",
+			NuxtSocket:            nuxtSocket,
+			NuxtAddress:           mode.DevRenderer,
 		}); err != nil {
 			return fmt.Errorf("starting embedded Caddy ingress: %w", err)
 		}
