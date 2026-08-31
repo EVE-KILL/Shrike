@@ -132,7 +132,7 @@ var Queues = []Queue{
 	{
 		Name:        "graph_ingest",
 		Description: "Ingest killmail relationships into Memgraph",
-		Concurrency: 3, Retries: 2, BackoffDelay: 2000,
+		Concurrency: 12, Retries: 2, BackoffDelay: 2000,
 	},
 	{
 		Name:        "killmails",
