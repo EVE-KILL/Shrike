@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	redditBackgroundFeedURL = "https://old.reddit.com/r/eveporn/hot/.rss?limit=100"
+	redditBackgroundFeedURL = "https://www.reddit.com/r/eveporn/hot/.rss?limit=100"
 	redditBackgroundMaxBody = 10 << 20
 )
 
