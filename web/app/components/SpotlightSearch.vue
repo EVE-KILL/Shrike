@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { eveTools } from '#shared/utils/eveTools'
+
 const { isOpen: isOpenReadonly, closeSearch, openSearch } = useSpotlightSearch()
 const { track } = useAnalytics()
 
@@ -79,22 +81,6 @@ const quickActions = [
     { name: 'Map', to: '/map', icon: 'lucide:map' },
     { name: 'Wars', to: '/wars', icon: 'lucide:flag' },
     { name: 'Advanced Search', to: '/advancedsearch', icon: 'lucide:search' },
-]
-
-const eveTools = [
-    { name: 'DOTLAN', url: 'https://evemaps.dotlan.net/', icon: '/remotes/dotlan.png' },
-    { name: 'EVEEye', url: 'https://eveeye.com/', icon: '/remotes/eveeye.svg' },
-    { name: 'Missioneer', url: 'https://evemissioneer.com/', icon: '/remotes/evemissioneer.png' },
-    { name: 'EveShip.fit', url: 'https://eveship.fit/', icon: '/remotes/eveship-fit.png' },
-    { name: 'EVERef', url: 'https://everef.net/', icon: '/remotes/everef.png' },
-    { name: 'Jita.Space', url: 'https://jita.space/', icon: '/remotes/jita-space.png' },
-    { name: 'EVEWho', url: 'https://evewho.com/', icon: '/remotes/evewho.png' },
-    { name: 'zKillboard', url: 'https://zkillboard.com/', icon: '/remotes/zkillboard.png' },
-    { name: 'Socket.Kill', url: 'https://socketkill.com/', icon: '/remotes/socketkill.png' },
-    { name: 'RIFT Intel Fusion', url: 'https://riftforeve.online/', icon: '/images/rift-intel-fusion-tool-256.png' },
-    { name: 'Eve Monthly', url: 'https://www.evemonthly.com/', icon: '/remotes/evemonthly.svg' },
-    { name: 'EVE LKM', url: 'https://eve-lkm.capsuleer.life/', icon: '/remotes/eve-lkm.png' },
-    { name: 'Evetools.org', url: 'https://br.evetools.org/', icon: '/remotes/evetools.png' },
 ]
 
 // Search

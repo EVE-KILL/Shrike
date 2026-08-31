@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SearchHit } from './SpotlightSearch.vue'
+import type { EveTool } from '#shared/utils/eveTools'
 
 const props = defineProps<{
     searchQuery: string
@@ -8,7 +9,7 @@ const props = defineProps<{
     entityCounts: Record<string, number>
     selectedIndex: number
     quickActions: { name: string; to: string; icon: string }[]
-    eveTools: { name: string; url: string; icon: string }[]
+    eveTools: EveTool[]
     recentSearches: string[]
     mobile?: boolean
 }>()
@@ -155,7 +156,7 @@ const getImageUrl = (hit: SearchHit): string | null => {
                         @click="emit('close')"
                     >
                         <NuxtImg :src="tool.icon" alt="" width="16" height="16" class="w-4 h-4 object-contain grayscale opacity-60" />
-                        <span class="text-fine">{{ tool.name }}</span>
+                        <span class="text-fine">{{ tool.label || tool.name }}</span>
                     </a>
                 </div>
             </div>

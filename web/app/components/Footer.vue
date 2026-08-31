@@ -1,85 +1,59 @@
 <script setup lang="ts">
-const eveTools = [
-    { name: 'DOTLAN', url: 'https://evemaps.dotlan.net/', icon: '/remotes/dotlan.png', title: 'EVE Maps & Intel' },
-    { name: 'EVEEye', url: 'https://eveeye.com/', icon: '/remotes/eveeye.svg', title: 'Interactive Maps' },
-    { name: 'Missioneer', url: 'https://evemissioneer.com/', icon: '/remotes/evemissioneer.png', title: 'Missions & PvE' },
-    { name: 'EveShip.fit', url: 'https://eveship.fit/', icon: '/remotes/eveship-fit.png', title: 'Ship Fitting Tool' },
-    { name: 'EVERef', url: 'https://everef.net/', icon: '/remotes/everef.png', title: 'Game Reference' },
-    { name: 'Jita.Space', url: 'https://jita.space/', icon: '/remotes/jita-space.png', title: 'Market Analysis' },
-    { name: 'EVEWho', url: 'https://evewho.com/', icon: '/remotes/evewho.png', title: 'Character Intel' },
-    { name: 'zKillboard', url: 'https://zkillboard.com/', icon: '/remotes/zkillboard.png', title: 'Killmail Database' },
-    { name: 'Socket.Kill', url: 'https://socketkill.com/', icon: '/remotes/socketkill.png', title: 'Live Killmail Stream' },
-    { name: 'RIFT Intel Fusion', url: 'https://riftforeve.online/', icon: '/images/rift-intel-fusion-tool-256.png', title: 'Intel Fusion Tool' },
-    { name: 'Eve Monthly', url: 'https://www.evemonthly.com/', icon: '/remotes/evemonthly.svg', title: 'Coalition Intelligence' },
-    { name: 'EVE LKM', url: 'https://eve-lkm.capsuleer.life/', icon: '/remotes/eve-lkm.png', title: 'Last Known Mail' },
-    { name: 'Evetools.org', url: 'https://br.evetools.org/', icon: '/remotes/evetools.png', title: 'Battle Reports' },
-]
+import { eveTools } from '#shared/utils/eveTools'
 </script>
 
 <template>
-    <footer class="w-full pt-6 pb-2 mt-auto text-sm px-2 md:px-10">
-        <!-- Main footer row -->
-        <div class="border-t border-white/[0.08] pt-5 pb-4">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-                <!-- Left: GitHub -->
-                <div class="flex-1">
+    <footer class="w-full mt-auto pt-8 pb-3 text-sm px-2 md:px-10">
+        <!-- Project / legal -->
+        <div class="rounded-t-lg border border-white/[0.08] bg-white/[0.04] px-4 py-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 items-center gap-3 md:gap-6">
+                <div class="flex justify-center md:justify-start">
                     <a
-                        href="https://github.com/EVE-KILL"
+                        href="https://github.com/EVE-KILL/Shrike"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="inline-flex items-center gap-1.5 text-gray-400 hover:text-blue-300 transition-colors"
+                        class="group inline-flex items-center gap-3 text-gray-300 hover:text-blue-300 transition-colors"
                     >
-                        <Icon name="lucide:github" class="text-base" />
-                        <span>GitHub</span>
+                        <Icon name="lucide:github" class="text-lg text-gray-200 group-hover:text-blue-300 transition-colors" />
+                        <span class="font-medium">Shrike on GitHub</span>
+                        <span class="h-4 w-px bg-white/[0.12]"></span>
+                        <span class="text-xs font-normal text-gray-500 group-hover:text-gray-400 transition-colors">Open source</span>
                     </a>
                 </div>
 
-                <!-- Center: Creator -->
-                <div class="flex-1 text-center text-gray-400">
-                    Created by
-                    <NuxtLink to="/character/268946627" class="text-blue-300 underline decoration-blue-300/60 underline-offset-2 hover:text-blue-200 transition-colors">
-                        Karbowiak
-                    </NuxtLink>
-                </div>
-
-                <!-- Right: Legal -->
-                <div class="flex-1 text-right text-gray-400 text-xs">
-                    All materials &copy;
-                    <a href="https://www.ccpgames.com/" target="_blank" rel="noopener noreferrer" class="text-blue-300 underline decoration-blue-300/60 underline-offset-2 hover:text-blue-200 transition-colors">
-                        CCP Games
-                    </a>
+                <div class="text-center md:text-right text-gray-500 text-xs">
+                    EVE Online and all related materials &copy;
+                    <a href="https://www.ccpgames.com/" target="_blank" rel="noopener noreferrer" class="text-gray-300 hover:text-blue-300 transition-colors">CCP Games</a>
                 </div>
             </div>
         </div>
 
-        <!-- EVE Community Tools -->
-        <div class="border-t border-white/[0.04] pt-4 pb-2">
-            <div class="flex flex-wrap justify-center w-full">
-                <a
-                    v-for="tool in eveTools"
-                    :key="tool.name"
-                    :href="tool.url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    v-tooltip="tool.title"
-                    class="group flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg text-xs text-gray-400 opacity-80 hover:opacity-100 hover:text-blue-300 hover:bg-blue-500/[0.04] transition-all duration-300 w-1/4 sm:w-1/6 md:w-auto md:flex-1"
-                >
-                    <NuxtImg
-                        v-if="tool.icon"
-                        :src="tool.icon"
-                        alt=""
-                        width="20"
-                        height="20"
-                        class="w-5 h-5 object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
-                    />
-                    <Icon
-                        v-else
-                        name="lucide:radio"
-                        class="w-5 h-5 transition-all duration-300"
-                    />
-                    <span>{{ tool.name }}</span>
-                </a>
-            </div>
+        <!-- EVE community tools -->
+        <div class="flex flex-wrap justify-center rounded-b-lg border-x border-b border-white/[0.08] bg-white/[0.04] px-2 py-4 md:px-3 xl:flex-nowrap">
+            <a
+                v-for="tool in eveTools"
+                :key="tool.name"
+                :href="tool.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                v-tooltip="tool.title"
+                class="group flex min-w-0 items-center justify-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-blue-300 transition-colors w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 xl:w-auto xl:flex-1 xl:gap-1.5 xl:px-1"
+            >
+                <NuxtImg
+                    v-if="tool.icon"
+                    :src="tool.icon"
+                    alt=""
+                    width="18"
+                    height="18"
+                    class="w-[18px] h-[18px] flex-shrink-0 object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
+                />
+                <Icon
+                    v-else
+                    name="lucide:radio"
+                    class="w-[18px] h-[18px] flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity"
+                />
+                <span class="whitespace-nowrap md:text-fine">{{ tool.label || tool.name }}</span>
+            </a>
         </div>
     </footer>
 </template>
