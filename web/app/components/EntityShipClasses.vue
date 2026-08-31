@@ -72,7 +72,7 @@ const entityPath = computed(() => `/${props.entityType}/${props.entityId}`)
                     class="ship-class-row grid grid-cols-[1fr_auto] gap-1 items-center text-xs"
                 >
                     <NuxtLink
-                        :to="`${entityPath}/combined?ship_group=${g.group_id}`"
+                        :to="`/group/${g.group_id}`"
                         class="px-2 py-1 rounded text-gray-300 truncate hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors"
                     >
                         {{ g.group_name }}
@@ -93,7 +93,7 @@ const entityPath = computed(() => `/${props.entityType}/${props.entityId}`)
                     <span class="w-2 h-2 rounded-sm bg-red-400/60"></span>
                     <span>lost → /losses</span>
                 </div>
-                <div class="ml-auto">click any cell to filter by hull</div>
+                <div class="ml-auto">class → group · losses → filtered losses</div>
             </div>
         </div>
     </div>

@@ -242,8 +242,9 @@ const shipRender = (typeId: number | null) =>
                                         <div class="flex items-center gap-2 min-w-0">
                                             <img v-if="shipRender(ind.ship_type_id)" :src="shipRender(ind.ship_type_id)!" class="w-8 h-8 rounded flex-shrink-0" loading="lazy">
                                             <div class="min-w-0 leading-tight">
-                                                <div class="truncate" :class="ind.deaths > 0 ? 'text-red-300' : 'text-gray-300'">{{ ind.ship_name || '?' }}</div>
-                                                <div class="truncate text-fine text-gray-500">{{ ind.ship_group_name || '?' }}</div>
+                                                <NuxtLink v-if="ind.ship_type_id" :to="`/item/${ind.ship_type_id}`" class="block truncate hover:text-blue-400" :class="ind.deaths > 0 ? 'text-red-300' : 'text-gray-300'">{{ ind.ship_name || '?' }}</NuxtLink>
+                                                <NuxtLink v-if="ind.ship_group_id" :to="`/group/${ind.ship_group_id}`" class="block truncate text-fine text-gray-500 hover:text-blue-400">{{ ind.ship_group_name || '?' }}</NuxtLink>
+                                                <div v-else class="truncate text-fine text-gray-500">{{ ind.ship_group_name || '?' }}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -324,7 +325,8 @@ const shipRender = (typeId: number | null) =>
                                     <td class="py-1 pr-2">
                                         <div class="flex items-center gap-1.5">
                                             <img v-if="shipRender(row.ship_type_id ?? null)" :src="shipRender(row.ship_type_id ?? null)!" class="w-6 h-6 rounded" loading="lazy">
-                                            {{ row.name }}
+                                            <NuxtLink v-if="row.ship_type_id" :to="`/item/${row.ship_type_id}`" class="hover:text-blue-400">{{ row.name }}</NuxtLink>
+                                            <span v-else>{{ row.name }}</span>
                                         </div>
                                     </td>
                                     <td class="py-1 px-2 text-right tabular-nums">{{ fmtNum(row.count) }}</td>
@@ -384,7 +386,7 @@ const shipRender = (typeId: number | null) =>
                             <tbody>
                                 <tr v-for="row in sortedByGroup(team)" :key="row.key"
                                     class="border-b border-white/[0.03] hover:bg-white/[0.02] text-gray-300">
-                                    <td class="py-1 pr-2">{{ row.name }}</td>
+                                    <td class="py-1 pr-2"><NuxtLink v-if="row.ship_group_id" :to="`/group/${row.ship_group_id}`" class="hover:text-blue-400">{{ row.name }}</NuxtLink><span v-else>{{ row.name }}</span></td>
                                     <td class="py-1 px-2 text-right tabular-nums">{{ fmtNum(row.count) }}</td>
                                     <td class="py-1 px-2 text-right tabular-nums" :class="row.losses > 0 ? 'text-red-400' : 'text-gray-600'">
                                         {{ row.losses > 0 ? fmtNum(row.losses) : '—' }}

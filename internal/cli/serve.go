@@ -342,8 +342,10 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			// Development trust installation is therefore an explicit,
 			// foreground `make dev-trust` step.
 			SkipLocalTrustInstall: mode.Name == "dev",
-			NuxtSocket:            nuxtSocket,
-			NuxtAddress:           mode.DevRenderer,
+			ProxyImagesToNuxt: mode.Name == "dev" && imageStorage == nil &&
+				strings.TrimSpace(os.Getenv("NUXT_DEV_IMAGE_PROXY_ORIGIN")) != "",
+			NuxtSocket:  nuxtSocket,
+			NuxtAddress: mode.DevRenderer,
 		}); err != nil {
 			return fmt.Errorf("starting embedded Caddy ingress: %w", err)
 		}

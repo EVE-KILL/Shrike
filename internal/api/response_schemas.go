@@ -255,6 +255,7 @@ func killlistRowSchema() *huma.Schema {
 		"is_solo":                     boolSchema(),
 		"ship_type_id":                nullable(intSchema()),
 		"ship_name":                   nullable(stringSchema()),
+		"ship_group_id":               nullable(intSchema()),
 		"ship_group_name":             nullable(stringSchema()),
 		"ship_market_path":            nullable(stringSchema()),
 		"meta_group_id":               nullable(intSchema()),
@@ -282,7 +283,7 @@ func killlistRowSchema() *huma.Schema {
 	schema.Required = []string{
 		"killmail_id", "killmail_hash", "killmail_time", "total_value",
 		"attacker_count", "is_npc", "is_solo", "ship_type_id",
-		"ship_name", "ship_group_name", "ship_market_path", "meta_group_id",
+		"ship_name", "ship_group_id", "ship_group_name", "ship_market_path", "meta_group_id",
 		"victim_character_id", "victim_character_name",
 		"victim_corporation_id", "victim_corporation_name",
 		"victim_alliance_id", "victim_alliance_name",

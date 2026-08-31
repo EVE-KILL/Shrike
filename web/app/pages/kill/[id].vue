@@ -631,15 +631,16 @@ const toolContext = computed(() => ({
                 </div>
 
                 <!-- Ship hull row -->
-                <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-1.5 items-center bg-red-500/[0.05] border-b border-white/[0.04] cursor-pointer hover:bg-red-500/[0.08] transition-colors">
+                <div class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-1.5 items-center bg-red-500/[0.05] border-b border-white/[0.04] hover:bg-red-500/[0.08] transition-colors">
                     <div class="flex items-center">
-                        <div class="w-6 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
+                        <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" class="w-6 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
                             <img :src="`/images/types/${kill.victim.ship_type_id}/icon?size=64`" :alt="kill.victim.ship_name || 'Ship'" class="w-full h-full object-cover" loading="lazy">
-                        </div>
+                        </NuxtLink>
                     </div>
                     <div class="text-xs text-red-300/80 font-medium truncate">
-                        {{ kill.victim.ship_name }}
-                        <span class="text-gray-500 font-normal">({{ kill.victim.ship_group_name }})</span>
+                        <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" class="hover:text-blue-400 transition-colors">{{ kill.victim.ship_name }}</NuxtLink>
+                        <NuxtLink v-if="kill.victim.ship_group_id" :to="`/group/${kill.victim.ship_group_id}`" class="text-gray-500 hover:text-blue-400 font-normal transition-colors">({{ kill.victim.ship_group_name }})</NuxtLink>
+                        <span v-else class="text-gray-500 font-normal">({{ kill.victim.ship_group_name }})</span>
                     </div>
                     <div></div>
                     <div class="text-center">
@@ -648,7 +649,7 @@ const toolContext = computed(() => ({
                     <div class="text-right text-xs text-red-400/60 tabular-nums">
                         {{ formatIsk(kill.victim.ship_price) }}
                     </div>
-                </NuxtLink>
+                </div>
 
                 <template v-for="slot in slotOrder" :key="slot">
                     <template v-if="itemsBySlot[slot]?.length">

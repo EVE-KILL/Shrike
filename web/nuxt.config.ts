@@ -5,6 +5,7 @@ import { KILL_LIST_TYPES } from "./shared/utils/killListTypes";
 // The port Caddy listens on when `make dev` puts it in front of this server.
 // Unset for a bare `nuxt dev`, which the browser reaches directly.
 const devProxyPort = Number(process.env.NUXT_DEV_PROXY_PORT) || 0;
+const devImageProxyOrigin = process.env.NUXT_DEV_IMAGE_PROXY_ORIGIN?.replace(/\/$/, "");
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
@@ -198,6 +199,13 @@ export default defineNuxtConfig({
     // Renderer-owned response headers. Go owns /api, /auth, /images, and
     // /health before requests can reach Nitro.
     routeRules: {
+      ...(devImageProxyOrigin
+        ? {
+            "/images/**": {
+              proxy: `${devImageProxyOrigin}/images/**`,
+            },
+          }
+        : {}),
       // Static assets — immutable, 1 year CDN cache
       "/_nuxt/**": {
         headers: { "Cache-Control": "public, max-age=31536000, immutable" },

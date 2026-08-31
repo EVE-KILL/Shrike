@@ -3986,6 +3986,7 @@ export type KillmailSearchResponse = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -4043,6 +4044,7 @@ export type KillmailsResponse = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -4777,6 +4779,7 @@ export type SdeRegionKillsResponse = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -5178,6 +5181,7 @@ export type SdeSystemKillsResponse = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -7940,6 +7944,7 @@ export type KillmailSearchResponseWritable = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -7989,6 +7994,7 @@ export type KillmailsResponseWritable = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -8620,6 +8626,7 @@ export type SdeRegionKillsResponseWritable = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -8965,6 +8972,7 @@ export type SdeSystemKillsResponseWritable = {
         meta_group_id: number | null;
         region_id: number | null;
         region_name: string | null;
+        ship_group_id: number | null;
         ship_group_name: string | null;
         ship_market_path: string | null;
         ship_name: string | null;
@@ -13688,6 +13696,7 @@ export type KillmailBattleKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -13788,6 +13797,7 @@ export type KillmailBattleTimelineResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -14079,6 +14089,7 @@ export type BattleReportKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -14179,6 +14190,7 @@ export type BattleReportTimelineResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -14966,6 +14978,7 @@ export type CampaignKilllistLegacyResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -15675,6 +15688,7 @@ export type CampaignKillmailsResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -17439,6 +17453,7 @@ export type ConstellationKilllistCompatResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -18373,6 +18388,7 @@ export type DomainConstellationKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -18444,6 +18460,7 @@ export type DomainKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -18594,6 +18611,7 @@ export type DomainRegionKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -18714,6 +18732,7 @@ export type DomainSystemKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -19303,6 +19322,7 @@ export type EntityPageKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -19677,6 +19697,7 @@ export type EntityPageKilllistGenericCompatResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -23145,6 +23166,7 @@ export type ItemKilllistCompatResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -23224,6 +23246,7 @@ export type KilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -23311,6 +23334,7 @@ export type KilllistAdvancedResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -24067,6 +24091,7 @@ export type LegacyArchiveKillsResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -27393,6 +27418,7 @@ export type RegionKilllistCompatResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -28676,6 +28702,7 @@ export type ShipKilllistCompatResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -29050,6 +29077,7 @@ export type SystemKilllistCompatResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -29431,6 +29459,7 @@ export type UniverseConstellationKillmailsResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -29637,6 +29666,7 @@ export type UniverseRegionKillmailsResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -29882,6 +29912,7 @@ export type UniverseSystemKillmailsResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -30099,6 +30130,7 @@ export type UniverseTypeKillmailsResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;
@@ -32075,6 +32107,7 @@ export type WarKilllistResponses = {
             meta_group_id: number | null;
             region_id: number | null;
             region_name: string | null;
+            ship_group_id: number | null;
             ship_group_name: string | null;
             ship_market_path: string | null;
             ship_name: string | null;

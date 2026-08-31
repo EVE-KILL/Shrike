@@ -359,14 +359,14 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil, nil, nil, err
 	}
 
+	sitePaths := []string{"/api", "/api/*", "/auth", "/auth/*"}
+	siteDescription := "path /api, /api/*, /auth, /auth/*"
+	if !cfg.ProxyImagesToNuxt {
+		sitePaths = append(sitePaths, "/images", "/images/*")
+		siteDescription += ", /images, /images/*"
+	}
 	if err := surfaceRoute(
-		map[string]any{"path": []string{
-			"/api", "/api/*",
-			"/auth", "/auth/*",
-			"/images", "/images/*",
-		}},
-		"path /api, /api/*, /auth, /auth/*, /images, /images/*",
-		SurfaceSameOrigin,
+		map[string]any{"path": sitePaths}, siteDescription, SurfaceSameOrigin,
 	); err != nil {
 		return nil, nil, nil, err
 	}

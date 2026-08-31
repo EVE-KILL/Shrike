@@ -81,7 +81,7 @@ const defaultTabLabels: Record<string, string> = {
     corporation: 'Corporation',
     alliance: 'Alliance',
     faction: 'Faction',
-    item: 'Items / Ships',
+    item: 'Items / Ships / Groups',
     system: 'System',
     constellation: 'Constellation',
     region: 'Region',
@@ -161,7 +161,7 @@ onUnmounted(() => { if (prefsSavedTimer) clearTimeout(prefsSavedTimer) })
                 <Icon name="lucide:alert-circle" class="text-sm flex-shrink-0" />
                 {{ prefsError }}
             </p>
-            <p class="text-xs text-gray-600 mb-4">Choose which tab opens by default when navigating to an entity page without a specific tab.</p>
+            <p class="text-xs text-gray-600 mb-4">Choose which tab opens by default when navigating to an entity page without a specific tab. The item setting also covers ship and item-group pages.</p>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 <div v-for="(opts, key) in defaultTabOptions" :key="key">
                     <div class="text-xs text-gray-500 mb-1.5">{{ defaultTabLabels[key] }}</div>

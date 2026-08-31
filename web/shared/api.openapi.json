@@ -15488,6 +15488,13 @@
                     "null"
                   ]
                 },
+                "ship_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "ship_group_name": {
                   "type": [
                     "string",
@@ -15591,6 +15598,7 @@
                 "is_solo",
                 "ship_type_id",
                 "ship_name",
+                "ship_group_id",
                 "ship_group_name",
                 "ship_market_path",
                 "meta_group_id",
@@ -15774,6 +15782,13 @@
                     "null"
                   ]
                 },
+                "ship_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "ship_group_name": {
                   "type": [
                     "string",
@@ -15877,6 +15892,7 @@
                 "is_solo",
                 "ship_type_id",
                 "ship_name",
+                "ship_group_id",
                 "ship_group_name",
                 "ship_market_path",
                 "meta_group_id",
@@ -18867,6 +18883,13 @@
                     "null"
                   ]
                 },
+                "ship_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "ship_group_name": {
                   "type": [
                     "string",
@@ -18970,6 +18993,7 @@
                 "is_solo",
                 "ship_type_id",
                 "ship_name",
+                "ship_group_id",
                 "ship_group_name",
                 "ship_market_path",
                 "meta_group_id",
@@ -20583,6 +20607,13 @@
                     "null"
                   ]
                 },
+                "ship_group_id": {
+                  "format": "int64",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
                 "ship_group_name": {
                   "type": [
                     "string",
@@ -20686,6 +20717,7 @@
                 "is_solo",
                 "ship_type_id",
                 "ship_name",
+                "ship_group_id",
                 "ship_group_name",
                 "ship_market_path",
                 "meta_group_id",
@@ -35927,6 +35959,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -36030,6 +36069,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -36315,6 +36355,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -36418,6 +36465,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -37642,6 +37690,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -37745,6 +37800,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -38030,6 +38086,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -38133,6 +38196,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -40987,6 +41051,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -41090,6 +41161,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -43909,6 +43981,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -44012,6 +44091,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -49651,6 +49731,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -49754,6 +49841,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -52880,6 +52968,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -52983,6 +53078,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -53212,6 +53308,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -53315,6 +53418,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -53808,6 +53912,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -53911,6 +54022,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -54284,6 +54396,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -54387,6 +54506,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -56452,6 +56572,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -56555,6 +56682,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -57782,6 +57910,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -57885,6 +58020,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -69408,6 +69544,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -69511,6 +69654,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -69759,6 +69903,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -69862,6 +70013,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -70105,6 +70257,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -70208,6 +70367,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -72488,6 +72648,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -72591,6 +72758,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -81042,6 +81210,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -81145,6 +81320,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -83859,6 +84035,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -83962,6 +84145,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -85147,6 +85331,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -85250,6 +85441,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -86460,6 +86652,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -86563,6 +86762,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -87311,6 +87511,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -87414,6 +87621,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -88324,6 +88532,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -88427,6 +88642,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -89287,6 +89503,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -89390,6 +89613,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",
@@ -95456,6 +95680,13 @@
                               "null"
                             ]
                           },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
                           "ship_group_name": {
                             "type": [
                               "string",
@@ -95559,6 +95790,7 @@
                           "is_solo",
                           "ship_type_id",
                           "ship_name",
+                          "ship_group_id",
                           "ship_group_name",
                           "ship_market_path",
                           "meta_group_id",

@@ -784,7 +784,7 @@ const secLabel = (sec: number | null): string => {
                         <div class="min-w-0">
                             <NuxtLink v-if="row.kill.ship_type_id" :to="`/item/${row.kill.ship_type_id}`" class="block w-fit max-w-full text-xs text-gray-300 group-hover:text-blue-400 hover:text-blue-400 truncate">{{ row.kill.ship_name || 'Unknown' }}</NuxtLink>
                             <div v-else class="text-xs text-gray-300 truncate">{{ row.kill.ship_name || 'Unknown' }}</div>
-                            <NuxtLink v-if="row.kill.ship_market_path && row.kill.ship_group_name" :to="row.kill.ship_market_path" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.ship_group_name }}</NuxtLink>
+                            <NuxtLink v-if="row.kill.ship_group_id && row.kill.ship_group_name" :to="`/group/${row.kill.ship_group_id}`" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.ship_group_name }}</NuxtLink>
                             <div v-else class="text-fine text-gray-400 truncate">{{ row.kill.ship_group_name }}</div>
                             <div class="text-fine text-isk/70 tabular-nums">{{ formatIsk(row.kill.total_value) }} ISK</div>
                         </div>

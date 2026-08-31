@@ -33,6 +33,14 @@ Caddy issues the certificate from its internal certificate authority. If
 Caddy answers `/health`, `/api`, `/auth`, `/images`, and `/ws`. It proxies
 every other path to `nuxt dev`.
 
+When image storage is not configured, `make dev` delegates `/images` to Nuxt,
+which proxies it to `https://eve-kill.com` by default. Override the frontend
+setting with `DEV_IMAGE_ORIGIN`, or set it empty to restore the local 503:
+
+```sh
+make dev DEV_IMAGE_ORIGIN=https://another.example
+```
+
 `air` rebuilds and restarts the Go process alone. `nuxt dev` keeps running
 across each Go restart, so the frontend keeps its state and its hot module
 replacement connections. `.air.toml` excludes `web/` for this reason.

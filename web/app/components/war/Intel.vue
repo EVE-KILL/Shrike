@@ -173,8 +173,8 @@ const secClassColor = (sc: string): string => {
                         <img :src="`/images/types/${s.ship_type_id}/icon?size=32`"
                             class="w-5 h-5 rounded flex-shrink-0" loading="lazy">
                         <div class="min-w-0 flex-1">
-                            <div class="text-xs truncate">{{ s.ship_name }}</div>
-                            <div v-if="s.group_name" class="text-fine text-gray-600 truncate">{{ s.group_name }}</div>
+                            <NuxtLink :to="`/item/${s.ship_type_id}`" class="block text-xs truncate hover:text-blue-400">{{ s.ship_name }}</NuxtLink>
+                            <NuxtLink v-if="s.group_id && s.group_name" :to="`/group/${s.group_id}`" class="block text-fine text-gray-600 truncate hover:text-blue-400">{{ s.group_name }}</NuxtLink>
                         </div>
                         <span class="text-xs tabular-nums">{{ formatNumber(s.count) }}</span>
                     </div>
@@ -194,8 +194,8 @@ const secClassColor = (sc: string): string => {
                         <img :src="`/images/types/${s.ship_type_id}/icon?size=32`"
                             class="w-5 h-5 rounded flex-shrink-0" loading="lazy">
                         <div class="min-w-0 flex-1">
-                            <div class="text-xs truncate">{{ s.ship_name }}</div>
-                            <div v-if="s.group_name" class="text-fine text-gray-600 truncate">{{ s.group_name }}</div>
+                            <NuxtLink :to="`/item/${s.ship_type_id}`" class="block text-xs truncate hover:text-blue-400">{{ s.ship_name }}</NuxtLink>
+                            <NuxtLink v-if="s.group_id && s.group_name" :to="`/group/${s.group_id}`" class="block text-fine text-gray-600 truncate hover:text-blue-400">{{ s.group_name }}</NuxtLink>
                         </div>
                         <span class="text-xs tabular-nums">{{ formatNumber(s.count) }}</span>
                     </div>
@@ -213,7 +213,7 @@ const secClassColor = (sc: string): string => {
                         class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400">
                         <span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{{ Number(i) + 1 }}</span>
                         <div class="min-w-0 flex-1">
-                            <div class="text-xs truncate">{{ g.group_name }}</div>
+                            <NuxtLink :to="`/group/${g.group_id}`" class="block text-xs truncate hover:text-blue-400">{{ g.group_name }}</NuxtLink>
                             <div class="text-fine text-isk/60 tabular-nums">{{ formatIsk(g.isk_destroyed) }}</div>
                         </div>
                         <span class="text-xs tabular-nums">{{ formatNumber(g.count) }}</span>

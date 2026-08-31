@@ -57,15 +57,15 @@ const charPortrait = (charId: number) =>
 const CAP_ORDER: Record<string, number> = { Titan: 6, Supercarrier: 5, 'Lancer Dreadnought': 4, Dreadnought: 3, Carrier: 2, 'Force Auxiliary': 1 }
 
 function teamStats(team: IntelTeam | undefined) {
-    if (!team) return { fcConfirmed: 0, fcPossible: 0, logiTotal: 0, logiSurvived: 0, logiDied: 0, capTotal: 0, capSurvived: 0, capDied: 0, capGroups: [] as { name: string, count: number, died: number }[] }
+    if (!team) return { fcConfirmed: 0, fcPossible: 0, logiTotal: 0, logiSurvived: 0, logiDied: 0, capTotal: 0, capSurvived: 0, capDied: 0, capGroups: [] as { id: number | null, name: string, count: number, died: number }[] }
     const fcConfirmed = team.fcs.filter(f => f.confirmed).length
     const fcPossible = team.fcs.filter(f => !f.confirmed).length
     const logiSurvived = team.logistics.filter(p => !p.died).length
     const logiDied = team.logistics.filter(p => p.died).length
-    const byGroup = new Map<string, { count: number, died: number }>()
+    const byGroup = new Map<string, { id: number | null, count: number, died: number }>()
     for (const p of team.capitals) {
         const name = p.ship_group_name || 'Unknown'
-        const e = byGroup.get(name) || { count: 0, died: 0 }
+        const e = byGroup.get(name) || { id: p.ship_group_id, count: 0, died: 0 }
         e.count++
         if (p.died) e.died++
         byGroup.set(name, e)
@@ -120,7 +120,7 @@ const statsB = computed(() => teamStats(teamB.value))
                         <!-- Capital breakdown by type -->
                         <div v-if="stats.capGroups.length > 0" class="flex flex-wrap gap-x-3 gap-y-0.5 text-fine text-gray-500 pl-0.5">
                             <span v-for="g in stats.capGroups" :key="g.name">
-                                {{ g.count }}x {{ g.name }}<span v-if="g.died > 0" class="text-red-400/60 ml-0.5">({{ g.died }} lost)</span>
+                                {{ g.count }}x <NuxtLink v-if="g.id" :to="`/group/${g.id}`" class="hover:text-blue-400">{{ g.name }}</NuxtLink><span v-else>{{ g.name }}</span><span v-if="g.died > 0" class="text-red-400/60 ml-0.5">({{ g.died }} lost)</span>
                             </span>
                         </div>
                     </div>
@@ -170,8 +170,8 @@ const statsB = computed(() => teamStats(teamB.value))
                                         <div class="flex items-center gap-2 min-w-0">
                                             <img v-if="shipRender(fc.ship_type_id)" :src="shipRender(fc.ship_type_id)!" class="w-8 h-8 rounded flex-shrink-0" loading="lazy">
                                             <div class="min-w-0 leading-tight">
-                                                <div class="truncate" :class="fc.died ? 'text-red-300' : 'text-gray-300'">{{ fc.ship_name || '?' }}</div>
-                                                <div class="truncate text-fine text-gray-500">{{ fc.ship_group_name || '' }}</div>
+                                                <NuxtLink v-if="fc.ship_type_id" :to="`/item/${fc.ship_type_id}`" class="block truncate hover:text-blue-400" :class="fc.died ? 'text-red-300' : 'text-gray-300'">{{ fc.ship_name || '?' }}</NuxtLink>
+                                                <NuxtLink v-if="fc.ship_group_id" :to="`/group/${fc.ship_group_id}`" class="block truncate text-fine text-gray-500 hover:text-blue-400">{{ fc.ship_group_name || '' }}</NuxtLink>
                                             </div>
                                         </div>
                                     </td>
@@ -241,8 +241,8 @@ const statsB = computed(() => teamStats(teamB.value))
                                         <div class="flex items-center gap-2 min-w-0">
                                             <img v-if="shipRender(pilot.ship_type_id)" :src="shipRender(pilot.ship_type_id)!" class="w-8 h-8 rounded flex-shrink-0" loading="lazy">
                                             <div class="min-w-0 leading-tight">
-                                                <div class="truncate" :class="pilot.died ? 'text-red-300' : 'text-gray-300'">{{ pilot.ship_name || '?' }}</div>
-                                                <div class="truncate text-fine text-gray-500">{{ pilot.ship_group_name || '' }}</div>
+                                                <NuxtLink v-if="pilot.ship_type_id" :to="`/item/${pilot.ship_type_id}`" class="block truncate hover:text-blue-400" :class="pilot.died ? 'text-red-300' : 'text-gray-300'">{{ pilot.ship_name || '?' }}</NuxtLink>
+                                                <NuxtLink v-if="pilot.ship_group_id" :to="`/group/${pilot.ship_group_id}`" class="block truncate text-fine text-gray-500 hover:text-blue-400">{{ pilot.ship_group_name || '' }}</NuxtLink>
                                             </div>
                                         </div>
                                     </td>
@@ -303,8 +303,8 @@ const statsB = computed(() => teamStats(teamB.value))
                                         <div class="flex items-center gap-2 min-w-0">
                                             <img v-if="shipRender(pilot.ship_type_id)" :src="shipRender(pilot.ship_type_id)!" class="w-8 h-8 rounded flex-shrink-0" loading="lazy">
                                             <div class="min-w-0 leading-tight">
-                                                <div class="truncate" :class="pilot.died ? 'text-red-300' : 'text-gray-300'">{{ pilot.ship_name || '?' }}</div>
-                                                <div class="truncate text-fine text-gray-500">{{ pilot.ship_group_name || '' }}</div>
+                                                <NuxtLink v-if="pilot.ship_type_id" :to="`/item/${pilot.ship_type_id}`" class="block truncate hover:text-blue-400" :class="pilot.died ? 'text-red-300' : 'text-gray-300'">{{ pilot.ship_name || '?' }}</NuxtLink>
+                                                <NuxtLink v-if="pilot.ship_group_id" :to="`/group/${pilot.ship_group_id}`" class="block truncate text-fine text-gray-500 hover:text-blue-400">{{ pilot.ship_group_name || '' }}</NuxtLink>
                                             </div>
                                         </div>
                                     </td>

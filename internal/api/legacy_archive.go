@@ -261,6 +261,7 @@ func legacyArchiveKillsHandler(opts Options) legacyHandler {
 				"is_solo":                     attackerCount == 1,
 				"ship_type_id":                row["victim_ship_type_id"],
 				"ship_name":                   shipName,
+				"ship_group_id":               nil,
 				"ship_group_name":             nil,
 				"victim_character_id":         row["victim_character_id"],
 				"victim_character_name":       row["victim_name"],

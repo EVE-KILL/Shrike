@@ -54,6 +54,7 @@ run:
 DEV_PORT     ?= 4001
 DEV_API_PORT ?= 4002
 DATA_DIR     ?= data
+DEV_IMAGE_ORIGIN ?= https://eve-kill.com
 
 # Nuxt silently moves to another port when its requested port is occupied, but
 # Shrike cannot discover that choice and would keep proxying to the old port.
@@ -82,12 +83,14 @@ dev:
 	@echo "dev: https://localhost:$(DEV_PORT)  (nuxt :$(DEV_NUXT_PORT), ssr api :$(DEV_API_PORT))"
 	@NUXT_API_ORIGIN=http://127.0.0.1:$(DEV_API_PORT) \
 	NUXT_DEV_PROXY_PORT=$(DEV_PORT) \
+	NUXT_DEV_IMAGE_PROXY_ORIGIN=$(DEV_IMAGE_ORIGIN) \
 		bun --cwd=$(CURDIR)/web run dev \
 			--host 127.0.0.1 --port $(DEV_NUXT_PORT) & \
 	nuxt_pid=$$!; \
 	trap 'kill $$nuxt_pid 2>/dev/null' INT TERM EXIT; \
 	SHRIKE_DEV_RENDERER=127.0.0.1:$(DEV_NUXT_PORT) \
 	SHRIKE_DEV_API_ADDR=127.0.0.1:$(DEV_API_PORT) \
+	NUXT_DEV_IMAGE_PROXY_ORIGIN=$(DEV_IMAGE_ORIGIN) \
 	PORT=$(DEV_PORT) air
 
 .PHONY: dev-trust

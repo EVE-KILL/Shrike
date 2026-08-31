@@ -18,6 +18,7 @@ const campaignKilllistSelect = `
 		COALESCE(k.is_solo, false) AS is_solo,
 		k.victim_ship_type_id AS ship_type_id,
 		ship.name AS ship_name,
+		k.victim_ship_group_id AS ship_group_id,
 		ship_group.name AS ship_group_name,
 		ship.market_group_id AS _ship_market_group_id,
 		ship.meta_group_id,

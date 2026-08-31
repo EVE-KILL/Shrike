@@ -55,6 +55,11 @@ type Config struct {
 	// without changing the host; normal local development leaves it false.
 	SkipLocalTrustInstall bool
 
+	// ProxyImagesToNuxt leaves /images out of the Go-owned route so the Nuxt
+	// development server can proxy it to a configured remote image origin.
+	// Production leaves this false and always serves images inside Shrike.
+	ProxyImagesToNuxt bool
+
 	// NuxtSocket is the Unix socket the Nitro renderer listens on. Every
 	// request that matches no surface is proxied there, which is what makes
 	// tenant custom domains work without enumerating them: an unrecognised

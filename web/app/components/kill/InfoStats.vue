@@ -2,7 +2,7 @@
 // Killmail info-box stats + ISK value breakdown — shared by the desktop info
 // box (portrait card, right of the fitting wheel) and the mobile character
 // information card. `interactive` enables the desktop-only extras: hover link
-// styling, the market-group link, and the time-ago ↔ timestamp tooltip.
+// styling and the time-ago ↔ timestamp tooltip.
 const props = defineProps<{
     kill: {
         killmail_time: string
@@ -20,8 +20,8 @@ const props = defineProps<{
         victim: {
             ship_type_id: number | null
             ship_name: string | null
+            ship_group_id: number | null
             ship_group_name: string | null
-            ship_market_path?: string | null
             ship_price: number
             damage_taken: number
         }
@@ -90,7 +90,7 @@ const destroyedPct = computed(() => lossTotal.value > 0 ? (props.kill.destroyed_
                     class="w-4 h-4 rounded flex-shrink-0" loading="lazy">
                 <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" :class="interactive ? 'text-gray-300 hover:text-blue-400 transition-colors break-words' : 'text-gray-300 break-words'">{{ kill.victim.ship_name }}</NuxtLink>
                 <template v-if="kill.victim.ship_group_name">
-                    <NuxtLink v-if="interactive" :to="kill.victim.ship_market_path || '/market/ships'" class="text-gray-500 hover:text-blue-400 transition-colors break-words">({{ kill.victim.ship_group_name }})</NuxtLink>
+                    <NuxtLink v-if="kill.victim.ship_group_id" :to="`/group/${kill.victim.ship_group_id}`" class="text-gray-500 hover:text-blue-400 transition-colors break-words">({{ kill.victim.ship_group_name }})</NuxtLink>
                     <span v-else class="text-gray-500 break-words">({{ kill.victim.ship_group_name }})</span>
                 </template>
             </span>

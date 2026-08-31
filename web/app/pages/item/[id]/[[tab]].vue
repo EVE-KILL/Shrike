@@ -322,14 +322,19 @@ const marketLeaf = computed(() => {
 
 const displayBreadcrumb = computed(() => {
     const raw = [...marketBreadcrumb.value] as { name: string, slug: string }[]
-    // Drop the leaf (race/faction-specific group)
-    if (raw.length >= 3) raw.pop()
+    // Keep the broad market taxonomy, then hand off to the gameplay group.
+    // Narrow market categories remain available through the item's market badge.
+    if (item.value?.group_id && raw.length > 2) raw.splice(2)
+    else if (raw.length >= 3) raw.pop()
     // Build crumbs with cumulative paths
     const result: { name: string, path: string | null }[] = [{ name: 'Market', path: '/market' }]
     let slugPath = ''
     for (const c of raw) {
         slugPath += (slugPath ? '/' : '') + c.slug
         result.push({ name: c.name, path: `/market/${slugPath}` })
+    }
+    if (item.value?.group_id && item.value.group_name) {
+        result.push({ name: item.value.group_name, path: `/group/${item.value.group_id}` })
     }
     result.push({ name: item.value?.name ?? '', path: null }) // current item, no link
     return result

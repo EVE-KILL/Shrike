@@ -174,6 +174,26 @@ func TestGoOwnedPathsPrecedeNuxt(t *testing.T) {
 	}
 }
 
+func TestDevelopmentImageProxyLeavesImagesToNuxt(t *testing.T) {
+	cfg := testConfig()
+	cfg.NuxtAddress = "127.0.0.1:3000"
+	cfg.ProxyImagesToNuxt = true
+	m := newTestManager(t, cfg)
+
+	_, _, routes, err := m.buildConfig()
+	if err != nil {
+		t.Fatalf("buildConfig: %v", err)
+	}
+	for _, route := range routes {
+		if strings.Contains(route.Match, "/images") {
+			t.Fatalf("image path still belongs to Go: %+v", routes)
+		}
+	}
+	if got := routes[len(routes)-1].Surface; got != "nuxt-dev:127.0.0.1:3000" {
+		t.Fatalf("fallback surface = %q, want Nuxt development server", got)
+	}
+}
+
 // A surface named in the route table but absent from the handler map must fail
 // the build. Caddy would otherwise reject the config at provision time with a
 // message about a module, which is a much longer walk to the same answer.
