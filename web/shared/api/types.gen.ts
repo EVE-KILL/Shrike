@@ -22436,7 +22436,7 @@ export type ImageConstellationData = {
         /**
          * Maximum width and height in pixels. Images are never upscaled.
          */
-        size?: 32 | 64 | 128 | 512 | 1024;
+        size?: 32 | 64 | 128 | 256 | 512 | 1024;
         /**
          * Output format. Auto uses WebP when the request Accept header supports it.
          */
@@ -22734,7 +22734,7 @@ export type ImageRegionData = {
         /**
          * Maximum width and height in pixels. Images are never upscaled.
          */
-        size?: 32 | 64 | 128 | 512 | 1024;
+        size?: 32 | 64 | 128 | 256 | 512 | 1024;
         /**
          * Output format. Auto uses WebP when the request Accept header supports it.
          */
@@ -22786,7 +22786,7 @@ export type ImageSystemData = {
         /**
          * Maximum width and height in pixels. Images are never upscaled.
          */
-        size?: 32 | 64 | 128 | 512 | 1024;
+        size?: 32 | 64 | 128 | 256 | 512 | 1024;
         /**
          * Output format. Auto uses WebP when the request Accept header supports it.
          */
@@ -22891,7 +22891,7 @@ export type ImageUiData = {
         /**
          * Maximum width and height in pixels. Images are never upscaled.
          */
-        size?: 32 | 64 | 128 | 512 | 1024;
+        size?: 32 | 64 | 128 | 256 | 512 | 1024;
         /**
          * Output format. Auto uses WebP when the request Accept header supports it.
          */

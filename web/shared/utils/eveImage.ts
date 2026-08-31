@@ -16,7 +16,7 @@ type ImageQuery = NonNullable<ImageCharacterData['query']>
 export type EveImageSize = NonNullable<ImageQuery['size']>
 export type EveImageFormat = NonNullable<ImageQuery['format']>
 
-const MAP_IMAGE_SIZES: readonly EveImageSize[] = [32, 64, 128, 512, 1024]
+const MAP_IMAGE_SIZES: readonly EveImageSize[] = [32, 64, 128, 256, 512, 1024]
 const OLD_CHARACTER_IMAGE_SIZES: readonly EveImageSize[] = [
     8,
     16,

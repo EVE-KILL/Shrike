@@ -305,7 +305,7 @@ func writeError(ctx huma.Context, err error) {
 func imageSizeParam(mapAsset bool) *huma.Param {
 	values := []any{8, 16, 32, 64, 128, 256, 512, 1024}
 	if mapAsset {
-		values = []any{32, 64, 128, 512, 1024}
+		values = []any{32, 64, 128, 256, 512, 1024}
 	}
 	return &huma.Param{
 		Name:        "size",

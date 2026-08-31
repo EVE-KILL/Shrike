@@ -393,12 +393,14 @@ func (s *Service) Static(
 	cacheKey := fmt.Sprintf("static/%s/%s/%d/%s", category, name, size, format)
 	return s.cacheResult(cacheKey, func() (Result, error) {
 		key := fmt.Sprintf("static/%s/%s.png", category, name)
-		if size == 32 {
-			small := fmt.Sprintf("static/%s/%s_32.png", category, name)
-			if object, err := s.store.GetObject(ctx, small); err != nil {
+		storedVariant := false
+		if size > 0 {
+			variant := fmt.Sprintf("static/%s/%s_%d.png", category, name, size)
+			if object, err := s.store.GetObject(ctx, variant); err != nil {
 				return Result{}, err
 			} else if object != nil {
-				key = small
+				key = variant
+				storedVariant = true
 			}
 		}
 		source, err := s.store.GetObject(ctx, key)
@@ -409,7 +411,7 @@ func (s *Service) Static(
 			return Result{}, statusError(http.StatusNotFound, "Image not found", nil)
 		}
 		resize := size
-		if strings.HasSuffix(key, "_32.png") {
+		if storedVariant {
 			resize = 0
 		}
 		body, contentType, err := transformImage(

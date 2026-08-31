@@ -19,7 +19,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const mapPadRatio = 0.08
+const (
+	mapPadRatio       = 0.08
+	mapLineWidthAt128 = 1.5
+	mapDotRadiusAt128 = 2.7
+)
 
 type MapKind string
 
@@ -36,17 +40,19 @@ type MapDatabase interface {
 type MapGenerateOptions struct {
 	Kind        MapKind
 	ID          int64
+	Limit       int
 	Size        int
-	SmallSize   int
+	Sizes       []int
 	Concurrency int
+	Started     func(kind MapKind, id, current, total int64)
 	Progress    func(done, total int64)
 }
 
 type mapPoint struct {
-	id, group, constellation int64
-	x, z, security           float64
-	hasPosition              bool
-	scoped                   bool
+	id, typeID, group, constellation int64
+	x, z, security                   float64
+	hasPosition                      bool
+	scoped                           bool
 }
 
 type mapJump struct{ from, to int64 }
@@ -61,11 +67,21 @@ func GenerateMapImages(ctx context.Context, db MapDatabase, store ObjectStore, o
 	if options.Size < 16 || options.Size > 4096 {
 		return ImportResult{}, fmt.Errorf("map image size must be between 16 and 4096")
 	}
-	if options.SmallSize < 0 || options.SmallSize >= options.Size {
-		return ImportResult{}, fmt.Errorf("small map image size must be positive and smaller than the base size")
+	seenSizes := make(map[int]struct{}, len(options.Sizes))
+	for _, size := range options.Sizes {
+		if size <= 0 || size >= options.Size {
+			return ImportResult{}, fmt.Errorf("derived map image size %d must be positive and smaller than the base size", size)
+		}
+		if _, exists := seenSizes[size]; exists {
+			return ImportResult{}, fmt.Errorf("derived map image size %d is duplicated", size)
+		}
+		seenSizes[size] = struct{}{}
 	}
 	if options.Concurrency <= 0 {
 		options.Concurrency = 1
+	}
+	if options.Limit < 0 {
+		return ImportResult{}, fmt.Errorf("map image limit must not be negative")
 	}
 	kinds := []MapKind{options.Kind}
 	if options.Kind == "" {
@@ -83,20 +99,26 @@ func GenerateMapImages(ctx context.Context, db MapDatabase, store ObjectStore, o
 		if err != nil {
 			return result, err
 		}
+		ids = limitMapIDs(ids, options.Limit)
 		var done atomic.Int64
+		var started atomic.Int64
 		group, groupCtx := errgroup.WithContext(ctx)
 		input := make(chan int64, options.Concurrency)
 		var mu sync.Mutex
 		for range options.Concurrency {
 			group.Go(func() error {
 				for id := range input {
+					startIndex := started.Add(1)
+					if options.Started != nil {
+						options.Started(kind, id, startIndex, int64(len(ids)))
+					}
 					base, err := renderMapPNG(groupCtx, db, kind, id, options.Size)
 					if err != nil {
 						return fmt.Errorf("render %s %d: %w", kind, id, err)
 					}
 					objects := []importObject{{Key: mapObjectKey(kind, id, 0), Body: base, ContentType: "image/png"}}
-					if options.SmallSize > 0 {
-						objects = append(objects, importObject{Key: mapObjectKey(kind, id, options.SmallSize), Body: resizePNG(base, options.SmallSize), ContentType: "image/png"})
+					for _, size := range options.Sizes {
+						objects = append(objects, importObject{Key: mapObjectKey(kind, id, size), Body: resizePNG(base, size), ContentType: "image/png"})
 					}
 					for _, object := range objects {
 						changed, err := putIfChanged(groupCtx, store, object)
@@ -137,6 +159,13 @@ func GenerateMapImages(ctx context.Context, db MapDatabase, store ObjectStore, o
 		}
 	}
 	return result, nil
+}
+
+func limitMapIDs(ids []int64, limit int) []int64 {
+	if limit <= 0 || limit >= len(ids) {
+		return ids
+	}
+	return ids[:limit]
 }
 
 func mapIDs(ctx context.Context, db MapDatabase, kind MapKind, only int64) ([]int64, error) {
@@ -185,7 +214,7 @@ func renderMapPNG(ctx context.Context, db MapDatabase, kind MapKind, id int64, s
 }
 
 func loadSystemBodies(ctx context.Context, db MapDatabase, id int64) ([]mapPoint, error) {
-	rows, err := db.Query(ctx, `SELECT COALESCE(group_id,0), x, z FROM celestials WHERE solar_system_id=$1 AND group_id IN (6,7)`, id)
+	rows, err := db.Query(ctx, `SELECT item_id, COALESCE(type_id,0), COALESCE(group_id,0), x, z FROM celestials WHERE solar_system_id=$1 AND group_id IN (6,7)`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +223,7 @@ func loadSystemBodies(ctx context.Context, db MapDatabase, id int64) ([]mapPoint
 	for rows.Next() {
 		var p mapPoint
 		var x, z *float64
-		if err := rows.Scan(&p.group, &x, &z); err != nil {
+		if err := rows.Scan(&p.id, &p.typeID, &p.group, &x, &z); err != nil {
 			return nil, err
 		}
 		if x != nil && z != nil {
@@ -210,7 +239,10 @@ func loadNetwork(ctx context.Context, db MapDatabase, kind MapKind, id int64) ([
 	if kind == MapRegion {
 		column = "region_id"
 	}
-	rows, err := db.Query(ctx, `SELECT solar_system_id,x,z,COALESCE(security,0),COALESCE(constellation_id,0) FROM solar_systems WHERE `+column+`=$1`, id)
+	rows, err := db.Query(ctx, `SELECT system.solar_system_id,system.x,system.z,COALESCE(system.security,0),COALESCE(system.constellation_id,0),COALESCE(star.type_id,0)
+		FROM solar_systems system
+		LEFT JOIN celestials star ON star.solar_system_id=system.solar_system_id AND star.group_id=6
+		WHERE system.`+column+`=$1`, id)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -220,7 +252,7 @@ func loadNetwork(ctx context.Context, db MapDatabase, kind MapKind, id int64) ([
 	for rows.Next() {
 		var p mapPoint
 		var x, z *float64
-		if err := rows.Scan(&p.id, &x, &z, &p.security, &p.constellation); err != nil {
+		if err := rows.Scan(&p.id, &x, &z, &p.security, &p.constellation, &p.typeID); err != nil {
 			return nil, nil, err
 		}
 		if x != nil && z != nil {
@@ -269,7 +301,10 @@ func loadNetwork(ctx context.Context, db MapDatabase, kind MapKind, id int64) ([
 		for index, value := range ext {
 			extIDs[index] = int32(value)
 		}
-		erows, err := db.Query(ctx, `SELECT solar_system_id,x,z,COALESCE(security,0),COALESCE(constellation_id,0) FROM solar_systems WHERE solar_system_id=ANY($1::int[])`, extIDs)
+		erows, err := db.Query(ctx, `SELECT system.solar_system_id,system.x,system.z,COALESCE(system.security,0),COALESCE(system.constellation_id,0),COALESCE(star.type_id,0)
+			FROM solar_systems system
+			LEFT JOIN celestials star ON star.solar_system_id=system.solar_system_id AND star.group_id=6
+			WHERE system.solar_system_id=ANY($1::int[])`, extIDs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -277,7 +312,7 @@ func loadNetwork(ctx context.Context, db MapDatabase, kind MapKind, id int64) ([
 		for erows.Next() {
 			var p mapPoint
 			var x, z *float64
-			if err := erows.Scan(&p.id, &x, &z, &p.security, &p.constellation); err != nil {
+			if err := erows.Scan(&p.id, &x, &z, &p.security, &p.constellation, &p.typeID); err != nil {
 				return nil, nil, err
 			}
 			if x != nil && z != nil {
@@ -306,11 +341,13 @@ func mapObjectKey(kind MapKind, id int64, small int) string {
 func renderSystem(points []mapPoint, size int) image.Image {
 	c := newCanvas(size)
 	cx := float64(size) / 2
+	unit := float64(size) / 128
+	lineWidth := mapLineWidthAt128 * unit
+	dotRadius := mapDotRadiusAt128 * unit
 	pad := float64(size) * mapPadRatio
 	outer := float64(size)/2 - pad
 	if len(points) == 0 {
-		c.circle(cx, cx, outer, rgba("6b7280", 178), .6)
-		c.disk(cx, cx, 2, rgba("6b7280", 128))
+		c.disk(cx, cx, 5.5*unit, rgba("9ca3af", 255))
 		return c.image()
 	}
 	var sun mapPoint
@@ -331,19 +368,80 @@ func renderSystem(points []mapPoint, size int) image.Image {
 	for _, p := range planets {
 		orbit := math.Hypot(p.x-sun.x, p.z-sun.z) * scale
 		if orbit >= 1 {
-			c.circle(cx, cx, orbit, rgba("6b7280", 115), 1.2)
+			c.circle(cx, cx, orbit, rgba("6b7280", 105), lineWidth)
 		}
 	}
-	c.circle(cx, cx, outer, rgba("6b7280", 178), .6)
-	c.disk(cx, cx, 3, rgba("f59e0b", 255))
+	starHalo, starCore := starTypeColors(sun.typeID)
+	c.disk(cx, cx, 7*unit, starHalo)
+	c.disk(cx, cx, 5.5*unit, starCore)
+	c.disk(cx-1.6*unit, cx-1.6*unit, 1.8*unit, rgba("f3f4f6", 210))
 	for _, p := range planets {
-		c.disk(cx+(p.x-sun.x)*scale, cx-(p.z-sun.z)*scale, 2.4, rgba("16a34a", 255))
+		c.disk(cx+(p.x-sun.x)*scale, cx-(p.z-sun.z)*scale, dotRadius, planetTypeColor(p.typeID))
 	}
 	return c.image()
 }
 
+func starTypeColors(typeID int64) (halo, core color.RGBA) {
+	switch typeID {
+	case 3796, 56084: // O1 bright blue and Divine Immanence
+		return rgba("075985", 190), rgba("38bdf8", 255)
+	case 9, 3801, 34331, 45034, 45046, 56083, 56085, 56097, 56098, 73909, 78350: // A0/B0 blue families
+		return rgba("1e3a8a", 190), rgba("60a5fa", 255)
+	case 3803, 45042: // B5 white dwarf
+		return rgba("64748b", 190), rgba("dbeafe", 255)
+	case 10, 45035: // F0 white
+		return rgba("9ca3af", 190), rgba("f8fafc", 255)
+	case 3799, 45038: // G3 pink small
+		return rgba("9d174d", 190), rgba("f9a8d4", 255)
+	case 3797, 45036: // G5 pink
+		return rgba("9f1239", 190), rgba("fb7185", 255)
+	case 56082, 56086: // G5 gold immanence
+		return rgba("92400e", 190), rgba("fbbf24", 255)
+	case 6, 3802, 45030, 45041, 45047: // G5/K3 yellow
+		return rgba("a16207", 190), rgba("fde047", 255)
+	case 7, 3798, 45031, 45032, 45037: // K5/K7 orange
+		return rgba("9a3412", 190), rgba("fb923c", 255)
+	case 8, 45033: // K5 red giant
+		return rgba("991b1b", 190), rgba("f87171", 255)
+	case 3800, 45039, 45040: // M0 orange radiant
+		return rgba("7c2d12", 190), rgba("f97316", 255)
+	default:
+		return rgba("111827", 180), rgba("9ca3af", 255)
+	}
+}
+
+func planetTypeColor(typeID int64) color.RGBA {
+	switch typeID {
+	case 11: // Temperate
+		return rgba("22c55e", 255)
+	case 12: // Ice
+		return rgba("bae6fd", 255)
+	case 13: // Gas
+		return rgba("c084fc", 255)
+	case 2014: // Oceanic
+		return rgba("3b82f6", 255)
+	case 2015: // Lava
+		return rgba("ef4444", 255)
+	case 2016: // Barren
+		return rgba("a88b6a", 255)
+	case 2017: // Storm
+		return rgba("64748b", 255)
+	case 2063: // Plasma
+		return rgba("00d9ff", 255)
+	case 30889: // Shattered
+		return rgba("e5e7eb", 255)
+	case 73911: // Scorched Barren
+		return rgba("f97316", 255)
+	default:
+		return rgba("9ca3af", 255)
+	}
+}
+
 func renderNetwork(kind MapKind, points []mapPoint, jumps []mapJump, size int) image.Image {
 	c := newCanvas(size)
+	unit := float64(size) / 128
+	lineWidth := mapLineWidthAt128 * unit
+	dotRadius := mapDotRadiusAt128 * unit
 	byID := map[int64]mapPoint{}
 	inside := map[int64]bool{}
 	var scoped []mapPoint
@@ -375,18 +473,27 @@ func renderNetwork(kind MapKind, points []mapPoint, jumps []mapJump, size int) i
 		x2, y2 := project(b)
 		stroke := secRGBA(math.Min(a.security, b.security))
 		if kind == MapConstellation && inside[a.id] && inside[b.id] {
-			stroke = pastelRGBA(a.id)
+			stroke = rgba("ef4444", 255)
+		} else if kind == MapRegion {
+			if inside[a.id] && inside[b.id] {
+				stroke = rgba("2563eb", 255)
+			} else {
+				stroke = rgba("22c55e", 255)
+			}
 		}
-		c.line(x1, y1, x2, y2, 1.2, stroke)
+		c.line(x1, y1, x2, y2, lineWidth, stroke)
 	}
 	for _, p := range scoped {
 		x, y := project(p)
-		seed := p.id
+		_, nodeColor := starTypeColors(p.typeID)
+		nodeRadius := dotRadius
+		outlineWidth := .6 * unit
 		if kind == MapRegion {
-			seed = p.constellation
+			nodeRadius *= .5
+			outlineWidth *= .5
 		}
-		c.disk(x, y, 2.4, pastelRGBA(seed))
-		c.circle(x, y, 2.4, rgba("111827", 255), .6)
+		c.disk(x, y, nodeRadius, nodeColor)
+		c.circle(x, y, nodeRadius, rgba("111827", 255), outlineWidth)
 	}
 	return c.image()
 }
@@ -436,28 +543,37 @@ func newCanvas(size int) *mapCanvas {
 }
 func (c *mapCanvas) disk(x, y, r float64, fill color.RGBA) { c.shapeCircle(x, y, r, fill, true, 0) }
 func (c *mapCanvas) circle(x, y, r float64, stroke color.RGBA, width float64) {
-	segments := int(math.Max(32, r*3))
-	lastX, lastY := x+r, y
-	for i := 1; i <= segments; i++ {
-		angle := 2 * math.Pi * float64(i) / float64(segments)
-		nextX, nextY := x+r*math.Cos(angle), y+r*math.Sin(angle)
-		c.line(lastX, lastY, nextX, nextY, width, stroke)
-		lastX, lastY = nextX, nextY
-	}
+	c.shapeCircle(x, y, r, stroke, false, width)
 }
 func (c *mapCanvas) shapeCircle(x, y, r float64, col color.RGBA, fill bool, width float64) {
 	s := float64(c.scale)
 	ras := vector.NewRasterizer(c.size*c.scale, c.size*c.scale)
 	k := .5522847498
-	r *= s
 	x *= s
 	y *= s
-	ras.MoveTo(float32(x+r), float32(y))
-	ras.CubeTo(float32(x+r), float32(y+k*r), float32(x+k*r), float32(y+r), float32(x), float32(y+r))
-	ras.CubeTo(float32(x-k*r), float32(y+r), float32(x-r), float32(y+k*r), float32(x-r), float32(y))
-	ras.CubeTo(float32(x-r), float32(y-k*r), float32(x-k*r), float32(y-r), float32(x), float32(y-r))
-	ras.CubeTo(float32(x+k*r), float32(y-r), float32(x+r), float32(y-k*r), float32(x+r), float32(y))
-	ras.ClosePath()
+	drawClockwiseCircle := func(radius float64) {
+		ras.MoveTo(float32(x+radius), float32(y))
+		ras.CubeTo(float32(x+radius), float32(y+k*radius), float32(x+k*radius), float32(y+radius), float32(x), float32(y+radius))
+		ras.CubeTo(float32(x-k*radius), float32(y+radius), float32(x-radius), float32(y+k*radius), float32(x-radius), float32(y))
+		ras.CubeTo(float32(x-radius), float32(y-k*radius), float32(x-k*radius), float32(y-radius), float32(x), float32(y-radius))
+		ras.CubeTo(float32(x+k*radius), float32(y-radius), float32(x+radius), float32(y-k*radius), float32(x+radius), float32(y))
+		ras.ClosePath()
+	}
+	drawCounterClockwiseCircle := func(radius float64) {
+		ras.MoveTo(float32(x+radius), float32(y))
+		ras.CubeTo(float32(x+radius), float32(y-k*radius), float32(x+k*radius), float32(y-radius), float32(x), float32(y-radius))
+		ras.CubeTo(float32(x-k*radius), float32(y-radius), float32(x-radius), float32(y-k*radius), float32(x-radius), float32(y))
+		ras.CubeTo(float32(x-radius), float32(y+k*radius), float32(x-k*radius), float32(y+radius), float32(x), float32(y+radius))
+		ras.CubeTo(float32(x+k*radius), float32(y+radius), float32(x+radius), float32(y+k*radius), float32(x+radius), float32(y))
+		ras.ClosePath()
+	}
+	if fill {
+		drawClockwiseCircle(r * s)
+	} else {
+		halfWidth := width * s / 2
+		drawClockwiseCircle(r*s + halfWidth)
+		drawCounterClockwiseCircle(math.Max(0, r*s-halfWidth))
+	}
 	ras.Draw(c.img, c.img.Bounds(), image.NewUniform(col), image.Point{})
 }
 func (c *mapCanvas) line(x1, y1, x2, y2, width float64, col color.RGBA) {

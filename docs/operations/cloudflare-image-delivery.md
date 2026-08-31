@@ -47,8 +47,10 @@ shrike images import-old-characters
 ```
 
 `generate-maps` produces 1024px systems, constellations, and regions directly
-from the imported SDE tables, one image at a time by default. The image service
-derives the supported smaller variants from those originals. `import-static`
+from the imported SDE tables, one image at a time by default. Each map is
+rendered once, then 512px, 256px, 128px, 64px, and 32px variants are derived
+from that original. Use `--limit 1` to validate one image per selected map type
+before rebuilding the full corpus. `import-static`
 installs the UI, Dust 514, and overlay
 assets bundled into Shrike itself. TurtleTools
 and legacy portrait imports download their upstream archives themselves.

@@ -26,7 +26,7 @@ describe('EVE image URLs', () => {
     test('uses the next generated map size for responsive images', () => {
         expect(eveImageSrcset('/images/systems/30000142', 128)).toBe(
             '/images/systems/30000142?size=128 1x, ' +
-            '/images/systems/30000142?size=512 2x',
+            '/images/systems/30000142?size=256 2x',
         )
     })
 

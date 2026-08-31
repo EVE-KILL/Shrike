@@ -32,8 +32,9 @@ var (
 	flagTypeSyncConcurrency  int
 	flagMapKind              string
 	flagMapID                int64
+	flagMapLimit             int
 	flagMapSize              int
-	flagMapSmallSize         int
+	flagMapSizes             []int
 	flagMapConcurrency       int
 )
 
@@ -163,8 +164,13 @@ celestials tables and writes them directly to the configured image storage.`,
 		}
 		start := time.Now()
 		result, err := images.GenerateMapImages(cmd.Context(), pool, store, images.MapGenerateOptions{
-			Kind: kind, ID: flagMapID, Size: flagMapSize, SmallSize: flagMapSmallSize,
+			Kind: kind, ID: flagMapID, Limit: flagMapLimit, Size: flagMapSize, Sizes: flagMapSizes,
 			Concurrency: flagMapConcurrency,
+			Started: func(kind images.MapKind, id, current, total int64) {
+				if !ui.JSONMode {
+					ui.Printf("  Rendering %s %d (%s / %s)...\n", kind, id, fmtCount(current), fmtCount(total))
+				}
+			},
 			Progress: func(done, total int64) {
 				if !ui.JSONMode {
 					ui.Printf("  %s / %s rendered\r", fmtCount(done), fmtCount(total))
@@ -311,8 +317,9 @@ func init() {
 	)
 	imagesGenerateMapsCmd.Flags().StringVarP(&flagMapKind, "type", "t", "all", "system, constellation, region, or all")
 	imagesGenerateMapsCmd.Flags().Int64VarP(&flagMapID, "id", "i", 0, "Generate one ID (requires a single type)")
+	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapLimit, "limit", "l", 0, "Generate at most this many images per selected type (0 disables)")
 	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapSize, "size", "s", 1024, "Base image size in pixels")
-	imagesGenerateMapsCmd.Flags().IntVar(&flagMapSmallSize, "small", 32, "Also generate this smaller size (0 disables)")
+	imagesGenerateMapsCmd.Flags().IntSliceVar(&flagMapSizes, "sizes", []int{512, 256, 128, 64, 32}, "Derived image sizes generated from the base image")
 	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapConcurrency, "concurrency", "c", 1, "Parallel render workers")
 	imagesCmd.AddCommand(
 		imagesImportStaticCmd,

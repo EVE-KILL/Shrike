@@ -439,12 +439,12 @@ func validateSize(size int, mapAsset bool) error {
 		return nil
 	}
 	if mapAsset {
-		if size == 32 || size == 64 || size == 128 || size == 512 || size == 1024 {
+		if size == 32 || size == 64 || size == 128 || size == 256 || size == 512 || size == 1024 {
 			return nil
 		}
 		return statusError(
 			http.StatusBadRequest,
-			"Image size must be 32, 64, 128, 512, or 1024",
+			"Image size must be 32, 64, 128, 256, 512, or 1024",
 			nil,
 		)
 	}
