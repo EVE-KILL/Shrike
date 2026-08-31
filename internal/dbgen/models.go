@@ -345,6 +345,11 @@ type CharacterIntelDaily struct {
 	BaitedDeaths       int32       `json:"baited_deaths"`
 }
 
+type CharacterIntelDirtyDay struct {
+	ActivityDate pgtype.Date        `json:"activity_date"`
+	DirtiedAt    pgtype.Timestamptz `json:"dirtied_at"`
+}
+
 type CharacterIntelRollupDay struct {
 	ActivityDate pgtype.Date        `json:"activity_date"`
 	RefreshedAt  pgtype.Timestamptz `json:"refreshed_at"`

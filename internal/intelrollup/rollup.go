@@ -3,10 +3,17 @@ package intelrollup
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	lockNamespace int32 = 1768843634
+	lockKey       int32 = 1
 )
 
 const (
@@ -59,6 +66,86 @@ func Reconcile(ctx context.Context, pool *pgxpool.Pool) (Result, error) {
 	return result, nil
 }
 
+// PrepareMaintenance marks the recent repair window dirty, removes expired
+// facts, and returns every day whose durable marker still needs processing.
+func PrepareMaintenance(ctx context.Context, pool *pgxpool.Pool) ([]time.Time, error) {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO character_intel_dirty_days (activity_date, dirtied_at)
+		SELECT d::date, now() FROM generate_series($1::date, $2::date, interval '1 day') d
+		ON CONFLICT (activity_date) DO UPDATE SET dirtied_at=EXCLUDED.dirtied_at`,
+		today.AddDate(0, 0, -(RepairDays-1)), today); err != nil {
+		return nil, err
+	}
+	for _, table := range []string{
+		"character_intel_daily", "character_intel_ship_daily",
+		"character_intel_target_daily", "character_intel_rollup_days",
+		"character_intel_dirty_days",
+	} {
+		if _, err := pool.Exec(ctx, "DELETE FROM "+table+
+			" WHERE activity_date < CURRENT_DATE - $1::int", RetentionDays-1); err != nil {
+			return nil, fmt.Errorf("purge %s: %w", table, err)
+		}
+	}
+	rows, err := pool.Query(ctx, `SELECT activity_date FROM character_intel_dirty_days ORDER BY activity_date`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var days []time.Time
+	for rows.Next() {
+		var day time.Time
+		if err := rows.Scan(&day); err != nil {
+			return nil, err
+		}
+		days = append(days, day)
+	}
+	return days, rows.Err()
+}
+
+// ProcessDirtyDay rebuilds one marked day. The marker timestamp is cleared
+// conditionally, so a concurrent killmail that advances it remains dirty and
+// is repaired again without making ingestion wait on the rebuild.
+func ProcessDirtyDay(ctx context.Context, pool *pgxpool.Pool, day time.Time) (Result, bool, error) {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return Result{}, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1,$2)`, lockNamespace, lockKey); err != nil {
+		return Result{}, false, err
+	}
+	var marker time.Time
+	err = tx.QueryRow(ctx, `SELECT dirtied_at FROM character_intel_dirty_days
+		WHERE activity_date=$1`, day).Scan(&marker)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Result{}, false, nil
+	}
+	if err != nil {
+		return Result{}, false, err
+	}
+	characters, ships, targets, err := reconcileDayTx(ctx, tx, day)
+	if err != nil {
+		return Result{}, false, err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM character_intel_dirty_days
+		WHERE activity_date=$1 AND dirtied_at=$2`, day, marker); err != nil {
+		return Result{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Result{}, false, err
+	}
+	return Result{From: day, To: day, Days: 1, Characters: characters, Ships: ships, Targets: targets}, true, nil
+}
+
+// IsDirty reports whether newer ingest arrived while a day was rebuilding.
+func IsDirty(ctx context.Context, pool *pgxpool.Pool, day time.Time) (bool, error) {
+	var dirty bool
+	err := pool.QueryRow(ctx, `SELECT EXISTS (
+		SELECT 1 FROM character_intel_dirty_days WHERE activity_date=$1)`, day).Scan(&dirty)
+	return dirty, err
+}
+
 func reconcileDates(ctx context.Context, pool *pgxpool.Pool, today time.Time) ([]time.Time, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT candidate::date
@@ -91,6 +178,20 @@ func reconcileDay(ctx context.Context, pool *pgxpool.Pool, day time.Time) (int64
 		return 0, 0, 0, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1,$2)`, lockNamespace, lockKey); err != nil {
+		return 0, 0, 0, err
+	}
+	characters, ships, targets, err := reconcileDayTx(ctx, tx, day)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, 0, 0, err
+	}
+	return characters, ships, targets, nil
+}
+
+func reconcileDayTx(ctx context.Context, tx pgx.Tx, day time.Time) (int64, int64, int64, error) {
 
 	for _, table := range []string{"character_intel_daily", "character_intel_ship_daily", "character_intel_target_daily"} {
 		if _, err := tx.Exec(ctx, "DELETE FROM "+table+" WHERE activity_date = $1", day); err != nil {
@@ -112,9 +213,6 @@ func reconcileDay(ctx context.Context, pool *pgxpool.Pool, day time.Time) (int64
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO character_intel_rollup_days (activity_date, refreshed_at)
 		VALUES ($1, now()) ON CONFLICT (activity_date) DO UPDATE SET refreshed_at = EXCLUDED.refreshed_at`, day); err != nil {
-		return 0, 0, 0, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return 0, 0, 0, err
 	}
 	return characterTag.RowsAffected(), shipTag.RowsAffected(), targetTag.RowsAffected(), nil

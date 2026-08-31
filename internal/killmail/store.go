@@ -118,7 +118,14 @@ func insert(ctx context.Context, pool *pgxpool.Pool, p *Parsed, tracked bool) (b
 		batch.Queue(`
             INSERT INTO killmail_processing (killmail_id, effects_completed)
             VALUES ($1, 0)
-            ON CONFLICT (killmail_id) DO NOTHING`, km.KillmailID)
+			ON CONFLICT (killmail_id) DO NOTHING`, km.KillmailID)
+		// The dirty marker commits with the canonical killmail. Queue delivery is
+		// an acceleration; daily maintenance can always recover this durable fact.
+		batch.Queue(`
+			INSERT INTO character_intel_dirty_days (activity_date, dirtied_at)
+			SELECT $1::timestamptz::date, now()
+			WHERE $1::timestamptz >= CURRENT_DATE - 364
+			ON CONFLICT (activity_date) DO UPDATE SET dirtied_at = EXCLUDED.dirtied_at`, km.KillmailTime)
 	}
 
 	if err := tx.SendBatch(ctx, batch).Close(); err != nil {

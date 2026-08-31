@@ -165,6 +165,13 @@ type GraphIngestArgs struct {
 
 func (GraphIngestArgs) Kind() string { return "graph_ingest" }
 
+// CharacterIntelRollupArgs atomically rebuilds one dirty UTC day.
+type CharacterIntelRollupArgs struct {
+	Day string `json:"day" river:"unique"`
+}
+
+func (CharacterIntelRollupArgs) Kind() string { return "character_intel_rollup" }
+
 // BattleDetectionArgs finds the battles in one time window.
 //
 // Both bounds are in the uniqueness key: two windows are the same job only when

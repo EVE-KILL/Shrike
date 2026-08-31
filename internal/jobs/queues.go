@@ -65,6 +65,11 @@ var Queues = []Queue{
 		Concurrency: 1, Retries: 2, BackoffDelay: 30_000,
 	},
 	{
+		Name:        "character_intel_rollup",
+		Description: "Atomically rebuild one dirty character-intelligence day",
+		Concurrency: 1, Retries: 3, BackoffDelay: 30_000,
+	},
+	{
 		Name:        "character_killmail",
 		Description: "Fetch character killmails via authenticated ESI",
 		Concurrency: 10, Retries: 2, BackoffDelay: 10_000, RequiresTQ: true,

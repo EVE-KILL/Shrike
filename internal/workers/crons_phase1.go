@@ -386,12 +386,22 @@ func (d *Deps) cronKillsDailyCountReconcile(ctx context.Context) (string, error)
 // cronCharacterIntelRollup rebuilds reusable daily facts from canonical
 // killmails. It is independent of Memgraph and safe to replay.
 func (d *Deps) cronCharacterIntelRollup(ctx context.Context) (string, error) {
-	res, err := intelrollup.Reconcile(ctx, d.Pool)
+	if d.Queue == nil {
+		return "", errNeedsQueue("character_intel_rollup")
+	}
+	days, err := intelrollup.PrepareMaintenance(ctx, d.Pool)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%d days: %d characters, %d ships, %d targets",
-		res.Days, res.Characters, res.Ships, res.Targets), nil
+	jobs := make([]river.JobArgs, 0, len(days))
+	for _, day := range days {
+		jobs = append(jobs, queue.CharacterIntelRollupArgs{Day: day.Format("2006-01-02")})
+	}
+	inserted, err := queue.DispatchMany(ctx, d.Queue, jobs, queue.DormantBackfill)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d dirty days, %d queued", len(days), inserted), nil
 }
 
 // cronStatsPipeline rebuilds the rolled-up stats periods and the leaderboards.

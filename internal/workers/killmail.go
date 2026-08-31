@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/entities"
 	"github.com/eve-kill/shrike/internal/esi"
+	"github.com/eve-kill/shrike/internal/intelrollup"
 	"github.com/eve-kill/shrike/internal/killmail"
 	"github.com/eve-kill/shrike/internal/killtype"
 	"github.com/eve-kill/shrike/internal/queue"
@@ -180,6 +182,12 @@ func (w *KillmailWorker) runEffects(ctx context.Context, p *killmail.Parsed, tie
 				_, err := queue.Dispatch(ctx, w.Deps.Queue, e.args, queue.Live)
 				return err
 			})
+			errs = append(errs, err)
+		}
+		if p.Killmail.KillmailTime.After(time.Now().UTC().AddDate(0, 0, -intelrollup.RetentionDays)) {
+			_, err := queue.Dispatch(ctx, w.Deps.Queue,
+				queue.CharacterIntelRollupArgs{Day: p.Killmail.KillmailTime.UTC().Format("2006-01-02")},
+				queue.RecentBackfill)
 			errs = append(errs, err)
 		}
 	}
