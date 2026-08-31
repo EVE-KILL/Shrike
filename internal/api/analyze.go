@@ -62,6 +62,10 @@ func analyzeCharacters(
 	requestIDs []int64,
 	ids []int32,
 ) ([]map[string]any, error) {
+	shipQuery, lossQuery, cynoQuery := analyzeRawShipSQL, analyzeRawLossSQL, analyzeRawCynoSQL
+	if intelRollupCovers(ctx, db, 90) {
+		shipQuery = analyzeRolledShipSQL
+	}
 	queryResults, err := queryMapsConcurrent(ctx, db,
 		databaseQuery{SQL: `
 			SELECT entity_id,
@@ -75,55 +79,9 @@ func analyzeCharacters(
 			  AND period_type = 0
 			  AND period_start >= CURRENT_DATE - 90
 			GROUP BY entity_id`, Args: []any{ids}},
-		databaseQuery{SQL: `
-			SELECT cid AS character_id, ships.ship_type_id,
-			       ships.ship_name, ships.kill_count
-			FROM unnest($1::int[]) AS cid
-			CROSS JOIN LATERAL (
-			  SELECT a.ship_type_id, t.name AS ship_name, a.kill_count
-			  FROM (
-			    SELECT ship_type_id, COUNT(*) AS kill_count,
-			           MAX(killmail_time) AS last_kill_time
-			    FROM killmail_attackers
-			    WHERE character_id = cid
-			      AND ship_type_id IS NOT NULL
-			      AND killmail_time >= NOW() - INTERVAL '90 days'
-			    GROUP BY ship_type_id
-			    ORDER BY last_kill_time DESC
-			    LIMIT 5
-			  ) a
-			  JOIN inv_types t ON t.type_id = a.ship_type_id
-			) ships`, Args: []any{ids}},
-		databaseQuery{SQL: `
-			SELECT cid AS character_id, loss.victim_ship_type_id,
-			       loss.killmail_id, loss.killmail_time
-			FROM unnest($1::int[]) AS cid
-			CROSS JOIN LATERAL (
-			  SELECT victim_ship_type_id, killmail_id, killmail_time
-			  FROM killmails
-			  WHERE victim_character_id = cid
-			    AND killmail_time >= NOW() - INTERVAL '90 days'
-			  ORDER BY killmail_id DESC
-			  LIMIT 5
-			) loss`, Args: []any{ids}},
-		databaseQuery{SQL: `
-			SELECT cid AS character_id, cyno.total_checked, cyno.cyno_losses
-			FROM unnest($1::int[]) AS cid
-			CROSS JOIN LATERAL (
-			  SELECT COUNT(*)::int AS total_checked,
-			         COUNT(*) FILTER (WHERE EXISTS (
-			           SELECT 1 FROM killmail_items i
-			           WHERE i.killmail_id = k.killmail_id
-			             AND i.type_id IN (21096, 28646, 52694)
-			         ))::int AS cyno_losses
-			  FROM (
-			    SELECT killmail_id FROM killmails
-			    WHERE victim_character_id = cid
-			      AND killmail_time >= NOW() - INTERVAL '90 days'
-			    ORDER BY killmail_id DESC
-			    LIMIT 50
-			  ) k
-			) cyno`, Args: []any{ids}},
+		databaseQuery{SQL: shipQuery, Args: []any{ids}},
+		databaseQuery{SQL: lossQuery, Args: []any{ids}},
+		databaseQuery{SQL: cynoQuery, Args: []any{ids}},
 	)
 	if err != nil {
 		return nil, err
@@ -193,6 +151,70 @@ func analyzeCharacters(
 	}
 	return result, nil
 }
+
+const analyzeRawShipSQL = `
+			SELECT cid AS character_id, ships.ship_type_id,
+			       ships.ship_name, ships.kill_count
+			FROM unnest($1::int[]) AS cid
+			CROSS JOIN LATERAL (
+			  SELECT a.ship_type_id, t.name AS ship_name, a.kill_count
+			  FROM (
+			    SELECT ship_type_id, COUNT(*) AS kill_count,
+			           MAX(killmail_time) AS last_kill_time
+			    FROM killmail_attackers
+			    WHERE character_id = cid
+			      AND ship_type_id IS NOT NULL
+			      AND killmail_time >= NOW() - INTERVAL '90 days'
+			    GROUP BY ship_type_id
+			    ORDER BY last_kill_time DESC
+			    LIMIT 5
+			  ) a
+			  JOIN inv_types t ON t.type_id = a.ship_type_id
+			) ships`
+
+const analyzeRawLossSQL = `
+			SELECT cid AS character_id, loss.victim_ship_type_id,
+			       loss.killmail_id, loss.killmail_time
+			FROM unnest($1::int[]) AS cid
+			CROSS JOIN LATERAL (
+			  SELECT victim_ship_type_id, killmail_id, killmail_time
+			  FROM killmails
+			  WHERE victim_character_id = cid
+			    AND killmail_time >= NOW() - INTERVAL '90 days'
+			  ORDER BY killmail_id DESC
+			  LIMIT 5
+			) loss`
+
+const analyzeRawCynoSQL = `
+			SELECT cid AS character_id, cyno.total_checked, cyno.cyno_losses
+			FROM unnest($1::int[]) AS cid
+			CROSS JOIN LATERAL (
+			  SELECT COUNT(*)::int AS total_checked,
+			         COUNT(*) FILTER (WHERE EXISTS (
+			           SELECT 1 FROM killmail_items i
+			           WHERE i.killmail_id = k.killmail_id
+			             AND i.type_id IN (21096, 28646, 52694)
+			         ))::int AS cyno_losses
+			  FROM (
+			    SELECT killmail_id FROM killmails
+			    WHERE victim_character_id = cid
+			      AND killmail_time >= NOW() - INTERVAL '90 days'
+			    ORDER BY killmail_id DESC
+			    LIMIT 50
+			  ) k
+			) cyno`
+
+const analyzeRolledShipSQL = `
+WITH totals AS (
+ SELECT character_id,ship_type_id,sum(appearances)::int AS kill_count,max(last_appearance_at) AS last_kill_time
+ FROM character_intel_ship_daily WHERE character_id=ANY($1::int[])
+  AND activity_date BETWEEN CURRENT_DATE-89 AND CURRENT_DATE AND appearances>0
+ GROUP BY character_id,ship_type_id
+), ranked AS (
+ SELECT totals.*,row_number() OVER(PARTITION BY character_id ORDER BY last_kill_time DESC,ship_type_id) AS rank FROM totals
+)
+SELECT r.character_id,r.ship_type_id,t.name AS ship_name,r.kill_count FROM ranked r
+JOIN inv_types t ON t.type_id=r.ship_type_id WHERE r.rank<=5`
 
 func roundedRatio(numerator, denominator int64, scale float64) float64 {
 	if denominator == 0 {

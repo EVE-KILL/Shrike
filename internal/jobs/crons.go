@@ -79,6 +79,8 @@ var Crons = []Cron{
 		Description: "Dispatch killmails whose ESI delay has expired"},
 	{Name: "kills_daily_count_reconcile", Schedule: "1d",
 		Description: "Rebuild the last few days of kills_daily_count to correct drift"},
+	{Name: "character_intel_rollup", Schedule: "1h", RunOnStart: true,
+		Description: "Rebuild reusable daily character-intelligence facts"},
 	{Name: "missed_killmails", Schedule: "1h",
 		Description: "Check zKB history for missing killmails (last 14 days)"},
 	{Name: "price_compaction", Schedule: "1d",

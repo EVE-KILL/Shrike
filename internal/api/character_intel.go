@@ -52,6 +52,20 @@ func loadCharacterIntel(
 	id int64,
 	days int,
 ) (map[string]any, error) {
+	// Once every day in the requested window has been reconciled, share the
+	// same compact rollup reader as the batch endpoint. Until then the original
+	// queries remain an exact deployment-safe fallback.
+	if intelRollupCovers(ctx, opts.DB, days) {
+		rows, _, err := loadCharacterIntelBatch(
+			ctx, opts, []int64{id}, []int32{int32(id)}, days,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if len(rows) > 0 {
+			return rows[0], nil
+		}
+	}
 	playstyle, err := queryMap(ctx, opts.DB, `
 		SELECT count(*) FILTER (WHERE k.attacker_count = 1) AS solo,
 		       count(*) FILTER (WHERE k.attacker_count BETWEEN 2 AND 5) AS small_gang,

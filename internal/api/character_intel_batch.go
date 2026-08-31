@@ -59,30 +59,11 @@ func registerBatchCharacterIntelRoute(a huma.API, opts Options) {
 }
 
 func loadCharacterIntelBatch(ctx context.Context, opts Options, requestIDs []int64, ids []int32, days int) ([]map[string]any, []int64, error) {
-	results, err := queryMapsConcurrent(ctx, opts.DB,
-		databaseQuery{SQL: `SELECT character_id FROM characters WHERE character_id = ANY($1::int[])`, Args: []any{ids}},
-		databaseQuery{SQL: `
-			SELECT a.character_id,
-			 count(*) FILTER (WHERE k.attacker_count=1) AS solo,
-			 count(*) FILTER (WHERE k.attacker_count BETWEEN 2 AND 5) AS small_gang,
-			 count(*) FILTER (WHERE k.attacker_count BETWEEN 6 AND 15) AS mid_gang,
-			 count(*) FILTER (WHERE k.attacker_count BETWEEN 16 AND 50) AS fleet,
-			 count(*) FILTER (WHERE k.attacker_count>50) AS blob,
-			 count(*) AS total,
-			 round(avg(k.attacker_count)::numeric,1)::double precision AS avg_fleet_size,
-			 count(*) FILTER (WHERE a.ship_type_id=45534) AS monitor_appearances,
-			 count(*) FILTER (WHERE a.damage_done=0 AND k.attacker_count>=10) AS zero_dmg_fleet,
-			 count(*) AS total_appearances
-			FROM killmail_attackers a JOIN killmails k ON k.killmail_id=a.killmail_id
-			WHERE a.character_id=ANY($1::int[]) AND a.killmail_time>now()-make_interval(days=>$2)
-			GROUP BY a.character_id`, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelShipsFlownSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelShipsLostSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelTargetsSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelAwoxSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelBaitSQL, Args: []any{ids, days}},
-		databaseQuery{SQL: batchIntelArchetypeSQL, Args: []any{ids, days}},
-	)
+	queries := rawBatchIntelQueries(ids, days)
+	if intelRollupCovers(ctx, opts.DB, days) {
+		queries = rolledBatchIntelQueries(ids, days)
+	}
+	results, err := queryMapsConcurrent(ctx, opts.DB, queries...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -117,6 +98,131 @@ func loadCharacterIntelBatch(ctx context.Context, opts Options, requestIDs []int
 	}
 	return data, missing, nil
 }
+
+func rawBatchIntelQueries(ids []int32, days int) []databaseQuery {
+	return []databaseQuery{
+		databaseQuery{SQL: `SELECT character_id FROM characters WHERE character_id = ANY($1::int[])`, Args: []any{ids}},
+		databaseQuery{SQL: `
+			SELECT a.character_id,
+			 count(*) FILTER (WHERE k.attacker_count=1) AS solo,
+			 count(*) FILTER (WHERE k.attacker_count BETWEEN 2 AND 5) AS small_gang,
+			 count(*) FILTER (WHERE k.attacker_count BETWEEN 6 AND 15) AS mid_gang,
+			 count(*) FILTER (WHERE k.attacker_count BETWEEN 16 AND 50) AS fleet,
+			 count(*) FILTER (WHERE k.attacker_count>50) AS blob,
+			 count(*) AS total,
+			 round(avg(k.attacker_count)::numeric,1)::double precision AS avg_fleet_size,
+			 count(*) FILTER (WHERE a.ship_type_id=45534) AS monitor_appearances,
+			 count(*) FILTER (WHERE a.damage_done=0 AND k.attacker_count>=10) AS zero_dmg_fleet,
+			 count(*) AS total_appearances
+			FROM killmail_attackers a JOIN killmails k ON k.killmail_id=a.killmail_id
+			WHERE a.character_id=ANY($1::int[]) AND a.killmail_time>now()-make_interval(days=>$2)
+			GROUP BY a.character_id`, Args: []any{ids, days}},
+		databaseQuery{SQL: batchIntelShipsFlownSQL, Args: []any{ids, days}},
+		databaseQuery{SQL: batchIntelShipsLostSQL, Args: []any{ids, days}},
+		databaseQuery{SQL: batchIntelTargetsSQL, Args: []any{ids, days}},
+		databaseQuery{SQL: batchIntelAwoxSQL, Args: []any{ids, days}},
+		databaseQuery{SQL: batchIntelBaitSQL, Args: []any{ids, days}},
+		databaseQuery{SQL: batchIntelArchetypeSQL, Args: []any{ids, days}},
+	}
+}
+
+func intelRollupCovers(ctx context.Context, db Database, days int) bool {
+	rows, err := queryMaps(ctx, db, `
+		SELECT count(*) = $1::int AS covered
+		FROM character_intel_rollup_days
+		WHERE activity_date BETWEEN CURRENT_DATE - ($1::int - 1) AND CURRENT_DATE`, days)
+	if err != nil || len(rows) != 1 {
+		return false
+	}
+	covered, _ := boolValue(rows[0]["covered"])
+	return covered
+}
+
+func rolledBatchIntelQueries(ids []int32, days int) []databaseQuery {
+	args := []any{ids, days}
+	return []databaseQuery{
+		{SQL: `SELECT character_id FROM characters WHERE character_id = ANY($1::int[])`, Args: []any{ids}},
+		{SQL: rolledIntelPlaystyleSQL, Args: args},
+		{SQL: rolledIntelShipsFlownSQL, Args: args},
+		{SQL: rolledIntelShipsLostSQL, Args: args},
+		{SQL: rolledIntelTargetsSQL, Args: args},
+		{SQL: rolledIntelAwoxSQL, Args: args},
+		{SQL: rolledIntelBaitSQL, Args: args},
+		{SQL: rolledIntelArchetypeSQL, Args: args},
+	}
+}
+
+const rolledIntelPlaystyleSQL = `
+SELECT character_id,sum(solo) AS solo,sum(small_gang) AS small_gang,
+ sum(mid_gang) AS mid_gang,sum(fleet) AS fleet,sum(blob) AS blob,
+ sum(appearances) AS total,
+ CASE WHEN sum(appearances)>0 THEN round(sum(sum_attacker_count)::numeric/sum(appearances),1)::double precision ELSE 0 END AS avg_fleet_size,
+ sum(monitor_appearances) AS monitor_appearances,sum(zero_damage_fleet) AS zero_dmg_fleet,
+ sum(appearances) AS total_appearances
+FROM character_intel_daily WHERE character_id=ANY($1::int[])
+ AND activity_date BETWEEN CURRENT_DATE-($2::int-1) AND CURRENT_DATE GROUP BY character_id`
+
+const rolledIntelShipsFlownSQL = `
+WITH totals AS (
+ SELECT character_id,ship_type_id,sum(appearances)::int AS count,max(last_appearance_at) AS last_seen
+ FROM character_intel_ship_daily WHERE character_id=ANY($1::int[])
+  AND activity_date BETWEEN CURRENT_DATE-($2::int-1) AND CURRENT_DATE AND appearances>0
+ GROUP BY character_id,ship_type_id
+), ranked AS (
+ SELECT totals.*,row_number() OVER(PARTITION BY character_id ORDER BY count DESC,last_seen DESC,ship_type_id) AS rank FROM totals
+)
+SELECT r.character_id,r.ship_type_id,t.name AS ship_name,r.count FROM ranked r
+JOIN inv_types t ON t.type_id=r.ship_type_id WHERE r.rank<=5`
+
+const rolledIntelShipsLostSQL = `
+WITH totals AS (
+ SELECT character_id,ship_type_id,sum(losses)::int AS count
+ FROM character_intel_ship_daily WHERE character_id=ANY($1::int[])
+  AND activity_date BETWEEN CURRENT_DATE-($2::int-1) AND CURRENT_DATE AND losses>0
+ GROUP BY character_id,ship_type_id
+), ranked AS (
+ SELECT totals.*,row_number() OVER(PARTITION BY character_id ORDER BY count DESC,ship_type_id) AS rank FROM totals
+)
+SELECT r.character_id,r.ship_type_id,t.name AS ship_name,r.count FROM ranked r
+JOIN inv_types t ON t.type_id=r.ship_type_id WHERE r.rank<=5`
+
+const rolledIntelTargetsSQL = `
+WITH totals AS (
+ SELECT character_id,alliance_id,sum(appearances)::int AS count
+ FROM character_intel_target_daily WHERE character_id=ANY($1::int[])
+  AND activity_date BETWEEN CURRENT_DATE-($2::int-1) AND CURRENT_DATE
+ GROUP BY character_id,alliance_id
+), ranked AS (
+ SELECT totals.*,row_number() OVER(PARTITION BY character_id ORDER BY count DESC,alliance_id) AS rank FROM totals
+)
+SELECT r.character_id,r.alliance_id,a.name AS alliance_name,r.count FROM ranked r
+LEFT JOIN alliances a ON a.alliance_id=r.alliance_id WHERE r.rank<=10`
+
+const rolledIntelAwoxSQL = `
+SELECT character_id,sum(awox_kills)::int AS awox_kills FROM character_intel_daily
+WHERE character_id=ANY($1::int[]) AND activity_date BETWEEN CURRENT_DATE-($2::int-1) AND CURRENT_DATE
+GROUP BY character_id`
+
+const rolledIntelBaitSQL = `
+SELECT character_id,sum(cheap_deaths)::int AS cheap_deaths,sum(baited_deaths)::int AS baited_deaths
+FROM character_intel_daily WHERE character_id=ANY($1::int[])
+ AND activity_date BETWEEN CURRENT_DATE-($2::int-1) AND CURRENT_DATE GROUP BY character_id`
+
+const rolledIntelArchetypeSQL = `
+WITH requested AS (SELECT unnest($1::int[]) AS character_id), totals AS (
+ SELECT character_id,sum(highsec)::int AS hs_kms,sum(lowsec)::int AS ls_kms,
+  sum(nullsec)::int AS ns_kms,sum(appearances)::int AS total_kms_90d,
+  sum(gank_appearances)::int AS gank_kms,sum(losses)::int AS losses_90d,
+  sum(cyno_losses)::int AS cyno_losses_90d
+ FROM character_intel_daily WHERE character_id=ANY($1::int[])
+  AND activity_date BETWEEN CURRENT_DATE-($2::int-1) AND CURRENT_DATE GROUP BY character_id
+)
+SELECT r.character_id,coalesce(t.hs_kms,0) AS hs_kms,coalesce(t.ls_kms,0) AS ls_kms,
+ coalesce(t.ns_kms,0) AS ns_kms,coalesce(t.total_kms_90d,0) AS total_kms_90d,
+ coalesce(t.gank_kms,0) AS gank_kms,coalesce(t.losses_90d,0) AS losses_90d,
+ coalesce(t.cyno_losses_90d,0) AS cyno_losses_90d,coalesce(t.cyno_losses_90d,0) AS cyno_deaths,
+ coalesce(c.birthday>now()-interval '180 days',false) AS is_new_char
+FROM requested r LEFT JOIN totals t USING(character_id) LEFT JOIN characters c USING(character_id)`
 
 func batchRowsByID(rows []map[string]any, key string) map[int64]map[string]any {
 	result := map[int64]map[string]any{}

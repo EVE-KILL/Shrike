@@ -59,6 +59,7 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 	register("price_compaction", d.cronPriceCompaction)
 	register("entity_snapshot", d.cronEntitySnapshot)
 	register("kills_daily_count_reconcile", d.cronKillsDailyCountReconcile)
+	register("character_intel_rollup", d.cronCharacterIntelRollup)
 
 	// Phase 2 — event publishing.
 	register("status_update", d.cronStatusUpdate)

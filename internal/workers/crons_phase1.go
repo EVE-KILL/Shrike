@@ -7,6 +7,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/entities"
 	"github.com/eve-kill/shrike/internal/fw"
+	"github.com/eve-kill/shrike/internal/intelrollup"
 	"github.com/eve-kill/shrike/internal/killmail"
 	"github.com/eve-kill/shrike/internal/killtype"
 	"github.com/eve-kill/shrike/internal/maintenance"
@@ -380,6 +381,17 @@ func (d *Deps) cronKillsDailyCountReconcile(ctx context.Context) (string, error)
 		return "", err
 	}
 	return fmt.Sprintf("%d (date, type) rows reconciled over %d days", n, maintenance.ReconcileDays), nil
+}
+
+// cronCharacterIntelRollup rebuilds reusable daily facts from canonical
+// killmails. It is independent of Memgraph and safe to replay.
+func (d *Deps) cronCharacterIntelRollup(ctx context.Context) (string, error) {
+	res, err := intelrollup.Reconcile(ctx, d.Pool)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%d days: %d characters, %d ships, %d targets",
+		res.Days, res.Characters, res.Ships, res.Targets), nil
 }
 
 // cronStatsPipeline rebuilds the rolled-up stats periods and the leaderboards.
