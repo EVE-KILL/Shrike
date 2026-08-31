@@ -10,6 +10,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/achievements"
 	"github.com/eve-kill/shrike/internal/campaign"
+	"github.com/eve-kill/shrike/internal/killmail"
 	"github.com/eve-kill/shrike/internal/killtype"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/stats"
@@ -52,6 +53,147 @@ var (
 	flagBackfillLimit int
 	flagBackfillApply bool
 )
+
+var (
+	flagStableFactsFromID  int64
+	flagStableFactsToID    int64
+	flagStableFactsChunk   int
+	flagStableFactsWorkers int
+	flagStableFactsDryRun  bool
+)
+
+type stableFactsChunk struct{ from, to int64 }
+
+var backfillStableFactsCmd = &cobra.Command{
+	Use:   "killmail-stable-facts",
+	Short: "Populate stable attacker-derived killmail labels",
+	Long: `Populates awox, capital/super/titan involvement, Alliance Tournament
+ship involvement, and faction-warfare winner fields in bounded killmail-ID
+chunks. Chunks are idempotent and disjoint, so interrupted runs can resume with
+--from-id and multiple workers can run safely.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		pool, err := openPool(cmd)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+
+		var minID, maxID int64
+		if err := pool.QueryRow(cmd.Context(), `
+			SELECT COALESCE(min(killmail_id), 0), COALESCE(max(killmail_id), 0)
+			FROM killmails
+			WHERE ($1::bigint = 0 OR killmail_id >= $1)
+			  AND ($2::bigint = 0 OR killmail_id <= $2)`,
+			flagStableFactsFromID, flagStableFactsToID).Scan(&minID, &maxID); err != nil {
+			return err
+		}
+		if minID == 0 || maxID == 0 {
+			return fmt.Errorf("no killmails in requested ID range")
+		}
+
+		chunkSize := max(1, flagStableFactsChunk)
+		chunks := make([]stableFactsChunk, 0, int((maxID-minID)/int64(chunkSize))+1)
+		for from := minID; from <= maxID; from += int64(chunkSize) {
+			to := min(from+int64(chunkSize)-1, maxID)
+			chunks = append(chunks, stableFactsChunk{from, to})
+		}
+		workers := max(1, flagStableFactsWorkers)
+		ui.Section("Backfill killmail stable facts")
+		ui.KV("Killmail IDs", fmt.Sprintf("%d–%d", minID, maxID))
+		ui.KV("Chunks", fmtCount(int64(len(chunks))))
+		ui.KV("Workers", fmt.Sprint(workers))
+		if flagStableFactsDryRun {
+			ui.Success("Dry run complete; no rows changed.")
+			return nil
+		}
+
+		group, groupCtx := errgroup.WithContext(cmd.Context())
+		jobs := make(chan stableFactsChunk)
+		var updated atomic.Int64
+		for range workers {
+			group.Go(func() error {
+				for chunk := range jobs {
+					tag, err := pool.Exec(groupCtx, stableFactsBackfillSQL,
+						chunk.from, chunk.to,
+						killmail.CapitalInvolvedGroupIDs(), killmail.AllianceTournamentShipIDs(),
+						killmail.FactionCaldari, killmail.FactionMinmatar,
+						killmail.FactionAmarr, killmail.FactionGallente)
+					if err != nil {
+						return fmt.Errorf("stable facts IDs %d-%d: %w", chunk.from, chunk.to, err)
+					}
+					updated.Add(tag.RowsAffected())
+				}
+				return nil
+			})
+		}
+		group.Go(func() error {
+			defer close(jobs)
+			for _, chunk := range chunks {
+				select {
+				case jobs <- chunk:
+				case <-groupCtx.Done():
+					return groupCtx.Err()
+				}
+			}
+			return nil
+		})
+		if err := group.Wait(); err != nil {
+			return err
+		}
+		ui.Success("Updated %s killmails across %d chunks.", fmtCount(updated.Load()), len(chunks))
+		return nil
+	},
+}
+
+const stableFactsBackfillSQL = `
+WITH facts AS MATERIALIZED (
+    SELECT k.killmail_id,
+           bool_or(NOT k.is_npc
+               AND k.victim_ship_group_id NOT IN (29, 237)
+               AND a.final_blow
+               AND a.corporation_id > 1999999
+               AND a.corporation_id = k.victim_corporation_id) AS is_awox,
+           (COALESCE(k.victim_ship_group_id = ANY($3::int[]), false)
+               OR bool_or(COALESCE(a.ship_group_id = ANY($3::int[]), false))) AS capital_involved,
+           (COALESCE(k.victim_ship_group_id = 659, false)
+               OR bool_or(COALESCE(a.ship_group_id = 659, false))) AS super_involved,
+           (COALESCE(k.victim_ship_group_id = 30, false)
+               OR bool_or(COALESCE(a.ship_group_id = 30, false))) AS titan_involved,
+           (COALESCE(k.victim_ship_type_id = ANY($4::int[]), false)
+               OR bool_or(COALESCE(a.ship_type_id = ANY($4::int[]), false))) AS at_ship_involved,
+           k.victim_faction_id,
+           bool_or(a.faction_id = $5) AS has_caldari,
+           bool_or(a.faction_id = $6) AS has_minmatar,
+           bool_or(a.faction_id = $7) AS has_amarr,
+           bool_or(a.faction_id = $8) AS has_gallente
+    FROM killmails k
+    LEFT JOIN killmail_attackers a ON a.killmail_id = k.killmail_id
+    WHERE k.killmail_id BETWEEN $1 AND $2
+    GROUP BY k.killmail_id
+), derived AS (
+    SELECT *, CASE
+        WHEN victim_faction_id = $5 AND has_gallente THEN $8
+        WHEN victim_faction_id = $8 AND has_caldari THEN $5
+        WHEN victim_faction_id = $7 AND has_minmatar THEN $6
+        WHEN victim_faction_id = $6 AND has_amarr THEN $7
+    END AS fw_winner
+    FROM facts
+)
+UPDATE killmails k
+SET is_awox = COALESCE(d.is_awox, false),
+    is_capital_involved = COALESCE(d.capital_involved, false),
+    is_super_involved = COALESCE(d.super_involved, false),
+    is_titan_involved = COALESCE(d.titan_involved, false),
+    is_at_ship_involved = COALESCE(d.at_ship_involved, false),
+    fw_winner_faction_id = d.fw_winner
+FROM derived d
+WHERE k.killmail_id = d.killmail_id
+  AND ROW(k.is_awox, k.is_capital_involved, k.is_super_involved,
+          k.is_titan_involved, k.is_at_ship_involved, k.fw_winner_faction_id)
+      IS DISTINCT FROM
+      ROW(COALESCE(d.is_awox, false), COALESCE(d.capital_involved, false),
+          COALESCE(d.super_involved, false), COALESCE(d.titan_involved, false),
+          COALESCE(d.at_ship_involved, false), d.fw_winner)`
 
 // backfillRange resolves the requested window, defaulting to all of history.
 func backfillRange() (time.Time, time.Time, error) {
@@ -537,9 +679,13 @@ run independent partitions concurrently.`,
 
 		allPredicates := killtype.Predicates()
 		predicates := allPredicates
-		if len(flagDailyCountTypes) > 0 {
-			predicates = make(map[string]string, len(flagDailyCountTypes))
-			for _, kind := range flagDailyCountTypes {
+		selectedTypes := append([]string(nil), flagDailyCountTypes...)
+		if flagDailyCountStableFacts {
+			selectedTypes = append(selectedTypes, killtype.StableFactTypes...)
+		}
+		if len(selectedTypes) > 0 {
+			predicates = make(map[string]string, len(selectedTypes))
+			for _, kind := range selectedTypes {
 				predicate, ok := allPredicates[kind]
 				if !ok {
 					return fmt.Errorf("unknown kill type %q", kind)
@@ -561,7 +707,7 @@ run independent partitions concurrently.`,
 
 		ui.Section("Backfill kills-daily-count")
 		if flagDailyCountReset {
-			if len(flagDailyCountTypes) == 0 {
+			if len(selectedTypes) == 0 {
 				if _, err := pool.Exec(cmd.Context(), `TRUNCATE kills_daily_count`); err != nil {
 					return err
 				}
@@ -650,12 +796,13 @@ run independent partitions concurrently.`,
 }
 
 var (
-	flagDailyCountFromMonth string
-	flagDailyCountToMonth   string
-	flagDailyCountTypes     []string
-	flagDailyCountWorkers   int
-	flagDailyCountReset     bool
-	flagDailyCountReverse   bool
+	flagDailyCountFromMonth   string
+	flagDailyCountToMonth     string
+	flagDailyCountTypes       []string
+	flagDailyCountWorkers     int
+	flagDailyCountReset       bool
+	flagDailyCountReverse     bool
+	flagDailyCountStableFacts bool
 )
 
 func inclusiveMonths(from, to time.Time, reverse bool) []time.Time {
@@ -875,11 +1022,17 @@ func init() {
 	backfillKillsDailyCountCmd.Flags().IntVarP(&flagDailyCountWorkers, "workers", "w", 1, "Concurrent month/type partitions")
 	backfillKillsDailyCountCmd.Flags().BoolVar(&flagDailyCountReset, "reset", false, "Clear selected rows before rebuilding")
 	backfillKillsDailyCountCmd.Flags().BoolVarP(&flagDailyCountReverse, "reverse", "r", false, "Process newest months first")
+	backfillKillsDailyCountCmd.Flags().BoolVar(&flagDailyCountStableFacts, "stable-facts", false, "Only rebuild attacker-derived stable-fact labels")
+	backfillStableFactsCmd.Flags().Int64Var(&flagStableFactsFromID, "from-id", 0, "First killmail ID (inclusive; default minimum)")
+	backfillStableFactsCmd.Flags().Int64Var(&flagStableFactsToID, "to-id", 0, "Last killmail ID (inclusive; default maximum)")
+	backfillStableFactsCmd.Flags().IntVar(&flagStableFactsChunk, "chunk-size", 100000, "Killmail-ID span per transaction")
+	backfillStableFactsCmd.Flags().IntVarP(&flagStableFactsWorkers, "workers", "w", 1, "Concurrent disjoint ID chunks")
+	backfillStableFactsCmd.Flags().BoolVar(&flagStableFactsDryRun, "dry-run", false, "Show the resolved work without changing rows")
 	dbVacuumCmd.Flags().BoolVar(&flagDBVacuumFull, "full", false, "Run VACUUM FULL (locks tables)")
 	dbVacuumCmd.Flags().StringVarP(&flagDBVacuumTable, "table", "t", "", "Only vacuum one table")
 
 	backfillCmd.AddCommand(backfillStatsCmd, backfillFittingsCmd, backfillGraphCmd,
-		backfillAchievementsCmd, backfillKillsDailyCountCmd)
+		backfillAchievementsCmd, backfillKillsDailyCountCmd, backfillStableFactsCmd)
 	campaignCmd.AddCommand(campaignProcessCmd)
 	dbCmd.AddCommand(dbVacuumCmd)
 }

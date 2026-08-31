@@ -853,6 +853,12 @@ type Killmail struct {
 	IsSolo              *bool              `json:"is_solo"`
 	WarID               *int32             `json:"war_id"`
 	Blob                *bool              `json:"blob"`
+	IsAwox              bool               `json:"is_awox"`
+	IsCapitalInvolved   bool               `json:"is_capital_involved"`
+	IsSuperInvolved     bool               `json:"is_super_involved"`
+	IsTitanInvolved     bool               `json:"is_titan_involved"`
+	IsAtShipInvolved    bool               `json:"is_at_ship_involved"`
+	FwWinnerFactionID   *int32             `json:"fw_winner_faction_id"`
 }
 
 type KillmailAttacker struct {

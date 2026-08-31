@@ -290,3 +290,21 @@ func TestValueBandsAreMutuallyExclusive(t *testing.T) {
 		}
 	}
 }
+
+func TestStableFactClassifications(t *testing.T) {
+	got := Classify(Subject{
+		IsAwox: true, IsCapitalInvolved: true, IsSuperInvolved: true,
+		IsTitanInvolved: true, IsATShipInvolved: true, FWWinnerFactionID: 500004,
+	})
+	for _, want := range []string{
+		"awox", "capital-involved", "supercarrier-involved", "titan-involved",
+		"at-ship-involved", "fw-gallente-winner", "fw-caldari-gallente",
+	} {
+		if !slices.Contains(got, want) {
+			t.Errorf("Classify() = %v, missing %q", got, want)
+		}
+	}
+	if slices.Contains(got, "fw-amarr-minmatar") {
+		t.Errorf("Classify() = %v, included wrong FW theatre", got)
+	}
+}

@@ -22,12 +22,18 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
         label: 'Kills', href: '/kills/latest',
         children: [
             {
+                label: 'Explore',
+                items: [
+                    { label: 'All Labels', href: '/labels' },
+                ],
+            },
+            {
                 label: 'Activity',
                 items: [
                     { label: 'Latest', href: '/kills/latest' },
-                    { label: 'All Labels', href: '/labels' },
                     { label: 'Big Kills', href: '/kills/big' },
                     { label: 'Solo', href: '/kills/solo' },
+                    { label: 'Awox', href: '/kills/awox' },
                     { label: 'PvP', href: '/kills/pvp' },
                     { label: 'Highsec Ganks', href: '/kills/ganked' },
                     { label: 'NPC', href: '/kills/npc' },
@@ -66,6 +72,26 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
                     { label: '50–99 Attackers', href: '/kills/attackers-50-99' },
                     { label: '100–999 Attackers', href: '/kills/attackers-100-999' },
                     { label: '1,000+ Attackers', href: '/kills/attackers-1000-plus' },
+                ],
+            },
+            {
+                label: 'Involvement',
+                items: [
+                    { label: 'Capital Involved', href: '/kills/capital-involved' },
+                    { label: 'Supercarrier Involved', href: '/kills/supercarrier-involved' },
+                    { label: 'Titan Involved', href: '/kills/titan-involved' },
+                    { label: 'AT Ship Involved', href: '/kills/at-ship-involved' },
+                ],
+            },
+            {
+                label: 'Faction Warfare',
+                items: [
+                    { label: 'Caldari Victories', href: '/kills/fw-caldari-winner' },
+                    { label: 'Gallente Victories', href: '/kills/fw-gallente-winner' },
+                    { label: 'Amarr Victories', href: '/kills/fw-amarr-winner' },
+                    { label: 'Minmatar Victories', href: '/kills/fw-minmatar-winner' },
+                    { label: 'Caldari–Gallente', href: '/kills/fw-caldari-gallente' },
+                    { label: 'Amarr–Minmatar', href: '/kills/fw-amarr-minmatar' },
                 ],
             },
             {

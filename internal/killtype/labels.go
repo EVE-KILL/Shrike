@@ -40,6 +40,18 @@ var Labels = []Label{
 	{ID: "pvp", Name: "PvP", Category: "Killmail Type", Description: "Killmails attributed to player combat."},
 	{ID: "ganked", Name: "Ganked", Category: "Killmail Type", Description: "Non-NPC highsec killmails with at least ten attackers.", Search: map[string]any{"attackerType": "ganked"}},
 	{ID: "npc", Name: "NPC", Category: "Engagement", Description: "Killmails classified as NPC kills.", Search: map[string]any{"attackerType": "npc"}},
+	{ID: "awox", Name: "Awox", Category: "Involvement", Description: "Non-NPC kills where the final-blow attacker belongs to the victim's corporation."},
+	{ID: "capital-involved", Name: "Capital Involved", Category: "Involvement", Description: "A capital-class victim or attacker participated in the killmail."},
+	{ID: "supercarrier-involved", Name: "Supercarrier Involved", Category: "Involvement", Description: "A supercarrier victim or attacker participated in the killmail."},
+	{ID: "titan-involved", Name: "Titan Involved", Category: "Involvement", Description: "A titan victim or attacker participated in the killmail."},
+	{ID: "at-ship-involved", Name: "AT Ship Involved", Category: "Involvement", Description: "An Alliance Tournament prize ship was the victim or an attacker."},
+
+	{ID: "fw-caldari-winner", Name: "Caldari FW Victory", Category: "Faction Warfare", Description: "Caldari militia defeated a Gallente militia victim."},
+	{ID: "fw-gallente-winner", Name: "Gallente FW Victory", Category: "Faction Warfare", Description: "Gallente militia defeated a Caldari militia victim."},
+	{ID: "fw-amarr-winner", Name: "Amarr FW Victory", Category: "Faction Warfare", Description: "Amarr militia defeated a Minmatar militia victim."},
+	{ID: "fw-minmatar-winner", Name: "Minmatar FW Victory", Category: "Faction Warfare", Description: "Minmatar militia defeated an Amarr militia victim."},
+	{ID: "fw-caldari-gallente", Name: "Caldari–Gallente FW", Category: "Faction Warfare", Description: "Faction-warfare combat between the Caldari and Gallente militias."},
+	{ID: "fw-amarr-minmatar", Name: "Amarr–Minmatar FW", Category: "Faction Warfare", Description: "Faction-warfare combat between the Amarr and Minmatar militias."},
 
 	{ID: "big", Name: "1B+ ISK", Category: "Value", Description: "Killmails valued at one billion ISK or more.", Search: map[string]any{"iskValue": "1b"}},
 	{ID: "5b", Name: "5B+ ISK", Category: "Value", Description: "Killmails valued at five billion ISK or more.", Search: map[string]any{"iskValue": "5b"}},

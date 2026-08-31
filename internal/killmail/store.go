@@ -65,10 +65,14 @@ func insert(ctx context.Context, pool *pgxpool.Pool, p *Parsed, tracked bool) (b
             victim_faction_id, victim_ship_type_id, victim_ship_group_id,
             victim_damage_taken,
             total_value, fitted_value, dropped_value, destroyed_value,
-            points, attacker_count, is_npc, is_solo, war_id, blob
+            points, attacker_count, is_npc, is_solo,
+            is_awox, is_capital_involved, is_super_involved,
+            is_titan_involved, is_at_ship_involved, fw_winner_faction_id,
+            war_id, blob
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+            $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
+            $29, $30, $31, $32
         )
         ON CONFLICT (killmail_id) DO NOTHING
         RETURNING killmail_id`,
@@ -79,7 +83,10 @@ func insert(ctx context.Context, pool *pgxpool.Pool, p *Parsed, tracked bool) (b
 		nullID(km.VictimFactionID), nullID(km.VictimShipTypeID), nullID(km.VictimShipGroupID),
 		nullID(km.VictimDamageTaken),
 		km.TotalValue, km.FittedValue, km.DroppedValue, km.DestroyedValue,
-		km.Points, km.AttackerCount, km.IsNPC, km.IsSolo, nullID(km.WarID), km.Blob,
+		km.Points, km.AttackerCount, km.IsNPC, km.IsSolo,
+		km.IsAwox, km.IsCapitalInvolved, km.IsSuperInvolved,
+		km.IsTitanInvolved, km.IsATShipInvolved, nullID(km.FWWinnerFactionID),
+		nullID(km.WarID), km.Blob,
 	).Scan(&insertedID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
@@ -169,7 +176,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (*Parsed, e
 	var km Killmail
 	var constellationID, regionID *int32
 	var posX, posY, posZ *float64
-	var vChar, vCorp, vAlly, vFaction, vShip, vGroup, vDamage, warID *int32
+	var vChar, vCorp, vAlly, vFaction, vShip, vGroup, vDamage, fwWinnerFactionID, warID *int32
 
 	err := pool.QueryRow(ctx, `
         SELECT killmail_id, killmail_time, killmail_hash,
@@ -182,6 +189,9 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (*Parsed, e
                coalesce(dropped_value, 0), coalesce(destroyed_value, 0),
                coalesce(points, 0), coalesce(attacker_count, 0),
                coalesce(is_npc, false), coalesce(is_solo, false),
+               coalesce(is_awox, false), coalesce(is_capital_involved, false),
+               coalesce(is_super_involved, false), coalesce(is_titan_involved, false),
+               coalesce(is_at_ship_involved, false), fw_winner_faction_id,
                war_id, coalesce(blob, false)
         FROM killmails WHERE killmail_id = $1`, killmailID).Scan(
 		&km.KillmailID, &km.KillmailTime, &km.KillmailHash,
@@ -189,7 +199,10 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (*Parsed, e
 		&posX, &posY, &posZ,
 		&vChar, &vCorp, &vAlly, &vFaction, &vShip, &vGroup, &vDamage,
 		&km.TotalValue, &km.FittedValue, &km.DroppedValue, &km.DestroyedValue,
-		&km.Points, &km.AttackerCount, &km.IsNPC, &km.IsSolo, &warID, &km.Blob)
+		&km.Points, &km.AttackerCount, &km.IsNPC, &km.IsSolo,
+		&km.IsAwox, &km.IsCapitalInvolved, &km.IsSuperInvolved,
+		&km.IsTitanInvolved, &km.IsATShipInvolved, &fwWinnerFactionID,
+		&warID, &km.Blob)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotStored
 	}
@@ -207,6 +220,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (*Parsed, e
 	km.VictimShipGroupID = deref(vGroup)
 	km.VictimDamageTaken = deref(vDamage)
 	km.WarID = deref(warID)
+	km.FWWinnerFactionID = deref(fwWinnerFactionID)
 	if posX != nil && posY != nil && posZ != nil {
 		km.Position = &ESIPosition{X: *posX, Y: *posY, Z: *posZ}
 	}

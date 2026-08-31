@@ -84,6 +84,9 @@ var Types = []string{
 	"solo", "attackers-1", "attackers-2-4", "attackers-5-9", "attackers-10-24",
 	"attackers-25-49", "attackers-50-99", "attackers-100-999", "attackers-1000-plus",
 	"pvp", "ganked", "npc",
+	"awox", "capital-involved", "supercarrier-involved", "titan-involved", "at-ship-involved",
+	"fw-caldari-winner", "fw-gallente-winner", "fw-amarr-winner", "fw-minmatar-winner",
+	"fw-caldari-gallente", "fw-amarr-minmatar",
 	"big", "5b", "10b",
 	"under-1b", "1b-5b", "5b-10b", "10b-100b", "100b-1t", "1t-plus",
 	"category-deployable", "category-drone",
@@ -92,6 +95,15 @@ var Types = []string{
 	"frigates", "destroyers", "cruisers", "battlecruisers", "battleships",
 	"capitals", "freighters", "supercarriers", "titans",
 	"citadels", "t1", "t2", "t3", "faction",
+}
+
+// StableFactTypes are the rollups affected by the attacker-derived stable-fact
+// backfill. Operators can pass this list to kills-daily-count without
+// rebuilding unrelated labels.
+var StableFactTypes = []string{
+	"awox", "capital-involved", "supercarrier-involved", "titan-involved", "at-ship-involved",
+	"fw-caldari-winner", "fw-gallente-winner", "fw-amarr-winner", "fw-minmatar-winner",
+	"fw-caldari-gallente", "fw-amarr-minmatar",
 }
 
 // Predicates returns the SQL WHERE fragment for each type, written against the
@@ -124,18 +136,29 @@ func Predicates() map[string]string {
 		"timezone-us-east": `(EXTRACT(HOUR FROM k.killmail_time AT TIME ZONE 'UTC') >= 22 OR EXTRACT(HOUR FROM k.killmail_time AT TIME ZONE 'UTC') < 4)`,
 		"timezone-us-west": utcHourPredicate(4, 8),
 
-		"solo":                `k.is_solo = true`,
-		"attackers-1":         `k.attacker_count = 1 AND k.is_solo = false`,
-		"attackers-2-4":       `k.attacker_count BETWEEN 2 AND 4`,
-		"attackers-5-9":       `k.attacker_count BETWEEN 5 AND 9`,
-		"attackers-10-24":     `k.attacker_count BETWEEN 10 AND 24`,
-		"attackers-25-49":     `k.attacker_count BETWEEN 25 AND 49`,
-		"attackers-50-99":     `k.attacker_count BETWEEN 50 AND 99`,
-		"attackers-100-999":   `k.attacker_count BETWEEN 100 AND 999`,
-		"attackers-1000-plus": `k.attacker_count >= 1000`,
-		"pvp":                 `k.is_npc = false`,
-		"ganked":              `k.is_npc = false AND k.attacker_count >= 10 AND k.solar_system_id IN (SELECT solar_system_id FROM solar_systems WHERE security >= 0.45)`,
-		"npc":                 `k.is_npc = true`,
+		"solo":                  `k.is_solo = true`,
+		"attackers-1":           `k.attacker_count = 1 AND k.is_solo = false`,
+		"attackers-2-4":         `k.attacker_count BETWEEN 2 AND 4`,
+		"attackers-5-9":         `k.attacker_count BETWEEN 5 AND 9`,
+		"attackers-10-24":       `k.attacker_count BETWEEN 10 AND 24`,
+		"attackers-25-49":       `k.attacker_count BETWEEN 25 AND 49`,
+		"attackers-50-99":       `k.attacker_count BETWEEN 50 AND 99`,
+		"attackers-100-999":     `k.attacker_count BETWEEN 100 AND 999`,
+		"attackers-1000-plus":   `k.attacker_count >= 1000`,
+		"pvp":                   `k.is_npc = false`,
+		"ganked":                `k.is_npc = false AND k.attacker_count >= 10 AND k.solar_system_id IN (SELECT solar_system_id FROM solar_systems WHERE security >= 0.45)`,
+		"npc":                   `k.is_npc = true`,
+		"awox":                  `k.is_awox = true`,
+		"capital-involved":      `k.is_capital_involved = true`,
+		"supercarrier-involved": `k.is_super_involved = true`,
+		"titan-involved":        `k.is_titan_involved = true`,
+		"at-ship-involved":      `k.is_at_ship_involved = true`,
+		"fw-caldari-winner":     `k.fw_winner_faction_id = 500001`,
+		"fw-minmatar-winner":    `k.fw_winner_faction_id = 500002`,
+		"fw-amarr-winner":       `k.fw_winner_faction_id = 500003`,
+		"fw-gallente-winner":    `k.fw_winner_faction_id = 500004`,
+		"fw-caldari-gallente":   `k.fw_winner_faction_id IN (500001, 500004)`,
+		"fw-amarr-minmatar":     `k.fw_winner_faction_id IN (500002, 500003)`,
 
 		"big":      fmt.Sprintf(`k.total_value >= %d`, BigISK),
 		"5b":       fmt.Sprintf(`k.total_value >= %d`, FiveBISK),
@@ -220,9 +243,15 @@ type Subject struct {
 	HasSecurity  bool
 	RegionID     int32
 
-	IsSolo        bool
-	IsNPC         bool
-	AttackerCount int32
+	IsSolo            bool
+	IsNPC             bool
+	AttackerCount     int32
+	IsAwox            bool
+	IsCapitalInvolved bool
+	IsSuperInvolved   bool
+	IsTitanInvolved   bool
+	IsATShipInvolved  bool
+	FWWinnerFactionID int32
 
 	TotalValue    float64
 	HasTotalValue bool
@@ -276,6 +305,31 @@ func Classify(s Subject) []string {
 		if s.AttackerCount >= 10 && s.HasSecurity && s.Security >= 0.45 {
 			types = append(types, "ganked")
 		}
+	}
+	if s.IsAwox {
+		types = append(types, "awox")
+	}
+	if s.IsCapitalInvolved {
+		types = append(types, "capital-involved")
+	}
+	if s.IsSuperInvolved {
+		types = append(types, "supercarrier-involved")
+	}
+	if s.IsTitanInvolved {
+		types = append(types, "titan-involved")
+	}
+	if s.IsATShipInvolved {
+		types = append(types, "at-ship-involved")
+	}
+	switch s.FWWinnerFactionID {
+	case 500001:
+		types = append(types, "fw-caldari-winner", "fw-caldari-gallente")
+	case 500002:
+		types = append(types, "fw-minmatar-winner", "fw-amarr-minmatar")
+	case 500003:
+		types = append(types, "fw-amarr-winner", "fw-amarr-minmatar")
+	case 500004:
+		types = append(types, "fw-gallente-winner", "fw-caldari-gallente")
 	}
 
 	if s.HasTotalValue {

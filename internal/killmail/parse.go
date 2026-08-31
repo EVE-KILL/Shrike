@@ -161,7 +161,9 @@ func Parse(
 		})
 	}
 
-	return &Parsed{Killmail: row, Attackers: attackers, Items: items}, nil
+	parsed := &Parsed{Killmail: row, Attackers: attackers, Items: items}
+	DeriveStableFacts(parsed)
+	return parsed, nil
 }
 
 func countItems(items []ESIItem) int {

@@ -52,7 +52,9 @@ func TestClassifyAgreesWithPredicates(t *testing.T) {
 	rows, err := pool.Query(ctx, `
         SELECT killmail_id, killmail_time, solar_system_id, coalesce(region_id, 0),
 		       coalesce(total_value, 0), coalesce(is_solo, false), coalesce(is_npc, false),
-		       coalesce(attacker_count, 0), coalesce(victim_ship_type_id, 0), coalesce(victim_ship_group_id, 0)
+		       coalesce(attacker_count, 0), coalesce(victim_ship_type_id, 0), coalesce(victim_ship_group_id, 0),
+		       is_awox, is_capital_involved, is_super_involved, is_titan_involved,
+		       is_at_ship_involved, coalesce(fw_winner_faction_id, 0)
         FROM killmails
         ORDER BY killmail_id DESC
         LIMIT $1`, sampleSize)
@@ -72,7 +74,9 @@ func TestClassifyAgreesWithPredicates(t *testing.T) {
 		if err := rows.Scan(&s.id, &s.km.KillmailTime, &s.km.SolarSystemID, &s.km.RegionID,
 			&s.km.TotalValue, &s.km.IsSolo, &s.km.IsNPC,
 			&s.km.AttackerCount,
-			&s.km.VictimShipTypeID, &s.km.VictimShipGroupID); err != nil {
+			&s.km.VictimShipTypeID, &s.km.VictimShipGroupID,
+			&s.km.IsAwox, &s.km.IsCapitalInvolved, &s.km.IsSuperInvolved,
+			&s.km.IsTitanInvolved, &s.km.IsATShipInvolved, &s.km.FWWinnerFactionID); err != nil {
 			rows.Close()
 			t.Fatalf("scan: %v", err)
 		}

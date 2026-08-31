@@ -39,10 +39,16 @@ type Killmail struct {
 	DroppedValue   float64 `json:"dropped_value"`
 	DestroyedValue float64 `json:"destroyed_value"`
 
-	Points        int32 `json:"points"`
-	AttackerCount int32 `json:"attacker_count"`
-	IsNPC         bool  `json:"is_npc"`
-	IsSolo        bool  `json:"is_solo"`
+	Points            int32 `json:"points"`
+	AttackerCount     int32 `json:"attacker_count"`
+	IsNPC             bool  `json:"is_npc"`
+	IsSolo            bool  `json:"is_solo"`
+	IsAwox            bool  `json:"is_awox"`
+	IsCapitalInvolved bool  `json:"is_capital_involved"`
+	IsSuperInvolved   bool  `json:"is_super_involved"`
+	IsTitanInvolved   bool  `json:"is_titan_involved"`
+	IsATShipInvolved  bool  `json:"is_at_ship_involved"`
+	FWWinnerFactionID int32 `json:"fw_winner_faction_id"`
 
 	WarID int32 `json:"war_id"`
 
