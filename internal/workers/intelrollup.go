@@ -32,7 +32,7 @@ func (w *CharacterIntelRollupWorker) Work(ctx context.Context, job *river.Job[qu
 		return err
 	}
 	if dirty {
-		return river.JobSnooze(time.Minute)
+		return river.JobSnooze(5 * time.Minute)
 	}
 	return nil
 }
