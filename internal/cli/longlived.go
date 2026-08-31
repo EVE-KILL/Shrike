@@ -25,7 +25,7 @@ var errInterrupted = errors.New("interrupted")
 // shutdownGrace bounds how long a service gets to drain after cancellation.
 // Kubernetes sends SIGKILL 30s after SIGTERM by default; finishing well inside
 // that keeps us from being killed mid-drain.
-const shutdownGrace = 15 * time.Second
+const shutdownGrace = 25 * time.Second
 
 // RunService is the single contract for every long-running command — `serve`,
 // `work`, `cron start`. It owns signal handling and the drain deadline so each

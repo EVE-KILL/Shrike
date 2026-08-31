@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -25,6 +26,50 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
+
+const (
+	riverSoftStopTimeout = 12 * time.Second
+	riverHardStopTimeout = 8 * time.Second
+)
+
+type riverLifecycle interface {
+	Start(context.Context) error
+	Stop(context.Context) error
+	StopAndCancel(context.Context) error
+}
+
+// runRiverLifecycle keeps the context passed to River alive until we can ask
+// it to stop explicitly. Cancelling River's Start context is a hard stop: it
+// cancels every running job immediately, which is the opposite of what a
+// rolling deployment needs.
+//
+// Stop first prevents new fetches and lets active jobs drain. If that takes too
+// long, StopAndCancel gives the remaining handlers a cancelled context and
+// still waits for River to persist their retry state before the process exits.
+func runRiverLifecycle(ctx context.Context, client riverLifecycle) error {
+	if err := client.Start(context.WithoutCancel(ctx)); err != nil {
+		return err
+	}
+
+	<-ctx.Done()
+
+	softCtx, softCancel := context.WithTimeout(context.WithoutCancel(ctx), riverSoftStopTimeout)
+	err := client.Stop(softCtx)
+	softCancel()
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+
+	log.Warn().Str("grace", riverSoftStopTimeout.String()).
+		Msg("River soft drain deadline exceeded, cancelling remaining jobs")
+
+	hardCtx, hardCancel := context.WithTimeout(context.WithoutCancel(ctx), riverHardStopTimeout)
+	defer hardCancel()
+	return client.StopAndCancel(hardCtx)
+}
 
 var workCmd = &cobra.Command{
 	Use:   "work",
@@ -269,19 +314,8 @@ shared by everything else and outlasts the downtime itself.`,
 		}
 
 		return RunService(cmd, "queues", func(ctx context.Context) error {
-			if err := client.Start(ctx); err != nil {
-				return err
-			}
 			go func() { _ = gate.Watch(ctx) }()
-
-			<-ctx.Done()
-
-			// Stop drains in-flight jobs rather than abandoning them. A killmail
-			// abandoned mid-insert would be retried anyway, but an ESI fetch
-			// abandoned after the request has already been spent is pure waste.
-			stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-			defer cancel()
-			return client.Stop(stopCtx)
+			return runRiverLifecycle(ctx, client)
 		})
 	},
 }
@@ -345,14 +379,7 @@ its own interval does not stack copies of itself.`,
 		reportSchedule(registry)
 
 		return RunService(cmd, "cron", func(ctx context.Context) error {
-			if err := client.Start(ctx); err != nil {
-				return err
-			}
-			<-ctx.Done()
-
-			stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-			defer cancel()
-			return client.Stop(stopCtx)
+			return runRiverLifecycle(ctx, client)
 		})
 	},
 }
