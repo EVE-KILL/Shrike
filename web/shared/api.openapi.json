@@ -66436,6 +66436,178 @@
         "x-audience": "public"
       }
     },
+    "/group/{id}": {
+      "get": {
+        "operationId": "group-compat",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "group": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "category_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "category_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "category_published": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "group_id": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "icon_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "published": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "published_type_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "type_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "group_id",
+                        "name",
+                        "category_id",
+                        "category_name",
+                        "published",
+                        "icon_id",
+                        "category_published",
+                        "type_count",
+                        "published_type_count"
+                      ],
+                      "type": "object"
+                    },
+                    "types": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "base_price": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mass": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "meta_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "meta_group_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "published": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "type_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "volume": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "type_id",
+                          "name",
+                          "description",
+                          "published",
+                          "meta_group_id",
+                          "meta_group_name",
+                          "volume",
+                          "mass",
+                          "base_price"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "group",
+                    "types"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Inventory group page data",
+        "tags": [
+          "items"
+        ],
+        "x-audience": "public"
+      }
+    },
     "/health": {
       "get": {
         "description": "Reports that the HTTP process is alive without consulting dependencies.",
@@ -86466,6 +86638,178 @@
           }
         },
         "summary": "Most valuable kills in this constellation",
+        "tags": [
+          "universe"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/universe/groups/{id}": {
+      "get": {
+        "operationId": "universe-group",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "group": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "category_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "category_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "category_published": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "group_id": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "icon_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "published": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "published_type_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "type_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "group_id",
+                        "name",
+                        "category_id",
+                        "category_name",
+                        "published",
+                        "icon_id",
+                        "category_published",
+                        "type_count",
+                        "published_type_count"
+                      ],
+                      "type": "object"
+                    },
+                    "types": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "base_price": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "mass": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "meta_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "meta_group_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "published": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "type_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "volume": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "type_id",
+                          "name",
+                          "description",
+                          "published",
+                          "meta_group_id",
+                          "meta_group_name",
+                          "volume",
+                          "mass",
+                          "base_price"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "group",
+                    "types"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Inventory group page data",
         "tags": [
           "universe"
         ],

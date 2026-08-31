@@ -41,7 +41,7 @@ var resourceAliases = map[string]string{
 	"character": "characters", "constellation": "constellations",
 	"coalition": "coalitions", "corporation": "corporations",
 	"entity": "entities", "fit": "fittings", "fits": "fittings",
-	"item": "items", "killmail": "killmails", "region": "regions",
+	"group": "items", "item": "items", "killmail": "killmails", "region": "regions",
 	"scan": "scans", "ship": "ships", "system": "systems", "war": "wars",
 
 	"__sitemap__":     "sitemap",

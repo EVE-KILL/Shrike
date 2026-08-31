@@ -29,6 +29,11 @@ func TestUniverseRouteInventoryUsesRootPaths(t *testing.T) {
 			Alias: "/item/{id}", Summary: "Inventory type page data",
 			NotFound: "Item not found",
 		},
+		{
+			Name: "group", Canonical: "/universe/groups/{id}",
+			Alias: "/group/{id}", Summary: "Inventory group page data",
+			NotFound: "Group not found",
+		},
 	}
 	if len(universeRoutes) != len(want) {
 		t.Fatalf("routes = %d, want %d", len(universeRoutes), len(want))

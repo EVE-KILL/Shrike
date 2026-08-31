@@ -22043,6 +22043,45 @@ export type GraphResponses = {
 
 export type GraphResponse = GraphResponses[keyof GraphResponses];
 
+export type GroupCompatData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/group/{id}';
+};
+
+export type GroupCompatResponses = {
+    /**
+     * OK
+     */
+    200: {
+        group: {
+            category_id: number | null;
+            category_name: string | null;
+            category_published: boolean | null;
+            group_id: number;
+            icon_id: number | null;
+            name: string | null;
+            published: boolean | null;
+            published_type_count: number;
+            type_count: number;
+        };
+        types: Array<{
+            base_price: number | null;
+            description: string | null;
+            mass: number | null;
+            meta_group_id: number | null;
+            meta_group_name: string | null;
+            name: string | null;
+            published: boolean | null;
+            type_id: number;
+            volume: number | null;
+        }>;
+    };
+};
+
+export type GroupCompatResponse = GroupCompatResponses[keyof GroupCompatResponses];
+
 export type HealthData = {
     body?: never;
     path?: never;
@@ -29435,6 +29474,45 @@ export type UniverseConstellationMostValuableResponses = {
 };
 
 export type UniverseConstellationMostValuableResponse = UniverseConstellationMostValuableResponses[keyof UniverseConstellationMostValuableResponses];
+
+export type UniverseGroupData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/universe/groups/{id}';
+};
+
+export type UniverseGroupResponses = {
+    /**
+     * OK
+     */
+    200: {
+        group: {
+            category_id: number | null;
+            category_name: string | null;
+            category_published: boolean | null;
+            group_id: number;
+            icon_id: number | null;
+            name: string | null;
+            published: boolean | null;
+            published_type_count: number;
+            type_count: number;
+        };
+        types: Array<{
+            base_price: number | null;
+            description: string | null;
+            mass: number | null;
+            meta_group_id: number | null;
+            meta_group_name: string | null;
+            name: string | null;
+            published: boolean | null;
+            type_id: number;
+            volume: number | null;
+        }>;
+    };
+};
+
+export type UniverseGroupResponse = UniverseGroupResponses[keyof UniverseGroupResponses];
 
 export type UniverseRegionData = {
     body?: never;

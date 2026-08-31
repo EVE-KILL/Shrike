@@ -154,6 +154,8 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		return universeSystemResponseSchema()
 	case "universe-type", "type-compat":
 		return universeTypeResponseSchema()
+	case "universe-group", "group-compat":
+		return universeGroupResponseSchema()
 	case "universe-region-most-valuable", "region-most-valuable-compat",
 		"universe-constellation-most-valuable", "constellation-most-valuable-compat",
 		"universe-system-most-valuable", "system-most-valuable-compat":
@@ -1209,6 +1211,29 @@ func universeTypeResponseSchema() *huma.Schema {
 		}, "summary", "history", "insurance", "customSummary", "customHistory"),
 	}, "item", "shipAttributes", "attributes", "requiredSkills", "materials",
 		"marketBreadcrumb", "variations", "pricing")
+}
+
+func universeGroupResponseSchema() *huma.Schema {
+	group := responseSchema(map[string]*huma.Schema{
+		"group_id": intSchema(), "name": nullable(stringSchema()),
+		"category_id": nullable(intSchema()), "category_name": nullable(stringSchema()),
+		"published": nullable(boolSchema()), "icon_id": nullable(intSchema()),
+		"category_published": nullable(boolSchema()),
+		"type_count":         intSchema(), "published_type_count": intSchema(),
+	}, "group_id", "name", "category_id", "category_name", "published",
+		"icon_id", "category_published", "type_count", "published_type_count")
+	typeItem := responseSchema(map[string]*huma.Schema{
+		"type_id": intSchema(), "name": nullable(stringSchema()),
+		"description": nullable(stringSchema()), "published": nullable(boolSchema()),
+		"meta_group_id": nullable(intSchema()), "meta_group_name": nullable(stringSchema()),
+		"volume": nullable(numberSchema()), "mass": nullable(numberSchema()),
+		"base_price": nullable(numberSchema()),
+	}, "type_id", "name", "description", "published", "meta_group_id",
+		"meta_group_name", "volume", "mass", "base_price")
+	return responseSchema(map[string]*huma.Schema{
+		"group": group,
+		"types": arraySchema(typeItem),
+	}, "group", "types")
 }
 
 func shipMatchupResponseSchema() *huma.Schema {

@@ -50,14 +50,18 @@ var universeRoutes = []universeRoute{
 		Alias: "/item/{id}", Summary: "Inventory type page data",
 		NotFound: "Item not found", Load: loadUniverseType,
 	},
+	{
+		Name: "group", Canonical: "/universe/groups/{id}",
+		Alias: "/group/{id}", Summary: "Inventory group page data",
+		NotFound: "Group not found", Load: loadUniverseGroup,
+	},
 }
 
 // registerUniverseRoutes exposes the rich aggregates used by entity
 // pages. Static reference lists and simple records stay on the existing
 // /sde/* operations; duplicating them in the frontend API would create two
-// contracts for identical data. The old shipgroup page now redirects to the
-// market browser, so it gets no compatibility route; /sde/groups,
-// /sde/categories, and /market/* already cover its live replacement.
+// contracts for identical data. The old shipgroup page still redirects to the
+// market browser; /group/{id} is the general inventory-group detail page.
 func registerUniverseRoutes(a huma.API, opts Options) {
 	for _, route := range universeRoutes {
 		handler := universeEntityHandler(opts, route.NotFound, route.Load)
@@ -83,6 +87,55 @@ func registerUniverseRoutes(a huma.API, opts Options) {
 		}, handler)
 	}
 	registerUniverseKilllistRoutes(a, opts)
+}
+
+func loadUniverseGroup(
+	ctx context.Context,
+	db Database,
+	id int64,
+) (map[string]any, error) {
+	result, err := queryMapsConcurrent(ctx, db,
+		databaseQuery{
+			SQL: `
+				SELECT g.group_id, g.name, g.category_id, g.published,
+				       g.icon_id, c.name AS category_name,
+				       c.published AS category_published,
+				       COUNT(t.type_id)::int AS type_count,
+				       COUNT(t.type_id) FILTER (WHERE t.published IS TRUE)::int
+				         AS published_type_count
+				FROM inv_groups g
+				LEFT JOIN inv_categories c ON c.category_id = g.category_id
+				LEFT JOIN inv_types t ON t.group_id = g.group_id
+				WHERE g.group_id = $1
+				GROUP BY g.group_id, g.name, g.category_id, g.published,
+				         g.icon_id, c.name, c.published
+				LIMIT 1`,
+			Args: []any{id},
+		},
+		databaseQuery{
+			SQL: `
+				SELECT t.type_id, t.name, t.description, t.published,
+				       t.meta_group_id, mg.name AS meta_group_name,
+				       t.volume, t.mass, t.base_price
+				FROM inv_types t
+				LEFT JOIN inv_meta_groups mg
+				  ON mg.meta_group_id = t.meta_group_id
+				WHERE t.group_id = $1
+				ORDER BY t.published DESC, t.name ASC, t.type_id ASC`,
+			Args: []any{id},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	group := firstUniverseRow(result[0])
+	if group == nil {
+		return nil, nil
+	}
+	return map[string]any{
+		"group": group,
+		"types": nonNilUniverseRows(result[1]),
+	}, nil
 }
 
 func universeEntityHandler(

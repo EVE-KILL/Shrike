@@ -1,7 +1,7 @@
 import type { RouterConfig } from '@nuxt/schema'
 
 // Entity routes that use the [[tab]] pattern
-const tabRoutePattern = /^\/(character|corporation|alliance|system|region|constellation|item|faction|battle)\/(\d+)/
+const tabRoutePattern = /^\/(character|corporation|alliance|system|region|constellation|item|group|faction|battle)\/(\d+)/
 
 export default <RouterConfig>{
     scrollBehavior(to, from, savedPosition) {

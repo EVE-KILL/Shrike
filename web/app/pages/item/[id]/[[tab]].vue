@@ -126,7 +126,7 @@ useSchemaOrg([
             if (!i) return [{ name: 'Home', item: '/' }]
             return [
                 { name: 'Home', item: '/' },
-                { name: i.group_name ?? 'Group', item: '/market' },
+                { name: i.group_name ?? 'Group', item: i.group_id ? `/group/${i.group_id}` : '/market' },
                 { name: i.name, item: `/item/${id}` },
             ]
         })(),
@@ -641,7 +641,7 @@ const hasStats = computed(() =>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                                 <div class="flex justify-between"><span class="text-xs text-gray-500">Type ID</span><span class="text-sm text-white tabular-nums">{{ item.type_id }}</span></div>
-                                <div v-if="item.group_id" class="flex justify-between"><span class="text-xs text-gray-500">Group ID</span><span class="text-sm text-white tabular-nums">{{ item.group_id }}</span></div>
+                                <div v-if="item.group_id" class="flex justify-between"><span class="text-xs text-gray-500">Group</span><NuxtLink :to="`/group/${item.group_id}`" class="text-sm text-blue-400 hover:text-blue-300 transition-colors">{{ item.group_name }} ({{ item.group_id }})</NuxtLink></div>
                                 <div v-if="item.category_id" class="flex justify-between"><span class="text-xs text-gray-500">Category ID</span><span class="text-sm text-white tabular-nums">{{ item.category_id }}</span></div>
                                 <div v-if="item.mass" class="flex justify-between"><span class="text-xs text-gray-500">Mass</span><span class="text-sm text-white tabular-nums">{{ item.mass.toLocaleString('en-US') }} kg</span></div>
                                 <div v-if="item.volume" class="flex justify-between"><span class="text-xs text-gray-500">Volume</span><span class="text-sm text-white tabular-nums">{{ item.volume.toLocaleString('en-US') }} m³</span></div>
