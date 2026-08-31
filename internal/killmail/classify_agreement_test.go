@@ -50,9 +50,9 @@ func TestClassifyAgreesWithPredicates(t *testing.T) {
 	// them. Whatever is here, this walks it.
 	const sampleSize = 50_000
 	rows, err := pool.Query(ctx, `
-        SELECT killmail_id, solar_system_id, coalesce(region_id, 0),
-               coalesce(total_value, 0), coalesce(is_solo, false), coalesce(is_npc, false),
-               coalesce(victim_ship_type_id, 0), coalesce(victim_ship_group_id, 0)
+        SELECT killmail_id, killmail_time, solar_system_id, coalesce(region_id, 0),
+		       coalesce(total_value, 0), coalesce(is_solo, false), coalesce(is_npc, false),
+		       coalesce(attacker_count, 0), coalesce(victim_ship_type_id, 0), coalesce(victim_ship_group_id, 0)
         FROM killmails
         ORDER BY killmail_id DESC
         LIMIT $1`, sampleSize)
@@ -69,8 +69,9 @@ func TestClassifyAgreesWithPredicates(t *testing.T) {
 
 	for rows.Next() {
 		var s sample
-		if err := rows.Scan(&s.id, &s.km.SolarSystemID, &s.km.RegionID,
+		if err := rows.Scan(&s.id, &s.km.KillmailTime, &s.km.SolarSystemID, &s.km.RegionID,
 			&s.km.TotalValue, &s.km.IsSolo, &s.km.IsNPC,
+			&s.km.AttackerCount,
 			&s.km.VictimShipTypeID, &s.km.VictimShipGroupID); err != nil {
 			rows.Close()
 			t.Fatalf("scan: %v", err)

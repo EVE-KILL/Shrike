@@ -29,7 +29,7 @@ type tagGroup struct {
 var tagGroups = []tagGroup{
 	{"Killboard", []string{
 		"killmails", "characters", "corporations", "alliances", "entities",
-		"coalitions", "stats", "history", "items", "ships", "custom",
+		"coalitions", "stats", "history", "labels", "items", "ships", "custom",
 	}},
 	{"Conflicts", []string{"battles", "wars", "campaigns", "faction-war"}},
 	{"Universe", []string{
@@ -87,6 +87,7 @@ var tagDescriptions = map[string]string{
 	"history":             "Daily killmail totals, by date.",
 	"images":              "Character, corporation, alliance, and type images, plus social cards.",
 	"killmails":           "Killmails: listings, detail, ESI form, and the fitting they carried.",
+	"labels":              "The authoritative killmail classifications, their counts, and search filters.",
 	"map":                 "Region and constellation map data.",
 	"market":              "Market groups and bulk type prices.",
 	"mcp":                 "Typed HTTP mirrors of every read-only MCP tool. The MCP transport itself is served at eve-kill.com/api/mcp.",

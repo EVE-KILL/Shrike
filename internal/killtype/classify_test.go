@@ -3,6 +3,7 @@ package killtype
 import (
 	"slices"
 	"testing"
+	"time"
 )
 
 // Classify decides what the navigation counts say. It has to agree with
@@ -237,5 +238,55 @@ func TestNoDuplicateTypes(t *testing.T) {
 			t.Errorf("Classify produced %q twice — that kill would count double in %s", name, name)
 		}
 		seen[name] = true
+	}
+}
+
+func TestTimezoneBucketsCoverUTCWithoutGaps(t *testing.T) {
+	want := []string{
+		"timezone-us-east", "timezone-us-east", "timezone-us-east", "timezone-us-east",
+		"timezone-us-west", "timezone-us-west", "timezone-us-west", "timezone-us-west",
+		"timezone-au", "timezone-au", "timezone-au", "timezone-au", "timezone-au", "timezone-au",
+		"timezone-ru", "timezone-ru", "timezone-ru",
+		"timezone-eu", "timezone-eu", "timezone-eu", "timezone-eu", "timezone-eu",
+		"timezone-us-east", "timezone-us-east",
+	}
+	for hour := 0; hour < 24; hour++ {
+		got := TimezoneBucket(time.Date(2026, time.August, 31, hour, 0, 0, 0, time.UTC))
+		if got != want[hour] {
+			t.Errorf("hour %02d: got %q, want %q", hour, got, want[hour])
+		}
+	}
+}
+
+func TestSoloCanOverlapRawAttackerBand(t *testing.T) {
+	got := Classify(Subject{IsSolo: true, IsNPC: false, AttackerCount: 3})
+	for _, want := range []string{"solo", "attackers-2-4", "pvp"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("Classify() = %v, missing %q", got, want)
+		}
+	}
+
+	one := Classify(Subject{IsSolo: true, IsNPC: false, AttackerCount: 1})
+	if slices.Contains(one, "attackers-1") {
+		t.Errorf("solo one-attacker kill unexpectedly classified as attackers-1: %v", one)
+	}
+}
+
+func TestValueBandsAreMutuallyExclusive(t *testing.T) {
+	cases := []struct {
+		value float64
+		want  string
+	}{
+		{BigISK - 1, "under-1b"}, {BigISK, "1b-5b"}, {FiveBISK, "5b-10b"},
+		{TenBISK, "10b-100b"}, {HundredBISK, "100b-1t"}, {TrillionISK, "1t-plus"},
+	}
+	all := []string{"under-1b", "1b-5b", "5b-10b", "10b-100b", "100b-1t", "1t-plus"}
+	for _, tc := range cases {
+		got := Classify(Subject{HasTotalValue: true, TotalValue: tc.value})
+		for _, label := range all {
+			if slices.Contains(got, label) != (label == tc.want) {
+				t.Errorf("value %.0f: classifications %v, want only %q band", tc.value, got, tc.want)
+			}
+		}
 	}
 }

@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/eve-kill/shrike/internal/killtype"
 )
 
 const advancedMaximumIDsPerList = 15
@@ -41,6 +43,7 @@ type advancedTimeRange struct {
 }
 
 type advancedFilters struct {
+	Label    string `json:"label,omitempty"`
 	Entities *struct {
 		Victim   []advancedEntity `json:"victim,omitempty"`
 		Attacker []advancedEntity `json:"attacker,omitempty"`
@@ -135,6 +138,13 @@ func parseAdvancedKilllistQuery(
 	}
 	if err := validateAdvancedListSizes(filters); err != nil {
 		return query, err
+	}
+	if filters.Label != "" {
+		predicate, ok := killtype.Predicates()[filters.Label]
+		if !ok || filters.Label == "latest" {
+			return query, apiError(http.StatusBadRequest, "Invalid label")
+		}
+		query.Where = append(query.Where, predicate)
 	}
 
 	if fitHash != "" {

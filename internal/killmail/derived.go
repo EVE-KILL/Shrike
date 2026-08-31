@@ -27,9 +27,11 @@ import (
 // security-based ones have to be skipped.
 func Subject(cache *eve.Cache, km Killmail) killtype.Subject {
 	s := killtype.Subject{
+		KillmailTime:      km.KillmailTime,
 		RegionID:          km.RegionID,
 		IsSolo:            km.IsSolo,
 		IsNPC:             km.IsNPC,
+		AttackerCount:     km.AttackerCount,
 		TotalValue:        km.TotalValue,
 		HasTotalValue:     true,
 		VictimShipGroupID: km.VictimShipGroupID,

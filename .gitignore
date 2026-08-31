@@ -22,6 +22,10 @@ bin/
 /*.md
 !CLAUDE.md
 
+# Local product-research issues and implementation notes. These are kept as a
+# working backlog without turning unfinished ideas into repository policy.
+/issues/
+
 # Editor state. The directory currently holds only machine-local runtime files
 # such as .server-controller-port.log, which name a port valid for one session
 # on one machine. Re-include a specific file with `!` if a setting ever needs

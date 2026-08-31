@@ -626,11 +626,12 @@ const secLabel = (sec: number | null): string => {
 
 <template>
     <div class="rounded-lg bg-white/[0.04] border border-white/[0.08] p-2">
-        <!-- Controls bar. Three equal columns so the centered date stays
-             pinned to the viewport center even as the left (limit selector)
-             or right (pagination) side changes width. -->
-        <div class="grid grid-cols-3 items-center gap-2 mb-2">
-            <div class="flex items-center gap-2 min-w-0">
+        <!-- Controls bar. On mobile the stable limit/date controls share the
+             first row while variable-width pagination gets a centered row of
+             its own. From md upward, three equal columns keep the date pinned
+             to the viewport center. -->
+        <div class="grid grid-cols-[auto_minmax(0,1fr)] md:grid-cols-3 items-center gap-2 mb-2">
+            <div class="order-1 flex items-center gap-2 min-w-0">
                 <!-- WebSocket status dot (only when stream is active) -->
                 <div
                     v-if="liveActive"
@@ -673,9 +674,9 @@ const secLabel = (sec: number | null): string => {
                     <span v-if="activeFilterCount > 0" class="px-1 rounded-full bg-blue-500/30 text-blue-300 text-fine tabular-nums">{{ activeFilterCount }}</span>
                 </button>
             </div>
-            <div v-if="headerDateLabel" class="text-center text-xs text-gray-300 font-medium tabular-nums truncate" data-allow-mismatch="text">{{ headerDateLabel }}</div>
-            <div v-else></div>
-            <div class="flex items-center gap-0.5 text-xs justify-self-end">
+            <div v-if="headerDateLabel" class="order-2 text-center text-xs text-gray-300 font-medium tabular-nums truncate" data-allow-mismatch="text">{{ headerDateLabel }}</div>
+            <div v-else class="order-2"></div>
+            <div class="order-3 col-span-2 md:col-span-1 flex items-center gap-0.5 text-xs justify-self-center md:justify-self-end">
                 <!-- Cursor mode — minimal prev / page N / next. The cursor
                      backend can't random-jump, so we don't pretend otherwise. -->
                 <template v-if="!isNumberedMode">

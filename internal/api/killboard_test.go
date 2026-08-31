@@ -11,6 +11,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
+	"github.com/eve-kill/shrike/internal/killtype"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -118,6 +119,49 @@ func TestAdvancedQueryUsesBoundedExistsFiltersAndStableCursor(t *testing.T) {
 	if strings.Contains(where, "array_agg") ||
 		strings.Contains(where, "ARRAY[") {
 		t.Errorf("advanced query materializes attacker IDs:\n%s", where)
+	}
+}
+
+func TestAdvancedQueryUsesCanonicalLabelPredicate(t *testing.T) {
+	filters := url.QueryEscape(`{"label":"attackers-10-24"}`)
+	values, err := url.ParseQuery("filters=" + filters)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query, err := parseAdvancedKilllistQuery(
+		&legacyRequest{Query: values},
+		time.Date(2026, time.July, 26, 12, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(query.whereSQL(), "k.attacker_count BETWEEN 10 AND 24") {
+		t.Errorf("advanced label did not use canonical predicate:\n%s", query.whereSQL())
+	}
+
+	bad := url.QueryEscape(`{"label":"not-a-label"}`)
+	values, _ = url.ParseQuery("filters=" + bad)
+	_, err = parseAdvancedKilllistQuery(
+		&legacyRequest{Query: values}, time.Now().UTC(),
+	)
+	apiErr, ok := err.(*legacyAPIError)
+	if !ok || apiErr.Status != http.StatusBadRequest {
+		t.Fatalf("invalid label error = %#v", err)
+	}
+}
+
+func TestAdvancedSearchAcceptsEveryPublicLabel(t *testing.T) {
+	for _, label := range killtype.Labels {
+		filters := url.QueryEscape(`{"label":"` + label.ID + `"}`)
+		values, err := url.ParseQuery("filters=" + filters)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := parseAdvancedKilllistQuery(
+			&legacyRequest{Query: values}, time.Now().UTC(),
+		); err != nil {
+			t.Errorf("label %q was rejected by advanced search: %v", label.ID, err)
+		}
 	}
 }
 

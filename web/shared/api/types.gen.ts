@@ -18419,7 +18419,7 @@ export type DomainKilllistData = {
         /**
          * Killmail category: space, ship class, tech level, or value band.
          */
-        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titans' | 'under-1b' | 'wspace';
         /**
          * Maximum results to return.
          */
@@ -18491,7 +18491,7 @@ export type DomainKillsMostValuableData = {
         /**
          * Killmail category: space, ship class, tech level, or value band.
          */
-        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titans' | 'under-1b' | 'wspace';
         /**
          * Size of the trailing window, in days.
          */
@@ -18532,7 +18532,7 @@ export type DomainKillsTopData = {
         /**
          * Killmail category: space, ship class, tech level, or value band.
          */
-        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titans' | 'under-1b' | 'wspace';
         /**
          * Which leaderboard to build.
          */
@@ -23197,7 +23197,7 @@ export type KilllistData = {
         /**
          * Killmail category: space, ship class, tech level, or value band.
          */
-        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titans' | 'under-1b' | 'wspace';
         /**
          * Maximum results to return.
          */
@@ -23583,7 +23583,7 @@ export type KillmailsData = {
         /**
          * Killmail category: space, ship class, tech level, or value band.
          */
-        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titans' | 'under-1b' | 'wspace';
         /**
          * Maximum results to return.
          */
@@ -23848,7 +23848,7 @@ export type KillsMostValuableData = {
         /**
          * Killmail category: space, ship class, tech level, or value band.
          */
-        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titans' | 'under-1b' | 'wspace';
         /**
          * Size of the trailing window, in days.
          */
@@ -23889,7 +23889,7 @@ export type KillsTopData = {
         /**
          * Killmail category: space, ship class, tech level, or value band.
          */
-        type?: '10b' | '5b' | 'abyssal' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'titans' | 'wspace';
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'battlecruisers' | 'battleships' | 'big' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titans' | 'under-1b' | 'wspace';
         /**
          * Which leaderboard to build.
          */
@@ -23923,6 +23923,37 @@ export type KillsTopResponses = {
 };
 
 export type KillsTopResponse = KillsTopResponses[keyof KillsTopResponses];
+
+export type KillmailLabelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/labels';
+};
+
+export type KillmailLabelsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        labels: Array<{
+            category: string;
+            count: number;
+            description: string;
+            id: string;
+            name: string;
+            /**
+             * Canonical advanced-search filter payload for this classification.
+             */
+            search_filters: {
+                [key: string]: unknown;
+            };
+            view_url: string;
+        }>;
+    };
+};
+
+export type KillmailLabelsResponse = KillmailLabelsResponses[keyof KillmailLabelsResponses];
 
 export type LegacyArchiveAutocompleteData = {
     body?: never;

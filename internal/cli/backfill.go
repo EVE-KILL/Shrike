@@ -3,7 +3,9 @@ package cli
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/achievements"
@@ -16,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 // Backfills.
@@ -513,9 +516,10 @@ var backfillKillsDailyCountCmd = &cobra.Command{
 	Short: "Rebuild the daily kill-count rollup",
 	Long: `Recomputes kills_daily_count from the killmails themselves.
 
-	Unlike the other backfills this runs inline rather than through the queue: it is
-one INSERT … SELECT per kill type, not a job per killmail, and it overwrites
-rather than accumulating — so it is safe to re-run.`,
+	Unlike the other backfills this runs inline rather than through the queue. Each
+month/type partition is one idempotent DELETE plus INSERT … SELECT transaction.
+Use --type repeatedly or comma-separated to target a label set, and --workers to
+run independent partitions concurrently.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		from, err := parseMonth(flagDailyCountFromMonth, "--from")
 		if err != nil {
@@ -531,14 +535,23 @@ rather than accumulating — so it is safe to re-run.`,
 		}
 		months := inclusiveMonths(from, to, flagDailyCountReverse)
 
-		predicates := killtype.Predicates()
-		if flagDailyCountType != "" {
-			predicate, ok := predicates[flagDailyCountType]
-			if !ok {
-				return fmt.Errorf("unknown kill type %q", flagDailyCountType)
+		allPredicates := killtype.Predicates()
+		predicates := allPredicates
+		if len(flagDailyCountTypes) > 0 {
+			predicates = make(map[string]string, len(flagDailyCountTypes))
+			for _, kind := range flagDailyCountTypes {
+				predicate, ok := allPredicates[kind]
+				if !ok {
+					return fmt.Errorf("unknown kill type %q", kind)
+				}
+				predicates[kind] = predicate
 			}
-			predicates = map[string]string{flagDailyCountType: predicate}
 		}
+		kinds := make([]string, 0, len(predicates))
+		for kind := range predicates {
+			kinds = append(kinds, kind)
+		}
+		sort.Strings(kinds)
 
 		pool, err := openPool(cmd)
 		if err != nil {
@@ -548,35 +561,52 @@ rather than accumulating — so it is safe to re-run.`,
 
 		ui.Section("Backfill kills-daily-count")
 		if flagDailyCountReset {
-			if flagDailyCountType == "" {
+			if len(flagDailyCountTypes) == 0 {
 				if _, err := pool.Exec(cmd.Context(), `TRUNCATE kills_daily_count`); err != nil {
 					return err
 				}
 			} else if _, err := pool.Exec(cmd.Context(),
-				`DELETE FROM kills_daily_count WHERE type = $1`, flagDailyCountType); err != nil {
+				`DELETE FROM kills_daily_count WHERE type = ANY($1::text[])`, kinds); err != nil {
 				return err
 			}
 		}
 
-		var total int64
+		type partition struct {
+			month     time.Time
+			kind      string
+			predicate string
+		}
+		partitions := make([]partition, 0, len(months)*len(kinds))
 		for _, month := range months {
-			next := month.AddDate(0, 1, 0)
-			for kind, predicate := range predicates {
-				tx, err := pool.Begin(cmd.Context())
-				if err != nil {
-					return fmt.Errorf("begin rebuild %s for %s: %w", kind, month.Format("2006-01"), err)
-				}
+			for _, kind := range kinds {
+				partitions = append(partitions, partition{month, kind, predicates[kind]})
+			}
+		}
 
-				if _, err := tx.Exec(cmd.Context(), `
+		workers := max(1, flagDailyCountWorkers)
+		group, groupCtx := errgroup.WithContext(cmd.Context())
+		jobs := make(chan partition)
+		var total atomic.Int64
+		for range workers {
+			group.Go(func() error {
+				for job := range jobs {
+					month, kind, predicate := job.month, job.kind, job.predicate
+					next := month.AddDate(0, 1, 0)
+					tx, err := pool.Begin(groupCtx)
+					if err != nil {
+						return fmt.Errorf("begin rebuild %s for %s: %w", kind, month.Format("2006-01"), err)
+					}
+
+					if _, err := tx.Exec(groupCtx, `
 					DELETE FROM kills_daily_count
 					WHERE date >= $1::date
 					  AND date < $2::date
 					  AND type = $3`, month, next, kind); err != nil {
-					_ = tx.Rollback(cmd.Context())
-					return fmt.Errorf("clear %s for %s: %w", kind, month.Format("2006-01"), err)
-				}
+						_ = tx.Rollback(groupCtx)
+						return fmt.Errorf("clear %s for %s: %w", kind, month.Format("2006-01"), err)
+					}
 
-				tag, err := tx.Exec(cmd.Context(), fmt.Sprintf(`
+					tag, err := tx.Exec(groupCtx, fmt.Sprintf(`
 					INSERT INTO kills_daily_count (date, type, count)
 					SELECT (k.killmail_time AT TIME ZONE 'UTC')::date, $1, count(*)
 					FROM killmails k
@@ -584,19 +614,36 @@ rather than accumulating — so it is safe to re-run.`,
 					  AND %s
 					GROUP BY (k.killmail_time AT TIME ZONE 'UTC')::date
 					ON CONFLICT (date, type) DO UPDATE SET count = EXCLUDED.count`,
-					predicate), kind, month, next)
-				if err != nil {
-					_ = tx.Rollback(cmd.Context())
-					return fmt.Errorf("rebuild %s for %s: %w", kind, month.Format("2006-01"), err)
+						predicate), kind, month, next)
+					if err != nil {
+						_ = tx.Rollback(groupCtx)
+						return fmt.Errorf("rebuild %s for %s: %w", kind, month.Format("2006-01"), err)
+					}
+					if err := tx.Commit(groupCtx); err != nil {
+						return fmt.Errorf("commit %s for %s: %w", kind, month.Format("2006-01"), err)
+					}
+					total.Add(tag.RowsAffected())
 				}
-				if err := tx.Commit(cmd.Context()); err != nil {
-					return fmt.Errorf("commit %s for %s: %w", kind, month.Format("2006-01"), err)
+				return nil
+			})
+		}
+		group.Go(func() error {
+			defer close(jobs)
+			for _, job := range partitions {
+				select {
+				case jobs <- job:
+				case <-groupCtx.Done():
+					return groupCtx.Err()
 				}
-				total += tag.RowsAffected()
 			}
+			return nil
+		})
+		if err := group.Wait(); err != nil {
+			return err
 		}
 		ui.Newline()
-		ui.Success("Rebuilt %s (date, type) rows.", fmtCount(total))
+		ui.Success("Rebuilt %s (date, type) rows across %d partitions with %d workers.",
+			fmtCount(total.Load()), len(partitions), workers)
 		ui.Newline()
 		return nil
 	},
@@ -605,7 +652,8 @@ rather than accumulating — so it is safe to re-run.`,
 var (
 	flagDailyCountFromMonth string
 	flagDailyCountToMonth   string
-	flagDailyCountType      string
+	flagDailyCountTypes     []string
+	flagDailyCountWorkers   int
 	flagDailyCountReset     bool
 	flagDailyCountReverse   bool
 )
@@ -823,7 +871,8 @@ func init() {
 	backfillGraphCmd.Flags().BoolVar(&flagGraphClear, "clear", false, "Clear the graph before backfill")
 	backfillKillsDailyCountCmd.Flags().StringVarP(&flagDailyCountFromMonth, "from", "f", "2007-12", "Start month (YYYY-MM)")
 	backfillKillsDailyCountCmd.Flags().StringVarP(&flagDailyCountToMonth, "to", "t", "", "End month, inclusive (YYYY-MM; default current)")
-	backfillKillsDailyCountCmd.Flags().StringVar(&flagDailyCountType, "type", "", "Only rebuild one kill type")
+	backfillKillsDailyCountCmd.Flags().StringSliceVar(&flagDailyCountTypes, "type", nil, "Only rebuild these kill types (repeat or comma-separate)")
+	backfillKillsDailyCountCmd.Flags().IntVarP(&flagDailyCountWorkers, "workers", "w", 1, "Concurrent month/type partitions")
 	backfillKillsDailyCountCmd.Flags().BoolVar(&flagDailyCountReset, "reset", false, "Clear selected rows before rebuilding")
 	backfillKillsDailyCountCmd.Flags().BoolVarP(&flagDailyCountReverse, "reverse", "r", false, "Process newest months first")
 	dbVacuumCmd.Flags().BoolVar(&flagDBVacuumFull, "full", false, "Run VACUUM FULL (locks tables)")

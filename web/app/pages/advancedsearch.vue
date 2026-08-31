@@ -16,6 +16,16 @@ interface SearchResponse {
     entityCounts: Record<string, number>
 }
 
+interface LabelOption {
+    id: string
+    name: string
+    category: string
+}
+
+interface LabelsResponse {
+    labels: LabelOption[]
+}
+
 interface Entity {
     id: number
     type: string
@@ -41,6 +51,7 @@ interface ItemFilter {
 }
 
 interface Filters {
+    label: string | null
     entities: { victim: Entity[]; attacker: Entity[]; both: Entity[] }
     items: ItemFilter[]
     location: {
@@ -72,6 +83,8 @@ useSeoMeta({
 
 const route = useRoute()
 const router = useRouter()
+const { data: labelData } = await useApiFetch<LabelsResponse>('/api/labels')
+const labelOptions = computed(() => labelData.value?.labels ?? [])
 
 // Search
 const searchQuery = ref('')
@@ -112,6 +125,7 @@ const handleSearch = () => {
 
 // Filters
 const defaultFilters = (): Filters => ({
+    label: null,
     entities: { victim: [], attacker: [], both: [] },
     items: [],
     location: {
@@ -135,7 +149,8 @@ const filters = ref<Filters>(defaultFilters())
 
 const hasFilters = computed(() => {
     const f = filters.value
-    return f.entities.victim.length > 0
+    return f.label != null
+        || f.entities.victim.length > 0
         || f.entities.attacker.length > 0
         || f.entities.both.length > 0
         || f.items.length > 0
@@ -156,6 +171,7 @@ const hasFilters = computed(() => {
 const serializedFilters = computed(() => {
     const f = filters.value
     const out: Record<string, any> = {}
+    if (f.label) out.label = f.label
 
     const entities: Record<string, any> = {}
     const mapEntity = (e: Entity) => ({ id: e.id, type: e.type, name: e.name, ...(e.exclude ? { exclude: true } : {}) })
@@ -382,6 +398,7 @@ const fetchFits = async (append = false) => {
 const filtersForUrl = computed(() => {
     const f = filters.value
     const out: Record<string, any> = {}
+    if (f.label) out.label = f.label
 
     const entities: Record<string, any> = {}
     if (f.entities.victim.length) entities.victim = f.entities.victim
@@ -416,6 +433,7 @@ const filtersForUrl = computed(() => {
 
 const applyParsedFilters = (parsed: any) => {
     const f = defaultFilters()
+    if (parsed.label) f.label = parsed.label
     if (parsed.entities) {
         if (parsed.entities.victim) f.entities.victim = parsed.entities.victim
         if (parsed.entities.attacker) f.entities.attacker = parsed.entities.attacker
@@ -845,6 +863,14 @@ const activeFilterChips = computed(() => {
     const chips: Array<{ key: string; group: string; label: string; clear: () => void }> = []
     const labelOf = (opts: { value: string; label: string }[], value: string) =>
         opts.find(o => o.value === value)?.label ?? value
+    if (f.label) {
+        chips.push({
+            key: 'label',
+            group: 'Label',
+            label: labelOptions.value.find(option => option.id === f.label)?.name ?? f.label,
+            clear: () => { filters.value.label = null },
+        })
+    }
 
     for (const sec of f.location.securityTypes) {
         chips.push({
@@ -1197,6 +1223,33 @@ const locationLabel = computed(() => {
 
         <!-- Filter Controls Grid (collapsible) -->
         <div v-show="!filtersCollapsed" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
+            <!-- Canonical label -->
+            <div class="glass-panel p-3">
+                <label for="label-filter" class="block text-fine font-bold uppercase tracking-wider text-gray-600 mb-2">
+                    Killmail Label
+                </label>
+                <select
+                    id="label-filter"
+                    v-model="filters.label"
+                    class="w-full px-2 py-1.5 text-xs bg-[#181818] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none"
+                >
+                    <option :value="null">Any label</option>
+                    <optgroup
+                        v-for="category in [...new Set(labelOptions.map(option => option.category))]"
+                        :key="category"
+                        :label="category"
+                    >
+                        <option
+                            v-for="option in labelOptions.filter(candidate => candidate.category === category)"
+                            :key="option.id"
+                            :value="option.id"
+                        >
+                            {{ option.name }}
+                        </option>
+                    </optgroup>
+                </select>
+            </div>
+
             <!-- Security Space -->
             <div class="glass-panel p-3">
                 <div class="text-fine font-bold uppercase tracking-wider text-gray-600 mb-2">
