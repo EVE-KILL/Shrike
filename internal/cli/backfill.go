@@ -391,8 +391,12 @@ var backfillGraphCmd = &cobra.Command{
 	Short: "Rebuild the relationship graph from recent killmails",
 	Long: `Queues graph ingestion for the requested recent window.
 
-Use --clear for a clean rebuild. Without it, edge counters accumulate exactly
-as they do in the live path.`,
+Use --clear when upgrading a graph created before idempotent killmail markers
+were introduced. Once markers exist, repeated backfills safely skip killmails
+that are already represented in the graph.
+
+Stop graph-ingest workers before using --clear. The command clears the derived
+graph, installs its schema while it is empty, and only then queues the rebuild.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		pool, err := openPool(cmd)
 		if err != nil {
@@ -412,6 +416,9 @@ as they do in the live path.`,
 				return fmt.Errorf("memgraph is unreachable")
 			}
 			if err := d.Graph.Clear(cmd.Context()); err != nil {
+				return err
+			}
+			if err := d.Graph.EnsureSchema(cmd.Context()); err != nil {
 				return err
 			}
 		}

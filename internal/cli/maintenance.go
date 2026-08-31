@@ -7,6 +7,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/battle"
 	"github.com/eve-kill/shrike/internal/configstore"
+	"github.com/eve-kill/shrike/internal/graph"
 	"github.com/eve-kill/shrike/internal/maintenance"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/ui"
@@ -532,8 +533,9 @@ var graphPurgeNowCmd = &cobra.Command{
 	Short: "Prune aged-out relationships now",
 	Long: fmt.Sprintf(`Removes graph edges older than %d days and any character left with none.
 
-Batched, so one run may not clear everything — run it again until it reports
-nothing. The daily cron does the same thing incrementally.`, 90),
+Batched with a bounded number of transactions per edge type, so a large backlog
+may need several runs. Repeat it until it reports nothing; the daily cron uses
+the same bounded cleanup.`, 90),
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		pool, err := openPool(cmd)
 		if err != nil {
@@ -561,8 +563,31 @@ nothing. The daily cron does the same thing incrementally.`, 90),
 		for edgeType, n := range res.ByType {
 			ui.KV(edgeType, fmtCount(n))
 		}
-		ui.KV("Orphaned characters", fmtCount(res.Orphans))
+		ui.KV("Orphaned nodes", fmtCount(res.Orphans))
+		ui.KV("Killmail markers", fmtCount(res.Killmails))
 		ui.Newline()
+		return nil
+	},
+}
+
+var graphSchemaCmd = &cobra.Command{
+	Use:   "schema",
+	Short: "Install Memgraph indexes and uniqueness constraints",
+	Long: `Installs the schema required by graph ingestion and reads.
+
+The operation is idempotent, but uniqueness constraints fail when an existing
+graph contains duplicate node ids. In that case, stop graph writers and run a
+clean graph rebuild before retrying this command.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		client, err := graph.Connect(cmd.Context(), cfg.MemgraphURL)
+		if err != nil {
+			return err
+		}
+		defer client.Close(cmd.Context()) //nolint:errcheck
+		if err := client.EnsureSchema(cmd.Context()); err != nil {
+			return err
+		}
+		ui.Success("Memgraph schema is up to date.")
 		return nil
 	},
 }
@@ -673,6 +698,6 @@ func init() {
 
 	backfillCmd.AddCommand(backfillLastActiveCmd, backfillMissingWarsCmd, backfillBattlesCmd)
 	queueCmd.AddCommand(queueStaleEntitiesCmd, resetEntityHistoryQueuesCmd)
-	graphCmd.AddCommand(graphPurgeNowCmd)
+	graphCmd.AddCommand(graphPurgeNowCmd, graphSchemaCmd)
 	battleCmd.AddCommand(battleDetectCmd)
 }

@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"uuid"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
@@ -32,9 +33,25 @@ const RetentionDays = 90
 // than its edge batch.
 const orphanPurgeBatch = 5_000
 
+// Each edge type gets several small transactions per maintenance run. One
+// batch per day cannot keep pace with the production edge creation rate, while
+// one enormous transaction can exhaust Memgraph's transactional memory.
+const purgeBatchesPerEdgeType = 50
+
 // Client wraps a Memgraph connection.
 type Client struct {
 	driver neo4j.DriverWithContext
+}
+
+// nodeLabels is the complete set of node labels keyed by an external EVE id.
+// Keeping this list next to Connect makes schema drift visible when a new node
+// type is introduced.
+var nodeLabels = []string{"Character", "Corporation", "Alliance", "SolarSystem", "Killmail"}
+
+var nodeIndexes = map[string][]string{
+	"Character":   {"corporation_id", "alliance_id"},
+	"Corporation": {"alliance_id"},
+	"Killmail":    {"killmail_time"},
 }
 
 // Connect opens a Memgraph connection.
@@ -52,6 +69,83 @@ func Connect(ctx context.Context, url string) (*Client, error) {
 		return nil, fmt.Errorf("connect to memgraph at %s: %w", url, err)
 	}
 	return &Client{driver: d}, nil
+}
+
+// EnsureSchema installs uniqueness constraints for id lookups and concurrency
+// safety, plus secondary indexes for the actual affiliation and retention scan
+// predicates. Avoid a separate id index: Memgraph backs a uniqueness
+// constraint with its own lookup structure, so both would duplicate memory and
+// write overhead. Equivalent schema creation is a no-op.
+//
+// This is deliberately explicit rather than part of Connect: adding an index
+// across a production graph is an operational change, and a uniqueness
+// constraint must report pre-existing duplicate nodes without taking every
+// graph-backed API offline.
+func (c *Client) EnsureSchema(ctx context.Context) error {
+	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx) //nolint:errcheck
+
+	// Check every label before making any schema changes. Otherwise constraints
+	// for early labels could be installed before a later duplicate makes the
+	// command fail, leaving a confusing half-applied schema.
+	for _, label := range nodeLabels {
+		result, err := session.Run(ctx, fmt.Sprintf(`
+			MATCH (n:%s)
+			WITH n.id AS id, count(n) AS copies
+			WHERE copies > 1
+			RETURN count(*) AS cnt`, label), nil)
+		if err != nil {
+			return fmt.Errorf("inspect memgraph ids for %s: %w", label, err)
+		}
+		duplicates := countFrom(ctx, result)
+		if duplicates > 0 {
+			return fmt.Errorf("cannot constrain %s ids: %d duplicate ids exist; clean rebuild required", label, duplicates)
+		}
+	}
+
+	for _, label := range nodeLabels {
+		statements := []string{
+			fmt.Sprintf("CREATE CONSTRAINT ON (n:%s) ASSERT n.id IS UNIQUE", label),
+		}
+		for _, property := range nodeIndexes[label] {
+			statements = append(statements, fmt.Sprintf("CREATE INDEX ON :%s(%s)", label, property))
+		}
+		for _, statement := range statements {
+			result, err := session.Run(ctx, statement, nil)
+			if err != nil {
+				return fmt.Errorf("initialize memgraph schema for %s: %w", label, err)
+			}
+			if _, err := result.Consume(ctx); err != nil {
+				return fmt.Errorf("initialize memgraph schema for %s: %w", label, err)
+			}
+		}
+	}
+	// These old declarations are node indexes (and have no matching nodes), not
+	// relationship indexes. Their names look plausible in SHOW INDEX INFO, which
+	// allowed the mistake to survive unnoticed.
+	for _, statement := range []string{
+		"DROP INDEX ON :FLEW_WITH(weight)",
+		"DROP INDEX ON :KILLED(weight)",
+	} {
+		result, err := session.Run(ctx, statement, nil)
+		if err != nil {
+			return fmt.Errorf("remove obsolete memgraph index: %w", err)
+		}
+		if _, err := result.Consume(ctx); err != nil {
+			return fmt.Errorf("remove obsolete memgraph index: %w", err)
+		}
+	}
+	for _, edgeType := range EdgeTypes {
+		result, err := session.Run(ctx,
+			fmt.Sprintf("CREATE EDGE INDEX ON :%s(last_seen)", edgeType), nil)
+		if err != nil {
+			return fmt.Errorf("initialize memgraph schema for %s: %w", edgeType, err)
+		}
+		if _, err := result.Consume(ctx); err != nil {
+			return fmt.Errorf("initialize memgraph schema for %s: %w", edgeType, err)
+		}
+	}
+	return nil
 }
 
 // Close releases the connection.
@@ -166,13 +260,93 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx) //nolint:errcheck // best-effort close
 
+	// All mutations for one killmail share a transaction. The marker makes the
+	// operation idempotent across duplicate jobs, retries, and ambiguous commit
+	// outcomes; a partial ingest is rolled back rather than retried on top of
+	// already-incremented counters.
+	token := uuid.New().String()
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		fresh, err := claimKillmail(ctx, tx, km.KillmailID, token)
+		if err != nil || !fresh {
+			return nil, err
+		}
+		if err := ingest(ctx, tx, km); err != nil {
+			return nil, err
+		}
+		return nil, finishKillmail(ctx, tx, km.KillmailID, token, km.KillmailTime)
+	})
+	if err != nil {
+		return fmt.Errorf("ingest killmail %d: %w", km.KillmailID, err)
+	}
+	return nil
+}
+
+type queryRunner interface {
+	Run(context.Context, string, map[string]any) (neo4j.ResultWithContext, error)
+}
+
+func claimKillmail(ctx context.Context, tx queryRunner, id int64, token string) (bool, error) {
+	if id <= 0 {
+		return false, fmt.Errorf("killmail id must be positive")
+	}
+	result, err := tx.Run(ctx, `
+		MERGE (k:Killmail {id: $id})
+		ON CREATE SET k.ingest_token = $token, k.ingested = false
+		RETURN k.ingest_token = $token AND NOT k.ingested AS fresh`, map[string]any{
+		"id": id, "token": token,
+	})
+	if err != nil {
+		return false, fmt.Errorf("claim killmail: %w", err)
+	}
+	if !result.Next(ctx) {
+		if err := result.Err(); err != nil {
+			return false, fmt.Errorf("claim killmail: %w", err)
+		}
+		return false, fmt.Errorf("claim killmail returned no result")
+	}
+	fresh, ok := result.Record().Values[0].(bool)
+	if !ok {
+		return false, fmt.Errorf("claim killmail returned %T, want boolean", result.Record().Values[0])
+	}
+	return fresh, nil
+}
+
+func finishKillmail(ctx context.Context, tx queryRunner, id int64, token string, eventAt time.Time) error {
+	result, err := tx.Run(ctx, `
+		MATCH (k:Killmail {id: $id})
+		WHERE k.ingest_token = $token AND NOT k.ingested
+		SET k.ingested = true, k.ingested_at = $ingested_at,
+		    k.killmail_time = $killmail_time
+		REMOVE k.ingest_token
+		RETURN count(k) AS finished`, map[string]any{
+		"id": id, "token": token,
+		"ingested_at": isoTimestamp(time.Now()), "killmail_time": isoTimestamp(eventAt),
+	})
+	if err != nil {
+		return fmt.Errorf("finish killmail: %w", err)
+	}
+	if !result.Next(ctx) {
+		if err := result.Err(); err != nil {
+			return fmt.Errorf("finish killmail: %w", err)
+		}
+		return fmt.Errorf("finish killmail returned no result")
+	}
+	finished, ok := result.Record().Values[0].(int64)
+	if !ok || finished != 1 {
+		return fmt.Errorf("finish killmail updated %v markers, want 1", result.Record().Values[0])
+	}
+	return nil
+}
+
+func ingest(ctx context.Context, tx queryRunner, km Killmail) error {
+
 	at := isoTimestamp(km.KillmailTime)
 
 	// Nodes before edges: a MATCH on a node that does not exist silently
 	// matches nothing, so the edge would be dropped without an error.
 	if len(km.Characters) > 0 {
 		chars := make([]map[string]any, 0, len(km.Characters))
-		corps := map[int64]bool{}
+		corps := map[int64]int64{}
 		alliances := map[int64]bool{}
 
 		for _, ch := range km.Characters {
@@ -187,19 +361,31 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 				"last_logi_seen":    nullableTime(ch.LastLogisticsSeen),
 			})
 			if ch.CorporationID != 0 {
-				corps[ch.CorporationID] = true
+				corps[ch.CorporationID] = ch.AllianceID
 			}
 			if ch.AllianceID != 0 {
 				alliances[ch.AllianceID] = true
 			}
 		}
 
-		if _, err := session.Run(ctx, `
+		if _, err := tx.Run(ctx, `
             UNWIND $chars AS c
             MERGE (n:Character {id: c.id})
-            SET n.corporation_id = c.corp,
-                n.alliance_id = c.alliance,
-                n.last_seen = CASE WHEN $time > coalesce(n.last_seen, '') THEN $time ELSE n.last_seen END,
+			SET n.corporation_id = CASE
+			        WHEN $time > coalesce(n.last_seen, '') OR
+			             ($time = n.last_seen AND $killmail_id > coalesce(n.last_seen_killmail_id, 0))
+			        THEN c.corp
+			        ELSE n.corporation_id END,
+			    n.alliance_id = CASE
+			        WHEN $time > coalesce(n.last_seen, '') OR
+			             ($time = n.last_seen AND $killmail_id > coalesce(n.last_seen_killmail_id, 0))
+			        THEN c.alliance
+			        ELSE n.alliance_id END,
+			    n.last_seen_killmail_id = CASE
+			        WHEN $time > coalesce(n.last_seen, '') OR
+			             ($time = n.last_seen AND $killmail_id > coalesce(n.last_seen_killmail_id, 0))
+			        THEN $killmail_id ELSE n.last_seen_killmail_id END,
+			    n.last_seen = CASE WHEN $time > coalesce(n.last_seen, '') THEN $time ELSE n.last_seen END,
                 n.last_fc_seen = CASE
                     WHEN c.last_fc_seen IS NOT NULL AND c.last_fc_seen > coalesce(n.last_fc_seen, '')
                     THEN c.last_fc_seen ELSE n.last_fc_seen END,
@@ -215,20 +401,20 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
                 n.last_logi_seen = CASE
                     WHEN c.last_logi_seen IS NOT NULL AND c.last_logi_seen > coalesce(n.last_logi_seen, '')
                     THEN c.last_logi_seen ELSE n.last_logi_seen END`,
-			map[string]any{"chars": chars, "time": at}); err != nil {
+			map[string]any{"chars": chars, "time": at, "killmail_id": km.KillmailID}); err != nil {
 			return fmt.Errorf("merge character nodes: %w", err)
 		}
 
-		if err := mergeIDs(ctx, session, "Corporation", corps); err != nil {
+		if err := mergeCorporations(ctx, tx, corps, at, km.KillmailID); err != nil {
 			return err
 		}
-		if err := mergeIDs(ctx, session, "Alliance", alliances); err != nil {
+		if err := mergeIDs(ctx, tx, "Alliance", alliances); err != nil {
 			return err
 		}
 	}
 
 	if km.SolarSystemID != 0 {
-		if _, err := session.Run(ctx, `MERGE (:SolarSystem {id: $id})`,
+		if _, err := tx.Run(ctx, `MERGE (:SolarSystem {id: $id})`,
 			map[string]any{"id": km.SolarSystemID}); err != nil {
 			return fmt.Errorf("merge solar system: %w", err)
 		}
@@ -239,7 +425,7 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 		for _, e := range km.FlewWith {
 			items = append(items, map[string]any{"lo": e.Lo, "hi": e.Hi})
 		}
-		if _, err := session.Run(ctx, `
+		if _, err := tx.Run(ctx, `
             UNWIND $items AS e
             MATCH (a:Character {id: e.lo}), (b:Character {id: e.hi})
             MERGE (a)-[r:FLEW_WITH]->(b)
@@ -259,7 +445,7 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 				"isk": e.IskDestroyed, "fb": e.FinalBlows,
 			})
 		}
-		if _, err := session.Run(ctx, `
+		if _, err := tx.Run(ctx, `
             UNWIND $items AS e
             MATCH (a:Character {id: e.atk}), (v:Character {id: e.vic})
             MERGE (a)-[r:KILLED]->(v)
@@ -279,7 +465,7 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 		for _, ch := range km.Characters {
 			ids = append(ids, ch.ID)
 		}
-		if _, err := session.Run(ctx, `
+		if _, err := tx.Run(ctx, `
             UNWIND $ids AS cid
             MATCH (c:Character {id: cid}), (s:SolarSystem {id: $sys})
             MERGE (c)-[r:OPERATED_IN]->(s)
@@ -318,7 +504,7 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 		}
 
 		if len(members) > 0 {
-			if _, err := session.Run(ctx, `
+			if _, err := tx.Run(ctx, `
                 UNWIND $items AS e
                 MATCH (c:Character {id: e.char}), (corp:Corporation {id: e.corp})
                 MERGE (c)-[r:MEMBER_OF]->(corp)
@@ -331,7 +517,7 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 		}
 
 		if len(allied) > 0 {
-			if _, err := session.Run(ctx, `
+			if _, err := tx.Run(ctx, `
                 UNWIND $items AS e
                 MATCH (corp:Corporation {id: e.corp}), (a:Alliance {id: e.alliance})
                 MERGE (corp)-[r:ALLIED_WITH]->(a)
@@ -347,7 +533,45 @@ func (c *Client) Ingest(ctx context.Context, km Killmail) error {
 	return nil
 }
 
-func mergeIDs(ctx context.Context, session neo4j.SessionWithContext, label string, ids map[int64]bool) error {
+func mergeCorporations(
+	ctx context.Context,
+	tx queryRunner,
+	corporations map[int64]int64,
+	at string,
+	killmailID int64,
+) error {
+	if len(corporations) == 0 {
+		return nil
+	}
+	items := make([]map[string]any, 0, len(corporations))
+	for corporationID, allianceID := range corporations {
+		items = append(items, map[string]any{
+			"id": corporationID, "alliance": nullable(allianceID),
+		})
+	}
+	_, err := tx.Run(ctx, `
+		UNWIND $items AS item
+		MERGE (corp:Corporation {id: item.id})
+		SET corp.alliance_id = CASE
+		        WHEN $time > coalesce(corp.last_seen, '') OR
+		             ($time = corp.last_seen AND $killmail_id > coalesce(corp.last_seen_killmail_id, 0))
+		        THEN item.alliance ELSE corp.alliance_id END,
+		    corp.last_seen_killmail_id = CASE
+		        WHEN $time > coalesce(corp.last_seen, '') OR
+		             ($time = corp.last_seen AND $killmail_id > coalesce(corp.last_seen_killmail_id, 0))
+		        THEN $killmail_id ELSE corp.last_seen_killmail_id END,
+		    corp.last_seen = CASE
+		        WHEN $time > coalesce(corp.last_seen, '') THEN $time
+		        ELSE corp.last_seen END`, map[string]any{
+		"items": items, "time": at, "killmail_id": killmailID,
+	})
+	if err != nil {
+		return fmt.Errorf("merge corporation nodes: %w", err)
+	}
+	return nil
+}
+
+func mergeIDs(ctx context.Context, tx queryRunner, label string, ids map[int64]bool) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -356,7 +580,7 @@ func mergeIDs(ctx context.Context, session neo4j.SessionWithContext, label strin
 		list = append(list, id)
 	}
 	// The label comes from this package's fixed call sites, never from input.
-	if _, err := session.Run(ctx,
+	if _, err := tx.Run(ctx,
 		fmt.Sprintf(`UNWIND $ids AS id MERGE (:%s {id: id})`, label),
 		map[string]any{"ids": list}); err != nil {
 		return fmt.Errorf("merge %s nodes: %w", label, err)
@@ -366,9 +590,10 @@ func mergeIDs(ctx context.Context, session neo4j.SessionWithContext, label strin
 
 // PurgeResult reports what a prune removed.
 type PurgeResult struct {
-	Edges   int64            `json:"edges"`
-	Orphans int64            `json:"orphans"`
-	ByType  map[string]int64 `json:"by_type"`
+	Edges     int64            `json:"edges"`
+	Orphans   int64            `json:"orphans"`
+	Killmails int64            `json:"killmails"`
+	ByType    map[string]int64 `json:"by_type"`
 }
 
 // Purge removes relationships older than the retention window, and any
@@ -382,6 +607,9 @@ func (c *Client) Purge(ctx context.Context, batchSize int) (PurgeResult, error) 
 	if c == nil || c.driver == nil {
 		return out, nil
 	}
+	if batchSize < 1 {
+		return out, fmt.Errorf("purge batch size must be positive")
+	}
 
 	session := c.driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx) //nolint:errcheck // best-effort close
@@ -389,30 +617,50 @@ func (c *Client) Purge(ctx context.Context, batchSize int) (PurgeResult, error) 
 	cutoff := isoTimestamp(time.Now().UTC().AddDate(0, 0, -RetentionDays))
 
 	for _, edgeType := range EdgeTypes {
-		// The edge type comes from the fixed list above.
-		res, err := session.Run(ctx, fmt.Sprintf(`
-            MATCH ()-[r:%s]->()
-            WHERE r.last_seen < $cutoff
-            WITH r LIMIT $limit
-            DELETE r
-            RETURN count(r) AS cnt`, edgeType),
-			map[string]any{"cutoff": cutoff, "limit": batchSize})
-		if err != nil {
-			return out, fmt.Errorf("purge %s edges: %w", edgeType, err)
+		for range purgeBatchesPerEdgeType {
+			// The edge type comes from the fixed list above.
+			res, err := session.Run(ctx, fmt.Sprintf(`
+				MATCH ()-[r:%s]->()
+				WHERE r.last_seen < $cutoff
+				WITH r LIMIT $limit
+				DELETE r
+				RETURN count(r) AS cnt`, edgeType),
+				map[string]any{"cutoff": cutoff, "limit": batchSize})
+			if err != nil {
+				return out, fmt.Errorf("purge %s edges: %w", edgeType, err)
+			}
+			n := countFrom(ctx, res)
+			out.Edges += n
+			out.ByType[edgeType] += n
+			if n < int64(batchSize) {
+				break
+			}
 		}
-		n := countFrom(ctx, res)
-		out.Edges += n
-		if n > 0 {
-			out.ByType[edgeType] = n
+		if out.ByType[edgeType] == 0 {
+			delete(out.ByType, edgeType)
 		}
 	}
 
-	// Orphans only after the edges are gone — a character with no relationships
-	// left is one whose entire history aged out.
 	res, err := session.Run(ctx, `
-        MATCH (n:Character)
-        WHERE NOT (n)-[]-()
-        WITH n LIMIT $limit
+		MATCH (k:Killmail)
+		WHERE k.killmail_time < $cutoff
+		WITH k LIMIT $limit
+		DELETE k
+		RETURN count(k) AS cnt`, map[string]any{
+		"cutoff": cutoff, "limit": batchSize,
+	})
+	if err != nil {
+		return out, fmt.Errorf("purge killmail markers: %w", err)
+	}
+	out.Killmails = countFrom(ctx, res)
+
+	// Orphans only after the edges are gone. Killmail markers are intentionally
+	// excluded because they have their own event-time retention above.
+	res, err = session.Run(ctx, `
+		MATCH (n)
+		WHERE (n:Character OR n:Corporation OR n:Alliance OR n:SolarSystem)
+		  AND NOT (n)-[]-()
+		WITH n LIMIT $limit
         DELETE n
         RETURN count(n) AS cnt`, map[string]any{"limit": orphanPurgeBatch})
 	if err != nil {

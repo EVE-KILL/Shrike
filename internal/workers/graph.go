@@ -310,8 +310,9 @@ func (d *Deps) cronGraphPurge(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if res.Edges == 0 && res.Orphans == 0 {
+	if res.Edges == 0 && res.Orphans == 0 && res.Killmails == 0 {
 		return "", nil
 	}
-	return fmt.Sprintf("%d edges and %d orphaned characters pruned", res.Edges, res.Orphans), nil
+	return fmt.Sprintf("%d edges, %d orphaned nodes, and %d killmail markers pruned",
+		res.Edges, res.Orphans, res.Killmails), nil
 }
