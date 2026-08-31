@@ -45102,8 +45102,10 @@
                         "additionalProperties": false,
                         "properties": {
                           "achievement_id": {
-                            "format": "int64",
-                            "type": "integer"
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
                           },
                           "completed_at": {
                             "description": "UTC timestamp with millisecond precision.",
@@ -45121,16 +45123,50 @@
                             "format": "int64",
                             "type": "integer"
                           },
+                          "description": {
+                            "type": "string"
+                          },
                           "is_completed": {
                             "type": "boolean"
+                          },
+                          "level": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "level_thresholds": {
+                            "items": {
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          },
+                          "max_level": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "next_threshold": {
+                            "format": "int64",
+                            "type": "integer"
                           },
                           "points": {
                             "format": "int64",
                             "type": "integer"
                           },
+                          "points_modifier": {
+                            "type": "string"
+                          },
+                          "rarity": {
+                            "type": "string"
+                          },
                           "threshold": {
                             "format": "int64",
                             "type": "integer"
+                          },
+                          "type": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -45140,7 +45176,17 @@
                           "completion_tiers",
                           "is_completed",
                           "points",
-                          "completed_at"
+                          "completed_at",
+                          "name",
+                          "description",
+                          "category",
+                          "rarity",
+                          "type",
+                          "points_modifier",
+                          "level",
+                          "max_level",
+                          "level_thresholds",
+                          "next_threshold"
                         ],
                         "type": "object"
                       },
@@ -55519,8 +55565,10 @@
                         "additionalProperties": false,
                         "properties": {
                           "achievement_id": {
-                            "format": "int64",
-                            "type": "integer"
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
                           },
                           "completed_at": {
                             "description": "UTC timestamp with millisecond precision.",
@@ -55538,16 +55586,50 @@
                             "format": "int64",
                             "type": "integer"
                           },
+                          "description": {
+                            "type": "string"
+                          },
                           "is_completed": {
                             "type": "boolean"
+                          },
+                          "level": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "level_thresholds": {
+                            "items": {
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          },
+                          "max_level": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "next_threshold": {
+                            "format": "int64",
+                            "type": "integer"
                           },
                           "points": {
                             "format": "int64",
                             "type": "integer"
                           },
+                          "points_modifier": {
+                            "type": "string"
+                          },
+                          "rarity": {
+                            "type": "string"
+                          },
                           "threshold": {
                             "format": "int64",
                             "type": "integer"
+                          },
+                          "type": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -55557,7 +55639,17 @@
                           "completion_tiers",
                           "is_completed",
                           "points",
-                          "completed_at"
+                          "completed_at",
+                          "name",
+                          "description",
+                          "category",
+                          "rarity",
+                          "type",
+                          "points_modifier",
+                          "level",
+                          "max_level",
+                          "level_thresholds",
+                          "next_threshold"
                         ],
                         "type": "object"
                       },

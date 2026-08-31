@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/eve-kill/shrike/internal/achievements"
 )
 
 const (
@@ -773,7 +774,54 @@ func loadEntityPageAchievements(
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{"achievements": nonNilEntityPageRows(rows)}, nil
+	awarded := make(map[string]map[string]any, len(rows))
+	for _, row := range rows {
+		if achievementID, ok := stringValue(row["achievement_id"]); ok {
+			awarded[achievementID] = row
+		}
+	}
+
+	out := make([]map[string]any, 0, len(achievements.All))
+	for _, def := range achievements.All {
+		row := awarded[def.ID]
+		if row == nil {
+			row = map[string]any{
+				"achievement_id": def.ID, "current_count": 0,
+				"threshold": def.Threshold, "completion_tiers": 0,
+				"is_completed": false, "points": 0, "completed_at": nil,
+			}
+		}
+		count, _ := int64Value(row["current_count"])
+		level := def.LevelFor(int32(count))
+		nextThreshold := int32(0)
+		levels := def.Levels()
+		if int(level) < len(levels) {
+			nextThreshold = levels[level]
+		}
+		row["name"] = def.Name
+		row["description"] = def.Description
+		row["category"] = def.Category
+		row["rarity"] = string(def.Rarity)
+		row["type"] = achievementType(def)
+		row["points_modifier"] = map[bool]string{true: "negative", false: "positive"}[def.Negative]
+		row["level"] = level
+		row["max_level"] = len(levels)
+		row["level_thresholds"] = levels
+		row["next_threshold"] = nextThreshold
+		out = append(out, row)
+	}
+	return map[string]any{"achievements": out}, nil
+}
+
+func achievementType(def achievements.Definition) string {
+	switch def.Category {
+	case "Locations":
+		return "exploration"
+	case "Special":
+		return "special"
+	default:
+		return "pvp"
+	}
 }
 
 var (

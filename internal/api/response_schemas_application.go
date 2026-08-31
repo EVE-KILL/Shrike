@@ -1440,12 +1440,18 @@ func entityPageIntelSchema() *huma.Schema {
 
 func entityAchievementSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
-		"achievement_id": intSchema(), "current_count": intSchema(),
+		"achievement_id": stringSchema(), "current_count": intSchema(),
 		"threshold": intSchema(), "completion_tiers": intSchema(),
 		"is_completed": boolSchema(), "points": intSchema(),
 		"completed_at": nullable(timestampSchema()),
+		"name":         stringSchema(), "description": stringSchema(),
+		"category": stringSchema(), "rarity": stringSchema(), "type": stringSchema(),
+		"points_modifier": stringSchema(), "level": intSchema(), "max_level": intSchema(),
+		"level_thresholds": arraySchema(intSchema()), "next_threshold": intSchema(),
 	}, "achievement_id", "current_count", "threshold", "completion_tiers",
-		"is_completed", "points", "completed_at")
+		"is_completed", "points", "completed_at", "name", "description",
+		"category", "rarity", "type", "points_modifier", "level", "max_level",
+		"level_thresholds", "next_threshold")
 }
 
 func entityPageMembersSchema() *huma.Schema {

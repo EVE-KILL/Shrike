@@ -199,24 +199,33 @@ func (FitExtractArgs) Kind() string { return "fit_extract" }
 // set the caller already has, so re-reading the mail would be two queries to
 // rebuild what was just in hand.
 type AchievementsArgs struct {
-	KillmailID int64 `json:"killmail_id" river:"unique"`
+	KillmailID     int64 `json:"killmail_id" river:"unique"`
+	PayloadVersion int   `json:"payload_version"`
 
-	TotalValue        float64 `json:"total_value"`
-	SystemSecurity    float64 `json:"system_security"`
-	HasSecurity       bool    `json:"has_security"`
-	IsNPC             bool    `json:"is_npc"`
-	IsSolo            bool    `json:"is_solo"`
-	VictimShipGroupID int32   `json:"victim_ship_group_id"`
-	VictimCharacterID int32   `json:"victim_character_id"`
+	TotalValue          float64 `json:"total_value"`
+	SystemSecurity      float64 `json:"system_security"`
+	HasSecurity         bool    `json:"has_security"`
+	IsNPC               bool    `json:"is_npc"`
+	IsSolo              bool    `json:"is_solo"`
+	SolarSystemID       int32   `json:"solar_system_id"`
+	RegionID            int32   `json:"region_id"`
+	VictimShipGroupID   int32   `json:"victim_ship_group_id"`
+	VictimCharacterID   int32   `json:"victim_character_id"`
+	VictimCorporationID int32   `json:"victim_corporation_id"`
+	VictimAllianceID    int32   `json:"victim_alliance_id"`
 
 	Attackers []AchievementAttacker `json:"attackers"`
 }
 
 // AchievementAttacker is one participant, reduced to what badges care about.
 type AchievementAttacker struct {
-	CharacterID int32 `json:"character_id"`
-	ShipGroupID int32 `json:"ship_group_id"`
-	FinalBlow   bool  `json:"final_blow"`
+	CharacterID       int32   `json:"character_id"`
+	CorporationID     int32   `json:"corporation_id"`
+	AllianceID        int32   `json:"alliance_id"`
+	ShipGroupID       int32   `json:"ship_group_id"`
+	FinalBlow         bool    `json:"final_blow"`
+	SecurityStatus    float64 `json:"security_status"`
+	HasSecurityStatus bool    `json:"has_security_status"`
 }
 
 func (AchievementsArgs) Kind() string { return "achievements" }

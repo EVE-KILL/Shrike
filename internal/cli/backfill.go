@@ -442,8 +442,9 @@ graph, installs its schema while it is empty, and only then queues the rebuild.`
 }
 
 var (
-	flagAchievementID       string
-	flagAchievementCategory string
+	flagAchievementID             string
+	flagAchievementCategory       string
+	flagAchievementSyncPointsOnly bool
 )
 
 var backfillAchievementsCmd = &cobra.Command{
@@ -454,13 +455,27 @@ var backfillAchievementsCmd = &cobra.Command{
 This converges on the same rows when re-run. It does not replay the live award
 path, because replaying additive counters would award everything twice.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		definitions := achievements.Filter(flagAchievementID, flagAchievementCategory)
-
 		pool, err := openPool(cmd)
 		if err != nil {
 			return err
 		}
 		defer pool.Close()
+		if flagAchievementSyncPointsOnly {
+			ui.Section("Sync achievement points")
+			characters, err := achievements.SyncPoints(cmd.Context(), pool)
+			if err != nil {
+				return err
+			}
+			if ui.JSONMode {
+				return ui.JSON(map[string]any{"characters": characters})
+			}
+			ui.KV("Characters resynced", fmtCount(characters))
+			ui.Newline()
+			ui.Success("Achievement points synchronized.")
+			return nil
+		}
+
+		definitions := achievements.Filter(flagAchievementID, flagAchievementCategory)
 
 		ui.Section("Backfill achievements")
 		ui.KV("Definitions", fmt.Sprint(len(definitions)))
@@ -800,6 +815,7 @@ func init() {
 
 	backfillAchievementsCmd.Flags().StringVarP(&flagAchievementID, "achievement", "a", "", "Only process one achievement ID")
 	backfillAchievementsCmd.Flags().StringVar(&flagAchievementCategory, "category", "", "Only process one category")
+	backfillAchievementsCmd.Flags().BoolVar(&flagAchievementSyncPointsOnly, "sync-points-only", false, "Only synchronize denormalized character achievement points")
 
 	backfillFittingsCmd.Flags().IntVarP(&flagFittingsDays, "days", "d", 90, "How many days back to process")
 	backfillFittingsCmd.Flags().Int64Var(&flagFittingsFromID, "from", 0, "Start killmail ID cursor")

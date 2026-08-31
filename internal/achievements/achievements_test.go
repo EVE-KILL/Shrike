@@ -1,9 +1,70 @@
 package achievements
 
 import (
+	"context"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func TestFiveLevelProgression(t *testing.T) {
+	def := Definition{Threshold: 625, Thresholds: []int32{1, 5, 25, 125, 625}, BasePoints: 5}
+	for _, test := range []struct {
+		count, level, points int32
+	}{{0, 0, 0}, {1, 1, 5}, {5, 2, 15}, {25, 3, 30}, {625, 5, 75}, {10_000, 5, 75}} {
+		if got := def.LevelFor(test.count); got != test.level {
+			t.Errorf("LevelFor(%d) = %d, want %d", test.count, got, test.level)
+		}
+		if got := def.PointsFor(test.count); got != test.points {
+			t.Errorf("PointsFor(%d) = %d, want %d", test.count, got, test.points)
+		}
+	}
+}
+
+func TestProcessPersistsCappedMultiLevelTrophy(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Skipf("no test database: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	const characterID = int32(2_140_000_021)
+	_, _ = pool.Exec(ctx, `DELETE FROM entity_achievements WHERE entity_id = $1`, characterID)
+	_, _ = pool.Exec(ctx, `DELETE FROM characters WHERE character_id = $1`, characterID)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM entity_achievements WHERE entity_id = $1`, characterID)
+		_, _ = pool.Exec(context.Background(), `DELETE FROM characters WHERE character_id = $1`, characterID)
+	})
+	if _, err := pool.Exec(ctx, `INSERT INTO characters (character_id, name) VALUES ($1, 'Achievement level audit')`, characterID); err != nil {
+		t.Fatal(err)
+	}
+	for range 5 {
+		if _, err := Process(ctx, pool, Killmail{
+			VictimShipGroupID: 324,
+			Attackers:         []Attacker{{CharacterID: characterID}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var count, level, points int32
+	if err := pool.QueryRow(ctx, `SELECT current_count, completion_tiers, points
+		FROM entity_achievements WHERE entity_id = $1 AND achievement_id = 'ship_group_324_kills'`, characterID).
+		Scan(&count, &level, &points); err != nil {
+		t.Fatal(err)
+	}
+	if count != 5 || level != 2 || points != 15 {
+		t.Errorf("stored count/level/points = %d/%d/%d, want 5/2/15", count, level, points)
+	}
+}
 
 // Achievement ids are the primary key of entity_achievements and appear in
 // URLs, so they are a contract: a generated id that changes silently orphans
@@ -45,6 +106,18 @@ func TestThresholdsArePositive(t *testing.T) {
 		}
 		if d.BasePoints <= 0 {
 			t.Errorf("%s is worth %d base points", d.ID, d.BasePoints)
+		}
+		levels := d.Levels()
+		if len(levels) == 0 || len(levels) > 5 {
+			t.Errorf("%s has %d levels, want 1..5", d.ID, len(levels))
+		}
+		for i, threshold := range levels {
+			if threshold <= 0 || i > 0 && threshold <= levels[i-1] {
+				t.Errorf("%s has invalid level thresholds %v", d.ID, levels)
+			}
+		}
+		if levels[len(levels)-1] != d.Threshold {
+			t.Errorf("%s final threshold %d does not match levels %v", d.ID, d.Threshold, levels)
 		}
 	}
 }
@@ -209,6 +282,55 @@ func TestNPCAttackersEarnNothing(t *testing.T) {
 	for _, a := range collect(km) {
 		if a.characterID == 0 {
 			t.Errorf("an award was made to character 0 (%s)", a.def.ID)
+		}
+	}
+}
+
+func TestSpecialAchievementsUseKillmailContext(t *testing.T) {
+	km := Killmail{
+		SystemSecurity: 0.9, HasSecurity: true, SolarSystemID: 31000005,
+		RegionID: 11000001, VictimCharacterID: 9, VictimCorporationID: 42,
+		VictimAllianceID: 84, VictimShipGroupID: 25,
+		Attackers: []Attacker{
+			{CharacterID: 1, CorporationID: 42, AllianceID: 84, FinalBlow: true,
+				SecurityStatus: -9, HasSecurityStatus: true},
+			// CONCORD attackers do not have character IDs.
+			{CorporationID: 1000125}, {CorporationID: 1000125},
+		},
+	}
+	byChar := map[int32]map[string]int32{}
+	for _, a := range mergeAwards(collect(km)) {
+		if byChar[a.characterID] == nil {
+			byChar[a.characterID] = map[string]int32{}
+		}
+		byChar[a.characterID][a.def.ID] = a.delta
+	}
+	for _, id := range []string{"anoikis_hunter", "thera_hunter", "backstab_special", "ganktastic"} {
+		if byChar[1][id] != 1 {
+			t.Errorf("attacker did not earn %s exactly once: %v", id, byChar[1])
+		}
+	}
+	for _, id := range []string{"concordokken", "backstabbed", "thera_loss"} {
+		if byChar[9][id] != 1 {
+			t.Errorf("victim did not earn %s exactly once: %v", id, byChar[9])
+		}
+	}
+}
+
+func TestFineGrainedShipTrophiesCoverPublishedGroups(t *testing.T) {
+	for _, group := range trophyShipGroups {
+		for _, suffix := range []string{"_kills", "_losses"} {
+			id := "ship_group_" + strconv.Itoa(int(group.id)) + suffix
+			found := false
+			for _, def := range All {
+				if def.ID == id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("missing trophy %s for %s", id, group.name)
+			}
 		}
 	}
 }

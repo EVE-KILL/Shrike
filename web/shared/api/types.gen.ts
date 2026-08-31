@@ -15971,16 +15971,26 @@ export type EntityPageAchievementsCharacterCompatResponses = {
      */
     200: {
         achievements: Array<{
-            achievement_id: number;
+            achievement_id: string;
+            category: string;
             /**
              * UTC timestamp with millisecond precision.
              */
             completed_at: string | null;
             completion_tiers: number;
             current_count: number;
+            description: string;
             is_completed: boolean;
+            level: number;
+            level_thresholds: Array<number>;
+            max_level: number;
+            name: string;
+            next_threshold: number;
             points: number;
+            points_modifier: string;
+            rarity: string;
             threshold: number;
+            type: string;
         }>;
     };
 };
@@ -19038,16 +19048,26 @@ export type EntityPageAchievementsResponses = {
      */
     200: {
         achievements: Array<{
-            achievement_id: number;
+            achievement_id: string;
+            category: string;
             /**
              * UTC timestamp with millisecond precision.
              */
             completed_at: string | null;
             completion_tiers: number;
             current_count: number;
+            description: string;
             is_completed: boolean;
+            level: number;
+            level_thresholds: Array<number>;
+            max_level: number;
+            name: string;
+            next_threshold: number;
             points: number;
+            points_modifier: string;
+            rarity: string;
             threshold: number;
+            type: string;
         }>;
     };
 };

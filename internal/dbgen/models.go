@@ -628,6 +628,8 @@ type EntityAchievement struct {
 	Points          *int32             `json:"points"`
 	CompletedAt     pgtype.Timestamptz `json:"completed_at"`
 	LastUpdated     pgtype.Timestamptz `json:"last_updated"`
+	LevelThresholds []int32            `json:"level_thresholds"`
+	PointUnit       int32              `json:"point_unit"`
 }
 
 type EntitySnapshot struct {

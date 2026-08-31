@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { getAchievementDef } from '~/utils/achievementRegistry'
 
 const props = defineProps<{
     characterId: number
@@ -17,21 +16,20 @@ interface Achievement {
     is_completed: boolean
     points: number
     completed_at: string | null
-    // Enriched from registry
     name: string
     description: string
     type: string
     rarity: string
     category: string
-    pointsModifier: string
+	points_modifier: string
+	level: number
+	max_level: number
+	level_thresholds: number[]
+	next_threshold: number
 }
 
 const achievements = computed<Achievement[]>(() => {
-    const raw = data.value?.achievements || []
-    return raw.map((a: any) => {
-        const def = getAchievementDef(a.achievement_id)
-        return { ...a, ...def }
-    })
+	return data.value?.achievements || []
 })
 
 // Summary stats
@@ -66,8 +64,10 @@ const filtered = computed(() => {
 
 const progressPercent = (a: Achievement): number => {
     if (a.is_completed) return 100
-    if (a.threshold <= 0) return 0
-    return Math.min(100, Math.round(a.current_count / a.threshold * 100))
+	const previous = a.level > 0 ? (a.level_thresholds[a.level - 1] ?? 0) : 0
+	const next = a.next_threshold || a.threshold
+	if (next <= previous) return 0
+	return Math.min(100, Math.round((a.current_count - previous) / (next - previous) * 100))
 }
 
 const rarityStyles: Record<string, { border: string, bg: string, text: string, badge: string }> = {
@@ -89,7 +89,7 @@ const typeColors: Record<string, string> = {
 const rarityLabel = (r: string) => r.charAt(0).toUpperCase() + r.slice(1)
 
 const progressBarColor = (a: Achievement): string => {
-    if (a.pointsModifier === 'negative') return 'bg-red-500'
+	if (a.points_modifier === 'negative') return 'bg-red-500'
     const colors: Record<string, string> = { legendary: 'bg-amber-500', epic: 'bg-purple-500', rare: 'bg-blue-500', uncommon: 'bg-green-500', common: 'bg-gray-500' }
     return colors[a.rarity] || 'bg-gray-500'
 }
@@ -172,10 +172,10 @@ const progressBarColor = (a: Achievement): string => {
                             <div v-if="a.description" class="text-fine text-gray-500 mt-0.5 line-clamp-2">{{ a.description }}</div>
                         </div>
                         <div class="flex-shrink-0 text-right">
-                            <div class="text-xs font-bold tabular-nums" :class="a.pointsModifier === 'negative' ? 'text-red-400' : rarityStyles[a.rarity]?.text || 'text-gray-400'">
-                                {{ a.points > 0 ? (a.pointsModifier === 'negative' ? '' : '+') : '' }}{{ a.points.toLocaleString('en-US') }}
+                            <div class="text-xs font-bold tabular-nums" :class="a.points_modifier === 'negative' ? 'text-red-400' : rarityStyles[a.rarity]?.text || 'text-gray-400'">
+                                {{ a.points > 0 ? '+' : '' }}{{ a.points.toLocaleString('en-US') }}
                             </div>
-                            <div v-if="a.completion_tiers > 1" class="text-fine text-gray-600">x{{ a.completion_tiers }}</div>
+							<div v-if="a.max_level > 1" class="text-fine text-gray-600">Level {{ a.level }} / {{ a.max_level }}</div>
                         </div>
                     </div>
 
@@ -204,7 +204,7 @@ const progressBarColor = (a: Achievement): string => {
                         </div>
                     </div>
                     <div class="flex justify-between mt-1 text-fine text-gray-600">
-                        <span class="tabular-nums">{{ a.current_count.toLocaleString('en-US') }} / {{ a.threshold.toLocaleString('en-US') }}</span>
+						<span class="tabular-nums">{{ a.current_count.toLocaleString('en-US') }} / {{ (a.next_threshold || a.threshold).toLocaleString('en-US') }}</span>
                         <span v-if="a.is_completed && a.completed_at">
                             {{ new Date(a.completed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
                         </span>

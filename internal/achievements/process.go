@@ -20,21 +20,29 @@ import (
 
 // Killmail is what the processor needs about a kill.
 type Killmail struct {
-	TotalValue        float64
-	SystemSecurity    float64
-	HasSecurity       bool
-	IsNPC             bool
-	IsSolo            bool
-	VictimShipGroupID int32
-	VictimCharacterID int32
-	Attackers         []Attacker
+	TotalValue          float64
+	SystemSecurity      float64
+	HasSecurity         bool
+	IsNPC               bool
+	IsSolo              bool
+	SolarSystemID       int32
+	RegionID            int32
+	VictimShipGroupID   int32
+	VictimCharacterID   int32
+	VictimCorporationID int32
+	VictimAllianceID    int32
+	Attackers           []Attacker
 }
 
 // Attacker is one participant, reduced to what achievements care about.
 type Attacker struct {
-	CharacterID int32
-	ShipGroupID int32
-	FinalBlow   bool
+	CharacterID       int32
+	CorporationID     int32
+	AllianceID        int32
+	ShipGroupID       int32
+	FinalBlow         bool
+	SecurityStatus    float64
+	HasSecurityStatus bool
 }
 
 // award is one pending counter increment.
@@ -75,6 +83,17 @@ func collect(km Killmail) []award {
 				out = append(out, award{at.CharacterID, d, 1})
 			}
 		}
+		if !km.IsNPC {
+			for _, d := range ByTrigger[TriggerKills] {
+				out = append(out, award{at.CharacterID, d, 1})
+			}
+		}
+		if !km.IsNPC && km.HasSecurity && km.SystemSecurity >= 0.5 &&
+			at.HasSecurityStatus && at.SecurityStatus < -5 {
+			for _, d := range ByTrigger[TriggerGank] {
+				out = append(out, award{at.CharacterID, d, 1})
+			}
+		}
 		if km.IsSolo {
 			for _, d := range ByTrigger[TriggerSoloKills] {
 				out = append(out, award{at.CharacterID, d, 1})
@@ -107,19 +126,109 @@ func collect(km Killmail) []award {
 					}
 				}
 			}
+			for _, d := range ByTrigger[TriggerKillsByRegion] {
+				if matchesRegion(d.RegionID, km.RegionID) {
+					out = append(out, award{at.CharacterID, d, 1})
+				}
+			}
+			for _, d := range ByTrigger[TriggerKillsBySystem] {
+				if d.SystemID == km.SolarSystemID {
+					out = append(out, award{at.CharacterID, d, 1})
+				}
+			}
+			for _, d := range ByTrigger[TriggerKilledCorp] {
+				if d.CorporationID == km.VictimCorporationID {
+					out = append(out, award{at.CharacterID, d, 1})
+				}
+			}
+			if sameSide(at.CorporationID, at.AllianceID, km.VictimCorporationID, km.VictimAllianceID) {
+				for _, d := range ByTrigger[TriggerAwox] {
+					out = append(out, award{at.CharacterID, d, 1})
+				}
+			}
+		}
+		if matchesTournament(km.RegionID) {
+			for _, d := range ByTrigger[TriggerTournament] {
+				out = append(out, award{at.CharacterID, d, 1})
+			}
 		}
 	}
 
 	// The victim's own loss achievements.
 	if km.VictimCharacterID != 0 && km.VictimShipGroupID != 0 {
+		if !km.IsNPC {
+			for _, d := range ByTrigger[TriggerLosses] {
+				out = append(out, award{km.VictimCharacterID, d, 1})
+			}
+		}
 		for _, d := range ByTrigger[TriggerShipLosses] {
 			if d.MatchesGroup(km.VictimShipGroupID) {
+				out = append(out, award{km.VictimCharacterID, d, 1})
+			}
+		}
+		for _, d := range ByTrigger[TriggerLossesByRegion] {
+			if matchesRegion(d.RegionID, km.RegionID) {
+				out = append(out, award{km.VictimCharacterID, d, 1})
+			}
+		}
+		for _, d := range ByTrigger[TriggerLossesBySystem] {
+			if d.SystemID == km.SolarSystemID {
+				out = append(out, award{km.VictimCharacterID, d, 1})
+			}
+		}
+		concorded, killedByCorp, awoxed := false, false, false
+		for _, at := range km.Attackers {
+			for _, d := range ByTrigger[TriggerConcorded] {
+				if at.CorporationID == d.CorporationID {
+					concorded = true
+				}
+			}
+			for _, d := range ByTrigger[TriggerKilledByCorp] {
+				if at.CorporationID == d.CorporationID {
+					killedByCorp = true
+				}
+			}
+			if sameSide(at.CorporationID, at.AllianceID, km.VictimCorporationID, km.VictimAllianceID) {
+				awoxed = true
+			}
+		}
+		if concorded {
+			for _, d := range ByTrigger[TriggerConcorded] {
+				out = append(out, award{km.VictimCharacterID, d, 1})
+			}
+		}
+		if killedByCorp {
+			for _, d := range ByTrigger[TriggerKilledByCorp] {
+				out = append(out, award{km.VictimCharacterID, d, 1})
+			}
+		}
+		if awoxed {
+			for _, d := range ByTrigger[TriggerAwoxed] {
+				out = append(out, award{km.VictimCharacterID, d, 1})
+			}
+		}
+		if matchesTournament(km.RegionID) {
+			for _, d := range ByTrigger[TriggerTournament] {
 				out = append(out, award{km.VictimCharacterID, d, 1})
 			}
 		}
 	}
 
 	return out
+}
+
+func matchesRegion(want, got int32) bool {
+	if want == -1 {
+		return got >= 11000000 && got < 12000000
+	}
+	return want == got
+}
+
+func matchesTournament(regionID int32) bool { return regionID == 10000004 }
+
+func sameSide(attackerCorp, attackerAlliance, victimCorp, victimAlliance int32) bool {
+	return attackerCorp != 0 && attackerCorp == victimCorp ||
+		attackerAlliance != 0 && attackerAlliance == victimAlliance
 }
 
 // mergeAwards collapses duplicates and orders the result.
@@ -161,19 +270,18 @@ func mergeAwards(in []award) []award {
 
 // upsert applies the increments in one statement.
 //
-// The tier arithmetic repeats a threshold achievement rather than capping it: a
-// character with 250 frigate kills against a threshold of 50 has completed that
-// achievement five times and is worth five times the points. GREATEST(1, ...)
-// keeps a partially-complete achievement worth its base value rather than zero.
+// Multi-level trophies use explicit thresholds and cap at their fifth level.
+// Original achievements have one threshold and therefore retain one level.
 func upsert(ctx context.Context, pool *pgxpool.Pool, awards []award) error {
 	values := make([]string, 0, len(awards))
-	params := make([]any, 0, len(awards)*5)
+	params := make([]any, 0, len(awards)*6)
 
 	for i, a := range awards {
-		base := i * 5
-		values = append(values, fmt.Sprintf("($%d::int, $%d::text, $%d::int, $%d::int, $%d::int)",
-			base+1, base+2, base+3, base+4, base+5))
-		params = append(params, a.characterID, a.def.ID, a.delta, a.def.Threshold, a.def.SignedBasePoints())
+		base := i * 6
+		values = append(values, fmt.Sprintf("($%d::int, $%d::text, $%d::int, $%d::int, $%d::int, $%d::int[])",
+			base+1, base+2, base+3, base+4, base+5, base+6))
+		params = append(params, a.characterID, a.def.ID, a.delta, a.def.Threshold,
+			a.def.SignedBasePoints(), a.def.Levels())
 	}
 
 	// The placeholders are generated from the slice length; every value is
@@ -181,27 +289,35 @@ func upsert(ctx context.Context, pool *pgxpool.Pool, awards []award) error {
 	_, err := pool.Exec(ctx, `
         INSERT INTO entity_achievements (
             entity_id, achievement_id, current_count, threshold,
-            completion_tiers, is_completed, points, completed_at, last_updated
+            completion_tiers, is_completed, points, completed_at, last_updated,
+			level_thresholds, point_unit
         )
         SELECT v.entity_id, v.achievement_id, v.delta, v.threshold,
-               CASE WHEN v.delta >= v.threshold THEN 1 ELSE 0 END,
-               v.delta >= v.threshold,
-               v.signed_base * GREATEST(1, floor(v.delta::numeric / v.threshold)::int),
-               CASE WHEN v.delta >= v.threshold THEN now() ELSE NULL END,
-               now()
+		       level.value,
+		       level.value >= cardinality(v.thresholds),
+		       v.signed_base * level.value * (level.value + 1) / 2,
+		       CASE WHEN level.value >= cardinality(v.thresholds) THEN now() ELSE NULL END,
+		       now(), v.thresholds, v.signed_base
         FROM (VALUES `+strings.Join(values, ", ")+`)
-             AS v(entity_id, achievement_id, delta, threshold, signed_base)
+		     AS v(entity_id, achievement_id, delta, threshold, signed_base, thresholds)
+		CROSS JOIN LATERAL (
+			SELECT count(*)::int AS value FROM unnest(v.thresholds) target
+			WHERE target <= v.delta
+		) level
         ORDER BY v.entity_id, v.achievement_id
         ON CONFLICT (entity_id, achievement_id) DO UPDATE SET
             current_count = entity_achievements.current_count + EXCLUDED.current_count,
-            completion_tiers = floor(
-                (entity_achievements.current_count + EXCLUDED.current_count)::numeric
-                / entity_achievements.threshold)::int,
-            is_completed = (entity_achievements.current_count + EXCLUDED.current_count)
-                >= entity_achievements.threshold,
-            points = EXCLUDED.points * GREATEST(1, floor(
-                (entity_achievements.current_count + EXCLUDED.current_count)::numeric
-                / entity_achievements.threshold)::int),
+            threshold = EXCLUDED.threshold,
+			level_thresholds = EXCLUDED.level_thresholds,
+			point_unit = EXCLUDED.point_unit,
+            completion_tiers = (SELECT count(*)::int FROM unnest(EXCLUDED.level_thresholds) target
+				WHERE target <= entity_achievements.current_count + EXCLUDED.current_count),
+			is_completed = (entity_achievements.current_count + EXCLUDED.current_count) >= EXCLUDED.threshold,
+			points = EXCLUDED.point_unit *
+				(SELECT count(*)::int FROM unnest(EXCLUDED.level_thresholds) target
+				 WHERE target <= entity_achievements.current_count + EXCLUDED.current_count) *
+				((SELECT count(*)::int FROM unnest(EXCLUDED.level_thresholds) target
+				  WHERE target <= entity_achievements.current_count + EXCLUDED.current_count) + 1) / 2,
             completed_at = COALESCE(entity_achievements.completed_at,
                 CASE WHEN (entity_achievements.current_count + EXCLUDED.current_count)
                           >= entity_achievements.threshold THEN now() ELSE NULL END),

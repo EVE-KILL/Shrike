@@ -11,8 +11,8 @@ import (
 
 func TestFilterMatchesIDAndCategory(t *testing.T) {
 	got := Filter("", "combat")
-	if len(got) != 5 {
-		t.Fatalf("combat definitions = %d, want 5", len(got))
+	if len(got) != 6 {
+		t.Fatalf("combat definitions = %d, want 6", len(got))
 	}
 
 	got = Filter("veteran_killer", "COMBAT")
@@ -30,8 +30,8 @@ func TestEveryDefinitionHasARebuildSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sources) != 18 {
-		t.Fatalf("shared count sources = %d, want 18", len(sources))
+	if len(sources) != 129 {
+		t.Fatalf("shared count sources = %d, want 129", len(sources))
 	}
 
 	definitions := 0

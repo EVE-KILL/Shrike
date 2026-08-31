@@ -273,22 +273,33 @@ func (w *KillmailWorker) achievementArgs(p *killmail.Parsed) queue.AchievementsA
 	km := p.Killmail
 
 	args := queue.AchievementsArgs{
-		KillmailID:        km.KillmailID,
-		TotalValue:        km.TotalValue,
-		IsNPC:             km.IsNPC,
-		IsSolo:            km.IsSolo,
-		VictimShipGroupID: km.VictimShipGroupID,
-		VictimCharacterID: km.VictimCharacterID,
+		KillmailID:          km.KillmailID,
+		PayloadVersion:      2,
+		TotalValue:          km.TotalValue,
+		IsNPC:               km.IsNPC,
+		IsSolo:              km.IsSolo,
+		SolarSystemID:       km.SolarSystemID,
+		RegionID:            km.RegionID,
+		VictimShipGroupID:   km.VictimShipGroupID,
+		VictimCharacterID:   km.VictimCharacterID,
+		VictimCorporationID: km.VictimCorporationID,
+		VictimAllianceID:    km.VictimAllianceID,
 	}
 	if s, ok := w.Deps.Cache.System(km.SolarSystemID); ok {
 		args.SystemSecurity, args.HasSecurity = s.Security, true
 	}
 	for _, a := range p.Attackers {
 		args.Attackers = append(args.Attackers, queue.AchievementAttacker{
-			CharacterID: a.CharacterID,
-			ShipGroupID: a.ShipGroupID,
-			FinalBlow:   a.FinalBlow,
+			CharacterID:       a.CharacterID,
+			CorporationID:     a.CorporationID,
+			AllianceID:        a.AllianceID,
+			ShipGroupID:       a.ShipGroupID,
+			FinalBlow:         a.FinalBlow,
+			HasSecurityStatus: a.SecurityStatus != nil,
 		})
+		if a.SecurityStatus != nil {
+			args.Attackers[len(args.Attackers)-1].SecurityStatus = *a.SecurityStatus
+		}
 	}
 	return args
 }
