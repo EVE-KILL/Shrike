@@ -245,20 +245,36 @@ func loadMostValuable(
 	}
 	args = append(args, limit)
 	rows, err := queryMaps(ctx, db, `
+		WITH recent_kills AS MATERIALIZED (
+			SELECT k.killmail_id, k.killmail_hash, k.killmail_time,
+			       k.victim_ship_type_id, k.victim_ship_group_id,
+			       k.total_value, k.victim_character_id,
+			       k.victim_corporation_id, k.victim_alliance_id
+			FROM killmails k
+			WHERE k.killmail_time >= $1
+		),
+		ranked AS MATERIALIZED (
+			SELECT k.killmail_id, k.killmail_hash, k.killmail_time,
+			       k.victim_ship_type_id, k.total_value,
+			       k.victim_character_id, k.victim_corporation_id,
+			       k.victim_alliance_id
+			FROM recent_kills k
+			WHERE TRUE`+categoryFilter+`
+			ORDER BY k.total_value DESC
+			LIMIT $`+fmt.Sprintf("%d", len(args))+`
+		)
 		SELECT k.killmail_id, k.killmail_hash, k.killmail_time,
 		       k.victim_ship_type_id AS ship_type_id,
 		       t.name AS ship_name, k.total_value,
 		       k.victim_character_id, c.name AS victim_character_name,
 		       co.name AS victim_corporation_name,
 		       a.name AS victim_alliance_name
-		FROM killmails k
+		FROM ranked k
 		INNER JOIN inv_types t ON k.victim_ship_type_id = t.type_id
 		LEFT JOIN characters c ON k.victim_character_id = c.character_id
 		LEFT JOIN corporations co ON k.victim_corporation_id = co.corporation_id
 		LEFT JOIN alliances a ON k.victim_alliance_id = a.alliance_id
-		WHERE k.killmail_time >= $1`+categoryFilter+`
-		ORDER BY k.total_value DESC
-		LIMIT $`+fmt.Sprintf("%d", len(args)),
+		ORDER BY k.total_value DESC`,
 		args...,
 	)
 	if err != nil {

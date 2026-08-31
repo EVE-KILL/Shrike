@@ -1,15 +1,33 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"math"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
+
+type queryCaptureDatabase struct {
+	stubDatabase
+	query string
+	args  []any
+}
+
+func (db *queryCaptureDatabase) Query(
+	_ context.Context, query string, args ...any,
+) (pgx.Rows, error) {
+	db.query = query
+	db.args = args
+	return nil, errors.New("captured query")
+}
 
 func TestGlobalStatsRegistrarRegistersEstablishedStatsRoute(t *testing.T) {
 	a := humachi.New(
@@ -164,4 +182,30 @@ func TestGlobalStatsIncludesFactionLeaderboard(t *testing.T) {
 		t.Fatal("global stats OpenAPI dataType enum omits factions")
 	}
 	t.Fatal("global stats OpenAPI operation has no dataType parameter")
+}
+
+func TestMostValuableRanksRecentRowsBeforeEnrichment(t *testing.T) {
+	db := &queryCaptureDatabase{}
+	_, err := loadMostValuable(
+		context.Background(), db, "most_valuable_ships", time.Now(), 8,
+	)
+	if err == nil || err.Error() != "captured query" {
+		t.Fatalf("loadMostValuable error = %v", err)
+	}
+	for _, fragment := range []string{
+		"WITH recent_kills AS MATERIALIZED",
+		"ranked AS MATERIALIZED",
+		"FROM recent_kills k",
+		"FROM ranked k",
+	} {
+		if !strings.Contains(db.query, fragment) {
+			t.Errorf("query is missing %q", fragment)
+		}
+	}
+	if strings.Index(db.query, "LIMIT $3") > strings.Index(db.query, "FROM ranked k") {
+		t.Error("row limit is not applied before enrichment")
+	}
+	if len(db.args) != 3 || db.args[1] != 6 || db.args[2] != 8 {
+		t.Fatalf("query args = %#v", db.args)
+	}
 }
