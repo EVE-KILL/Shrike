@@ -185,9 +185,12 @@ func (w *KillmailWorker) runEffects(ctx context.Context, p *killmail.Parsed, tie
 			errs = append(errs, err)
 		}
 		if p.Killmail.KillmailTime.After(time.Now().UTC().AddDate(0, 0, -intelrollup.RetentionDays)) {
-			_, err := queue.Dispatch(ctx, w.Deps.Queue,
+			// Debounce a live day's burst. The durable dirty marker was committed
+			// with the killmail, so collapsing arrivals for five minutes loses no
+			// work and avoids rebuilding today once per killmail.
+			_, err := queue.DispatchAt(ctx, w.Deps.Queue,
 				queue.CharacterIntelRollupArgs{Day: p.Killmail.KillmailTime.UTC().Format("2006-01-02")},
-				queue.RecentBackfill)
+				queue.RecentBackfill, 5*time.Minute)
 			errs = append(errs, err)
 		}
 	}
