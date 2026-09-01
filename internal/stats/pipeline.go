@@ -300,6 +300,8 @@ func rebuildLeaderboard(ctx context.Context, pool *pgxpool.Pool, metric Leaderbo
                    ) AS rank
             FROM stats
             WHERE %[1]s > 0
+			  AND NOT (entity_type = 0 AND entity_id < 90000000)
+			  AND NOT (entity_type = 1 AND entity_id < 2000000)
         ) ranked
         WHERE rank <= %[2]d`, column, LeaderboardTopN), int16(metric))
 	if err != nil {

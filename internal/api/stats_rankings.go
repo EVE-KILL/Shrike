@@ -134,10 +134,21 @@ func queryEveKillRankings(ctx context.Context, db Database, entityType, window s
 	if _, ok := map[string]bool{"character": true, "corporation": true, "alliance": true, "ship": true, "system": true, "region": true}[entityType]; !ok {
 		return []map[string]any{}, nil
 	}
-	windowID := map[string]int16{"weekly": 0, "ninety_days": 1, "all_time": 2}[window]
+	if window == "hourly" {
+		return queryHourlyEveKillRankings(ctx, db, entityType, typeID, limit)
+	}
+	windowID := map[string]int16{
+		"weekly": 0, "ninety_days": 1, "all_time": 2,
+		"fourteen_days": 3, "thirty_days": 4,
+		"one_eighty_days": 5, "one_year": 6,
+	}[window]
 	if window == "" {
 		windowID = 2
-	} else if _, ok := map[string]bool{"weekly": true, "ninety_days": true, "all_time": true}[window]; !ok {
+	} else if _, ok := map[string]bool{
+		"weekly": true, "ninety_days": true, "all_time": true,
+		"fourteen_days": true, "thirty_days": true,
+		"one_eighty_days": true, "one_year": true,
+	}[window]; !ok {
 		return []map[string]any{}, nil
 	}
 	nameSQL := map[string]string{
@@ -162,6 +173,101 @@ func queryEveKillRankings(ctx context.Context, db Database, entityType, window s
 		WHERE r.entity_type = $1 AND r.ranking_window = $2
 		ORDER BY r.overall_rank
 		LIMIT $3`, nameColumn, nameSQL), typeID, windowID, limit)
+}
+
+func queryHourlyEveKillRankings(
+	ctx context.Context,
+	db Database,
+	entityType string,
+	typeID int16,
+	limit int,
+) ([]map[string]any, error) {
+	type hourlySource struct {
+		from, id, predicate string
+	}
+	sources := map[string]hourlySource{
+		"character": {
+			"killmail_attackers a",
+			"a.character_id",
+			"a.character_id >= 90000000",
+		},
+		"corporation": {
+			"killmail_attackers a",
+			"a.corporation_id",
+			"a.character_id >= 90000000 AND a.corporation_id >= 2000000",
+		},
+		"alliance": {
+			"killmail_attackers a",
+			"a.alliance_id",
+			"a.character_id >= 90000000 AND a.alliance_id IS NOT NULL",
+		},
+		"ship": {
+			"killmail_attackers a",
+			"a.ship_type_id",
+			"a.character_id >= 90000000 AND a.ship_type_id IS NOT NULL",
+		},
+		"system": {
+			"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id",
+			"k.solar_system_id",
+			"a.character_id >= 90000000",
+		},
+		"region": {
+			"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id",
+			"k.region_id",
+			"a.character_id >= 90000000 AND k.region_id IS NOT NULL",
+		},
+	}
+	source := sources[entityType]
+	nameJoin := map[string]string{
+		"character":   "LEFT JOIN characters e ON e.character_id = r.entity_id",
+		"corporation": "LEFT JOIN corporations e ON e.corporation_id = r.entity_id",
+		"alliance":    "LEFT JOIN alliances e ON e.alliance_id = r.entity_id",
+		"ship":        "LEFT JOIN inv_types e ON e.type_id = r.entity_id",
+		"system":      "LEFT JOIN solar_systems e ON e.solar_system_id = r.entity_id",
+		"region":      "LEFT JOIN regions e ON e.region_id = r.entity_id",
+	}[entityType]
+	nameColumn := "e.name"
+	if entityType == "system" {
+		nameColumn = "e.system_name"
+	}
+
+	return queryMaps(ctx, db, fmt.Sprintf(`
+		WITH combat AS MATERIALIZED (
+			SELECT %s::integer AS entity_id, sum(a.points)::bigint AS combat_points
+			FROM %s
+			WHERE a.killmail_time >= now() - interval '1 hour'
+			  AND a.points > 0 AND %s
+			GROUP BY %s
+		), scored AS (
+			SELECT c.entity_id, c.combat_points,
+			       CASE WHEN $1 IN (0, 1, 2) THEN coalesce(snapshot.achievement_points, 0) ELSE 0 END::bigint AS achievement_points,
+			       CASE WHEN $1 IN (0, 1, 2) THEN percent_rank() OVER (
+			            ORDER BY coalesce(snapshot.achievement_points, 0)
+			       ) ELSE NULL END AS achievement_pct
+			FROM combat c
+			LEFT JOIN entity_rankings snapshot
+			  ON snapshot.entity_type = $1 AND snapshot.entity_id = c.entity_id
+			 AND snapshot.ranking_window = 2
+		), rated AS (
+			SELECT *, CASE WHEN $1 IN (0, 1, 2)
+			       THEN combat_points + round(combat_points * achievement_pct * 3 / 7)
+			       ELSE combat_points END::integer AS eve_kill_rating
+			FROM scored
+		), ranked AS (
+			SELECT *, rank() OVER (ORDER BY combat_points DESC)::integer AS combat_rank,
+			       CASE WHEN $1 IN (0, 1, 2) THEN rank() OVER (ORDER BY achievement_points DESC)::integer END AS achievement_rank,
+			       rank() OVER (ORDER BY eve_kill_rating DESC, combat_points DESC)::integer AS overall_rank,
+			       count(*) OVER ()::integer AS population
+			FROM rated
+		)
+		SELECT r.entity_id, coalesce(nullif(%s, ''), 'Unknown') AS name,
+		       r.combat_points, r.achievement_points, r.eve_kill_rating,
+		       r.combat_rank, r.achievement_rank, r.overall_rank, r.population,
+		       now() AS updated_at
+		FROM ranked r
+		%s
+		ORDER BY r.overall_rank
+		LIMIT $2`, source.id, source.from, source.predicate, source.id, nameColumn, nameJoin), typeID, limit)
 }
 
 func statsRankingPayload(entries []map[string]any) legacyPayload {

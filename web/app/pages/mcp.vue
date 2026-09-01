@@ -173,31 +173,22 @@ async function copy(text: string, key: string) {
 
 <template>
     <div class="max-w-6xl mx-auto py-4 px-2">
-        <!-- Header -->
-        <div class="glass-panel backdrop-blur-sm p-6 md:p-8 mb-6">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <h1 class="text-3xl md:text-4xl font-bold text-white">MCP Server</h1>
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-medium uppercase tracking-wide">
-                            Model Context Protocol
-                        </span>
-                    </div>
-                    <p class="text-sm text-gray-400 mt-3 max-w-3xl leading-relaxed">
+        <PageHeader class="mb-6" title="MCP Server" eyebrow="Model Context Protocol" icon="lucide:bot">
+            <template #description>
                         Plug any MCP-compatible AI client (Claude, ChatGPT's MCP integrations, custom agents) into
                         EVE-KILL. {{ totalTools || '45' }} purpose-built tools cover killmail lookup, character
                         intel, corp/alliance analytics, battle reports, Memgraph-backed relationship graphs, and
                         route danger assessment. No API key. No auth. JSON-RPC over streamable HTTP.
-                    </p>
-                </div>
+            </template>
+            <template v-if="!loading && !loadError" #actions>
                 <div v-if="!loading && !loadError" class="text-xs text-gray-500 text-right">
                     <div>{{ totalTools }} tools</div>
                     <a :href="baseUrl" target="_blank" rel="noopener" class="font-mono text-blue-400/80 hover:text-blue-300 transition-colors">
                         {{ baseUrl }}
                     </a>
                 </div>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- Connect section -->
         <div class="rounded-lg bg-white/[0.02] border border-white/[0.08] p-6 mb-6 space-y-5">

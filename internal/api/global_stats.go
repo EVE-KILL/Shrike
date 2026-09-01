@@ -173,6 +173,14 @@ func loadGlobalTopList(
 }
 
 func globalStatsEntityFilter(dataType string) string {
+	if dataType == "characters" || dataType == "isk_destroyers_chars" ||
+		dataType == "solo_killers" || dataType == "top_points" ||
+		dataType == "biggest_losers" {
+		return " AND s.entity_id >= 90000000"
+	}
+	if dataType == "corporations" || dataType == "isk_destroyers_corps" {
+		return " AND s.entity_id >= 2000000"
+	}
 	if dataType == "factions" {
 		return ` AND EXISTS (
 			SELECT 1 FROM factions

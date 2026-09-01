@@ -200,24 +200,9 @@ async function loadDoctrine(d: AllianceDoctrine) {
 
 <template>
     <div>
-        <!-- ============================ Hero ============================ -->
-        <section
-            class="glass-panel p-6 mb-6 relative overflow-hidden"
-        >
-            <div class="relative z-10 max-w-2xl">
-                <div
-                    class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 mb-2"
-                >
-                    Ship Fittings
-                </div>
-                <h1 class="text-2xl font-bold text-white mb-2">
-                    Browse, build, and share EVE Online fits
-                </h1>
-                <p class="text-sm text-gray-400 leading-relaxed mb-4">
-                    Explore the most-flown fits from the last 30 days of killmails, see what
-                    top alliances are bringing to battle, and use our in-browser fitting tool
-                    to design and share your own — all with real dogma engine calculations.
-                </p>
+        <PageHeader class="mb-6" title="Browse, build, and share EVE Online fits" eyebrow="Ship Fittings" icon="lucide:wrench"
+            description="Explore the most-flown fits from the last 30 days of killmails, see what top alliances are bringing to battle, and use our in-browser fitting tool to design and share your own — all with real dogma engine calculations.">
+            <template #actions>
                 <div class="flex flex-wrap items-center gap-2">
                     <NuxtLink
                         to="/fits/create"
@@ -234,8 +219,8 @@ async function loadDoctrine(d: AllianceDoctrine) {
                         Search Fits
                     </NuxtLink>
                 </div>
-            </div>
-        </section>
+            </template>
+        </PageHeader>
 
         <!-- ============================ Quick Stats ============================ -->
         <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

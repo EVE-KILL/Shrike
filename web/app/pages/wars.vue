@@ -137,17 +137,8 @@ const efficiencyWidth = (w: any): string => {
 
 <template>
     <div>
-        <!-- Header -->
-        <div class="glass-panel p-5 mb-4">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="min-w-0">
-                    <h1 class="flex items-center gap-2.5 text-xl font-bold text-white">
-                        <span class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                            <Icon name="lucide:swords" class="text-base text-blue-400" />
-                        </span>
-                        Wars
-                    </h1>
-                    <p class="text-sm text-gray-500 mt-2 max-w-3xl">
+        <PageHeader class="mb-4" title="Wars" eyebrow="Declared conflicts" icon="lucide:swords">
+            <template #description>
                         <template v-if="isDomainMode">
                             Declared wars involving {{ siteName }}'s corporations and alliances — who is shooting whom,
                             and what it has cost so far.
@@ -156,16 +147,16 @@ const efficiencyWidth = (w: any): string => {
                             Every declared war in New Eden — aggressors, defenders, allies and the ISK burned. Pick a
                             card below to switch between active, finished and upcoming wars.
                         </template>
-                    </p>
-                </div>
+            </template>
+            <template v-if="isDomainMode" #actions>
                 <span v-if="isDomainMode"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-fine font-medium text-indigo-300 flex-shrink-0"
                     v-tooltip="'Scoped to the entities this killboard tracks'">
                     <Icon name="lucide:shield" class="text-fine" />
                     This killboard only
                 </span>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- Faction Warfare — cluster-wide, so global only -->
         <div v-if="fwData && !isDomainMode" class="mb-6">

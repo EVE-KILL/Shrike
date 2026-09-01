@@ -8,7 +8,7 @@ import (
 
 var rebuildRankingsCmd = &cobra.Command{
 	Use:   "rankings",
-	Short: "Replace the weekly, 90-day, and all-time EVE-KILL rankings",
+	Short: "Replace the rolling and all-time EVE-KILL rankings",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		pool, err := openPool(cmd)
 		if err != nil {

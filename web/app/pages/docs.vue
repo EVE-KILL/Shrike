@@ -90,12 +90,8 @@ const tagSlug = (name: string) => name.replace(/\s+/g, '-')
 
 <template>
     <div class="max-w-7xl mx-auto py-4 px-2">
-        <!-- Header -->
-        <div class="glass-panel backdrop-blur-sm p-6 md:p-8 mb-6">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                    <h1 class="text-3xl md:text-4xl font-bold text-white">API Documentation</h1>
-                    <p class="text-sm text-gray-400 mt-2 max-w-2xl">
+        <PageHeader class="mb-6" title="API Documentation" eyebrow="Build with EVE-KILL" icon="lucide:braces">
+            <template #description>
                         The API powering eve-kill.com. JSON, CORS-open, and read endpoints need no
                         authentication. Click any endpoint to expand it, fill in the parameters, and hit
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-medium align-middle">
@@ -103,8 +99,8 @@ const tagSlug = (name: string) => name.replace(/\s+/g, '-')
                             Try it
                         </span>
                         — requests fire straight against the live API.
-                    </p>
-                </div>
+            </template>
+            <template v-if="!loading && model" #actions>
                 <div v-if="!loading && model" class="text-xs text-gray-500 text-right">
                     <div>{{ model.title }}</div>
                     <div class="text-gray-600">v{{ model.version }}</div>
@@ -117,8 +113,8 @@ const tagSlug = (name: string) => name.replace(/\s+/g, '-')
                         openapi.json
                     </a>
                 </div>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- Loading -->
         <div v-if="loading" class="rounded-lg border border-white/[0.08] bg-white/[0.02] p-8 text-center">

@@ -176,21 +176,10 @@ const lastPage = computed(() => Math.max(1, Math.ceil((campaignData.value.total 
 
 <template>
     <div>
-        <!-- Header -->
-        <div class="glass-panel p-5 mb-4">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="min-w-0">
-                    <h1 class="flex items-center gap-2.5 text-xl font-bold text-white">
-                        <span class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                            <Icon name="lucide:flag" class="text-base text-blue-400" />
-                        </span>
-                        Campaigns
-                    </h1>
-                    <p class="text-sm text-gray-500 mt-2 max-w-3xl">
-                        Long-running trackers for a war between sides, one group's war effort, or every kill across a
-                        stretch of space. Scoreboards refresh hourly.
-                    </p>
-                </div>
+        <PageHeader class="mb-4" title="Campaigns" eyebrow="Tracked conflicts" icon="lucide:flag"
+            description="Long-running trackers for a war between sides, one group's war effort, or every kill across a stretch of space. Scoreboards refresh hourly.">
+            <template #actions>
+                <div class="flex flex-wrap items-center justify-end gap-2">
                 <span v-if="isDomainMode"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-fine font-medium text-indigo-300 flex-shrink-0"
                     v-tooltip="'Scoped to the entities this killboard tracks'">
@@ -202,8 +191,9 @@ const lastPage = computed(() => Math.max(1, Math.ceil((campaignData.value.total 
                     <Icon name="lucide:plus" class="text-sm" />
                     New Campaign
                 </NuxtLink>
-            </div>
-        </div>
+                </div>
+            </template>
+        </PageHeader>
 
         <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2 mb-4">

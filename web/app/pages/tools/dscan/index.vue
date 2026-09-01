@@ -74,7 +74,8 @@ onUnmounted(() => document.removeEventListener('paste', onDocumentPaste))
 
 <template>
     <div>
-        <h1 class="text-xl font-bold text-white mb-4">D-Scan Analyzer</h1>
+        <PageHeader class="mb-4" title="D-Scan Analyzer" eyebrow="Directional scan intelligence" icon="lucide:radar"
+            description="Paste a directional scan from EVE Online to identify and summarize the ships, structures, drones, and other objects around you." />
 
         <!-- Input -->
         <div class="glass-panel p-6 mb-4">

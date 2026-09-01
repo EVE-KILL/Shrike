@@ -202,19 +202,9 @@ async function deleteOwn(id: number) {
 
 <template>
     <div class="max-w-7xl mx-auto px-4 py-6">
-        <!-- ═══════════════ HEADER ═══════════════ -->
-        <div class="mb-4 flex items-end justify-between gap-4 flex-wrap">
-            <div class="flex items-center gap-3">
-                <div class="flex items-center justify-center w-11 h-11 rounded-lg bg-blue-500/[0.1] border border-blue-500/20">
-                    <Icon name="lucide:message-square" class="text-xl text-blue-400" />
-                </div>
-                <div>
-                    <h1 class="text-2xl font-bold text-white leading-tight">Comments</h1>
-                    <p class="text-xs text-gray-500 mt-0.5">
-                        Latest activity across killmails, entities, systems, and battles.
-                    </p>
-                </div>
-            </div>
+        <PageHeader class="mb-4" title="Comments" eyebrow="Community activity" icon="lucide:message-square"
+            description="Latest activity across killmails, entities, systems, and battles.">
+            <template #actions>
             <div class="flex items-center gap-2">
                 <span v-if="comments.length" class="text-xs text-gray-500 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.06]">
                     <span class="text-gray-300 font-semibold">{{ comments.length }}</span> shown
@@ -228,7 +218,8 @@ async function deleteOwn(id: number) {
                     Refresh
                 </button>
             </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- ═══════════════ FILTERS ═══════════════ -->
         <div class="mb-6 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">

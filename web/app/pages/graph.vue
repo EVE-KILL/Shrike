@@ -301,13 +301,12 @@ const tabs = [
 
 <template>
     <div>
-        <!-- Header -->
-        <div class="glass-panel overflow-hidden mb-4">
-            <div class="p-4">
-                <h1 class="text-xl font-bold text-white mb-1">Graph Intelligence <span class="text-xs font-medium px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 align-middle ml-1">BETA</span></h1>
-                <p class="text-sm text-gray-500 mb-4">Relationship analysis powered by graph data from killmail activity — experimental features, subject to change</p>
-
-                <!-- Tabs -->
+        <PageHeader class="mb-4" title="Graph Intelligence" eyebrow="Relationship explorer" icon="lucide:network"
+            description="Relationship analysis powered by graph data from killmail activity — experimental features, subject to change.">
+            <template #actions>
+                <span class="text-xs font-medium px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">BETA</span>
+            </template>
+            <template #meta>
                 <div class="flex gap-2">
                     <button
                         v-for="tab in tabs"
@@ -322,8 +321,8 @@ const tabs = [
                         <span class="text-xs opacity-60">{{ tab.subtitle }}</span>
                     </button>
                 </div>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- ═══ Path Finder ═══ -->
         <div v-if="activeTab === 'path_finder'">

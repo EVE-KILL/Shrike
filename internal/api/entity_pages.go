@@ -360,6 +360,7 @@ const entityPageRankingSQL = `
 	       combat_rank, achievement_rank, overall_rank, population, updated_at
 	FROM entity_rankings
 	WHERE entity_type = $1 AND entity_id = $2
+	  AND ranking_window IN (0, 1, 2)
 	ORDER BY ranking_window`
 
 func entityPageRankings(rows []map[string]any) map[string]any {

@@ -404,28 +404,16 @@ const assignedCount = computed(() => sideA.value.length + sideB.value.length)
 </script>
 <template>
     <div>
-        <!-- Header -->
-        <div class="glass-panel p-5 mb-4">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="min-w-0">
-                    <h1 class="flex items-center gap-2.5 text-xl font-bold text-white">
-                        <span class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                            <Icon name="lucide:swords" class="text-base text-blue-400" />
-                        </span>
-                        Battle Generator
-                    </h1>
-                    <p class="text-sm text-gray-500 mt-2 max-w-3xl">
-                        Build a custom battle report: pick the systems and the window the fight happened in, sort the
-                        participants into sides, then preview and save it.
-                    </p>
-                </div>
+        <PageHeader class="mb-4" title="Battle Generator" eyebrow="Build a battle report" icon="lucide:swords"
+            description="Build a custom battle report: pick the systems and the window the fight happened in, sort the participants into sides, then preview and save it.">
+            <template #actions>
                 <NuxtLink to="/battles"
                     class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] hover:text-gray-200 transition-colors flex-shrink-0">
                     <Icon name="lucide:arrow-left" class="text-xs" />
                     All battles
                 </NuxtLink>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- Login gate -->
         <LoginGate v-if="!isAuthenticated" message="You must be logged in to use the Battle Generator" />

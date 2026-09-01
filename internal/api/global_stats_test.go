@@ -164,8 +164,11 @@ func TestGlobalStatsIncludesFactionLeaderboard(t *testing.T) {
 	) {
 		t.Fatalf("faction filter = %q, want militia filter", got)
 	}
-	if got := globalStatsEntityFilter("characters"); got != "" {
-		t.Fatalf("character filter = %q, want none", got)
+	if got := globalStatsEntityFilter("characters"); !strings.Contains(got, "entity_id >= 90000000") {
+		t.Fatalf("character filter = %q, want player-only filter", got)
+	}
+	if got := globalStatsEntityFilter("corporations"); !strings.Contains(got, "entity_id >= 2000000") {
+		t.Fatalf("corporation filter = %q, want player-only filter", got)
 	}
 
 	document := New(Options{}).document

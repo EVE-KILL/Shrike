@@ -86,13 +86,13 @@ func rebuildMonthPoints(ctx context.Context, pool *pgxpool.Pool, month time.Time
 			FROM killmail_attackers a
 			JOIN killmails k ON k.killmail_id = a.killmail_id
 			WHERE a.killmail_time >= $1 AND a.killmail_time < $2
-			  AND a.character_id IS NOT NULL AND a.points > 0
+			  AND a.character_id >= 90000000 AND a.points > 0
 		), per_entity AS (
 			SELECT 0::smallint AS entity_type, character_id AS entity_id, period_start, sum(points)::bigint AS points
 			FROM scored GROUP BY character_id, period_start
 			UNION ALL
 			SELECT 1, corporation_id, period_start, sum(points)::bigint FROM scored
-			WHERE corporation_id IS NOT NULL GROUP BY corporation_id, period_start
+			WHERE corporation_id >= 2000000 GROUP BY corporation_id, period_start
 			UNION ALL
 			SELECT 2, alliance_id, period_start, sum(points)::bigint FROM scored
 			WHERE alliance_id IS NOT NULL GROUP BY alliance_id, period_start

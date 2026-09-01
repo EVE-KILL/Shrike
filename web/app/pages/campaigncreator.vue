@@ -378,28 +378,16 @@ const submit = async () => {
 </script>
 <template>
     <div>
-        <!-- Header -->
-        <div class="glass-panel p-5 mb-4">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="min-w-0">
-                    <h1 class="flex items-center gap-2.5 text-xl font-bold text-white">
-                        <span class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                            <Icon name="lucide:flag" class="text-base text-blue-400" />
-                        </span>
-                        Campaign Creator
-                    </h1>
-                    <p class="text-sm text-gray-500 mt-2 max-w-3xl">
-                        Track a conflict between sides, a single group's war effort, or all activity across a
-                        battlefield. Everything you set here is editable afterwards except the tracking mode.
-                    </p>
-                </div>
+        <PageHeader class="mb-4" title="Campaign Creator" eyebrow="Create a campaign" icon="lucide:flag"
+            description="Track a conflict between sides, a single group's war effort, or all activity across a battlefield. Everything you set here is editable afterwards except the tracking mode.">
+            <template #actions>
                 <NuxtLink to="/campaigns"
                     class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] hover:text-gray-200 transition-colors flex-shrink-0">
                     <Icon name="lucide:arrow-left" class="text-xs" />
                     All campaigns
                 </NuxtLink>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- Login gate -->
         <LoginGate v-if="!isAuthenticated" message="You must be logged in to create campaigns" />

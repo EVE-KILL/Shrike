@@ -25,23 +25,16 @@ withDefaults(defineProps<{
 
 <template>
     <div class="mx-auto py-4" :class="wide ? 'max-w-6xl' : 'max-w-5xl'">
-        <div class="glass-panel p-5 mb-4">
-            <div class="flex items-start gap-3">
-                <span v-if="icon"
-                    class="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                    <Icon :name="icon" class="text-base text-blue-400" />
-                </span>
-                <div class="min-w-0">
-                    <h1 class="text-xl md:text-2xl font-bold text-white leading-tight">{{ title }}</h1>
-                    <p v-if="subtitle" class="text-sm text-gray-500 mt-1.5">{{ subtitle }}</p>
-                </div>
-                <!-- Right-hand side of the header: actions, status pills, counts. -->
-                <div v-if="$slots.actions" class="ml-auto flex-shrink-0">
+        <PageHeader class="mb-4" :title="title" :description="subtitle" :icon="icon || 'lucide:info'">
+            <template v-if="$slots.actions" #actions>
+                <div>
                     <slot name="actions" />
                 </div>
-            </div>
-            <slot name="header" />
-        </div>
+            </template>
+            <template v-if="$slots.header" #meta>
+                <slot name="header" />
+            </template>
+        </PageHeader>
 
         <slot />
     </div>

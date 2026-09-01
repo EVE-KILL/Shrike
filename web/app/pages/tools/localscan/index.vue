@@ -88,7 +88,8 @@ onUnmounted(() => document.removeEventListener('paste', onDocumentPaste))
 
 <template>
     <div>
-        <h1 class="text-xl font-bold text-white mb-4">Local Scan</h1>
+        <PageHeader class="mb-4" title="Local Scan" eyebrow="Local intelligence" icon="lucide:scan-line"
+            description="Paste the character list from local chat to identify pilots, corporations, alliances, and potential threats." />
 
         <!-- Input -->
         <div class="glass-panel p-6 mb-4">

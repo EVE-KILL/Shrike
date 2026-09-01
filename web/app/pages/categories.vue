@@ -22,6 +22,25 @@ useSeoMeta({
 
 const { data, pending, error } = await useApiFetch<CategoriesResponse>('/api/labels')
 const query = ref('')
+const totalKills = computed(() => Math.max(0, ...(data.value?.labels ?? []).map(label => label.count)))
+
+const categoryVisuals: Record<string, { icon: string; image: string }> = {
+    Space: { icon: 'lucide:orbit', image: '/images/regions/10000002?size=64' },
+    Timezone: { icon: 'lucide:clock', image: '/images/types/19720/icon?size=64' },
+    Engagement: { icon: 'lucide:swords', image: '/images/types/638/icon?size=64' },
+    'Killmail Type': { icon: 'lucide:skull', image: '/images/types/670/icon?size=64' },
+    Involvement: { icon: 'lucide:users', image: '/images/types/11567/icon?size=64' },
+    'Faction Warfare': { icon: 'lucide:shield', image: '/images/corporations/1000180/logo?size=64' },
+    Value: { icon: 'lucide:coins', image: '/images/types/34/icon?size=64' },
+    'Value Bands': { icon: 'lucide:gem', image: '/images/types/34/icon?size=64' },
+    'Victim Category': { icon: 'lucide:boxes', image: '/images/types/35832/icon?size=64' },
+    'Victim Hull': { icon: 'lucide:rocket', image: '/images/types/24694/icon?size=64' },
+    Technology: { icon: 'lucide:settings', image: '/images/types/12005/icon?size=64' },
+}
+
+const categoryVisual = (category: string) => categoryVisuals[category] ?? {
+    icon: 'lucide:tag', image: '/images/types/670/icon?size=64',
+}
 
 const categoryOrder = [
     'Space', 'Timezone', 'Engagement', 'Killmail Type', 'Involvement', 'Faction Warfare', 'Value', 'Value Bands',
@@ -65,21 +84,22 @@ const formatCount = (count: number) => new Intl.NumberFormat('en-US').format(cou
 
 <template>
     <div class="max-w-6xl mx-auto px-4 py-8">
-        <header class="mb-6">
-            <div class="flex items-center gap-3 mb-2">
-                <span class="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center">
-                    <Icon name="lucide:tags" class="text-xl text-blue-400" />
-                </span>
-                <div>
-                    <h1 class="text-2xl font-bold text-white">Killmail Categories</h1>
-                    <p class="text-sm text-gray-500">Every way to explore combat across New Eden.</p>
-                </div>
-            </div>
-            <p class="text-sm text-gray-400 max-w-3xl">
-                Categories overlap by design: a solo titan loss worth ten billion ISK in nullsec belongs in several
-                places. Browse a category directly or carry it into Advanced Search. Counts cover the complete indexed killmail history.
-            </p>
-        </header>
+        <PageHeader
+            class="mb-6"
+            title="Killmail Categories"
+            eyebrow="Explore the killmail archive"
+            icon="lucide:tags"
+            image-src="/images/types/11567/overlayrender?size=256"
+            description="Categories overlap by design: a solo titan loss worth ten billion ISK in nullsec belongs in several places. Browse directly or carry any classification into Advanced Search."
+        >
+            <template #meta>
+                    <div class="flex flex-wrap gap-2 text-xs text-gray-500">
+                        <span class="rounded border border-white/[0.08] bg-black/20 px-2.5 py-1.5"><strong class="text-gray-300">{{ data?.labels?.length ?? 0 }}</strong> categories</span>
+                        <span class="rounded border border-white/[0.08] bg-black/20 px-2.5 py-1.5"><strong class="text-gray-300">{{ groups.length }}</strong> groups</span>
+                        <span class="rounded border border-white/[0.08] bg-black/20 px-2.5 py-1.5"><strong class="text-gray-300">{{ formatCount(totalKills) }}</strong> in the largest category</span>
+                    </div>
+            </template>
+        </PageHeader>
 
         <div class="relative mb-6 max-w-xl">
             <Icon name="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600" />
@@ -102,19 +122,25 @@ const formatCount = (count: number) => new Intl.NumberFormat('en-US').format(cou
         </div>
         <div v-else class="space-y-7">
             <section v-for="group in groups" :key="group.category">
-                <div class="flex items-baseline gap-2 mb-3">
-                    <h2 class="text-sm font-bold uppercase tracking-[0.14em] text-gray-300">{{ group.category }}</h2>
-                    <span class="text-fine text-gray-600">{{ group.labels.length }} categories</span>
+                <div class="mb-3 flex items-center gap-3">
+                    <EveImage :src="categoryVisual(group.category).image" :size="48" :alt="group.category" class="h-10 w-10 rounded-lg bg-gray-900 object-cover ring-1 ring-white/10" />
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <Icon :name="categoryVisual(group.category).icon" class="text-sm text-blue-400" />
+                            <h2 class="text-sm font-bold uppercase tracking-[0.14em] text-gray-300">{{ group.category }}</h2>
+                        </div>
+                        <span class="text-fine text-gray-600">{{ group.labels.length }} categories</span>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                     <article
                         v-for="label in group.labels"
                         :key="label.id"
-                        class="rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 flex flex-col gap-3"
+                        class="group rounded-lg border border-white/[0.08] bg-white/[0.02] p-4 flex flex-col gap-3 transition-colors hover:border-blue-400/20 hover:bg-blue-500/[0.03]"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <h3 class="text-sm font-semibold text-white">{{ label.name }}</h3>
+                                <h3 class="text-sm font-semibold text-white transition-colors group-hover:text-blue-300">{{ label.name }}</h3>
                                 <code class="text-fine text-blue-400/70">{{ label.id }}</code>
                             </div>
                             <span class="text-xs tabular-nums text-gray-400 whitespace-nowrap" :title="`${formatCount(label.count)} killmails`">

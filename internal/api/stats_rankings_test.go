@@ -231,3 +231,30 @@ func TestSystemRankingUsesSolarSystemPrimaryKey(t *testing.T) {
 		t.Fatal("system ranking does not join through solar_system_id")
 	}
 }
+
+func TestHourlyRankingUsesBoundedPlayerCombatRows(t *testing.T) {
+	for _, entityType := range []string{"character", "corporation", "alliance", "ship", "system", "region"} {
+		db := &queryCaptureDatabase{}
+		_, err := queryHourlyEveKillRankings(
+			context.Background(), db, entityType,
+			map[string]int16{"character": 0, "corporation": 1, "alliance": 2, "ship": 3, "system": 4, "region": 6}[entityType],
+			50,
+		)
+		if err == nil || err.Error() != "captured query" {
+			t.Fatalf("%s query error = %v", entityType, err)
+		}
+		for _, fragment := range []string{
+			"a.killmail_time >= now() - interval '1 hour'",
+			"a.character_id >= 90000000",
+			"a.points > 0",
+			"snapshot.ranking_window = 2",
+		} {
+			if !strings.Contains(db.query, fragment) {
+				t.Errorf("%s hourly query is missing %q", entityType, fragment)
+			}
+		}
+		if len(db.args) != 2 || db.args[1] != 50 {
+			t.Errorf("%s query args = %#v", entityType, db.args)
+		}
+	}
+}

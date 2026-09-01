@@ -227,21 +227,10 @@ const teamName = (entry: any): string => {
 </script>
 <template>
     <div>
-        <!-- Header -->
-        <div class="glass-panel p-5 mb-4">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="min-w-0">
-                    <h1 class="flex items-center gap-2.5 text-xl font-bold text-white">
-                        <span class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                            <Icon name="lucide:swords" class="text-base text-blue-400" />
-                        </span>
-                        Battles
-                    </h1>
-                    <p class="text-sm text-gray-500 mt-2 max-w-3xl">
-                        Fleet engagements detected across New Eden, with sides, timelines and ISK destroyed. Browse by
-                        year, or filter down to an alliance, corporation, system or region.
-                    </p>
-                </div>
+        <PageHeader class="mb-4" title="Battles" eyebrow="Fleet engagements" icon="lucide:swords"
+            description="Fleet engagements detected across New Eden, with sides, timelines and ISK destroyed. Browse by year, or filter down to an alliance, corporation, system or region.">
+            <template #actions>
+                <div class="flex flex-wrap items-center justify-end gap-2">
                 <span v-if="isDomainMode"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-fine font-medium text-indigo-300 flex-shrink-0"
                     v-tooltip="'Scoped to the entities this killboard tracks'">
@@ -253,8 +242,9 @@ const teamName = (entry: any): string => {
                     <Icon name="lucide:plus" class="text-sm" />
                     Battle Report
                 </NuxtLink>
-            </div>
-        </div>
+                </div>
+            </template>
+        </PageHeader>
 
         <!-- Year browser -->
         <div class="glass-panel p-4 mb-4">

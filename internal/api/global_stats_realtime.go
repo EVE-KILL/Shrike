@@ -22,53 +22,53 @@ var realtimeGlobalStatsQueries = map[string]realtimeGlobalStatsQuery{
 	"characters": {
 		"killmail_attackers a JOIN characters n ON n.character_id = a.character_id",
 		"a.character_id", "n.name", "a.killmail_time", "COUNT(*)::bigint",
-		"a.final_blow = TRUE AND a.character_id IS NOT NULL", "character", false,
+		"a.final_blow = TRUE AND a.character_id >= 90000000", "character", false,
 	},
 	"corporations": {
 		"killmail_attackers a JOIN corporations n ON n.corporation_id = a.corporation_id",
 		"a.corporation_id", "n.name", "a.killmail_time", "COUNT(*)::bigint",
-		"a.final_blow = TRUE AND a.corporation_id IS NOT NULL", "corporation", false,
+		"a.final_blow = TRUE AND a.character_id >= 90000000 AND a.corporation_id >= 2000000", "corporation", false,
 	},
 	"alliances": {
 		"killmail_attackers a JOIN alliances n ON n.alliance_id = a.alliance_id",
 		"a.alliance_id", "n.name", "a.killmail_time", "COUNT(*)::bigint",
-		"a.final_blow = TRUE AND a.alliance_id IS NOT NULL", "alliance", false,
+		"a.final_blow = TRUE AND a.character_id >= 90000000 AND a.alliance_id IS NOT NULL", "alliance", false,
 	},
 	"isk_destroyers_chars": {
 		"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id JOIN characters n ON n.character_id = a.character_id",
 		"a.character_id", "n.name", "a.killmail_time",
 		"COALESCE(SUM(k.total_value), 0)::double precision",
-		"a.final_blow = TRUE AND a.character_id IS NOT NULL", "character", true,
+		"a.final_blow = TRUE AND a.character_id >= 90000000", "character", true,
 	},
 	"isk_destroyers_corps": {
 		"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id JOIN corporations n ON n.corporation_id = a.corporation_id",
 		"a.corporation_id", "n.name", "a.killmail_time",
 		"COALESCE(SUM(k.total_value), 0)::double precision",
-		"a.final_blow = TRUE AND a.corporation_id IS NOT NULL", "corporation", true,
+		"a.final_blow = TRUE AND a.character_id >= 90000000 AND a.corporation_id >= 2000000", "corporation", true,
 	},
 	"isk_destroyers_alliances": {
 		"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id JOIN alliances n ON n.alliance_id = a.alliance_id",
 		"a.alliance_id", "n.name", "a.killmail_time",
 		"COALESCE(SUM(k.total_value), 0)::double precision",
-		"a.final_blow = TRUE AND a.alliance_id IS NOT NULL", "alliance", true,
+		"a.final_blow = TRUE AND a.character_id >= 90000000 AND a.alliance_id IS NOT NULL", "alliance", true,
 	},
 	"biggest_losers": {
 		"killmails k JOIN characters n ON n.character_id = k.victim_character_id",
 		"k.victim_character_id", "n.name", "k.killmail_time",
 		"COALESCE(SUM(k.total_value), 0)::double precision",
-		"k.victim_character_id IS NOT NULL", "character", true,
+		"k.victim_character_id >= 90000000", "character", true,
 	},
 	"solo_killers": {
 		"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id JOIN characters n ON n.character_id = a.character_id",
 		"a.character_id", "n.name", "a.killmail_time", "COUNT(*)::bigint",
-		"a.final_blow = TRUE AND a.character_id IS NOT NULL AND k.is_solo = TRUE",
+		"a.final_blow = TRUE AND a.character_id >= 90000000 AND k.is_solo = TRUE",
 		"character", false,
 	},
 	"top_points": {
 		"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id JOIN characters n ON n.character_id = a.character_id",
 		"a.character_id", "n.name", "a.killmail_time",
 		"COALESCE(SUM(a.points), 0)::double precision",
-		"a.character_id IS NOT NULL", "character", false,
+		"a.character_id >= 90000000", "character", false,
 	},
 	"systems": {
 		"killmails k JOIN solar_systems n ON n.solar_system_id = k.solar_system_id",
@@ -95,12 +95,12 @@ var realtimeGlobalStatsQueries = map[string]realtimeGlobalStatsQuery{
 	"ships": {
 		"killmail_attackers a JOIN inv_types n ON n.type_id = a.ship_type_id",
 		"a.ship_type_id", "n.name", "a.killmail_time", "COUNT(*)::bigint",
-		"a.final_blow = TRUE AND a.ship_type_id IS NOT NULL", "ship", false,
+		"a.final_blow = TRUE AND a.character_id >= 90000000 AND a.ship_type_id IS NOT NULL", "ship", false,
 	},
 	"most_used_ships": {
 		"killmail_attackers a JOIN inv_types n ON n.type_id = a.ship_type_id",
 		"a.ship_type_id", "n.name", "a.killmail_time", "COUNT(*)::bigint",
-		"a.ship_type_id IS NOT NULL", "ship", false,
+		"a.character_id >= 90000000 AND a.ship_type_id IS NOT NULL", "ship", false,
 	},
 	"most_destroyed_ships": {
 		"killmails k JOIN inv_types n ON n.type_id = k.victim_ship_type_id",

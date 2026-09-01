@@ -78,22 +78,9 @@ const formatReferenceType = (value: string) =>
 
 <template>
     <div class="max-w-6xl mx-auto py-4 space-y-4">
-        <div class="glass-panel p-5 md:p-6">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
-                <div class="flex items-start gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center flex-shrink-0">
-                        <Icon name="lucide:wallet-cards" class="text-2xl text-amber-400" />
-                    </div>
-                    <div>
-                        <h1 class="text-2xl md:text-3xl font-bold text-white">
-                            {{ data?.corporation.name || 'EVE-KILL.com' }} wallet
-                        </h1>
-                        <p class="text-sm text-gray-500 mt-1">
-                            The corporation wallet used for campaign prizes and other EVE-KILL.com activity.
-                            Its balance and journal are public.
-                        </p>
-                    </div>
-                </div>
+        <PageHeader :title="`${data?.corporation.name || 'EVE-KILL.com'} wallet`" eyebrow="Public corporation wallet"
+            icon="lucide:wallet-cards" description="The corporation wallet used for campaign prizes and other EVE-KILL.com activity. Its balance and journal are public.">
+            <template #actions>
                 <NuxtLink
                     :to="`/corporation/${data?.corporation.corporation_id || 98779905}`"
                     class="inline-flex items-center gap-2 text-xs text-gray-500 hover:text-blue-300 whitespace-nowrap"
@@ -101,8 +88,8 @@ const formatReferenceType = (value: string) =>
                     Corporation {{ data?.corporation.corporation_id || 98779905 }}
                     <Icon name="lucide:arrow-up-right" />
                 </NuxtLink>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <div v-if="error" class="glass-panel p-5 text-sm text-red-400">
             Could not load the corporation wallet: {{ error.message }}

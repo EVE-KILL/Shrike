@@ -52,10 +52,14 @@ const toDropdownColumns = (link: NavbarLink): DropdownColumn[] | undefined => {
     if (!link.children?.length) return undefined
     // Multiple groups with labels = mega menu columns
     if (link.children.length > 1 || link.children[0]?.label) {
+        const menuOrder = [
+            'Activity', 'Security', 'Timezones', 'Involvement', 'Value', 'Technology',
+            'Victim Hulls', 'Attacker Counts', 'Faction Warfare', 'Victim Categories',
+        ]
         return link.children.filter(g => g.label !== 'Explore').map(g => ({
             label: g.label || '',
             items: g.items.map(i => ({ name: i.label, to: i.href, icon: i.icon })),
-        }))
+        })).sort((left, right) => menuOrder.indexOf(left.label) - menuOrder.indexOf(right.label))
     }
     return undefined
 }

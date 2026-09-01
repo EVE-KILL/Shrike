@@ -71,12 +71,8 @@ const tools: Tool[] = [
 
 <template>
     <div class="max-w-5xl mx-auto px-4 py-8">
-        <header class="mb-8">
-            <h1 class="text-3xl font-bold text-white mb-2">Tools</h1>
-            <p class="text-gray-400 text-sm">
-                Utilities for EVE Online pilots — scan analyzers, battle tooling, and search helpers.
-            </p>
-        </header>
+        <PageHeader class="mb-6" title="Tools" eyebrow="Pilot utilities" icon="lucide:wrench"
+            description="Utilities for EVE Online pilots — scan analyzers, battle tooling, and search helpers." />
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <NuxtLink

@@ -362,6 +362,37 @@ func TestSoloAndNPCFlags(t *testing.T) {
 	}
 }
 
+func TestNPCParticipantsAndCorporationsDoNotCreateEntityStats(t *testing.T) {
+	km, attackers := fleetKill()
+	km.VictimCharacterID = 3_004_021
+	km.VictimCorporationID = 1_000_001
+	attackers = append(attackers, Attacker{
+		CorporationID: 1_000_002,
+		FactionID:     500010,
+		ShipTypeID:    11_987,
+		DamageDone:    500,
+		FinalBlow:     true,
+	})
+
+	a := NewAccumulator()
+	a.Add(km, attackers)
+
+	for _, key := range []StatsKey{
+		{EntityCharacter, km.VictimCharacterID},
+		{EntityCorporation, km.VictimCorporationID},
+		{EntityCorporation, 1_000_002},
+		{EntityFaction, 500010},
+		{EntityShip, 11_987},
+	} {
+		if row := a.Stats[key]; row != nil {
+			t.Errorf("NPC identity %+v produced stats: %#v", key, row)
+		}
+	}
+	if row := a.Stats[StatsKey{EntitySystem, km.SolarSystemID}]; row == nil || row.Kills != 1 {
+		t.Fatalf("NPC exclusion removed location activity: %#v", row)
+	}
+}
+
 // Locations count a kill for every killmail — a convention every location-level
 // read depends on, since a kill is both a kill and a loss from the system's
 // point of view.

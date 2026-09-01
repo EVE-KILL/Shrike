@@ -19,12 +19,20 @@ export type HomepageWidgets = SiteDomainWidgets
 
 export const DEFAULT_NAVBAR: NavbarLink[] = [
     {
-        label: 'Kills', href: '/kills/latest',
+        label: 'Menu', href: '/kills/latest',
         children: [
             {
                 label: 'Explore',
                 items: [
                     { label: 'Categories', href: '/categories', icon: 'lucide:tags' },
+                    { label: 'Rankings', href: '/rankings', icon: 'lucide:trophy' },
+                    { label: 'Advanced Search', href: '/advancedsearch', icon: 'lucide:search' },
+                    { label: 'Battle Generator', href: '/battlegenerator', icon: 'lucide:shield' },
+                    { label: 'Campaign Creator', href: '/campaigncreator', icon: 'lucide:flag' },
+                    { label: 'Comments', href: '/comments', icon: 'lucide:message-square' },
+                    { label: 'Local Scan', href: '/tools/localscan', icon: 'lucide:scan-search' },
+                    { label: 'D-Scan', href: '/tools/dscan', icon: 'lucide:radar' },
+                    { label: 'Legacy Kills', href: '/legacy', icon: 'lucide:archive' },
                 ],
             },
             {
@@ -64,7 +72,6 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
             {
                 label: 'Attacker Counts',
                 items: [
-                    { label: '1 Attacker (Non-solo)', href: '/kills/attackers-1' },
                     { label: '2–4 Attackers', href: '/kills/attackers-2-4' },
                     { label: '5–9 Attackers', href: '/kills/attackers-5-9' },
                     { label: '10–24 Attackers', href: '/kills/attackers-10-24' },
@@ -160,22 +167,6 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
                     { label: 'Browse Fits', href: '/fits', icon: 'lucide:wrench' },
                     { label: 'Search Fits', href: '/fits/search', icon: 'lucide:search' },
                     { label: 'Create New Fit', href: '/fits/create', icon: 'lucide:plus' },
-                ],
-            },
-        ],
-    },
-    {
-        label: 'Tools', href: '/tools/localscan',
-        children: [
-            {
-                items: [
-                    { label: 'Advanced Search', href: '/advancedsearch', icon: 'lucide:search' },
-                    { label: 'Battle Generator', href: '/battlegenerator', icon: 'lucide:shield' },
-                    { label: 'Campaign Creator', href: '/campaigncreator', icon: 'lucide:flag' },
-                    { label: 'Comments', href: '/comments', icon: 'lucide:message-square' },
-                    { label: 'Local Scan', href: '/tools/localscan', icon: 'lucide:scan-search' },
-                    { label: 'D-Scan', href: '/tools/dscan', icon: 'lucide:radar' },
-                    { label: 'Legacy Kills', href: '/legacy', icon: 'lucide:archive' },
                 ],
             },
         ],

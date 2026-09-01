@@ -85583,8 +85583,13 @@
             "schema": {
               "default": "all_time",
               "enum": [
+                "hourly",
                 "weekly",
+                "fourteen_days",
+                "thirty_days",
                 "ninety_days",
+                "one_eighty_days",
+                "one_year",
                 "all_time"
               ],
               "type": "string"

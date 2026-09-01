@@ -188,7 +188,8 @@ const inputClass = 'w-full rounded border border-white/[0.08] bg-white/[0.03] px
 
 <template>
     <div>
-        <h1 class="text-xl font-bold text-white mb-4">Legacy Kills</h1>
+        <PageHeader class="mb-4" title="Legacy Kills" eyebrow="The old days of EVE" icon="lucide:archive"
+            description="Explore the manually posted killmail archive from before XMLAPI, CREST, and ESI. This historical collection is isolated from modern statistics." />
 
         <!-- Nostalgia box -->
         <div class="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-5 py-4 mb-6 space-y-2">

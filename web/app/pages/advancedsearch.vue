@@ -1006,21 +1006,9 @@ const locationLabel = computed(() => {
 
 <template>
     <div>
-        <!-- Header -->
-        <div class="glass-panel p-5 mb-4">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="min-w-0">
-                    <h1 class="flex items-center gap-2.5 text-xl font-bold text-white">
-                        <span class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
-                            <Icon name="lucide:search-code" class="text-base text-blue-400" />
-                        </span>
-                        Advanced Search
-                    </h1>
-                    <p class="text-sm text-gray-500 mt-2 max-w-3xl">
-                        Build a query from pilots, corporations, alliances, ships, items and space, then narrow it by
-                        time, ISK and engagement size. Searches can be linked or saved.
-                    </p>
-                </div>
+        <PageHeader class="mb-4" title="Advanced Search" eyebrow="Build a killmail query" icon="lucide:search-code"
+            description="Build a query from pilots, corporations, alliances, ships, items and space, then narrow it by time, ISK and engagement size. Searches can be linked or saved.">
+            <template #actions>
             <div class="flex items-center gap-2 flex-shrink-0">
                 <!-- Copy URL -->
                 <button
@@ -1079,8 +1067,8 @@ const locationLabel = computed(() => {
                     </div>
                 </div>
             </div>
-            </div>
-        </div>
+            </template>
+        </PageHeader>
 
         <!-- Search Bar -->
         <div ref="searchContainer" class="relative mb-4">

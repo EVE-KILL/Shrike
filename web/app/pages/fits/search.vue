@@ -434,23 +434,14 @@ async function buildFitUrls(results: FitResult[]) {
 
 <template>
     <div>
-        <!-- ============================ Header ============================ -->
-        <section class="glass-panel p-6 mb-6">
-            <div class="flex items-start justify-between gap-4 flex-wrap">
-                <div class="max-w-2xl">
-                    <div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 mb-2">
-                        Fit Search
-                    </div>
-                    <h1 class="text-2xl font-bold text-white mb-2">
-                        Find killmail-derived fits by hull and modules
-                    </h1>
-                    <p class="text-sm text-gray-400 leading-relaxed">
+        <PageHeader class="mb-6" title="Find killmail-derived fits" eyebrow="Fit Search" icon="lucide:search">
+            <template #description>
                         Pick a ship, then add role filters like
                         <span class="text-blue-400/80">2 armor reps</span> or
                         <span class="text-blue-400/80">1 stasis webifier</span>. We surface the
                         most-flown matching fits from the last 90 days of killmails.
-                    </p>
-                </div>
+            </template>
+            <template #actions>
                 <NuxtLink
                     to="/fits"
                     class="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] rounded-md bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors"
@@ -458,8 +449,8 @@ async function buildFitUrls(results: FitResult[]) {
                     <Icon name="lucide:arrow-left" class="w-3.5 h-3.5" />
                     Back to Fits
                 </NuxtLink>
-            </div>
-        </section>
+            </template>
+        </PageHeader>
 
         <!-- ============================ Ship Picker ============================ -->
         <section class="mb-4">

@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+const (
+	firstPlayerCharacterID   int32 = 90_000_000
+	firstPlayerCorporationID int32 = 2_000_000
+)
+
+func isPlayerCharacter(id int32) bool   { return id >= firstPlayerCharacterID }
+func isPlayerCorporation(id int32) bool { return id >= firstPlayerCorporationID }
+
 // Turning one killmail into counter updates.
 //
 // The fan-out is large and worth being explicit about: a kill with fifty
@@ -138,7 +146,10 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 	var fbChar, fbCorp, fbAlliance, fbFaction int32
 
 	for _, at := range attackers {
-		if at.CharacterID != 0 {
+		// NPC participants have no player character identity, but ESI still
+		// supplies their corporation, faction, and hull. Do not manufacture
+		// public entity statistics for those NPC identities.
+		if isPlayerCharacter(at.CharacterID) {
 			charDamage[at.CharacterID] += at.DamageDone
 			if at.ShipTypeID != 0 {
 				charShip[at.CharacterID] = at.ShipTypeID
@@ -159,22 +170,24 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 			if at.ShipTypeID != 0 {
 				shipPoints[at.ShipTypeID] += at.Points
 			}
-		}
-		if at.CorporationID != 0 {
-			corps[at.CorporationID] = true
-		}
-		if at.AllianceID != 0 {
-			alliances[at.AllianceID] = true
-		}
-		if at.FactionID != 0 {
-			factions[at.FactionID] = true
-		}
-		if at.ShipTypeID != 0 {
-			shipTypes[at.ShipTypeID] = true
+			if isPlayerCorporation(at.CorporationID) {
+				corps[at.CorporationID] = true
+			}
+			if at.AllianceID != 0 {
+				alliances[at.AllianceID] = true
+			}
+			if at.FactionID != 0 {
+				factions[at.FactionID] = true
+			}
+			if at.ShipTypeID != 0 {
+				shipTypes[at.ShipTypeID] = true
+			}
 		}
 		if at.FinalBlow {
-			fbChar, fbCorp, fbAlliance, fbFaction = at.CharacterID, at.CorporationID,
-				at.AllianceID, at.FactionID
+			if isPlayerCharacter(at.CharacterID) {
+				fbChar, fbCorp, fbAlliance, fbFaction = at.CharacterID, at.CorporationID,
+					at.AllianceID, at.FactionID
+			}
 		}
 	}
 
@@ -248,7 +261,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 
 	// --- Victim-side headline counters ---
 
-	if id := km.VictimCharacterID; id != 0 {
+	if id := km.VictimCharacterID; isPlayerCharacter(id) {
 		r := a.stat(EntityCharacter, id)
 		r.Losses++
 		r.IskLost += v
@@ -268,7 +281,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		{EntityAlliance, km.VictimAllianceID},
 		{EntityFaction, km.VictimFactionID},
 	} {
-		if e.id == 0 {
+		if e.id == 0 || (e.t == EntityCorporation && !isPlayerCorporation(e.id)) {
 			continue
 		}
 		r := a.stat(e.t, e.id)

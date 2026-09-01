@@ -508,7 +508,7 @@ var operationQueryParameters = map[string][]*huma.Param{
 		),
 		enumQuery(
 			"window", "EVE-KILL ranking window.", "all_time",
-			"weekly", "ninety_days", "all_time",
+			"hourly", "weekly", "fourteen_days", "thirty_days", "ninety_days", "one_eighty_days", "one_year", "all_time",
 		),
 		enumQuery(
 			"rank",
