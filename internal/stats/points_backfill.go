@@ -72,7 +72,7 @@ func rebuildMonthPoints(ctx context.Context, pool *pgxpool.Pool, month time.Time
 	defer tx.Rollback(ctx) //nolint:errcheck
 	if _, err := tx.Exec(ctx, `
 		UPDATE stats SET points = 0
-		WHERE entity_type IN (0, 1, 2, 3, 7)
+		WHERE entity_type IN (0, 1, 2, 3, 4, 5, 6, 7)
 		  AND period_type = $1
 		  AND period_start >= $2::date AND period_start < $3::date`,
 		int16(periodType), month, next); err != nil {
@@ -81,8 +81,10 @@ func rebuildMonthPoints(ctx context.Context, pool *pgxpool.Pool, month time.Time
 	query := fmt.Sprintf(`
 		WITH scored AS MATERIALIZED (
 			SELECT character_id, corporation_id, alliance_id, faction_id,
-			       ship_type_id, points, %s AS period_start
+			       ship_type_id, k.solar_system_id, k.constellation_id,
+			       k.region_id, a.points, %s AS period_start
 			FROM killmail_attackers a
+			JOIN killmails k ON k.killmail_id = a.killmail_id
 			WHERE a.killmail_time >= $1 AND a.killmail_time < $2
 			  AND a.character_id IS NOT NULL AND a.points > 0
 		), per_entity AS (
@@ -97,6 +99,15 @@ func rebuildMonthPoints(ctx context.Context, pool *pgxpool.Pool, month time.Time
 			UNION ALL
 			SELECT 3, ship_type_id, period_start, sum(points)::bigint FROM scored
 			WHERE ship_type_id IS NOT NULL GROUP BY ship_type_id, period_start
+			UNION ALL
+			SELECT 4, solar_system_id, period_start, sum(points)::bigint FROM scored
+			WHERE solar_system_id IS NOT NULL GROUP BY solar_system_id, period_start
+			UNION ALL
+			SELECT 5, constellation_id, period_start, sum(points)::bigint FROM scored
+			WHERE constellation_id IS NOT NULL GROUP BY constellation_id, period_start
+			UNION ALL
+			SELECT 6, region_id, period_start, sum(points)::bigint FROM scored
+			WHERE region_id IS NOT NULL GROUP BY region_id, period_start
 			UNION ALL
 			SELECT 7, faction_id, period_start, sum(points)::bigint FROM scored
 			WHERE faction_id IS NOT NULL GROUP BY faction_id, period_start

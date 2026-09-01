@@ -15,9 +15,11 @@ const (
 	WindowAllTime
 )
 
-// Refresh atomically replaces every ranking window. Characters blend a 70%
-// combat percentile with a 30% achievement percentile. Entity types without
-// achievements use the full 0-1000 combat percentile.
+// Refresh atomically replaces every ranking window. EVE-KILL Rating is
+// deliberately open-ended: combat points are its base, and characters can
+// earn an achievement bonus of up to 3/7 of that base. This preserves the
+// intended 70/30 combat/achievement weighting without compressing every top
+// entity into the same 1000-point percentile bucket.
 func Refresh(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -48,7 +50,6 @@ func Refresh(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
 			), scored AS (
 				SELECT c.*,
 				       CASE WHEN c.entity_type = 0 THEN coalesce(ch.achievement_points, 0) ELSE 0 END::bigint AS achievement_points,
-				       percent_rank() OVER (PARTITION BY c.entity_type ORDER BY c.combat_points) AS combat_pct,
 				       CASE WHEN c.entity_type = 0 THEN percent_rank() OVER (
 				           PARTITION BY c.entity_type ORDER BY coalesce(ch.achievement_points, 0)
 				       ) END AS achievement_pct
@@ -56,8 +57,8 @@ func Refresh(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
 				LEFT JOIN characters ch ON c.entity_type = 0 AND ch.character_id = c.entity_id
 			), rated AS (
 				SELECT *, CASE WHEN entity_type = 0
-					THEN round(1000 * (0.7 * combat_pct + 0.3 * achievement_pct))
-					ELSE round(1000 * combat_pct)
+					THEN combat_points + round(combat_points * achievement_pct * 3 / 7)
+					ELSE combat_points
 				END::integer AS rating
 				FROM scored
 			), ranked AS (

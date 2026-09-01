@@ -9,12 +9,16 @@ const windows = [
 
 const entityType = ref('character')
 const rankingWindow = ref('all_time')
-const { data, pending } = await useFetch('/api/stats/rankings', {
-    query: computed(() => ({
+const { data, pending } = await useAsyncData(
+    'eve-kill-ranking-explorer',
+    () => $fetch('/api/stats/rankings', {
+      query: {
         section: 'eve-kill', entityType: entityType.value,
         window: rankingWindow.value, limit: 50,
-    })),
-})
+      },
+    }),
+    { watch: [entityType, rankingWindow] },
+)
 const entries = computed<any[]>(() => (data.value as any)?.entries || [])
 
 function entityLink(entry: any) {
@@ -35,7 +39,7 @@ useSeoMeta({
     <main class="max-w-6xl mx-auto px-4 py-6 space-y-5">
         <div>
             <h1 class="text-2xl font-bold text-white">EVE-KILL Rankings</h1>
-            <p class="text-sm text-gray-500 mt-1">Combat points are split by damage and participation. Character ratings blend 70% combat with 30% achievements.</p>
+            <p class="text-sm text-gray-500 mt-1">Combat points are split by damage and participation. Character ratings add an achievement bonus worth up to 30% of the combined rating.</p>
         </div>
 
         <div class="flex flex-wrap gap-2 justify-between">

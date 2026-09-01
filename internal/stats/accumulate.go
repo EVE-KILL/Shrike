@@ -133,6 +133,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 	alliancePoints := map[int32]int64{}
 	factionPoints := map[int32]int64{}
 	shipPoints := map[int32]int64{}
+	var locationPoints int64
 
 	var fbChar, fbCorp, fbAlliance, fbFaction int32
 
@@ -145,6 +146,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 			charCorp[at.CharacterID] = at.CorporationID
 			charAlliance[at.CharacterID] = at.AllianceID
 			charPoints[at.CharacterID] += at.Points
+			locationPoints += at.Points
 			if at.CorporationID != 0 {
 				corpPoints[at.CorporationID] += at.Points
 			}
@@ -295,6 +297,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		r := a.stat(EntitySystem, id)
 		r.Kills++
 		r.IskDestroyed += v
+		r.Points += locationPoints
 		if km.IsNPC {
 			r.NPCLosses++
 		}
@@ -312,6 +315,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		r := a.stat(e.t, e.id)
 		r.Kills++
 		r.IskDestroyed += v
+		r.Points += locationPoints
 	}
 
 	// --- Attacker-side breakdowns ---

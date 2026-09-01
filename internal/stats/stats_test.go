@@ -386,6 +386,10 @@ func TestLocationsCountKills(t *testing.T) {
 			t.Errorf("entity type %d counted %d losses — locations count kills only",
 				e.t, r.Losses)
 		}
+		if r.Points != km.Points {
+			t.Errorf("entity type %d counted %d points, want conserved pool %d",
+				e.t, r.Points, km.Points)
+		}
 	}
 }
 
