@@ -132,15 +132,15 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 function onFullscreenCommandKeydown(e: KeyboardEvent) {
-    if (!workspaceExpanded.value) return;
     const target = e.target as HTMLElement | null;
     const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
-    if (!isTyping && e.key === "?") {
+    if (!isTyping && isFitShortcutHelpKey(e)) {
         e.preventDefault();
         e.stopImmediatePropagation();
         showShortcutHelp.value = !showShortcutHelp.value;
         return;
     }
+    if (!workspaceExpanded.value) return;
     if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "k") return;
     e.preventDefault();
     e.stopImmediatePropagation();
