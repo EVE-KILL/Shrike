@@ -10,12 +10,19 @@ const beforeId = ref<number | undefined>()
 const selected = ref<RiverJob | null>(null)
 const busy = ref('')
 
-const { data: overview, refresh: refreshOverview } = await useApiFetch<{ queues: RiverQueue[] }>('/api/admin/river', { lazy: true })
-const { data: jobs, refresh: refreshJobs } = await useApiFetch<{ jobs: RiverJob[]; next_before_id: number }>('/api/admin/river/jobs', {
+// Start both requests before awaiting either one. On client-side tab changes
+// this lets the queue overview and job table paint together instead of making
+// the much larger job query block the operational summary.
+const overviewRequest = useApiFetch<{ queues: RiverQueue[] }>('/api/admin/river', { lazy: true })
+const jobsRequest = useApiFetch<{ jobs: RiverJob[]; next_before_id: number }>('/api/admin/river/jobs', {
     query: { queue: queueFilter, state: stateFilter, before_id: beforeId, limit: 100 },
     lazy: true,
     watch: [queueFilter, stateFilter, beforeId],
 })
+const [
+    { data: overview, refresh: refreshOverview, pending: overviewPending },
+    { data: jobs, refresh: refreshJobs, pending: jobsPending },
+] = await Promise.all([overviewRequest, jobsRequest])
 
 watch([queueFilter, stateFilter], () => { beforeId.value = undefined })
 
@@ -25,6 +32,8 @@ const pending = (q: RiverQueue) => q.depth.available + q.depth.running + q.depth
 const stamp = (value?: string | null) => value ? new Date(value).toLocaleString() : '—'
 const json = (value: unknown) => JSON.stringify(value, null, 2)
 const stateClass = (state: string) => ({ completed: 'text-green-400', running: 'text-blue-400', discarded: 'text-red-400', retryable: 'text-yellow-400', cancelled: 'text-gray-500', available: 'text-cyan-400', scheduled: 'text-purple-400' }[state] ?? 'text-gray-400')
+
+onKeyStroke('Escape', () => { selected.value = null })
 
 async function reload() { await Promise.all([refreshOverview(), refreshJobs()]) }
 
@@ -68,7 +77,7 @@ async function jobAction(job: RiverJob, action: 'cancel' | 'retry' | 'delete') {
     <div class="space-y-5">
         <div class="flex items-center justify-between">
             <div><h2 class="text-lg font-bold text-white">River Operations</h2><p class="text-xs text-gray-500 mt-1">Queue workers, cron runs, inputs, outcomes, retries, and controls.</p></div>
-            <button class="px-3 py-2 rounded-lg bg-white/[0.05] text-xs text-gray-300 hover:text-blue-400 cursor-pointer" @click="reload"><Icon name="lucide:refresh-cw" class="mr-1" /> Refresh</button>
+            <button class="px-3 py-2 rounded-lg bg-white/[0.05] text-xs text-gray-300 hover:text-blue-400 cursor-pointer" @click="reload"><Icon name="lucide:refresh-cw" class="mr-1" :class="{ 'animate-spin': overviewPending || jobsPending }" /> Refresh</button>
         </div>
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -97,6 +106,58 @@ async function jobAction(job: RiverJob, action: 'cancel' | 'retry' | 'delete') {
             <div v-if="jobs?.next_before_id" class="p-3 border-t border-white/[0.06] text-center"><button class="text-xs text-blue-400 cursor-pointer" @click="beforeId = jobs!.next_before_id">Older jobs</button></div>
         </div>
 
-        <Teleport to="body"><div v-if="selected" class="fixed inset-0 z-50 bg-black/70 p-4 overflow-y-auto" @click.self="selected = null"><div class="max-w-3xl mx-auto my-8 glass-panel p-5 space-y-4"><div class="flex justify-between"><div><h3 class="font-bold text-white">Job {{ selected.id }}</h3><p class="text-xs text-gray-500">{{ selected.queue }} / {{ selected.kind }}</p></div><button class="text-gray-500 cursor-pointer" @click="selected = null"><Icon name="lucide:x" /></button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs"><div><span class="text-gray-600">State</span><div :class="stateClass(selected.state)">{{ selected.state }}</div></div><div><span class="text-gray-600">Attempt</span><div class="text-white">{{ selected.attempt }}/{{ selected.max_attempts }}</div></div><div><span class="text-gray-600">Scheduled</span><div class="text-white">{{ stamp(selected.scheduled_at) }}</div></div><div><span class="text-gray-600">Finalized</span><div class="text-white">{{ stamp(selected.finalized_at) }}</div></div></div><div><h4 class="text-fine uppercase text-gray-500 mb-1">Input arguments</h4><pre class="p-3 rounded bg-black/30 text-xs text-gray-300 overflow-auto">{{ json(selected.args) }}</pre></div><div><h4 class="text-fine uppercase text-gray-500 mb-1">Output</h4><pre class="p-3 rounded bg-black/30 text-xs text-gray-300 overflow-auto">{{ selected.output == null ? 'No durable output recorded' : json(selected.output) }}</pre></div><div v-if="selected.errors?.length"><h4 class="text-fine uppercase text-red-400 mb-1">Errors</h4><pre class="p-3 rounded bg-red-500/5 text-xs text-red-300 overflow-auto">{{ json(selected.errors) }}</pre></div><div><h4 class="text-fine uppercase text-gray-500 mb-1">Worker IDs</h4><div class="font-mono text-xs text-gray-400 break-all">{{ selected.attempted_by?.join(', ') || '—' }}</div></div></div></div></Teleport>
+        <Teleport to="body">
+            <div
+                v-if="selected"
+                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                :aria-label="`River job ${selected.id}`"
+                @click.self="selected = null"
+            >
+                <div class="flex max-h-[calc(100vh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/80 sm:max-h-[calc(100vh-3rem)]">
+                    <div class="flex shrink-0 items-start justify-between border-b border-white/[0.08] px-5 py-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-mono text-base font-bold text-white">Job {{ selected.id }}</h3>
+                                <span class="rounded px-2 py-0.5 text-fine font-semibold uppercase bg-white/[0.05]" :class="stateClass(selected.state)">{{ selected.state }}</span>
+                            </div>
+                            <p class="mt-1 font-mono text-xs text-gray-500">{{ selected.queue }} / {{ selected.kind }}</p>
+                        </div>
+                        <button class="rounded-lg p-2 text-gray-500 hover:bg-white/[0.06] hover:text-white cursor-pointer" aria-label="Close job inspector" @click="selected = null"><Icon name="lucide:x" /></button>
+                    </div>
+
+                    <div class="overflow-y-auto p-5 space-y-5">
+                        <div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-white/[0.07] bg-white/[0.07] md:grid-cols-4">
+                            <div class="bg-zinc-950 p-3"><span class="text-fine font-semibold uppercase tracking-wider text-gray-600">Attempt</span><div class="mt-1 text-sm text-white">{{ selected.attempt }}/{{ selected.max_attempts }}</div></div>
+                            <div class="bg-zinc-950 p-3"><span class="text-fine font-semibold uppercase tracking-wider text-gray-600">Priority</span><div class="mt-1 text-sm text-white">{{ selected.priority }}</div></div>
+                            <div class="bg-zinc-950 p-3"><span class="text-fine font-semibold uppercase tracking-wider text-gray-600">Scheduled</span><div class="mt-1 text-xs text-gray-300">{{ stamp(selected.scheduled_at) }}</div></div>
+                            <div class="bg-zinc-950 p-3"><span class="text-fine font-semibold uppercase tracking-wider text-gray-600">Finalized</span><div class="mt-1 text-xs text-gray-300">{{ stamp(selected.finalized_at) }}</div></div>
+                        </div>
+
+                        <div class="grid gap-4 lg:grid-cols-2">
+                            <section class="min-w-0">
+                                <h4 class="mb-2 text-fine font-semibold uppercase tracking-wider text-gray-500">Input arguments</h4>
+                                <pre class="max-h-80 overflow-auto rounded-lg border border-white/[0.06] bg-black p-4 text-xs leading-5 text-gray-300">{{ json(selected.args) }}</pre>
+                            </section>
+                            <section class="min-w-0">
+                                <h4 class="mb-2 text-fine font-semibold uppercase tracking-wider text-gray-500">Output</h4>
+                                <pre class="max-h-80 overflow-auto rounded-lg border border-white/[0.06] bg-black p-4 text-xs leading-5 text-gray-300">{{ selected.output == null ? 'No durable output recorded' : json(selected.output) }}</pre>
+                            </section>
+                        </div>
+
+                        <section v-if="selected.errors?.length">
+                            <h4 class="mb-2 text-fine font-semibold uppercase tracking-wider text-red-400">Errors</h4>
+                            <pre class="max-h-80 overflow-auto rounded-lg border border-red-500/15 bg-red-500/[0.05] p-4 text-xs leading-5 text-red-300">{{ json(selected.errors) }}</pre>
+                        </section>
+
+                        <section>
+                            <h4 class="mb-2 text-fine font-semibold uppercase tracking-wider text-gray-500">Worker IDs</h4>
+                            <div class="break-all rounded-lg border border-white/[0.06] bg-black px-4 py-3 font-mono text-xs text-gray-400">{{ selected.attempted_by?.join(', ') || 'Not attempted yet' }}</div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>
