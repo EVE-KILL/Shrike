@@ -11704,6 +11704,313 @@ export type AdminOverviewResponses = {
 
 export type AdminOverviewResponse = AdminOverviewResponses[keyof AdminOverviewResponses];
 
+export type AdminRiverOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/river';
+};
+
+export type AdminRiverOverviewResponses = {
+    /**
+     * OK
+     */
+    200: {
+        queues: Array<{
+            concurrency?: number;
+            cron?: boolean;
+            /**
+             * Counts by River job state.
+             */
+            depth?: {
+                [key: string]: unknown;
+            };
+            description?: string;
+            name?: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            paused_at?: string | null;
+            worker_active?: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            worker_updated_at?: string | null;
+            [key: string]: unknown;
+        }>;
+    };
+};
+
+export type AdminRiverOverviewResponse = AdminRiverOverviewResponses[keyof AdminRiverOverviewResponses];
+
+export type AdminRiverJobsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Restrict jobs to one River queue.
+         */
+        queue?: string;
+        /**
+         * Restrict jobs to one River state.
+         */
+        state?: 'available' | 'cancelled' | 'completed' | 'discarded' | 'pending' | 'retryable' | 'running' | 'scheduled';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Return jobs below this River job ID.
+         */
+        before_id?: number;
+    };
+    url: '/admin/river/jobs';
+};
+
+export type AdminRiverJobsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        jobs: Array<{
+            /**
+             * Job input arguments.
+             */
+            args: {
+                [key: string]: unknown;
+            };
+            attempt: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            attempted_at?: string | null;
+            attempted_by: Array<string>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            errors: Array<{
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finalized_at?: string | null;
+            id: number;
+            kind: string;
+            max_attempts: number;
+            /**
+             * River and application job metadata.
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Durable worker output, when recorded.
+             */
+            output?: {
+                [key: string]: unknown;
+            } | null;
+            priority: number;
+            queue: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            scheduled_at: string;
+            state: string;
+            tags: Array<string>;
+        }>;
+        next_before_id: number;
+    };
+};
+
+export type AdminRiverJobsResponse = AdminRiverJobsResponses[keyof AdminRiverJobsResponses];
+
+export type AdminRiverJobData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin/river/jobs/{id}';
+};
+
+export type AdminRiverJobResponses = {
+    /**
+     * OK
+     */
+    200: {
+        job: {
+            /**
+             * Job input arguments.
+             */
+            args: {
+                [key: string]: unknown;
+            };
+            attempt: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            attempted_at?: string | null;
+            attempted_by: Array<string>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            errors: Array<{
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finalized_at?: string | null;
+            id: number;
+            kind: string;
+            max_attempts: number;
+            /**
+             * River and application job metadata.
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Durable worker output, when recorded.
+             */
+            output?: {
+                [key: string]: unknown;
+            } | null;
+            priority: number;
+            queue: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            scheduled_at: string;
+            state: string;
+            tags: Array<string>;
+        };
+    };
+};
+
+export type AdminRiverJobResponse = AdminRiverJobResponses[keyof AdminRiverJobResponses];
+
+export type AdminRiverJobActionData = {
+    body: {
+        /**
+         * Job control action.
+         */
+        action: 'cancel' | 'retry' | 'delete';
+    };
+    path?: never;
+    query?: never;
+    url: '/admin/river/jobs/{id}/action';
+};
+
+export type AdminRiverJobActionResponses = {
+    /**
+     * OK
+     */
+    200: {
+        action: string;
+        job: {
+            /**
+             * Job input arguments.
+             */
+            args: {
+                [key: string]: unknown;
+            };
+            attempt: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            attempted_at?: string | null;
+            attempted_by: Array<string>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            errors: Array<{
+                [key: string]: unknown;
+            }>;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            finalized_at?: string | null;
+            id: number;
+            kind: string;
+            max_attempts: number;
+            /**
+             * River and application job metadata.
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Durable worker output, when recorded.
+             */
+            output?: {
+                [key: string]: unknown;
+            } | null;
+            priority: number;
+            queue: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            scheduled_at: string;
+            state: string;
+            tags: Array<string>;
+        };
+    };
+};
+
+export type AdminRiverJobActionResponse = AdminRiverJobActionResponses[keyof AdminRiverJobActionResponses];
+
+export type AdminRiverQueueActionData = {
+    body: {
+        /**
+         * Queue control action.
+         */
+        action: 'pause' | 'resume';
+    };
+    path?: never;
+    query?: never;
+    url: '/admin/river/queues/{name}/action';
+};
+
+export type AdminRiverQueueActionResponses = {
+    /**
+     * OK
+     */
+    200: {
+        action: string;
+        queue: string;
+    };
+};
+
+export type AdminRiverQueueActionResponse = AdminRiverQueueActionResponses[keyof AdminRiverQueueActionResponses];
+
+export type AdminRiverQueueClearData = {
+    body: {
+        limit?: number;
+        /**
+         * Final or waiting states to delete. Running jobs cannot be cleared.
+         */
+        states: Array<string> | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/admin/river/queues/{name}/clear';
+};
+
+export type AdminRiverQueueClearResponses = {
+    /**
+     * OK
+     */
+    200: {
+        deleted: number;
+        queue: string;
+    };
+};
+
+export type AdminRiverQueueClearResponse = AdminRiverQueueClearResponses[keyof AdminRiverQueueClearResponses];
+
 export type AdminUsersListData = {
     body?: never;
     path?: never;

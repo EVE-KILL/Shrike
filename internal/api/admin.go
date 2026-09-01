@@ -57,6 +57,30 @@ func registerAdminRoutes(a huma.API, opts Options) {
 			"admin-esi-entities", http.MethodGet, "/admin/esi-entities",
 			"Search entities with ESI request logs", service.esiEntitiesHandler(),
 		},
+		{
+			"admin-river-overview", http.MethodGet, "/admin/river",
+			"River queues and workers", service.riverOverviewHandler(),
+		},
+		{
+			"admin-river-jobs", http.MethodGet, "/admin/river/jobs",
+			"List River jobs", service.riverJobsHandler(),
+		},
+		{
+			"admin-river-job", http.MethodGet, "/admin/river/jobs/{id}",
+			"Get a River job", service.riverJobHandler(),
+		},
+		{
+			"admin-river-job-action", http.MethodPost, "/admin/river/jobs/{id}/action",
+			"Cancel, retry, or delete a River job", service.riverJobActionHandler(),
+		},
+		{
+			"admin-river-queue-action", http.MethodPost, "/admin/river/queues/{name}/action",
+			"Pause or resume a River queue", service.riverQueueActionHandler(),
+		},
+		{
+			"admin-river-queue-clear", http.MethodPost, "/admin/river/queues/{name}/clear",
+			"Delete matching jobs from a River queue", service.riverClearHandler(),
+		},
 	} {
 		operation := huma.Operation{
 			OperationID: route.id,
@@ -66,8 +90,15 @@ func registerAdminRoutes(a huma.API, opts Options) {
 			Tags:        []string{"admin"},
 			Security:    requiredSession,
 		}
-		if route.id == "admin-users-set-discord" {
+		switch route.id {
+		case "admin-users-set-discord":
 			operation = documentJSONBody[adminSetDiscordDocument](a, operation)
+		case "admin-river-job-action":
+			operation = documentJSONBody[adminRiverJobActionBody](a, operation)
+		case "admin-river-queue-action":
+			operation = documentJSONBody[adminRiverQueueActionBody](a, operation)
+		case "admin-river-queue-clear":
+			operation = documentJSONBody[adminRiverClearBody](a, operation)
 		}
 		registerLegacy(a, operation, route.handler)
 	}

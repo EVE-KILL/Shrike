@@ -29339,6 +29339,746 @@
         "x-audience": "admin"
       }
     },
+    "/admin/river": {
+      "get": {
+        "operationId": "admin-river-overview",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "queues": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "concurrency": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "cron": {
+                            "type": "boolean"
+                          },
+                          "depth": {
+                            "additionalProperties": true,
+                            "description": "Counts by River job state.",
+                            "type": "object"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "paused_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "worker_active": {
+                            "type": "boolean"
+                          },
+                          "worker_updated_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "queues"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "River queues and workers",
+        "tags": [
+          "admin-river",
+          "admin"
+        ],
+        "x-audience": "admin"
+      }
+    },
+    "/admin/river/jobs": {
+      "get": {
+        "operationId": "admin-river-jobs",
+        "parameters": [
+          {
+            "description": "Restrict jobs to one River queue.",
+            "in": "query",
+            "name": "queue",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Restrict jobs to one River state.",
+            "in": "query",
+            "name": "state",
+            "schema": {
+              "enum": [
+                "available",
+                "cancelled",
+                "completed",
+                "discarded",
+                "pending",
+                "retryable",
+                "running",
+                "scheduled"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum results to return.",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Return jobs below this River job ID.",
+            "in": "query",
+            "name": "before_id",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "jobs": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "args": {
+                            "additionalProperties": true,
+                            "description": "Job input arguments.",
+                            "type": "object"
+                          },
+                          "attempt": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "attempted_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "attempted_by": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          },
+                          "created_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "errors": {
+                            "items": {
+                              "additionalProperties": true,
+                              "description": "A failed attempt.",
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "finalized_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "max_attempts": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "metadata": {
+                            "additionalProperties": true,
+                            "description": "River and application job metadata.",
+                            "type": "object"
+                          },
+                          "output": {
+                            "additionalProperties": true,
+                            "description": "Durable worker output, when recorded.",
+                            "type": [
+                              "object",
+                              "null"
+                            ]
+                          },
+                          "priority": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "queue": {
+                            "type": "string"
+                          },
+                          "scheduled_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "tags": {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "state",
+                          "attempt",
+                          "max_attempts",
+                          "priority",
+                          "queue",
+                          "kind",
+                          "created_at",
+                          "scheduled_at",
+                          "attempted_by",
+                          "tags",
+                          "args",
+                          "errors",
+                          "metadata"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "next_before_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "jobs",
+                    "next_before_id"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "List River jobs",
+        "tags": [
+          "admin-river",
+          "admin"
+        ],
+        "x-audience": "admin"
+      }
+    },
+    "/admin/river/jobs/{id}": {
+      "get": {
+        "operationId": "admin-river-job",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "job": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "args": {
+                          "additionalProperties": true,
+                          "description": "Job input arguments.",
+                          "type": "object"
+                        },
+                        "attempt": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "attempted_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "attempted_by": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "created_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "errors": {
+                          "items": {
+                            "additionalProperties": true,
+                            "description": "A failed attempt.",
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "finalized_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "max_attempts": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "metadata": {
+                          "additionalProperties": true,
+                          "description": "River and application job metadata.",
+                          "type": "object"
+                        },
+                        "output": {
+                          "additionalProperties": true,
+                          "description": "Durable worker output, when recorded.",
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "priority": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "queue": {
+                          "type": "string"
+                        },
+                        "scheduled_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        },
+                        "tags": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "state",
+                        "attempt",
+                        "max_attempts",
+                        "priority",
+                        "queue",
+                        "kind",
+                        "created_at",
+                        "scheduled_at",
+                        "attempted_by",
+                        "tags",
+                        "args",
+                        "errors",
+                        "metadata"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "job"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Get a River job",
+        "tags": [
+          "admin-river",
+          "admin"
+        ],
+        "x-audience": "admin"
+      }
+    },
+    "/admin/river/jobs/{id}/action": {
+      "post": {
+        "operationId": "admin-river-job-action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Job control action.",
+                    "enum": [
+                      "cancel",
+                      "retry",
+                      "delete"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "type": "string"
+                    },
+                    "job": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "args": {
+                          "additionalProperties": true,
+                          "description": "Job input arguments.",
+                          "type": "object"
+                        },
+                        "attempt": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "attempted_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "attempted_by": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "created_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "errors": {
+                          "items": {
+                            "additionalProperties": true,
+                            "description": "A failed attempt.",
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "finalized_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "kind": {
+                          "type": "string"
+                        },
+                        "max_attempts": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "metadata": {
+                          "additionalProperties": true,
+                          "description": "River and application job metadata.",
+                          "type": "object"
+                        },
+                        "output": {
+                          "additionalProperties": true,
+                          "description": "Durable worker output, when recorded.",
+                          "type": [
+                            "object",
+                            "null"
+                          ]
+                        },
+                        "priority": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "queue": {
+                          "type": "string"
+                        },
+                        "scheduled_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        },
+                        "tags": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "state",
+                        "attempt",
+                        "max_attempts",
+                        "priority",
+                        "queue",
+                        "kind",
+                        "created_at",
+                        "scheduled_at",
+                        "attempted_by",
+                        "tags",
+                        "args",
+                        "errors",
+                        "metadata"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "job",
+                    "action"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Cancel, retry, or delete a River job",
+        "tags": [
+          "admin-river",
+          "admin"
+        ],
+        "x-audience": "admin"
+      }
+    },
+    "/admin/river/queues/{name}/action": {
+      "post": {
+        "operationId": "admin-river-queue-action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "description": "Queue control action.",
+                    "enum": [
+                      "pause",
+                      "resume"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "type": "string"
+                    },
+                    "queue": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "queue",
+                    "action"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Pause or resume a River queue",
+        "tags": [
+          "admin-river",
+          "admin"
+        ],
+        "x-audience": "admin"
+      }
+    },
+    "/admin/river/queues/{name}/clear": {
+      "post": {
+        "operationId": "admin-river-queue-clear",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "limit": {
+                    "default": 1000,
+                    "format": "int64",
+                    "maximum": 10000,
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "states": {
+                    "description": "Final or waiting states to delete. Running jobs cannot be cleared.",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "states"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "deleted": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "queue": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "queue",
+                    "deleted"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Delete matching jobs from a River queue",
+        "tags": [
+          "admin-river",
+          "admin"
+        ],
+        "x-audience": "admin"
+      }
+    },
     "/admin/users": {
       "get": {
         "operationId": "admin-users-list",
@@ -97270,6 +98010,10 @@
       "name": "admin-moderation"
     },
     {
+      "description": "River workers, queues, job history, and operational controls.",
+      "name": "admin-river"
+    },
+    {
       "description": "User accounts, roles, and Discord links.",
       "name": "admin-users"
     },
@@ -97395,6 +98139,7 @@
         "admin-domains",
         "admin-esi",
         "admin-moderation",
+        "admin-river",
         "admin-users",
         "admin-wallet"
       ]

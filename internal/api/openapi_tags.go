@@ -44,7 +44,7 @@ var tagGroups = []tagGroup{
 	{"Administration", []string{
 		"admin", "admin-announcements", "admin-blog", "admin-campaigns",
 		"admin-comments", "admin-domains", "admin-esi", "admin-moderation",
-		"admin-users", "admin-wallet",
+		"admin-river", "admin-users", "admin-wallet",
 	}},
 	{"Platform", []string{
 		"health", "feed", "images", "domains", "sitemap", "site", "search",
@@ -64,6 +64,7 @@ var tagDescriptions = map[string]string{
 	"admin-domains":       "Custom-domain configuration, theming, and asset management.",
 	"admin-esi":           "ESI integration health: entity coverage and request logs.",
 	"admin-moderation":    "The moderation queue and its decisions.",
+	"admin-river":         "River workers, queues, job history, and operational controls.",
 	"admin-users":         "User accounts, roles, and Discord links.",
 	"admin-wallet":        "Campaign prize wallets and payout authorization.",
 	"custom":              "Killboard reads scoped to a custom-domain killboard.",

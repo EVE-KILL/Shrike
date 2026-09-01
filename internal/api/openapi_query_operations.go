@@ -844,6 +844,13 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"admin-esi-entities": {
 		textQuery("q", "Entity name or ID search."),
 	},
+	"admin-river-jobs": {
+		textQuery("queue", "Restrict jobs to one River queue."),
+		enumQuery("state", "Restrict jobs to one River state.", "",
+			"available", "cancelled", "completed", "discarded", "pending", "retryable", "running", "scheduled"),
+		limitQuery(50, 1, 200),
+		intQuery("before_id", "Return jobs below this River job ID."),
+	},
 	"admin-comments":                    {moderationFilterQuery(), limitQuery(50, 1, 200)},
 	"admin-comments-live-queue-alias":   {moderationFilterQuery(), limitQuery(50, 1, 200)},
 	"admin-moderation":                  moderationQueueParams(),

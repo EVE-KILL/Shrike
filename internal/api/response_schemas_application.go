@@ -114,6 +114,29 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 				"id": intSchema(), "name": stringSchema(), "type": stringSchema(),
 			}, "id", "name", "type")),
 		}, "results")
+	case "admin-river-overview":
+		return responseSchema(map[string]*huma.Schema{
+			"queues": arraySchema(riverQueueSchema()),
+		}, "queues")
+	case "admin-river-jobs":
+		return responseSchema(map[string]*huma.Schema{
+			"jobs":           arraySchema(riverJobSchema()),
+			"next_before_id": intSchema(),
+		}, "jobs", "next_before_id")
+	case "admin-river-job":
+		return responseSchema(map[string]*huma.Schema{"job": riverJobSchema()}, "job")
+	case "admin-river-job-action":
+		return responseSchema(map[string]*huma.Schema{
+			"job": riverJobSchema(), "action": stringSchema(),
+		}, "job", "action")
+	case "admin-river-queue-action":
+		return responseSchema(map[string]*huma.Schema{
+			"queue": stringSchema(), "action": stringSchema(),
+		}, "queue", "action")
+	case "admin-river-queue-clear":
+		return responseSchema(map[string]*huma.Schema{
+			"queue": stringSchema(), "deleted": intSchema(),
+		}, "queue", "deleted")
 
 	// Killboard and killmail compatibility endpoints.
 	case "killlist-advanced",
@@ -574,6 +597,30 @@ func openJSONObjectSchema(description string) *huma.Schema {
 		Description:          description,
 		AdditionalProperties: true,
 	}
+}
+
+func riverJobSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"id": intSchema(), "state": stringSchema(), "attempt": intSchema(),
+		"max_attempts": intSchema(), "priority": intSchema(), "queue": stringSchema(),
+		"kind": stringSchema(), "created_at": timestampSchema(),
+		"scheduled_at": timestampSchema(), "attempted_at": nullable(timestampSchema()),
+		"finalized_at": nullable(timestampSchema()), "attempted_by": arraySchema(stringSchema()),
+		"tags": arraySchema(stringSchema()), "args": openJSONObjectSchema("Job input arguments."),
+		"errors":   arraySchema(openJSONObjectSchema("A failed attempt.")),
+		"metadata": openJSONObjectSchema("River and application job metadata."),
+		"output":   nullable(openJSONObjectSchema("Durable worker output, when recorded.")),
+	}, "id", "state", "attempt", "max_attempts", "priority", "queue", "kind",
+		"created_at", "scheduled_at", "attempted_by", "tags", "args", "errors", "metadata")
+}
+
+func riverQueueSchema() *huma.Schema {
+	return recordSchema(map[string]*huma.Schema{
+		"name": stringSchema(), "depth": openJSONObjectSchema("Counts by River job state."),
+		"cron": boolSchema(), "concurrency": intSchema(), "description": stringSchema(),
+		"paused_at": nullable(timestampSchema()), "worker_updated_at": nullable(timestampSchema()),
+		"worker_active": boolSchema(),
+	})
 }
 
 func accountUserSchema() *huma.Schema {

@@ -67,6 +67,11 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[queue.CronArgs]) error
 	if declared.RequiresTQ {
 		offline, err := queue.TQIsOffline(ctx, w.Redis)
 		if err == nil && offline {
+			_ = river.RecordOutput(ctx, map[string]any{
+				"status":  "skipped",
+				"report":  "Tranquility is offline",
+				"skipped": true,
+			})
 			if w.OnRun != nil {
 				w.OnRun(Run{Name: name, Skipped: true, Report: "Tranquility is offline"})
 			}
@@ -77,6 +82,14 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[queue.CronArgs]) error
 	start := time.Now()
 	report, err := handler(ctx)
 	elapsed := time.Since(start)
+	if err == nil {
+		_ = river.RecordOutput(ctx, map[string]any{
+			"status":      "completed",
+			"report":      report,
+			"skipped":     false,
+			"duration_ms": elapsed.Milliseconds(),
+		})
+	}
 
 	if w.OnRun != nil {
 		w.OnRun(Run{Name: name, Report: report, Elapsed: elapsed, Err: err})

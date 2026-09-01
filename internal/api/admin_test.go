@@ -28,6 +28,12 @@ func TestAdminRoutesRegisterWithRequiredSessionSecurity(t *testing.T) {
 		{http.MethodGet, "/admin/esi"},
 		{http.MethodGet, "/admin/esi-logs"},
 		{http.MethodGet, "/admin/esi-entities"},
+		{http.MethodGet, "/admin/river"},
+		{http.MethodGet, "/admin/river/jobs"},
+		{http.MethodGet, "/admin/river/jobs/{id}"},
+		{http.MethodPost, "/admin/river/jobs/{id}/action"},
+		{http.MethodPost, "/admin/river/queues/{name}/action"},
+		{http.MethodPost, "/admin/river/queues/{name}/clear"},
 	} {
 		item := a.OpenAPI().Paths[route.path]
 		if item == nil {

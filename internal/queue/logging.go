@@ -49,6 +49,14 @@ func (m *jobLogMiddleware) Work(
 	elapsed := time.Since(started)
 
 	if err == nil {
+		// River persists this under metadata.output when the job is finalized.
+		// Queue handlers don't currently return domain-specific values, so keep
+		// a small durable outcome alongside the existing args/timing instead of
+		// leaving successful jobs with log-only evidence.
+		_ = river.RecordOutput(ctx, map[string]any{
+			"status":      "completed",
+			"duration_ms": elapsed.Milliseconds(),
+		})
 		logger.Info().Dur("duration", elapsed).Msg("job completed")
 		return nil
 	}

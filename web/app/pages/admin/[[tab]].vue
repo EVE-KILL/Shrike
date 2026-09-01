@@ -10,6 +10,7 @@ import AdminEsi from '~/components/admin/Esi.vue'
 import AdminWallet from '~/components/admin/CorporationWallet.vue'
 import AdminAnnouncements from '~/components/admin/Announcements.vue'
 import AdminBlog from '~/components/admin/Blog.vue'
+import AdminRiver from '~/components/admin/River.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,6 +36,7 @@ const sections = [
     { id: 'moderation', label: 'Moderation', icon: 'lucide:shield-check' },
     { id: 'comments', label: 'Comments', icon: 'lucide:message-square' },
     { id: 'esi', label: 'ESI Monitoring', icon: 'lucide:activity' },
+    { id: 'river', label: 'River Workers', icon: 'lucide:list-restart' },
     { id: 'wallet', label: 'Wallet', icon: 'lucide:wallet-cards' },
     { id: 'announcements', label: 'Announcements', icon: 'lucide:megaphone' },
     { id: 'blog', label: 'Blog', icon: 'lucide:newspaper' },
@@ -63,6 +65,7 @@ const sectionComponents: Record<SectionId, Component> = {
     moderation: AdminModeration,
     comments: AdminComments,
     esi: AdminEsi,
+    river: AdminRiver,
     wallet: AdminWallet,
     announcements: AdminAnnouncements,
     blog: AdminBlog,
