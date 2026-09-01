@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -217,5 +218,16 @@ func TestStatsRankingPayloadAlwaysUsesAnArray(t *testing.T) {
 	entries, ok := body["entries"].([]map[string]any)
 	if !ok || entries == nil || len(entries) != 0 {
 		t.Fatalf("entries = %#v, want stable []", body["entries"])
+	}
+}
+
+func TestSystemRankingUsesSolarSystemPrimaryKey(t *testing.T) {
+	source, err := os.ReadFile("stats_rankings.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source),
+		"solar_systems e ON e.solar_system_id = r.entity_id") {
+		t.Fatal("system ranking does not join through solar_system_id")
 	}
 }

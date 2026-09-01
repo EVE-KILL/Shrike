@@ -145,7 +145,7 @@ func queryEveKillRankings(ctx context.Context, db Database, entityType, window s
 		"corporation": "LEFT JOIN corporations e ON e.corporation_id = r.entity_id",
 		"alliance":    "LEFT JOIN alliances e ON e.alliance_id = r.entity_id",
 		"ship":        "LEFT JOIN inv_types e ON e.type_id = r.entity_id",
-		"system":      "LEFT JOIN solar_systems e ON e.system_id = r.entity_id",
+		"system":      "LEFT JOIN solar_systems e ON e.solar_system_id = r.entity_id",
 		"region":      "LEFT JOIN regions e ON e.region_id = r.entity_id",
 	}[entityType]
 	nameColumn := "e.name"
