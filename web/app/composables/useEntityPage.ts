@@ -47,7 +47,11 @@ export function useEntityPage<T extends EntityPageTab>(
         /** Derive the palette accent + theme-color meta. Default true; faction has no palette. */
         withAccent?: boolean
     },
-    request: ReturnType<typeof useApiFetch<any>>,
+    request: {
+        data: Ref<any>
+        pending: Ref<boolean>
+        error: Ref<any>
+    },
 ) {
     type TabId = T['id']
 
