@@ -9,16 +9,12 @@ const windows = [
 
 const entityType = ref('character')
 const rankingWindow = ref('all_time')
-const { data, pending } = await useAsyncData(
-    'eve-kill-ranking-explorer',
-    () => $fetch('/api/stats/rankings', {
-      query: {
+const { data, pending } = await useApiFetch('/api/stats/rankings', {
+    query: computed(() => ({
         section: 'eve-kill', entityType: entityType.value,
         window: rankingWindow.value, limit: 50,
-      },
-    }),
-    { watch: [entityType, rankingWindow] },
-)
+    })),
+})
 const entries = computed<any[]>(() => (data.value as any)?.entries || [])
 
 function entityLink(entry: any) {
