@@ -12,18 +12,24 @@ definePageMeta({
     key: route => `/faction/${route.params.id}`,
 })
 
+const factionId = Number(useRoute().params.id)
+if (!Number.isInteger(factionId) || factionId < 500000 || factionId > 599999) {
+    throw createError({ statusCode: 404, statusMessage: 'Faction not found' })
+}
+const factionRequest = await useApiFetch<any>(`/api/faction/${factionId}`)
+
 const {
     id, pending,
     entity: faction, stats, recentStats,
     activeTab, setTab, killlistRole,
-} = await useEntityPage('faction', {
+} = useEntityPage('faction', {
     tabs,
     titleBase: f => f?.name || null,
     defaultTab: 'dashboard',
     idRange: [500000, 599999],
     withTopLists: false,
     withAccent: false,
-})
+}, factionRequest)
 
 useSeoMeta({
     description: computed(() => {

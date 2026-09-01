@@ -18,15 +18,21 @@ definePageMeta({
     key: route => `/corporation/${route.params.id}`,
 })
 
+const corporationId = Number(useRoute().params.id)
+if (!Number.isInteger(corporationId) || corporationId < 1 || corporationId > 2147483647) {
+    throw createError({ statusCode: 404, statusMessage: 'Corporation not found' })
+}
+const corporationRequest = await useApiFetch<any>(`/api/corporation/${corporationId}`)
+
 const {
     id, data, pending,
     entity: corp, stats, recentStats, accent,
     activeTab, setTab, killlistRole, killlistExtraParams, topLists,
     formatDate, ageYears: corpAge, effWidth, iskEffWidth, dangerRatio,
-} = await useEntityPage('corporation', {
+} = useEntityPage('corporation', {
     tabs,
     titleBase: c => c?.name ? `${c.name} [${c.ticker}]` : null,
-})
+}, corporationRequest)
 
 const allianceHistory = computed(() => data.value?.allianceHistory || [])
 const allTimeRanking = computed(() => data.value?.rankings?.all_time || null)

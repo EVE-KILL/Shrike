@@ -18,15 +18,21 @@ definePageMeta({
     key: route => `/character/${route.params.id}`,
 })
 
+const characterId = Number(useRoute().params.id)
+if (!Number.isInteger(characterId) || characterId < 1 || characterId > 2147483647) {
+    throw createError({ statusCode: 404, statusMessage: 'Character not found' })
+}
+const characterRequest = await useApiFetch<any>(`/api/character/${characterId}`)
+
 const {
     id, data, pending,
     entity: char, stats, recentStats, accent,
     activeTab, setTab, killlistRole, killlistExtraParams, topLists,
     formatDate, ageYears: characterAgeYears, effWidth, iskEffWidth, dangerRatio,
-} = await useEntityPage('character', {
+} = useEntityPage('character', {
     tabs,
     titleBase: c => c?.name || null,
-})
+}, characterRequest)
 
 const corpHistory = computed(() => data.value?.corporationHistory || [])
 const corpHistoryQueued = computed(() => data.value?.corporationHistoryQueued || false)

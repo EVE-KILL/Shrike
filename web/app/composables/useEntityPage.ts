@@ -10,12 +10,10 @@
  * Entity-specific concerns stay in the pages: header markup, SEO/schema.org
  * strings, per-entity tab content and helpers.
  *
- * Structure note: experimental.asyncContext is on, so the Nuxt instance
- * survives an `await` and composables can register in whatever order reads
- * best. The entity is fetched and awaited up front, which means a missing one
- * 404s before the rest of the page's composables register at all — previously
- * everything had to be declared first and the await deferred to the bottom,
- * so a 404 still paid for the SEO meta and the top-lists registration.
+ * The page awaits the entity request directly and passes its refs here. Keep
+ * that await in page setup: wrapping an awaited useFetch in another async
+ * composable leaves client-side navigation suspense unresolved in Nuxt. A
+ * missing entity still 404s before the remaining composables register.
  */
 
 export type EntityPageKind = 'character' | 'corporation' | 'alliance' | 'faction'
@@ -33,7 +31,7 @@ const KIND_LABELS: Record<EntityPageKind, string> = {
     faction: 'Faction',
 }
 
-export async function useEntityPage<T extends EntityPageTab>(
+export function useEntityPage<T extends EntityPageTab>(
     kind: EntityPageKind,
     opts: {
         /** Tab definitions for EntityTabBar — set and order differ per entity */
@@ -49,6 +47,7 @@ export async function useEntityPage<T extends EntityPageTab>(
         /** Derive the palette accent + theme-color meta. Default true; faction has no palette. */
         withAccent?: boolean
     },
+    request: ReturnType<typeof useApiFetch<any>>,
 ) {
     type TabId = T['id']
 
@@ -76,10 +75,9 @@ export async function useEntityPage<T extends EntityPageTab>(
         throw createError({ statusCode: 404, statusMessage: `${label} tab not found` })
     }
 
-    // Entity fetch, awaited immediately. Missing entities get a proper 404 via
-    // error.vue (same pattern as kill and battle pages) — not fatal, this is an
-    // expected response for a nonexistent ID rather than an exception.
-    const { data, pending, error } = await useApiFetch<any>(`/api/${kind}/${id}`)
+    // The page awaited this request directly. Missing entities get a proper
+    // 404 via error.vue (same pattern as kill and battle pages).
+    const { data, pending, error } = request
 
     if (error.value) {
         throw createError({

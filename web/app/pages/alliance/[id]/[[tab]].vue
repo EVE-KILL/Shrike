@@ -18,15 +18,21 @@ definePageMeta({
     key: route => `/alliance/${route.params.id}`,
 })
 
+const allianceId = Number(useRoute().params.id)
+if (!Number.isInteger(allianceId) || allianceId < 1 || allianceId > 2147483647) {
+    throw createError({ statusCode: 404, statusMessage: 'Alliance not found' })
+}
+const allianceRequest = await useApiFetch<any>(`/api/alliance/${allianceId}`)
+
 const {
     id, data, pending,
     entity: ally, stats, recentStats, accent,
     activeTab, setTab, killlistRole, killlistExtraParams, topLists,
     formatDate, ageYears: allianceAge, effWidth, iskEffWidth, dangerRatio,
-} = await useEntityPage('alliance', {
+} = useEntityPage('alliance', {
     tabs,
     titleBase: a => a?.name ? `${a.name} [${a.ticker}]` : null,
-})
+}, allianceRequest)
 
 const allTimeRanking = computed(() => data.value?.rankings?.all_time || null)
 
