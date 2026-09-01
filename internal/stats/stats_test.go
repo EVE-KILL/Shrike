@@ -119,6 +119,9 @@ func TestFactionStatsCountEachSideOnceWithoutBreakdowns(t *testing.T) {
 	if attacker.FinalBlows != 1 {
 		t.Errorf("attacking faction final blows = %d, want 1", attacker.FinalBlows)
 	}
+	if attacker.Points != km.Points {
+		t.Errorf("attacking faction points = %d, want conserved pool %d", attacker.Points, km.Points)
+	}
 
 	victim := a.Stats[StatsKey{EntityFaction, km.VictimFactionID}]
 	if victim == nil {

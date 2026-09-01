@@ -419,10 +419,14 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 // mail, plus one victim-side loss.
 func (a *Accumulator) AddFactions(km Killmail, attackers []Attacker) {
 	factions := make(map[int32]struct{})
+	factionPoints := make(map[int32]int64)
 	var finalBlowFactionID int32
 	for _, attacker := range attackers {
 		if attacker.FactionID != 0 {
 			factions[attacker.FactionID] = struct{}{}
+			if attacker.CharacterID != 0 {
+				factionPoints[attacker.FactionID] += attacker.Points
+			}
 		}
 		if attacker.FinalBlow {
 			finalBlowFactionID = attacker.FactionID
@@ -433,7 +437,7 @@ func (a *Accumulator) AddFactions(km Killmail, attackers []Attacker) {
 		row := a.stat(EntityFaction, factionID)
 		row.Kills++
 		row.IskDestroyed += km.TotalValue
-		row.Points += km.Points
+		row.Points += factionPoints[factionID]
 		if km.IsSolo {
 			row.SoloKills++
 		}

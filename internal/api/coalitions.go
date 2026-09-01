@@ -409,7 +409,8 @@ func loadCoalitionTotals(
 	args = append(args, from, to)
 	kills, err := queryMap(ctx, db, `
 		WITH side_kms AS MATERIALIZED (
-		  SELECT a.killmail_id, bool_or(a.final_blow) AS had_final_blow
+		  SELECT a.killmail_id, bool_or(a.final_blow) AS had_final_blow,
+		         sum(a.points)::bigint AS points
 		  FROM killmail_attackers a
 		  WHERE `+attackerMatch+`
 		    AND a.killmail_time >= $`+fmt.Sprint(len(args)-1)+`::date
@@ -419,7 +420,7 @@ func loadCoalitionTotals(
 		SELECT COUNT(*)::bigint AS kills,
 		       COUNT(*) FILTER (WHERE k.is_solo = true)::bigint AS solo_kills,
 		       COALESCE(SUM(k.total_value), 0)::double precision AS isk_destroyed,
-		       COALESCE(SUM(k.points), 0)::bigint AS points,
+		       COALESCE(SUM(s.points), 0)::bigint AS points,
 		       COUNT(*) FILTER (WHERE s.had_final_blow = true)::bigint AS final_blows
 		FROM side_kms s JOIN killmails k ON k.killmail_id = s.killmail_id`,
 		args...)

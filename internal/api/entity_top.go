@@ -176,16 +176,13 @@ func loadEntityTopLeft(
 		{
 			SQL: fmt.Sprintf(`
 				SELECT attacker.character_id AS id, character.name,
-				       COALESCE(SUM(killmail.points), 0)::bigint AS count
+				       COALESCE(SUM(attacker.points), 0)::bigint AS count
 				FROM killmail_attackers attacker
-				JOIN killmails killmail
-				  ON killmail.killmail_id = attacker.killmail_id
 				JOIN characters character
 				  ON character.character_id = attacker.character_id
 				WHERE attacker.%s = $1
 				  AND attacker.killmail_time >= $2
 				  AND attacker.character_id IS NOT NULL
-				  AND attacker.final_blow = true
 				GROUP BY attacker.character_id, character.name
 				ORDER BY count DESC
 				LIMIT 10`, attackerColumn),

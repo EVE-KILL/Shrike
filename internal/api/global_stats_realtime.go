@@ -67,8 +67,8 @@ var realtimeGlobalStatsQueries = map[string]realtimeGlobalStatsQuery{
 	"top_points": {
 		"killmail_attackers a JOIN killmails k ON k.killmail_id = a.killmail_id JOIN characters n ON n.character_id = a.character_id",
 		"a.character_id", "n.name", "a.killmail_time",
-		"COALESCE(SUM(k.points), 0)::double precision",
-		"a.final_blow = TRUE AND a.character_id IS NOT NULL", "character", false,
+		"COALESCE(SUM(a.points), 0)::double precision",
+		"a.character_id IS NOT NULL", "character", false,
 	},
 	"systems": {
 		"killmails k JOIN solar_systems n ON n.solar_system_id = k.solar_system_id",
