@@ -74,6 +74,7 @@ type Attacker struct {
 	ShipGroupID   int32 `json:"ship_group_id"`
 	WeaponTypeID  int32 `json:"weapon_type_id"`
 	DamageDone    int32 `json:"damage_done"`
+	Points        int64 `json:"points"`
 	FinalBlow     bool  `json:"final_blow"`
 
 	// SecurityStatus is nullable and legitimately zero. See ESIAttacker.

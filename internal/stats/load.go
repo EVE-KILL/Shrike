@@ -52,7 +52,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
 	rows, err := pool.Query(ctx, `
         SELECT coalesce(character_id, 0), coalesce(corporation_id, 0),
                coalesce(alliance_id, 0), coalesce(faction_id, 0),
-               coalesce(ship_type_id, 0), coalesce(damage_done, 0), coalesce(final_blow, false)
+		       coalesce(ship_type_id, 0), coalesce(damage_done, 0), coalesce(points, 0), coalesce(final_blow, false)
         FROM killmail_attackers WHERE killmail_id = $1`, killmailID)
 	if err != nil {
 		return km, nil, err
@@ -63,7 +63,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (Killmail, 
 	for rows.Next() {
 		var a Attacker
 		if err := rows.Scan(&a.CharacterID, &a.CorporationID, &a.AllianceID, &a.FactionID,
-			&a.ShipTypeID, &a.DamageDone, &a.FinalBlow); err != nil {
+			&a.ShipTypeID, &a.DamageDone, &a.Points, &a.FinalBlow); err != nil {
 			return km, nil, err
 		}
 		attackers = append(attackers, a)

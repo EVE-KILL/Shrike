@@ -632,6 +632,20 @@ type EntityAchievement struct {
 	PointUnit       int32              `json:"point_unit"`
 }
 
+type EntityRanking struct {
+	EntityType        int16              `json:"entity_type"`
+	EntityID          int32              `json:"entity_id"`
+	RankingWindow     int16              `json:"ranking_window"`
+	CombatPoints      int64              `json:"combat_points"`
+	AchievementPoints int64              `json:"achievement_points"`
+	EveKillRating     int32              `json:"eve_kill_rating"`
+	CombatRank        int32              `json:"combat_rank"`
+	AchievementRank   *int32             `json:"achievement_rank"`
+	OverallRank       int32              `json:"overall_rank"`
+	Population        int32              `json:"population"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+}
+
 type EntitySnapshot struct {
 	EntityType             string      `json:"entity_type"`
 	EntityID               int32       `json:"entity_id"`
@@ -875,6 +889,8 @@ type KillmailAttacker struct {
 	FinalBlow      *bool              `json:"final_blow"`
 	SecurityStatus *float32           `json:"security_status"`
 	KillmailTime   pgtype.Timestamptz `json:"killmail_time"`
+	// Conserved share of killmails.points allocated to this player attacker; NPC and duplicate character rows receive zero
+	Points int64 `json:"points"`
 }
 
 type KillmailFitting struct {

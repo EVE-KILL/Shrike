@@ -102,13 +102,13 @@ func insert(ctx context.Context, pool *pgxpool.Pool, p *Parsed, tracked bool) (b
                 killmail_id, attacker_index, character_id, corporation_id,
                 alliance_id, faction_id, ship_type_id, ship_group_id,
                 weapon_type_id, damage_done, final_blow, security_status,
-                killmail_time
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+				killmail_time, points
+			) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
             ON CONFLICT (killmail_id, attacker_index) DO NOTHING`,
 			a.KillmailID, a.AttackerIndex, nullID(a.CharacterID), nullID(a.CorporationID),
 			nullID(a.AllianceID), nullID(a.FactionID), nullID(a.ShipTypeID), nullID(a.ShipGroupID),
 			nullID(a.WeaponTypeID), a.DamageDone, a.FinalBlow, a.SecurityStatus,
-			a.KillmailTime)
+			a.KillmailTime, a.Points)
 	}
 	for _, it := range p.Items {
 		batch.Queue(`
@@ -230,8 +230,8 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (*Parsed, e
 	rows, err := pool.Query(ctx, `
         SELECT attacker_index, character_id, corporation_id, alliance_id,
                faction_id, ship_type_id, ship_group_id, weapon_type_id,
-               coalesce(damage_done, 0), coalesce(final_blow, false),
-               security_status, killmail_time
+		       coalesce(damage_done, 0), coalesce(points, 0), coalesce(final_blow, false),
+		       security_status, killmail_time
         FROM killmail_attackers WHERE killmail_id = $1 ORDER BY attacker_index`, killmailID)
 	if err != nil {
 		return nil, err
@@ -240,7 +240,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, killmailID int64) (*Parsed, e
 		a := Attacker{KillmailID: killmailID}
 		var char, corp, ally, faction, ship, group, weapon *int32
 		if err := rows.Scan(&a.AttackerIndex, &char, &corp, &ally, &faction,
-			&ship, &group, &weapon, &a.DamageDone, &a.FinalBlow,
+			&ship, &group, &weapon, &a.DamageDone, &a.Points, &a.FinalBlow,
 			&a.SecurityStatus, &a.KillmailTime); err != nil {
 			rows.Close()
 			return nil, err

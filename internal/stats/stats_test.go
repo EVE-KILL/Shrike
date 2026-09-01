@@ -95,11 +95,11 @@ func fleetKill() (Killmail, []Attacker) {
 	}
 	attackers := []Attacker{
 		{CharacterID: testIDBase + 1, CorporationID: testIDBase + 10, AllianceID: testIDBase + 20,
-			FactionID: 500001, ShipTypeID: 587, DamageDone: 5000, FinalBlow: true},
+			FactionID: 500001, ShipTypeID: 587, DamageDone: 5000, Points: 14, FinalBlow: true},
 		{CharacterID: testIDBase + 2, CorporationID: testIDBase + 10, AllianceID: testIDBase + 20,
-			FactionID: 500001, ShipTypeID: 587, DamageDone: 3000},
+			FactionID: 500001, ShipTypeID: 587, DamageDone: 3000, Points: 8},
 		{CharacterID: testIDBase + 3, CorporationID: testIDBase + 10, AllianceID: testIDBase + 20,
-			FactionID: 500001, ShipTypeID: 621, DamageDone: 1000},
+			FactionID: 500001, ShipTypeID: 621, DamageDone: 1000, Points: 3},
 	}
 	return km, attackers
 }

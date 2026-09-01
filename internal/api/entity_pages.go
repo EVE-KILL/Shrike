@@ -355,6 +355,26 @@ const entityPageStatsSQL = `
 		period_type = 0 AND period_start >= CURRENT_DATE - 90
 	  ))`
 
+const entityPageRankingSQL = `
+	SELECT ranking_window, combat_points, achievement_points, eve_kill_rating,
+	       combat_rank, achievement_rank, overall_rank, population, updated_at
+	FROM entity_rankings
+	WHERE entity_type = $1 AND entity_id = $2
+	ORDER BY ranking_window`
+
+func entityPageRankings(rows []map[string]any) map[string]any {
+	out := map[string]any{}
+	names := []string{"weekly", "ninety_days", "all_time"}
+	for _, row := range rows {
+		window := int64OrZero(row["ranking_window"])
+		if window >= 0 && window < int64(len(names)) {
+			delete(row, "ranking_window")
+			out[names[window]] = row
+		}
+	}
+	return out
+}
+
 func entityDetailStats(row map[string]any, damage bool) map[string]any {
 	kills, _ := int64Value(row["kills"])
 	losses, _ := int64Value(row["losses"])
@@ -529,6 +549,7 @@ func loadCharacterPage(
 				ORDER BY d.rn`,
 			Args: []any{id},
 		},
+		databaseQuery{SQL: entityPageRankingSQL, Args: []any{entityCharacter, id}},
 	)
 	if err != nil {
 		return nil, err
@@ -563,6 +584,7 @@ func loadCharacterPage(
 		"topShips":                 topShips,
 		"corporationHistoryQueued": len(history) == 0,
 		"corporationHistory":       history,
+		"rankings":                 entityPageRankings(results[5]),
 	}, nil
 }
 
@@ -609,6 +631,7 @@ func loadCorporationPage(
 				ORDER BY h.start_date DESC`,
 			Args: []any{id},
 		},
+		databaseQuery{SQL: entityPageRankingSQL, Args: []any{entityCorporation, id}},
 	)
 	if err != nil {
 		return nil, err
@@ -627,6 +650,7 @@ func loadCorporationPage(
 		"stats":           entityDetailStats(stats, false),
 		"recentStats":     entityRecentStats(stats),
 		"allianceHistory": nonNilEntityPageRows(results[2]),
+		"rankings":        entityPageRankings(results[3]),
 	}, nil
 }
 
@@ -664,6 +688,7 @@ func loadAlliancePage(
 			Args: []any{id},
 		},
 		databaseQuery{SQL: entityPageStatsSQL, Args: []any{entityAlliance, id}},
+		databaseQuery{SQL: entityPageRankingSQL, Args: []any{entityAlliance, id}},
 	)
 	if err != nil {
 		return nil, err
@@ -681,6 +706,7 @@ func loadAlliancePage(
 		"alliance":    alliance,
 		"stats":       entityDetailStats(stats, false),
 		"recentStats": entityRecentStats(stats),
+		"rankings":    entityPageRankings(results[2]),
 	}, nil
 }
 

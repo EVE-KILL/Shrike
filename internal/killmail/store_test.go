@@ -167,6 +167,54 @@ func TestCorpusRoundTripsThroughPostgres(t *testing.T) {
 	}
 }
 
+func TestBackfillPointSharesMatchesLiveParser(t *testing.T) {
+	pool := storePool(t)
+	batch := parseCorpus(t)
+	ids := idsOf(batch)
+	purge(t, pool, ids)
+	t.Cleanup(func() { purge(t, pool, ids) })
+	if _, err := InsertBatch(context.Background(), pool, batch); err != nil {
+		t.Fatalf("insert corpus: %v", err)
+	}
+	if _, err := pool.Exec(context.Background(), `
+		UPDATE killmail_attackers SET points = 0 WHERE killmail_id = ANY($1::int[])`, ids); err != nil {
+		t.Fatal(err)
+	}
+	minID, maxID := ids[0], ids[0]
+	for _, id := range ids[1:] {
+		minID, maxID = min(minID, id), max(maxID, id)
+	}
+	mails, _, err := BackfillPointShares(context.Background(), pool, minID, maxID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mails != int64(len(batch)) {
+		t.Fatalf("backfilled %d killmails, want %d", mails, len(batch))
+	}
+	for _, parsed := range batch {
+		rows, err := pool.Query(context.Background(), `
+			SELECT attacker_index, points FROM killmail_attackers
+			WHERE killmail_id = $1 ORDER BY attacker_index`, parsed.Killmail.KillmailID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for rows.Next() {
+			var index int
+			var points int64
+			if err := rows.Scan(&index, &points); err != nil {
+				rows.Close()
+				t.Fatal(err)
+			}
+			if points != parsed.Attackers[index].Points {
+				rows.Close()
+				t.Fatalf("killmail %d attacker %d points = %d, want %d",
+					parsed.Killmail.KillmailID, index, points, parsed.Attackers[index].Points)
+			}
+		}
+		rows.Close()
+	}
+}
+
 // The archives overlap heavily with what the live queue already stored, so
 // re-importing has to be free rather than an error or a duplicate.
 func TestInsertBatchIsIdempotent(t *testing.T) {

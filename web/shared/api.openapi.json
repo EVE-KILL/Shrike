@@ -84813,7 +84813,8 @@
                 "security",
                 "growth",
                 "newest",
-                "achievements"
+                "achievements",
+                "eve-kill"
               ],
               "type": "string"
             }
@@ -84827,7 +84828,24 @@
               "enum": [
                 "character",
                 "corporation",
-                "alliance"
+                "alliance",
+                "ship",
+                "system",
+                "region"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "EVE-KILL ranking window.",
+            "in": "query",
+            "name": "window",
+            "schema": {
+              "default": "all_time",
+              "enum": [
+                "weekly",
+                "ninety_days",
+                "all_time"
               ],
               "type": "string"
             }

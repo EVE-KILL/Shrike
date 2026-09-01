@@ -29,6 +29,7 @@ const {
 })
 
 const allianceHistory = computed(() => data.value?.allianceHistory || [])
+const allTimeRanking = computed(() => data.value?.rankings?.all_time || null)
 
 const paletteSwatches = computed(() => {
     const p = corp.value?.palette
@@ -202,7 +203,7 @@ const allianceHistoryWithDuration = computed(() => {
                         <EntityStatBox icon="lucide:user" icon-color="text-blue-500" title="Activity">
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Solo Kills</span><span class="text-fine text-green-400 tabular-nums">{{ stats.solo_kills.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Final Blows</span><span class="text-fine text-white tabular-nums">{{ stats.final_blows.toLocaleString('en-US') }}</span></div>
-                            <div class="flex justify-between"><span class="text-fine text-gray-500">Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
+                            <div class="flex justify-between"><span class="text-fine text-gray-500">Combat Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Members</span><span class="text-fine text-white tabular-nums">{{ corp.member_count.toLocaleString('en-US') }}</span></div>
                         </EntityStatBox>
                         <EntityStatBox v-if="recentStats" icon="lucide:clock" icon-color="text-purple-500" title="Last 90 Days">
@@ -302,6 +303,7 @@ const allianceHistoryWithDuration = computed(() => {
 
                 <template #right>
                     <div class="flex gap-3 items-start">
+                        <EntityRankingBadge :ranking="allTimeRanking" />
                         <NuxtLink v-if="corp.alliance_id" :to="`/alliance/${corp.alliance_id}`"
                             class="block hover:opacity-80 transition-opacity">
                             <img :src="`/images/alliances/${corp.alliance_id}/logo?size=128`"
@@ -331,7 +333,7 @@ const allianceHistoryWithDuration = computed(() => {
                         <EntityStatBox icon="lucide:user" icon-color="text-blue-500" title="Activity">
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Solo Kills</span><span class="text-fine text-green-400 tabular-nums">{{ stats.solo_kills.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Final Blows</span><span class="text-fine text-white tabular-nums">{{ stats.final_blows.toLocaleString('en-US') }}</span></div>
-                            <div class="flex justify-between"><span class="text-fine text-gray-500">Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
+                            <div class="flex justify-between"><span class="text-fine text-gray-500">Combat Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Members</span><span class="text-fine text-white tabular-nums">{{ corp.member_count.toLocaleString('en-US') }}</span></div>
                         </EntityStatBox>
 

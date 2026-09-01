@@ -24,6 +24,7 @@ var statsRankingSections = map[string]struct{}{
 	"growth":       {},
 	"newest":       {},
 	"achievements": {},
+	"eve-kill":     {},
 }
 
 // registerStatsRankingsRoute is deliberately called after the established
@@ -106,6 +107,10 @@ func statsRankingsHandler(opts Options) legacyHandler {
 			entries, err = queryAchievementRankings(
 				ctx, opts.DB, entityType, limit,
 			)
+		case "eve-kill":
+			entries, err = queryEveKillRankings(
+				ctx, opts.DB, entityType, req.Query.Get("window"), limit,
+			)
 		}
 		if err != nil {
 			// The frontend endpoint deliberately degrades individual boards to
@@ -119,6 +124,44 @@ func statsRankingsHandler(opts Options) legacyHandler {
 		}
 		return statsRankingPayload(entries), nil
 	}
+}
+
+func queryEveKillRankings(ctx context.Context, db Database, entityType, window string, limit int) ([]map[string]any, error) {
+	typeID := map[string]int16{
+		"character": 0, "corporation": 1, "alliance": 2,
+		"ship": 3, "system": 4, "region": 6,
+	}[entityType]
+	if _, ok := map[string]bool{"character": true, "corporation": true, "alliance": true, "ship": true, "system": true, "region": true}[entityType]; !ok {
+		return []map[string]any{}, nil
+	}
+	windowID := map[string]int16{"weekly": 0, "ninety_days": 1, "all_time": 2}[window]
+	if window == "" {
+		windowID = 2
+	} else if _, ok := map[string]bool{"weekly": true, "ninety_days": true, "all_time": true}[window]; !ok {
+		return []map[string]any{}, nil
+	}
+	nameSQL := map[string]string{
+		"character":   "LEFT JOIN characters e ON e.character_id = r.entity_id",
+		"corporation": "LEFT JOIN corporations e ON e.corporation_id = r.entity_id",
+		"alliance":    "LEFT JOIN alliances e ON e.alliance_id = r.entity_id",
+		"ship":        "LEFT JOIN inv_types e ON e.type_id = r.entity_id",
+		"system":      "LEFT JOIN solar_systems e ON e.system_id = r.entity_id",
+		"region":      "LEFT JOIN regions e ON e.region_id = r.entity_id",
+	}[entityType]
+	nameColumn := "e.name"
+	if entityType == "system" {
+		nameColumn = "e.system_name"
+	}
+	return queryMaps(ctx, db, fmt.Sprintf(`
+		SELECT r.entity_id, coalesce(nullif(%s, ''), 'Unknown') AS name,
+		       r.combat_points, r.achievement_points, r.eve_kill_rating,
+		       r.combat_rank, r.achievement_rank, r.overall_rank,
+		       r.population, r.updated_at
+		FROM entity_rankings r
+		%s
+		WHERE r.entity_type = $1 AND r.ranking_window = $2
+		ORDER BY r.overall_rank
+		LIMIT $3`, nameColumn, nameSQL), typeID, windowID, limit)
 }
 
 func statsRankingPayload(entries []map[string]any) legacyPayload {

@@ -160,6 +160,23 @@ func Parse(
 			KillmailTime:   km.KillmailTime,
 		})
 	}
+	participants := make([]PointParticipant, 0, len(attackers))
+	for _, attacker := range attackers {
+		participants = append(participants, PointParticipant{
+			CharacterID: attacker.CharacterID,
+			DamageDone:  int64(attacker.DamageDone),
+			FinalBlow:   attacker.FinalBlow,
+		})
+	}
+	shares := AllocatePoints(int64(row.Points), DefaultParticipationBasisPoints, participants)
+	seenCharacters := make(map[int32]bool)
+	for i := range attackers {
+		characterID := attackers[i].CharacterID
+		if characterID != 0 && !seenCharacters[characterID] {
+			attackers[i].Points = shares[characterID]
+			seenCharacters[characterID] = true
+		}
+	}
 
 	parsed := &Parsed{Killmail: row, Attackers: attackers, Items: items}
 	DeriveStableFacts(parsed)

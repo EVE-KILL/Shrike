@@ -30,6 +30,7 @@ const {
 
 const corpHistory = computed(() => data.value?.corporationHistory || [])
 const corpHistoryQueued = computed(() => data.value?.corporationHistoryQueued || false)
+const allTimeRanking = computed(() => data.value?.rankings?.all_time || null)
 
 useSeoMeta({
     description: computed(() => {
@@ -264,7 +265,7 @@ const activityLevel = computed(() => {
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Solo Kills</span><span class="text-fine text-green-400 tabular-nums">{{ stats.solo_kills.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Solo Ratio</span><span class="text-fine text-white tabular-nums">{{ soloKillRatio }}%</span></div>
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Final Blows</span><span class="text-fine text-white tabular-nums">{{ stats.final_blows.toLocaleString('en-US') }}</span></div>
-                            <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Combat Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
                         </EntityStatBox>
                         <EntityStatBox icon="lucide:bar-chart-2" icon-color="text-purple-500" title="Other">
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">NPC Losses</span><span class="text-fine text-white tabular-nums">{{ stats.npc_losses.toLocaleString('en-US') }}</span></div>
@@ -341,6 +342,7 @@ const activityLevel = computed(() => {
 
                 <template #right>
                     <div class="flex flex-col gap-2 items-end">
+                        <EntityRankingBadge :ranking="allTimeRanking" />
                         <NuxtLink v-if="char.corporation_id" :to="`/corporation/${char.corporation_id}`" class="block hover:opacity-80 transition-opacity">
                             <EveImage :src="`/images/corporations/${char.corporation_id}/logo?size=128`" :alt="char.corporation_name ?? ''" class="w-20 h-20 rounded-lg shadow-md" />
                         </NuxtLink>
@@ -373,7 +375,7 @@ const activityLevel = computed(() => {
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Solo Kills</span><span class="text-fine text-green-400 tabular-nums">{{ stats.solo_kills.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Solo Ratio</span><span class="text-fine text-white tabular-nums">{{ soloKillRatio }}%</span></div>
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Final Blows</span><span class="text-fine text-white tabular-nums">{{ stats.final_blows.toLocaleString('en-US') }}</span></div>
-                            <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-fine text-gray-500">Combat Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
                         </EntityStatBox>
                         <EntityStatBox icon="lucide:bar-chart-2" icon-color="text-purple-500" title="Other">
                             <div class="flex justify-between items-center"><span class="text-fine text-gray-500">NPC Losses</span><span class="text-fine text-white tabular-nums">{{ stats.npc_losses.toLocaleString('en-US') }}</span></div>

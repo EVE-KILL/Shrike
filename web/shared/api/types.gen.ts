@@ -28873,11 +28873,15 @@ export type StatsRankingsData = {
         /**
          * Which ranking to build. Required.
          */
-        section: 'largest' | 'security' | 'growth' | 'newest' | 'achievements';
+        section: 'largest' | 'security' | 'growth' | 'newest' | 'achievements' | 'eve-kill';
         /**
          * Which entity the ranking covers.
          */
-        entityType?: 'character' | 'corporation' | 'alliance';
+        entityType?: 'character' | 'corporation' | 'alliance' | 'ship' | 'system' | 'region';
+        /**
+         * EVE-KILL ranking window.
+         */
+        window?: 'weekly' | 'ninety_days' | 'all_time';
         /**
          * Security band. Only read when `section` is `security`.
          */

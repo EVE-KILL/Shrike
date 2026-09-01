@@ -19,7 +19,7 @@ definePageMeta({
 })
 
 const {
-    id, pending,
+    id, data, pending,
     entity: ally, stats, recentStats, accent,
     activeTab, setTab, killlistRole, killlistExtraParams, topLists,
     formatDate, ageYears: allianceAge, effWidth, iskEffWidth, dangerRatio,
@@ -27,6 +27,8 @@ const {
     tabs,
     titleBase: a => a?.name ? `${a.name} [${a.ticker}]` : null,
 })
+
+const allTimeRanking = computed(() => data.value?.rankings?.all_time || null)
 
 useSeoMeta({
     description: computed(() => {
@@ -139,7 +141,7 @@ useSchemaOrg([
                         <EntityStatBox icon="lucide:user" icon-color="text-blue-500" title="Activity">
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Solo Kills</span><span class="text-fine text-green-400 tabular-nums">{{ stats.solo_kills.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Final Blows</span><span class="text-fine text-white tabular-nums">{{ stats.final_blows.toLocaleString('en-US') }}</span></div>
-                            <div class="flex justify-between"><span class="text-fine text-gray-500">Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
+                            <div class="flex justify-between"><span class="text-fine text-gray-500">Combat Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Corps / Members</span><span class="text-fine text-white tabular-nums">{{ ally.corporation_count }} / {{ ally.member_count.toLocaleString('en-US') }}</span></div>
                         </EntityStatBox>
                         <EntityStatBox v-if="recentStats" icon="lucide:clock" icon-color="text-purple-500" title="Last 90 Days">
@@ -215,6 +217,7 @@ useSchemaOrg([
 
                 <template #right>
                     <div class="flex gap-3 items-start">
+                        <EntityRankingBadge :ranking="allTimeRanking" />
                         <NuxtLink v-if="ally.executor_corporation_id" :to="`/corporation/${ally.executor_corporation_id}`"
                             class="block hover:opacity-80 transition-opacity">
                             <img :src="`/images/corporations/${ally.executor_corporation_id}/logo?size=128`"
@@ -242,7 +245,7 @@ useSchemaOrg([
                         <EntityStatBox icon="lucide:user" icon-color="text-blue-500" title="Activity">
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Solo Kills</span><span class="text-fine text-green-400 tabular-nums">{{ stats.solo_kills.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Final Blows</span><span class="text-fine text-white tabular-nums">{{ stats.final_blows.toLocaleString('en-US') }}</span></div>
-                            <div class="flex justify-between"><span class="text-fine text-gray-500">Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
+                            <div class="flex justify-between"><span class="text-fine text-gray-500">Combat Points</span><span class="text-fine text-white tabular-nums">{{ stats.points.toLocaleString('en-US') }}</span></div>
                             <div class="flex justify-between"><span class="text-fine text-gray-500">Corps / Members</span><span class="text-fine text-white tabular-nums">{{ ally.corporation_count }} / {{ ally.member_count.toLocaleString('en-US') }}</span></div>
                         </EntityStatBox>
                         <EntityStatBox v-if="recentStats" icon="lucide:clock" icon-color="text-purple-500" title="Last 90 Days">

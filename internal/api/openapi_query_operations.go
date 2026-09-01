@@ -500,11 +500,15 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"stats-rankings": {
 		requiredQuery(enumQuery(
 			"section", "Which ranking to build. Required.", "",
-			"largest", "security", "growth", "newest", "achievements",
+			"largest", "security", "growth", "newest", "achievements", "eve-kill",
 		)),
 		enumQuery(
 			"entityType", "Which entity the ranking covers.", "alliance",
-			"character", "corporation", "alliance",
+			"character", "corporation", "alliance", "ship", "system", "region",
+		),
+		enumQuery(
+			"window", "EVE-KILL ranking window.", "all_time",
+			"weekly", "ninety_days", "all_time",
 		),
 		enumQuery(
 			"rank",

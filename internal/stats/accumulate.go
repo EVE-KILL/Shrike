@@ -57,6 +57,7 @@ type Attacker struct {
 	FactionID     int32
 	ShipTypeID    int32
 	DamageDone    int64
+	Points        int64
 	FinalBlow     bool
 }
 
@@ -123,10 +124,15 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 	charShip := map[int32]int32{}
 	charCorp := map[int32]int32{}
 	charAlliance := map[int32]int32{}
+	charPoints := map[int32]int64{}
 	corps := map[int32]bool{}
 	alliances := map[int32]bool{}
 	factions := map[int32]bool{}
 	shipTypes := map[int32]bool{}
+	corpPoints := map[int32]int64{}
+	alliancePoints := map[int32]int64{}
+	factionPoints := map[int32]int64{}
+	shipPoints := map[int32]int64{}
 
 	var fbChar, fbCorp, fbAlliance, fbFaction int32
 
@@ -138,6 +144,19 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 			}
 			charCorp[at.CharacterID] = at.CorporationID
 			charAlliance[at.CharacterID] = at.AllianceID
+			charPoints[at.CharacterID] += at.Points
+			if at.CorporationID != 0 {
+				corpPoints[at.CorporationID] += at.Points
+			}
+			if at.AllianceID != 0 {
+				alliancePoints[at.AllianceID] += at.Points
+			}
+			if at.FactionID != 0 {
+				factionPoints[at.FactionID] += at.Points
+			}
+			if at.ShipTypeID != 0 {
+				shipPoints[at.ShipTypeID] += at.Points
+			}
 		}
 		if at.CorporationID != 0 {
 			corps[at.CorporationID] = true
@@ -163,7 +182,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		r := a.stat(EntityCharacter, charID)
 		r.Kills++
 		r.IskDestroyed += v
-		r.Points += km.Points
+		r.Points += charPoints[charID]
 		r.DamageDealt += damage
 		// The gang size on every kill, summed — divided by kills it gives the
 		// blob factor, which is why it accumulates rather than being averaged
@@ -181,7 +200,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		r := a.stat(EntityCorporation, corpID)
 		r.Kills++
 		r.IskDestroyed += v
-		r.Points += km.Points
+		r.Points += corpPoints[corpID]
 		if km.IsSolo {
 			r.SoloKills++
 		}
@@ -194,7 +213,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		r := a.stat(EntityAlliance, allyID)
 		r.Kills++
 		r.IskDestroyed += v
-		r.Points += km.Points
+		r.Points += alliancePoints[allyID]
 		if km.IsSolo {
 			r.SoloKills++
 		}
@@ -207,7 +226,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		r := a.stat(EntityFaction, factionID)
 		r.Kills++
 		r.IskDestroyed += v
-		r.Points += km.Points
+		r.Points += factionPoints[factionID]
 		if km.IsSolo {
 			r.SoloKills++
 		}
@@ -222,6 +241,7 @@ func (a *Accumulator) Add(km Killmail, attackers []Attacker) {
 		r := a.stat(EntityShip, shipID)
 		r.Kills++
 		r.IskDestroyed += v
+		r.Points += shipPoints[shipID]
 	}
 
 	// --- Victim-side headline counters ---

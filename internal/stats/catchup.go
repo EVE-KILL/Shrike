@@ -391,7 +391,7 @@ func hydrateAttackers(ctx context.Context, pool *pgxpool.Pool, items []dayItem) 
 	        SELECT killmail_id, coalesce(character_id, 0), coalesce(corporation_id, 0),
 	               coalesce(alliance_id, 0), coalesce(faction_id, 0),
 	               coalesce(ship_type_id, 0),
-	               coalesce(damage_done, 0), coalesce(final_blow, false)
+	               coalesce(damage_done, 0), coalesce(points, 0), coalesce(final_blow, false)
 	        FROM killmail_attackers WHERE killmail_id = ANY($1::bigint[])`, ids)
 	if err != nil {
 		return err
@@ -403,7 +403,7 @@ func hydrateAttackers(ctx context.Context, pool *pgxpool.Pool, items []dayItem) 
 		var a Attacker
 		if err := arows.Scan(&id, &a.CharacterID, &a.CorporationID, &a.AllianceID,
 			&a.FactionID,
-			&a.ShipTypeID, &a.DamageDone, &a.FinalBlow); err != nil {
+			&a.ShipTypeID, &a.DamageDone, &a.Points, &a.FinalBlow); err != nil {
 			return err
 		}
 		if i, ok := byID[id]; ok {

@@ -29,7 +29,7 @@ var (
 		"killmail_id", "killmail_time", "attacker_index",
 		"character_id", "corporation_id", "alliance_id", "faction_id",
 		"ship_type_id", "ship_group_id", "weapon_type_id",
-		"damage_done", "final_blow", "security_status",
+		"damage_done", "points", "final_blow", "security_status",
 	}
 	itemColumns = []string{
 		"killmail_id", "item_index", "type_id", "flag_id",
@@ -119,7 +119,7 @@ func InsertBatch(ctx context.Context, pool *pgxpool.Pool, batch []*Parsed) (Batc
 				a.KillmailID, a.KillmailTime, a.AttackerIndex,
 				nullID(a.CharacterID), nullID(a.CorporationID), nullID(a.AllianceID), nullID(a.FactionID),
 				nullID(a.ShipTypeID), nullID(a.ShipGroupID), nullID(a.WeaponTypeID),
-				a.DamageDone, a.FinalBlow, a.SecurityStatus,
+				a.DamageDone, a.Points, a.FinalBlow, a.SecurityStatus,
 			}); err != nil {
 				return res, err
 			}

@@ -12,6 +12,7 @@ import (
 	"github.com/eve-kill/shrike/internal/killtype"
 	"github.com/eve-kill/shrike/internal/maintenance"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/eve-kill/shrike/internal/rankings"
 	"github.com/eve-kill/shrike/internal/sde"
 	"github.com/eve-kill/shrike/internal/stats"
 	"github.com/eve-kill/shrike/internal/universe"
@@ -410,11 +411,15 @@ func (d *Deps) cronStatsPipeline(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	rankingRows, err := rankings.Refresh(ctx, d.Pool)
+	if err != nil {
+		return "", err
+	}
 	return fmt.Sprintf(
-		"monthly %d/%d, yearly %d/%d, leaderboards %d, purged %d daily and %d monthly",
+		"monthly %d/%d, yearly %d/%d, leaderboards %d, rankings %d, purged %d daily and %d monthly",
 		res.MonthlyStats, res.MonthlyBreakdowns,
 		res.YearlyStats, res.YearlyBreakdowns,
-		res.Leaderboards, res.PurgedDaily, res.PurgedMonthly), nil
+		res.Leaderboards, rankingRows, res.PurgedDaily, res.PurgedMonthly), nil
 }
 
 func errNeedsQueue(name string) error {
