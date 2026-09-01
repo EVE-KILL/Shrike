@@ -51,7 +51,7 @@ function entityImage(entry: any) {
         system: `/images/systems/${id}?size=128`,
         region: `/images/regions/${id}?size=128`,
     }
-    return paths[entityType.value]
+    return paths[entityType.value] ?? ''
 }
 
 const selectedEntityLabel = computed(() => entityTypes.find(item => item[0] === entityType.value)?.[1] ?? 'Entities')
@@ -62,7 +62,7 @@ function entityLink(entry: any) {
         character: 'character', corporation: 'corporation', alliance: 'alliance',
         ship: 'item', system: 'system', region: 'region',
     }
-    return `/${paths[entityType.value]}/${entry.entity_id}`
+    return `/${paths[entityType.value] ?? 'character'}/${entry.entity_id}`
 }
 
 useSeoMeta({

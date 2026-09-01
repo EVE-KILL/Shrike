@@ -123,7 +123,7 @@ const formatCount = (count: number) => new Intl.NumberFormat('en-US').format(cou
         <div v-else class="space-y-7">
             <section v-for="group in groups" :key="group.category">
                 <div class="mb-3 flex items-center gap-3">
-                    <EveImage :src="categoryVisual(group.category).image" :size="48" :alt="group.category" class="h-10 w-10 rounded-lg bg-gray-900 object-cover ring-1 ring-white/10" />
+                    <EveImage :src="categoryVisual(group.category).image" :size="64" :alt="group.category" class="h-10 w-10 rounded-lg bg-gray-900 object-cover ring-1 ring-white/10" />
                     <div>
                         <div class="flex items-center gap-2">
                             <Icon :name="categoryVisual(group.category).icon" class="text-sm text-blue-400" />
