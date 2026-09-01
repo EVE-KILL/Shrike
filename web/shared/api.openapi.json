@@ -63801,6 +63801,22 @@
     "/fits/flavors-of-the-week": {
       "get": {
         "operationId": "fittings-trending-legacy",
+        "parameters": [
+          {
+            "description": "Rank weekly hulls by kill participation, final blows, or observed losses.",
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "default": "kills",
+              "enum": [
+                "kills",
+                "final_blows",
+                "losses"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -63914,6 +63930,10 @@
                             },
                             "type": "array"
                           },
+                          "ranking_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
                           "ship_name": {
                             "type": [
                               "string",
@@ -63981,11 +64001,15 @@
                           "drones",
                           "ship_type_id",
                           "ship_name",
-                          "hull_cost"
+                          "hull_cost",
+                          "ranking_count"
                         ],
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "ranking_mode": {
+                      "type": "string"
                     },
                     "window_days": {
                       "format": "int64",
@@ -63994,6 +64018,7 @@
                   },
                   "required": [
                     "window_days",
+                    "ranking_mode",
                     "families"
                   ],
                   "type": "object"
@@ -64003,7 +64028,7 @@
             "description": "OK"
           }
         },
-        "summary": "Trending ship fittings",
+        "summary": "Weekly ship fitting rankings",
         "tags": [
           "fittings"
         ],
@@ -64013,6 +64038,20 @@
     "/fits/popular-ships": {
       "get": {
         "operationId": "fittings-popular-ships-legacy",
+        "parameters": [
+          {
+            "description": "Rank hulls by kill participation.",
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "default": "kills",
+              "enum": [
+                "kills"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -64083,7 +64122,7 @@
             "description": "OK"
           }
         },
-        "summary": "Ships with the most recent fitting activity",
+        "summary": "Ships participating in the most recent kills",
         "tags": [
           "fittings"
         ],
@@ -64476,6 +64515,21 @@
     "/fits/top-alliance-doctrines": {
       "get": {
         "operationId": "fittings-alliance-doctrines-legacy",
+        "parameters": [
+          {
+            "description": "Group doctrine losses by alliance or corporation.",
+            "in": "query",
+            "name": "entity_type",
+            "schema": {
+              "default": "alliance",
+              "enum": [
+                "alliance",
+                "corporation"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -64487,16 +64541,6 @@
                       "items": {
                         "additionalProperties": false,
                         "properties": {
-                          "alliance_id": {
-                            "format": "int64",
-                            "type": "integer"
-                          },
-                          "alliance_name": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
                           "canonical_fit_hash": {
                             "type": "string"
                           },
@@ -64535,6 +64579,16 @@
                               "type": "object"
                             },
                             "type": "array"
+                          },
+                          "entity_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "entity_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "family_hash": {
                             "type": "string"
@@ -64619,8 +64673,8 @@
                           }
                         },
                         "required": [
-                          "alliance_id",
-                          "alliance_name",
+                          "entity_id",
+                          "entity_name",
                           "total_losses",
                           "family_hash",
                           "ship_type_id",
@@ -64638,6 +64692,9 @@
                       },
                       "type": "array"
                     },
+                    "entity_type": {
+                      "type": "string"
+                    },
                     "window_days": {
                       "format": "int64",
                       "type": "integer"
@@ -64645,6 +64702,7 @@
                   },
                   "required": [
                     "window_days",
+                    "entity_type",
                     "doctrines"
                   ],
                   "type": "object"
@@ -65248,6 +65306,21 @@
     "/fittings/doctrines/alliances": {
       "get": {
         "operationId": "fittings-alliance-doctrines",
+        "parameters": [
+          {
+            "description": "Group doctrine losses by alliance or corporation.",
+            "in": "query",
+            "name": "entity_type",
+            "schema": {
+              "default": "alliance",
+              "enum": [
+                "alliance",
+                "corporation"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -65259,16 +65332,6 @@
                       "items": {
                         "additionalProperties": false,
                         "properties": {
-                          "alliance_id": {
-                            "format": "int64",
-                            "type": "integer"
-                          },
-                          "alliance_name": {
-                            "type": [
-                              "string",
-                              "null"
-                            ]
-                          },
                           "canonical_fit_hash": {
                             "type": "string"
                           },
@@ -65307,6 +65370,16 @@
                               "type": "object"
                             },
                             "type": "array"
+                          },
+                          "entity_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "entity_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "family_hash": {
                             "type": "string"
@@ -65391,8 +65464,8 @@
                           }
                         },
                         "required": [
-                          "alliance_id",
-                          "alliance_name",
+                          "entity_id",
+                          "entity_name",
                           "total_losses",
                           "family_hash",
                           "ship_type_id",
@@ -65410,6 +65483,9 @@
                       },
                       "type": "array"
                     },
+                    "entity_type": {
+                      "type": "string"
+                    },
                     "window_days": {
                       "format": "int64",
                       "type": "integer"
@@ -65417,6 +65493,7 @@
                   },
                   "required": [
                     "window_days",
+                    "entity_type",
                     "doctrines"
                   ],
                   "type": "object"
@@ -65772,6 +65849,20 @@
     "/fittings/ships/popular": {
       "get": {
         "operationId": "fittings-popular-ships",
+        "parameters": [
+          {
+            "description": "Rank hulls by kill participation.",
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "default": "kills",
+              "enum": [
+                "kills"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -65842,7 +65933,7 @@
             "description": "OK"
           }
         },
-        "summary": "Ships with the most recent fitting activity",
+        "summary": "Ships participating in the most recent kills",
         "tags": [
           "fittings"
         ],
@@ -66187,6 +66278,22 @@
     "/fittings/trending": {
       "get": {
         "operationId": "fittings-trending",
+        "parameters": [
+          {
+            "description": "Rank weekly hulls by kill participation, final blows, or observed losses.",
+            "in": "query",
+            "name": "mode",
+            "schema": {
+              "default": "kills",
+              "enum": [
+                "kills",
+                "final_blows",
+                "losses"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -66300,6 +66407,10 @@
                             },
                             "type": "array"
                           },
+                          "ranking_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
                           "ship_name": {
                             "type": [
                               "string",
@@ -66367,11 +66478,15 @@
                           "drones",
                           "ship_type_id",
                           "ship_name",
-                          "hull_cost"
+                          "hull_cost",
+                          "ranking_count"
                         ],
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "ranking_mode": {
+                      "type": "string"
                     },
                     "window_days": {
                       "format": "int64",
@@ -66380,6 +66495,7 @@
                   },
                   "required": [
                     "window_days",
+                    "ranking_mode",
                     "families"
                   ],
                   "type": "object"
@@ -66389,7 +66505,7 @@
             "description": "OK"
           }
         },
-        "summary": "Trending ship fittings",
+        "summary": "Weekly ship fitting rankings",
         "tags": [
           "fittings"
         ],

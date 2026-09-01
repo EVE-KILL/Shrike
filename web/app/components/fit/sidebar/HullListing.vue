@@ -19,6 +19,7 @@ import ShipFitIcon, { type ShipFitIconName } from "../ShipFitIcon.vue";
 import TreeHeader from "./TreeHeader.vue";
 import TreeHeaderAction from "./TreeHeaderAction.vue";
 import TreeListing from "./TreeListing.vue";
+import { fuzzyFitMatch, fuzzyFitScore } from "~/utils/fuzzyFitSearch";
 
 const { sde } = useEveData();
 const { currentFit } = useCurrentFit();
@@ -42,9 +43,15 @@ const RACE_ORDER: Array<{ id: number; name: string }> = [
 
 const search = ref("");
 const searchInput = ref<HTMLInputElement | null>(null);
+const selectedResult = ref(0);
 
 defineExpose({
     focusSearch: () => searchInput.value?.focus(),
+    openCommandSearch: () => {
+        search.value = "";
+        selectedResult.value = 0;
+        nextTick(() => searchInput.value?.focus());
+    },
 });
 
 const filter = reactive({
@@ -80,7 +87,7 @@ const hullGroups = computed<GroupEntry[]>(() => {
         if (hull.marketGroupID === undefined || hull.marketGroupID === null) continue;
         if (!hull.published) continue;
         if (filter.currentHull && currentShipId !== typeId) continue;
-        if (searchLower && !hull.name.toLowerCase().includes(searchLower)) continue;
+        if (searchLower && !fuzzyFitMatch(searchLower, hull.name)) continue;
 
         const groupName = sdeData.groups.get(hull.groupID)?.name ?? "Unknown Group";
         const raceName = factionIdToRace[hull.factionID ?? 0] ?? "Non-Empire";
@@ -106,6 +113,30 @@ const hullGroups = computed<GroupEntry[]>(() => {
     }
     return result;
 });
+
+const flatHullResults = computed<HullEntry[]>(() => {
+    if (!search.value.trim()) return [];
+    return hullGroups.value
+        .flatMap(group => group.races.flatMap(race => race.hulls))
+        .sort((a, b) => fuzzyFitScore(search.value, a.name) - fuzzyFitScore(search.value, b.name) || a.name.localeCompare(b.name))
+        .slice(0, 15);
+});
+
+watch(flatHullResults, () => { selectedResult.value = 0; });
+
+function onSearchKeydown(event: KeyboardEvent) {
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        selectedResult.value = Math.min(selectedResult.value + 1, flatHullResults.value.length - 1);
+    } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        selectedResult.value = Math.max(selectedResult.value - 1, 0);
+    } else if (event.key === "Enter") {
+        event.preventDefault();
+        const hull = flatHullResults.value[selectedResult.value];
+        if (hull) onSimulate(hull.typeId);
+    }
+}
 
 function onSimulate(typeId: number) {
     fitManager.createNewFit(typeId);
@@ -183,6 +214,7 @@ const filterPills = computed<FilterPill[]>(() => [
                 type="text"
                 placeholder="Search hulls…"
                 class="flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-600 outline-none"
+                @keydown="onSearchKeydown"
             />
         </div>
 
@@ -210,6 +242,22 @@ const filterPills = computed<FilterPill[]>(() => [
 
         <!-- Tree -->
         <div class="flex-1 overflow-y-auto py-1">
+            <template v-if="search.trim()">
+                <button
+                    v-for="(hull, index) in flatHullResults"
+                    :key="hull.typeId"
+                    type="button"
+                    class="flex h-9 w-full items-center gap-2 px-3 text-left text-xs transition-colors"
+                    :class="index === selectedResult ? 'bg-blue-400/10 text-blue-200' : 'text-gray-400 hover:bg-white/[0.04]'"
+                    @mouseenter="selectedResult = index"
+                    @click="onSimulate(hull.typeId)"
+                >
+                    <img :src="`https://images.evetech.net/types/${hull.typeId}/icon?size=32`" class="h-6 w-6" alt="" />
+                    <span class="truncate">{{ hull.name }}</span>
+                </button>
+                <div v-if="flatHullResults.length === 0" class="px-3 py-4 text-center text-xs text-gray-600">No matches</div>
+            </template>
+            <template v-else>
             <TreeListing
                 v-for="group in hullGroups"
                 :key="group.groupName"
@@ -261,6 +309,7 @@ const filterPills = computed<FilterPill[]>(() => [
                     </div>
                 </TreeListing>
             </TreeListing>
+            </template>
         </div>
     </div>
 </template>

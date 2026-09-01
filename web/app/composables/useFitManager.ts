@@ -194,6 +194,29 @@ export function useFitManager() {
         setFit(next);
     }
 
+    /** Fill every currently empty high slot with one turret/launcher type. */
+    function fillHighRack(typeId: number, chargeTypeId?: number): number {
+        const fit = currentFit.value;
+        if (!fit) return 0;
+        const hardpoints = capacity.hardpointsAvailableFor(typeId);
+        if (hardpoints === null || hardpoints <= 0) return 0;
+
+        const next = cloneFit(fit);
+        let fitted = 0;
+        for (let index = 1; index <= capacity.slotCounts.value.High && fitted < hardpoints; index++) {
+            if (next.modules.some(module => module.slot.type === "High" && module.slot.index === index)) continue;
+            next.modules.push({
+                typeId,
+                slot: { type: "High", index },
+                state: defaultStateFor("High"),
+                charge: chargeTypeId ? { typeId: chargeTypeId } : undefined,
+            });
+            fitted++;
+        }
+        if (fitted > 0) setFit(next);
+        return fitted;
+    }
+
     function setModuleState(slotType: FitSlotType, index: number, state: FitState) {
         if (!currentFit.value) return;
         const next = cloneFit(currentFit.value);
@@ -458,6 +481,7 @@ export function useFitManager() {
         removePreview: clearPreview,
         // modules
         addModule,
+        fillHighRack,
         removeModule,
         setModuleState,
         toggleRackOverload,

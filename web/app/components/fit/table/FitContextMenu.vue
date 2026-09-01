@@ -20,15 +20,25 @@ const props = defineProps<{
     slotIndex: number;
     currentState: string;
     hasCharge: boolean;
+    canFillRack?: boolean;
     empty?: boolean;
 }>();
 
 const emit = defineEmits<{
     close: [];
+    fillRack: [];
 }>();
 
 const { sde } = useEveData();
 const fitManager = useFitManager();
+const menuStyle = computed(() => {
+    if (!import.meta.client) return { left: `${props.x}px`, top: `${props.y}px` };
+    return {
+        left: `${Math.max(8, Math.min(props.x, window.innerWidth - 250))}px`,
+        top: `${Math.max(8, Math.min(props.y, window.innerHeight - 360))}px`,
+    };
+});
+const openFlyoutLeft = computed(() => import.meta.client && props.x > window.innerWidth / 2);
 
 // Close on outside click or Escape. The menu itself stops propagation
 // so clicks inside don't trigger this.
@@ -73,6 +83,10 @@ function setState(state: FitState) {
 function overloadRack() {
     fitManager.toggleRackOverload(props.slotType);
     emit("close");
+}
+
+function fillRack() {
+    emit("fillRack");
 }
 
 function unfit() {
@@ -162,9 +176,9 @@ const hasCompatibleCharges = computed(() => compatibleCharges.value.length > 0);
         <div
             v-if="visible"
             ref="menuEl"
-            class="fixed z-[100] whitespace-nowrap rounded-md border border-white/[0.12] shadow-xl shadow-black/70 text-xs text-gray-200 overflow-visible"
+            class="fixed z-[1100] whitespace-nowrap rounded-md border border-white/[0.12] shadow-xl shadow-black/70 text-xs text-gray-200 overflow-visible"
             style="background-color: #1a1a1a;"
-            :style="{ left: x + 'px', top: y + 'px' }"
+            :style="menuStyle"
         >
             <template v-if="!empty">
                 <!-- State toggles -->
@@ -198,6 +212,16 @@ const hasCompatibleCharges = computed(() => compatibleCharges.value.length > 0);
                 <div class="border-t border-white/[0.06]"></div>
             </template>
 
+            <div v-if="canFillRack && !empty" class="py-1 border-b border-white/[0.06]">
+                <button
+                    type="button"
+                    class="w-full text-left px-3 py-1.5 hover:bg-white/[0.06] text-blue-300"
+                    @click="fillRack"
+                >
+                    Fill Empty Highs
+                </button>
+            </div>
+
             <template v-if="!empty">
             <!-- Charge submenus — hover to open flyout -->
             <div v-if="hasCompatibleCharges" class="py-1">
@@ -211,7 +235,8 @@ const hasCompatibleCharges = computed(() => compatibleCharges.value.length > 0);
                         <Icon name="lucide:chevron-right" class="w-3 h-3 text-gray-500" />
                     </button>
                     <div
-                        class="hidden group-hover/charge:block absolute left-full top-0 ml-0.5 min-w-[220px] max-h-[300px] overflow-y-auto rounded-md border border-white/[0.12] shadow-xl shadow-black/70"
+                        class="hidden group-hover/charge:block absolute top-0 min-w-[220px] max-h-[300px] overflow-y-auto rounded-md border border-white/[0.12] shadow-xl shadow-black/70"
+                        :class="openFlyoutLeft ? 'right-full mr-0.5' : 'left-full ml-0.5'"
                         style="background-color: #1a1a1a;"
                     >
                         <div class="py-1">
@@ -242,7 +267,8 @@ const hasCompatibleCharges = computed(() => compatibleCharges.value.length > 0);
                         <Icon name="lucide:chevron-right" class="w-3 h-3 text-gray-500" />
                     </button>
                     <div
-                        class="hidden group-hover/chargeall:block absolute left-full top-0 ml-0.5 min-w-[220px] max-h-[300px] overflow-y-auto rounded-md border border-white/[0.12] shadow-xl shadow-black/70"
+                        class="hidden group-hover/chargeall:block absolute top-0 min-w-[220px] max-h-[300px] overflow-y-auto rounded-md border border-white/[0.12] shadow-xl shadow-black/70"
+                        :class="openFlyoutLeft ? 'right-full mr-0.5' : 'left-full ml-0.5'"
                         style="background-color: #1a1a1a;"
                     >
                         <div class="py-1">

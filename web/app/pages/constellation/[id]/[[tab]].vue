@@ -160,7 +160,7 @@ const dotlanUrl = computed(() => {
         <EntityHeader v-if="pending" loading />
 
         <div v-else-if="constellation">
-            <EntityHeader>
+            <EntityHeader :background-image="`/images/constellations/${id}?size=1024`">
                 <template v-if="dominantHolder" #image>
                     <EntityImageExpand :full-src="dominantHolder.image" :alt="dominantHolder.name">
                         <NuxtLink v-if="dominantHolder.link" :to="dominantHolder.link">

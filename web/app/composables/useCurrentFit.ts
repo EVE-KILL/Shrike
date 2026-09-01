@@ -40,6 +40,14 @@ export function useCurrentFit() {
         "fit:currentOwnerId",
         () => null,
     );
+    const undoStack = useState<Array<Fit | null>>("fit:undo", () => []);
+    const redoStack = useState<Array<Fit | null>>("fit:redo", () => []);
+
+    const clone = (value: Fit | null): Fit | null => value ? structuredClone(toRaw(value)) : null;
+    const resetHistory = () => {
+        undoStack.value = [];
+        redoStack.value = [];
+    };
 
     const fit = computed<Fit | null>(() => previewFit.value ?? currentFit.value);
     const isPreview = computed(() => previewFit.value !== null);
@@ -60,6 +68,8 @@ export function useCurrentFit() {
     // for external imports + new-fit flows), setSavedFit (sets it, for
     // /api/fit/:id loads), and markSaved (sets it, after POST succeeds).
     function setFit(next: Fit | null) {
+        undoStack.value = [...undoStack.value.slice(-99), clone(currentFit.value)];
+        redoStack.value = [];
         currentFit.value = next ? markRaw(next) : null;
         previewFit.value = null;
     }
@@ -80,6 +90,7 @@ export function useCurrentFit() {
         previewFit.value = null;
         currentFitId.value = null;
         currentFitOwnerId.value = null;
+        resetHistory();
     }
 
     /**
@@ -93,6 +104,7 @@ export function useCurrentFit() {
         previewFit.value = null;
         currentFitId.value = fitId;
         currentFitOwnerId.value = ownerCharacterId;
+        resetHistory();
     }
 
     /**
@@ -115,6 +127,24 @@ export function useCurrentFit() {
         previewFit.value = null;
     }
 
+    function undo() {
+        const previous = undoStack.value.at(-1);
+        if (previous === undefined) return;
+        redoStack.value = [...redoStack.value, clone(currentFit.value)];
+        undoStack.value = undoStack.value.slice(0, -1);
+        currentFit.value = previous ? markRaw(clone(previous)!) : null;
+        previewFit.value = null;
+    }
+
+    function redo() {
+        const next = redoStack.value.at(-1);
+        if (next === undefined) return;
+        undoStack.value = [...undoStack.value, clone(currentFit.value)];
+        redoStack.value = redoStack.value.slice(0, -1);
+        currentFit.value = next ? markRaw(clone(next)!) : null;
+        previewFit.value = null;
+    }
+
     return {
         currentFit,
         previewFit,
@@ -129,5 +159,9 @@ export function useCurrentFit() {
         markSaved,
         setPreview,
         clearPreview,
+        canUndo: computed(() => undoStack.value.length > 0),
+        canRedo: computed(() => redoStack.value.length > 0),
+        undo,
+        redo,
     };
 }

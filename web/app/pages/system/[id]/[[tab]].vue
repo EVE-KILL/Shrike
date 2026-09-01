@@ -228,7 +228,7 @@ const entityLink = (type: string | null, entityId: number | null): string | null
         <EntityHeader v-if="pending" loading />
 
         <div v-else-if="system">
-            <EntityHeader>
+            <EntityHeader :background-image="`/images/systems/${id}?size=1024`">
                 <template v-if="sov && (sov.alliance_id || sov.faction_id)" #image>
                     <EntityImageExpand v-if="sov.alliance_id" :full-src="`/images/alliances/${sov.alliance_id}/logo?size=256`" :alt="sov.alliance_name">
                         <NuxtLink :to="`/alliance/${sov.alliance_id}`">

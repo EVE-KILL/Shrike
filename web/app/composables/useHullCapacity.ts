@@ -54,12 +54,39 @@ export function useHullCapacity() {
         return a?.value ?? 0;
     }
 
+    /**
+     * Strategic cruisers keep their slots and weapon hardpoints on fitted
+     * subsystems rather than on the bare hull. Some dogma calculations don't
+     * project those static modifier attributes back onto the hull snapshot, so
+     * derive the assembled value directly as a reliable fallback.
+     */
+    function assembledAttr(baseName: string, subsystemModifierName: string): number {
+        const sdeData = sde.value;
+        const fit = currentFit.value;
+        if (!sdeData || !fit) return 0;
+        let value = typeAttr(sdeData, fit.shipTypeId, baseName);
+        for (const module of fit.modules) {
+            if (module.slot.type !== "SubSystem") continue;
+            value += typeAttr(sdeData, module.typeId, subsystemModifierName);
+        }
+        return value;
+    }
+
     // ========== Slot counts ==================================================
 
     const slotCounts = computed(() => ({
-        High: Math.floor(hullAttr("hiSlots") + hullAttr("hiSlotModifier")),
-        Medium: Math.floor(hullAttr("medSlots") + hullAttr("medSlotModifier")),
-        Low: Math.floor(hullAttr("lowSlots") + hullAttr("lowSlotModifier")),
+        High: Math.floor(Math.max(
+            hullAttr("hiSlots") + hullAttr("hiSlotModifier"),
+            assembledAttr("hiSlots", "hiSlotModifier"),
+        )),
+        Medium: Math.floor(Math.max(
+            hullAttr("medSlots") + hullAttr("medSlotModifier"),
+            assembledAttr("medSlots", "medSlotModifier"),
+        )),
+        Low: Math.floor(Math.max(
+            hullAttr("lowSlots") + hullAttr("lowSlotModifier"),
+            assembledAttr("lowSlots", "lowSlotModifier"),
+        )),
         // Rig count lives on `rigSlots` — ships with no rig slots return 0
         // (structures, capitals sometimes) and the widget hides itself.
         Rig: Math.floor(hullAttr("rigSlots")),
@@ -359,14 +386,29 @@ export function useHullCapacity() {
      * clicks may briefly slip one extra through while the engine's
      * async recalc catches up — rare and easy to undo.
      */
-    function hasHardpointFor(typeId: number): boolean {
+    function hardpointsAvailableFor(typeId: number): number | null {
         if (needsLauncherHardpoint(typeId)) {
-            return hullAttr("launcherSlotsLeft") > 0;
+            const fitted = currentFit.value?.modules.filter(module => needsLauncherHardpoint(module.typeId)).length ?? 0;
+            const assembledLeft = assembledAttr("launcherSlotsLeft", "launcherHardPointModifier") - fitted;
+            return Math.max(hullAttr("launcherSlotsLeft"), assembledLeft);
         }
         if (needsTurretHardpoint(typeId)) {
-            return hullAttr("turretSlotsLeft") > 0;
+            const fitted = currentFit.value?.modules.filter(module => needsTurretHardpoint(module.typeId)).length ?? 0;
+            const assembledLeft = assembledAttr("turretSlotsLeft", "turretHardPointModifier") - fitted;
+            return Math.max(hullAttr("turretSlotsLeft"), assembledLeft);
         }
-        return true;
+        return null;
+    }
+
+    function hardpointLimitFor(typeId: number): number | null {
+        if (needsLauncherHardpoint(typeId)) return assembledAttr("launcherSlotsLeft", "launcherHardPointModifier");
+        if (needsTurretHardpoint(typeId)) return assembledAttr("turretSlotsLeft", "turretHardPointModifier");
+        return null;
+    }
+
+    function hasHardpointFor(typeId: number): boolean {
+        const available = hardpointsAvailableFor(typeId);
+        return available === null || available > 0;
     }
 
     // ========== Propulsion module detection ====================================
@@ -407,6 +449,8 @@ export function useHullCapacity() {
         hasFreeSlot,
         needsLauncherHardpoint,
         needsTurretHardpoint,
+        hardpointsAvailableFor,
+        hardpointLimitFor,
         hasHardpointFor,
         isPropulsionModule,
         // Expose the raw helpers too in case other widgets want the

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -59,6 +60,58 @@ func TestFittingRoutesRegisterCanonicalAndFrontendAliases(t *testing.T) {
 		if !exists {
 			t.Errorf("%s %s operation is missing", route.method, route.path)
 		}
+	}
+}
+
+func TestTrendingFittingsModeContract(t *testing.T) {
+	mux := http.NewServeMux()
+	a := humago.New(mux, huma.DefaultConfig("test", "test"))
+	registerFittingRoutes(a, Options{})
+
+	for _, path := range []string{"/fittings/trending", "/fits/flavors-of-the-week"} {
+		operation := a.OpenAPI().Paths[path].Get
+		if operation == nil || len(operation.Parameters) != 1 {
+			t.Fatalf("%s parameters = %#v", path, operation)
+		}
+		parameter := operation.Parameters[0]
+		if parameter.Name != "mode" || parameter.Schema.Default != "kills" ||
+			!reflect.DeepEqual(parameter.Schema.Enum, []any{"kills", "final_blows", "losses"}) {
+			t.Errorf("%s mode parameter = %#v", path, parameter)
+		}
+	}
+
+	_, err := trendingFittingsHandler(Options{})(context.Background(), &legacyRequest{
+		Query: url.Values{"mode": {"invalid"}},
+	})
+	var apiErr *legacyAPIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusBadRequest {
+		t.Fatalf("invalid mode error = %#v", err)
+	}
+}
+
+func TestDoctrineEntityTypeContract(t *testing.T) {
+	mux := http.NewServeMux()
+	a := humago.New(mux, huma.DefaultConfig("test", "test"))
+	registerFittingRoutes(a, Options{})
+
+	for _, path := range []string{"/fittings/doctrines/alliances", "/fits/top-alliance-doctrines"} {
+		operation := a.OpenAPI().Paths[path].Get
+		if operation == nil || len(operation.Parameters) != 1 {
+			t.Fatalf("%s parameters = %#v", path, operation)
+		}
+		parameter := operation.Parameters[0]
+		if parameter.Name != "entity_type" || parameter.Schema.Default != "alliance" ||
+			!reflect.DeepEqual(parameter.Schema.Enum, []any{"alliance", "corporation"}) {
+			t.Errorf("%s entity_type parameter = %#v", path, parameter)
+		}
+	}
+
+	_, err := allianceDoctrineHandler(Options{})(context.Background(), &legacyRequest{
+		Query: url.Values{"entity_type": {"invalid"}},
+	})
+	var apiErr *legacyAPIError
+	if !errors.As(err, &apiErr) || apiErr.Status != http.StatusBadRequest {
+		t.Fatalf("invalid entity type error = %#v", err)
 	}
 }
 

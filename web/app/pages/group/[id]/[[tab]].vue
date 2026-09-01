@@ -123,7 +123,7 @@ useSchemaOrg([defineBreadcrumb(computed(() => ({
         <EntityHeader v-if="pending" loading />
 
         <div v-else-if="group">
-            <EntityHeader>
+            <EntityHeader :background-image="publishedTypes[0] ? `/images/types/${publishedTypes[0].type_id}/${isShipGroup ? 'render' : 'icon'}?size=1024` : null">
                 <div class="flex items-center gap-3 mb-1 flex-wrap">
                     <h1 class="text-2xl md:text-3xl font-bold text-white">{{ group.name }}</h1>
                     <span v-if="group.category_name" class="px-2 py-0.5 rounded text-fine font-bold uppercase tracking-wider text-blue-400 bg-white/[0.06]">

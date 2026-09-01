@@ -353,7 +353,7 @@ const hasStats = computed(() =>
         <EntityHeader v-if="pending" loading />
 
         <div v-else-if="item">
-            <EntityHeader>
+            <EntityHeader :background-image="isShip ? `/images/types/${item.type_id}/render?size=1024` : null">
                 <template #image>
                     <!-- Ship: large render. Item: small icon -->
                     <EntityImageExpand v-if="isShip" :full-src="`/images/types/${item.type_id}/render?size=512`" :alt="item.name">

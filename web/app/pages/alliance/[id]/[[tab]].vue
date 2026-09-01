@@ -162,7 +162,7 @@ useSchemaOrg([
 
             <!-- ===== ALLIANCE HEADER — DESKTOP ===== -->
             <div class="hidden md:block">
-            <EntityHeader :accent="accent?.accent">
+            <EntityHeader :accent="accent?.accent" :background-image="`/images/alliances/${ally.alliance_id}/logo?size=1024`">
                 <template #image>
                     <EntityImageExpand :full-src="`/images/alliances/${ally.alliance_id}/logo?size=256`" :alt="ally.name">
                         <img :src="`/images/alliances/${ally.alliance_id}/logo?size=256`"

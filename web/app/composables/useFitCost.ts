@@ -84,6 +84,11 @@ function computeTotal(fit: Fit | null): number {
     return total
 }
 
+export async function calculateFitCost(fit: Fit | null): Promise<number> {
+    await ensurePrices(collectTypeIds(fit))
+    return computeTotal(fit)
+}
+
 // Stub refs returned from the server. Sharing one set of readonly refs
 // across SSR avoids per-request allocations and guarantees the server
 // never tries to fetch prices or mutate the shared `priceCache` map.

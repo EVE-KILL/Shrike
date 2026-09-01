@@ -133,7 +133,8 @@ const formatCount = (count: number) =>
       title="Killmail Categories"
       eyebrow="Explore the killmail archive"
       icon="lucide:tags"
-      image-src="/images/types/11567/overlayrender?size=256"
+      image-src="/images/types/11567/overlayrender?size=1024"
+      image-mode="background"
       description="Browse the killmail archive by activity, location, fleet size, value, ship class, and other useful classifications. A killmail can appear in more than one category."
     >
       <template #meta>

@@ -34,18 +34,26 @@ import SaveFitModal from "./SaveFitModal.vue";
 const props = withDefaults(
     defineProps<{
         mode?: "create" | "edit" | "view";
+        expandable?: boolean;
+        expanded?: boolean;
     }>(),
     {
         mode: "create",
     },
 );
 
-const { currentFit, isSaved } = useCurrentFit();
+const emit = defineEmits<{
+    toggleExpanded: [];
+}>();
+
+const { currentFit, isSaved, canUndo, canRedo, undo, redo } = useCurrentFit();
 const { isLoading } = useFitStatistics();
+const { issues: fitIssues, isValid: fitIsValid } = useFitValidity();
 const { sde } = useEveData();
 const fitManager = useFitManager();
 const loader = useFitLoader();
 const { isAuthenticated, login } = useAuth();
+const toast = useToast();
 const {
     total: fitIskTotal,
     isLoading: isPriceLoading,
@@ -74,6 +82,10 @@ function flashPaste(state: "success" | "error") {
 }
 
 const saveModalOpen = ref(false);
+const discardModalOpen = ref(false);
+const renameModalOpen = ref(false);
+const renameDraft = ref("");
+const renameInput = ref<HTMLInputElement | null>(null);
 const saveFlash = ref(false);
 let saveFlashTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -126,16 +138,23 @@ async function onForkClick() {
 
 async function onPasteClick() {
     const text = await readClipboard();
-    if (!text) return flashPaste("error");
+    if (!text) {
+        flashPaste("error");
+        toast.error("Could not read a fitting from the clipboard");
+        return;
+    }
     const result = await loader.loadFromUnknown(text);
     flashPaste(result ? "success" : "error");
+    if (result) toast.success(`Fitting imported from ${result.toUpperCase()}`);
+    else toast.error("Clipboard does not contain a recognised EFT or EVE-KILL fitting");
 }
 
 async function onCopyEftClick() {
     if (!currentFit.value || !sde.value) return;
     const eft = exportFitToEft(currentFit.value, sde.value);
     if (!eft) return;
-    await copyEft(eft);
+    if (await copyEft(eft)) toast.success("EFT fitting copied to clipboard");
+    else toast.error("Could not copy the EFT fitting");
 }
 
 async function onCopyLinkClick() {
@@ -144,26 +163,37 @@ async function onCopyLinkClick() {
     const origin =
         typeof window !== "undefined" ? window.location.origin : "https://eve-kill.com";
     const link = `${origin}${window.location.pathname}?fit=${encoded}`;
-    await copyLink(link);
+    if (await copyLink(link)) toast.success("Share link copied to clipboard");
+    else toast.error("Could not copy the share link");
 }
 
 function onRenameClick() {
     if (!currentFit.value) return;
-    const next = window.prompt("Rename fit", currentFit.value.name);
-    if (next && next.trim()) fitManager.setName(next.trim());
+    renameDraft.value = currentFit.value.name;
+    renameModalOpen.value = true;
+    nextTick(() => {
+        renameInput.value?.focus();
+        renameInput.value?.select();
+    });
+}
+
+function confirmRename() {
+    const name = renameDraft.value.trim();
+    if (!name) return;
+    fitManager.setName(name);
+    renameModalOpen.value = false;
 }
 
 function onNewFitClick() {
-    // Confirm before nuking work in progress. Use the browser
-    // confirm() for now — a prettier modal can land with the
-    // rest of the ship-picker UI.
-    if (
-        currentFit.value &&
-        currentFit.value.modules.length > 0 &&
-        !window.confirm("Discard the current fit?")
-    ) {
+    if (currentFit.value && currentFit.value.modules.length > 0) {
+        discardModalOpen.value = true;
         return;
     }
+    createBlankFit();
+}
+
+function createBlankFit() {
+    discardModalOpen.value = false;
     // Reset the hull too — clicking New should always give a blank
     // editor and a clean URL. Keeping the old shipTypeId meant the
     // sidebar stayed on Hardware and the URL kept the previous
@@ -188,9 +218,29 @@ const hasFit = computed(() => isMounted.value && currentFit.value !== null);
         <!-- Left: action buttons -->
         <div class="flex flex-wrap items-center gap-0.5">
             <button
+                v-if="showOwnerActions"
+                type="button"
+                :disabled="!canUndo"
+                class="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-gray-500 transition-colors hover:bg-blue-500/[0.06] hover:text-blue-400 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
+                title="Undo (⌘/Ctrl+Z)"
+                @click="undo"
+            >
+                <Icon name="lucide:undo-2" class="h-3.5 w-3.5" />
+            </button>
+            <button
+                v-if="showOwnerActions"
+                type="button"
+                :disabled="!canRedo"
+                class="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-gray-500 transition-colors hover:bg-blue-500/[0.06] hover:text-blue-400 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500"
+                title="Redo (⌘/Ctrl+Shift+Z)"
+                @click="redo"
+            >
+                <Icon name="lucide:redo-2" class="h-3.5 w-3.5" />
+            </button>
+            <button
                 v-if="showPaste"
                 type="button"
-                class="flex items-center gap-1 px-2 py-1 rounded-md text-sm text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors"
+                class="flex items-center gap-1 rounded-md border border-transparent bg-white/[0.015] px-2 py-1 text-sm text-gray-500 transition-all hover:border-blue-400/25 hover:bg-blue-500/[0.10] hover:text-blue-300 hover:shadow-sm hover:shadow-blue-500/10 active:scale-[0.97]"
                 @click="onPasteClick"
             >
                 <Icon name="lucide:clipboard-paste" class="w-3.5 h-3.5" />
@@ -202,7 +252,7 @@ const hasFit = computed(() => isMounted.value && currentFit.value !== null);
             <button
                 type="button"
                 :disabled="!hasFit"
-                class="flex items-center gap-1 px-2 py-1 rounded-md text-sm text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors disabled:opacity-40 disabled:hover:text-gray-500 disabled:hover:bg-transparent"
+                class="flex items-center gap-1 rounded-md border border-transparent bg-white/[0.015] px-2 py-1 text-sm text-gray-500 transition-all hover:border-blue-400/25 hover:bg-blue-500/[0.10] hover:text-blue-300 hover:shadow-sm hover:shadow-blue-500/10 active:scale-[0.97] disabled:opacity-40 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-gray-500 disabled:hover:shadow-none"
                 @click="onCopyEftClick"
             >
                 <Icon name="lucide:copy" class="w-3.5 h-3.5" />
@@ -212,7 +262,7 @@ const hasFit = computed(() => isMounted.value && currentFit.value !== null);
             <button
                 type="button"
                 :disabled="!hasFit"
-                class="flex items-center gap-1 px-2 py-1 rounded-md text-sm text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors disabled:opacity-40 disabled:hover:text-gray-500 disabled:hover:bg-transparent"
+                class="flex items-center gap-1 rounded-md border border-transparent bg-white/[0.015] px-2 py-1 text-sm text-gray-500 transition-all hover:border-blue-400/25 hover:bg-blue-500/[0.10] hover:text-blue-300 hover:shadow-sm hover:shadow-blue-500/10 active:scale-[0.97] disabled:opacity-40 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-gray-500 disabled:hover:shadow-none"
                 @click="onCopyLinkClick"
             >
                 <Icon name="lucide:link" class="w-3.5 h-3.5" />
@@ -280,6 +330,15 @@ const hasFit = computed(() => isMounted.value && currentFit.value !== null);
             </span>
             <ClientOnly>
                 <span
+                    v-if="currentFit?.shipTypeId"
+                    class="flex items-center gap-1 rounded-md px-2 py-1 text-fine font-bold uppercase tracking-[0.1em]"
+                    :class="fitIsValid ? 'bg-emerald-500/[0.09] text-emerald-300' : 'bg-red-500/[0.09] text-red-300'"
+                    v-tooltip="fitIsValid ? 'Fit is mechanically valid' : fitIssues.map(issue => issue.label).join(' · ')"
+                >
+                    <Icon :name="fitIsValid ? 'lucide:circle-check' : 'lucide:triangle-alert'" class="h-3 w-3" />
+                    {{ fitIsValid ? "Valid" : `${fitIssues.length} issues` }}
+                </span>
+                <span
                     v-if="currentFit"
                     class="flex items-center gap-1 px-2 py-1 rounded-md text-fine font-bold uppercase tracking-[0.12em] bg-amber-500/[0.08] text-amber-300/90 tabular-nums"
                     v-tooltip="hasFitPrice ? `${fitIskTotal.toLocaleString('en-US')} ISK` : 'No price data yet'"
@@ -296,6 +355,16 @@ const hasFit = computed(() => isMounted.value && currentFit.value !== null);
                 <Icon name="lucide:zap" class="w-3 h-3" />
                 All Skills L5
             </span>
+            <button
+                v-if="expandable"
+                type="button"
+                class="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.035] px-2.5 py-1.5 text-fine font-bold uppercase tracking-[0.1em] text-gray-400 transition-colors hover:border-blue-500/30 hover:bg-blue-500/[0.08] hover:text-blue-300"
+                :title="expanded ? 'Exit expanded editor' : 'Expand editor to fill the viewport'"
+                @click="emit('toggleExpanded')"
+            >
+                <Icon :name="expanded ? 'lucide:minimize-2' : 'lucide:maximize-2'" class="h-3.5 w-3.5" />
+                <span>{{ expanded ? "Exit" : "Expand" }}</span>
+            </button>
             <span
                 v-if="isLoading"
                 class="flex items-center gap-1 text-fine text-gray-500"
@@ -306,5 +375,56 @@ const hasFit = computed(() => isMounted.value && currentFit.value !== null);
         </div>
 
         <SaveFitModal v-model="saveModalOpen" @saved="onSaved" />
+        <Modal v-model="discardModalOpen" title="Start a new fit" max-width="max-w-md">
+            <div class="flex gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-400/10 text-amber-300">
+                    <Icon name="lucide:triangle-alert" class="h-5 w-5" />
+                </span>
+                <div>
+                    <p class="text-sm text-gray-200">Discard the current fitting?</p>
+                    <p class="mt-1 text-xs leading-5 text-gray-500">
+                        Your current hull, modules, drones, and cargo will be cleared. You can still cancel and save or copy it first.
+                    </p>
+                </div>
+            </div>
+            <template #footer>
+                <div class="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="rounded-md px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:bg-white/[0.05] hover:text-gray-200"
+                        @click="discardModalOpen = false"
+                    >
+                        Keep editing
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-md border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-xs font-semibold text-red-300 transition-colors hover:border-red-400/35 hover:bg-red-400/20"
+                        @click="createBlankFit"
+                    >
+                        Discard and start new
+                    </button>
+                </div>
+            </template>
+        </Modal>
+        <Modal v-model="renameModalOpen" title="Rename fit" max-width="max-w-md">
+            <form @submit.prevent="confirmRename">
+                <label for="fit-rename" class="mb-2 block text-xs font-medium text-gray-400">Fit name</label>
+                <input
+                    id="fit-rename"
+                    ref="renameInput"
+                    v-model="renameDraft"
+                    type="text"
+                    maxlength="120"
+                    class="w-full rounded-md border border-white/[0.10] bg-black/25 px-3 py-2 text-sm text-gray-100 outline-none transition-colors placeholder:text-gray-600 focus:border-blue-400/40 focus:ring-2 focus:ring-blue-400/10"
+                    placeholder="Name this fitting"
+                />
+            </form>
+            <template #footer>
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="rounded-md px-3 py-1.5 text-xs font-medium text-gray-400 hover:bg-white/[0.05] hover:text-gray-200" @click="renameModalOpen = false">Cancel</button>
+                    <button type="button" :disabled="!renameDraft.trim()" class="rounded-md border border-blue-400/20 bg-blue-400/10 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:border-blue-400/35 hover:bg-blue-400/20 disabled:cursor-not-allowed disabled:opacity-40" @click="confirmRename">Rename</button>
+                </div>
+            </template>
+        </Modal>
     </div>
 </template>

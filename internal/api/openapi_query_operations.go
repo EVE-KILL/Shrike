@@ -605,6 +605,14 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"fittings-community-latest-legacy":    communityFittingsParams(),
 	"fittings-community-top-rated":        communityFittingsParams(),
 	"fittings-community-top-rated-legacy": communityFittingsParams(),
+	"fittings-alliance-doctrines": {
+		enumQuery("entity_type", "Group doctrine losses by alliance or corporation.",
+			"alliance", "alliance", "corporation"),
+	},
+	"fittings-alliance-doctrines-legacy": {
+		enumQuery("entity_type", "Group doctrine losses by alliance or corporation.",
+			"alliance", "alliance", "corporation"),
+	},
 	"ship-fittings": {
 		textQuery(
 			"modules",

@@ -224,7 +224,7 @@ const allianceHistoryWithDuration = computed(() => {
 
             <!-- ===== CORPORATION HEADER — DESKTOP ===== -->
             <div class="hidden md:block">
-            <EntityHeader :accent="accent?.accent">
+            <EntityHeader :accent="accent?.accent" :background-image="`/images/corporations/${corp.corporation_id}/logo?size=1024`">
                 <template #image>
                     <EntityImageExpand :full-src="`/images/corporations/${corp.corporation_id}/logo?size=256`" :alt="corp.name">
                         <img

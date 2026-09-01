@@ -105,7 +105,7 @@ const factionLogo = computed(() => faction.value
 
             <!-- ===== FACTION HEADER — DESKTOP ===== -->
             <div class="hidden md:block">
-                <EntityHeader>
+                <EntityHeader :background-image="`/images/corporations/${faction.corporation_id || faction.faction_id}/logo?size=1024`">
                     <template #image>
                         <EntityImageExpand :full-src="factionLogo" :alt="faction.name">
                             <img :src="factionLogo" :alt="faction.name" class="w-40 h-40 rounded-lg shadow-lg" loading="eager">

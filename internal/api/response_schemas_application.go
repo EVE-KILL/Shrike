@@ -265,9 +265,10 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		}, "fits")
 	case "fittings-trending", "fittings-trending-legacy":
 		return responseSchema(map[string]*huma.Schema{
-			"window_days": intSchema(),
-			"families":    arraySchema(fittingFamilySchema(true)),
-		}, "window_days", "families")
+			"window_days":  intSchema(),
+			"ranking_mode": stringSchema(),
+			"families":     arraySchema(fittingFamilySchema(true)),
+		}, "window_days", "ranking_mode", "families")
 	case "fittings-popular-ships", "fittings-popular-ships-legacy":
 		return responseSchema(map[string]*huma.Schema{
 			"window_days": intSchema(),
@@ -291,8 +292,9 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		"fittings-alliance-doctrines-legacy":
 		return responseSchema(map[string]*huma.Schema{
 			"window_days": intSchema(),
+			"entity_type": stringSchema(),
 			"doctrines":   arraySchema(fittingDoctrineSchema()),
-		}, "window_days", "doctrines")
+		}, "window_days", "entity_type", "doctrines")
 	case "fittings-ship-families", "fittings-ship-families-legacy":
 		return responseSchema(map[string]*huma.Schema{
 			"ship_type_id": intSchema(), "window_days": intSchema(),
@@ -1844,7 +1846,8 @@ func fittingFamilySchema(includeShip bool) *huma.Schema {
 	if includeShip {
 		properties["ship_type_id"] = intSchema()
 		properties["ship_name"] = nullable(stringSchema())
-		required = append(required, "ship_type_id", "ship_name", "hull_cost")
+		properties["ranking_count"] = intSchema()
+		required = append(required, "ship_type_id", "ship_name", "hull_cost", "ranking_count")
 	}
 	return responseSchema(properties, required...)
 }
@@ -1903,7 +1906,7 @@ func fittingSearchResponseSchema() *huma.Schema {
 
 func fittingDoctrineSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
-		"alliance_id": intSchema(), "alliance_name": nullable(stringSchema()),
+		"entity_id": intSchema(), "entity_name": nullable(stringSchema()),
 		"total_losses": intSchema(), "family_hash": stringSchema(),
 		"ship_type_id": intSchema(), "ship_name": nullable(stringSchema()),
 		"canonical_fit_hash": stringSchema(), "doctrine_uses": intSchema(),
@@ -1911,7 +1914,7 @@ func fittingDoctrineSchema() *huma.Schema {
 		"fit_cost": numberSchema(), "hull_cost": nullable(numberSchema()),
 		"modules": arraySchema(fittingCatalogueModuleSchema()),
 		"drones":  arraySchema(fittingCatalogueDroneSchema()),
-	}, "alliance_id", "alliance_name", "total_losses", "family_hash",
+	}, "entity_id", "entity_name", "total_losses", "family_hash",
 		"ship_type_id", "ship_name", "canonical_fit_hash", "doctrine_uses",
 		"doctrine_share", "last_used", "fit_cost", "hull_cost", "modules",
 		"drones")

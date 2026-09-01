@@ -18,9 +18,11 @@ import ModuleGroup, {
     type ListingItem,
     type SidebarSlotType,
 } from "./ModuleGroup.vue";
+import { fuzzyFitMatch, fuzzyFitScore } from "~/utils/fuzzyFitSearch";
 
 const { sde } = useEveData();
 const { currentFit } = useCurrentFit();
+const capacity = useHullCapacity();
 // `currentStats` is the committed (non-preview) snapshot. Using it
 // instead of `stats` means hover-preview on the sidebar doesn't
 // rebuild the whole hardware tree — the restriction filter only
@@ -29,9 +31,17 @@ const { currentStats } = useFitStatistics();
 
 const search = ref("");
 const searchInput = ref<HTMLInputElement | null>(null);
+const selectedResult = ref(0);
+const fillPromptItem = ref<ListingItem | null>(null);
 
 defineExpose({
     focusSearch: () => searchInput.value?.focus(),
+    openCommandSearch: (mode: "modules" | "charges" = "modules") => {
+        selection.value = mode;
+        search.value = "";
+        selectedResult.value = 0;
+        nextTick(() => searchInput.value?.focus());
+    },
 });
 
 const filter = reactive({
@@ -200,9 +210,18 @@ const hullRestrictionState = computed(() => {
         droneBandwidth: hullAttr(attrs.droneBandwidth),
         isCapitalSize,
         slots: {
-            High: Math.floor(hullAttr(attrs.hiSlots) + hullAttr(attrs.hiSlotModifier)),
-            Medium: Math.floor(hullAttr(attrs.medSlots) + hullAttr(attrs.medSlotModifier)),
-            Low: Math.floor(hullAttr(attrs.lowSlots) + hullAttr(attrs.lowSlotModifier)),
+            High: Math.max(
+                Math.floor(hullAttr(attrs.hiSlots) + hullAttr(attrs.hiSlotModifier)),
+                capacity.slotCounts.value.High,
+            ),
+            Medium: Math.max(
+                Math.floor(hullAttr(attrs.medSlots) + hullAttr(attrs.medSlotModifier)),
+                capacity.slotCounts.value.Medium,
+            ),
+            Low: Math.max(
+                Math.floor(hullAttr(attrs.lowSlots) + hullAttr(attrs.lowSlotModifier)),
+                capacity.slotCounts.value.Low,
+            ),
             SubSystem: Math.min(Math.floor(hullAttr(attrs.maxSubSystems)), 4),
         },
     };
@@ -344,7 +363,7 @@ const trees = computed<BuiltTrees>(() => {
             if (!moduleFitsHull(typeId, slotType, module)) continue;
         }
 
-        if (searchLower && !String(module.name).toLowerCase().includes(searchLower)) continue;
+        if (searchLower && !fuzzyFitMatch(searchLower, String(module.name))) continue;
 
         const chain = marketGroupChain(module.marketGroupID);
         if (cat === 18) chain.unshift(157);
@@ -472,7 +491,7 @@ const flatResults = computed<ListingItem[]>(() => {
             if (!moduleFitsHull(typeId, slotType, module)) continue;
         }
 
-        if (!String(module.name).toLowerCase().includes(searchLower)) continue;
+        if (!fuzzyFitMatch(searchLower, String(module.name))) continue;
 
         results.push({
             name: module.name,
@@ -481,11 +500,14 @@ const flatResults = computed<ListingItem[]>(() => {
             slotType,
         });
 
-        if (results.length >= 15) break;
     }
 
-    results.sort((a, b) => a.meta - b.meta || a.name.localeCompare(b.name));
-    return results;
+    results.sort((a, b) =>
+        fuzzyFitScore(search.value, a.name) - fuzzyFitScore(search.value, b.name)
+        || a.meta - b.meta
+        || a.name.localeCompare(b.name),
+    );
+    return results.slice(0, 15);
 });
 
 // Interaction handlers for flat search results (same logic as ModuleGroup)
@@ -494,7 +516,13 @@ const fitManager = useFitManager();
 const DBLCLICK_WINDOW_MS = 400;
 let pendingSearchClick: { typeId: number; time: number } | null = null;
 
-function onSearchResultClick(item: ListingItem) {
+function onSearchResultClick(item: ListingItem, event: MouseEvent) {
+    if (event.shiftKey && item.slotType === "High") {
+        pendingSearchClick = null;
+        fillPromptItem.value = null;
+        fitManager.fillHighRack(item.typeId);
+        return;
+    }
     const now = Date.now();
     if (
         pendingSearchClick
@@ -511,6 +539,44 @@ function onSearchResultClick(item: ListingItem) {
         }
     } else {
         pendingSearchClick = { typeId: item.typeId, time: now };
+    }
+}
+
+function addSearchResult(item: ListingItem) {
+    if (item.slotType === "Charge") fitManager.setChargeAuto(item.typeId);
+    else if (item.slotType === "DroneBay") fitManager.addDrone(item.typeId);
+    else {
+        fitManager.addModule(item.typeId, item.slotType as any);
+        if (item.slotType === "High") fillPromptItem.value = item;
+    }
+}
+
+function fillRemainingHighSlots() {
+    const item = fillPromptItem.value;
+    if (!item) return;
+    fitManager.fillHighRack(item.typeId);
+    fillPromptItem.value = null;
+}
+
+watch(flatResults, () => { selectedResult.value = 0; });
+
+function onSearchKeydown(event: KeyboardEvent) {
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        selectedResult.value = Math.min(selectedResult.value + 1, flatResults.value.length - 1);
+    } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        selectedResult.value = Math.max(selectedResult.value - 1, 0);
+    } else if (event.key === "Enter") {
+        event.preventDefault();
+        const item = flatResults.value[selectedResult.value];
+        if (item && event.shiftKey && item.slotType === "High") {
+            fillPromptItem.value = null;
+            fitManager.fillHighRack(item.typeId);
+        } else if (item) addSearchResult(item);
+    } else if (event.key === "Escape" && fillPromptItem.value) {
+        event.stopPropagation();
+        fillPromptItem.value = null;
     }
 }
 
@@ -535,7 +601,17 @@ function onSearchResultDragStart(e: DragEvent, item: ListingItem) {
                 type="text"
                 placeholder="Search modules & charges…"
                 class="flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-600 outline-none"
+                @keydown="onSearchKeydown"
             />
+        </div>
+
+        <div v-if="fillPromptItem" class="border-b border-blue-400/15 bg-blue-400/[0.06] px-3 py-2">
+            <div class="text-xs font-medium text-blue-200">Fill available high slots?</div>
+            <div class="mt-0.5 truncate text-fine text-gray-500">{{ fillPromptItem.name }}</div>
+            <div class="mt-2 flex gap-2">
+                <button type="button" class="rounded bg-blue-500/20 px-2 py-1 text-fine font-semibold text-blue-200 hover:bg-blue-500/30" @click="fillRemainingHighSlots">Fill rack</button>
+                <button type="button" class="rounded px-2 py-1 text-fine text-gray-500 hover:bg-white/[0.05] hover:text-gray-300" @click="fillPromptItem = null">Just one</button>
+            </div>
         </div>
 
         <!-- Slot filters (shown only on Modules tab) -->
@@ -595,11 +671,13 @@ function onSearchResultDragStart(e: DragEvent, item: ListingItem) {
         <div class="flex-1 min-h-0 overflow-y-auto py-1">
             <template v-if="isSearching">
                 <div
-                    v-for="item in flatResults"
+                    v-for="(item, index) in flatResults"
                     :key="item.typeId"
-                    class="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:bg-white/[0.04] cursor-grab active:cursor-grabbing select-none"
+                    class="flex items-center gap-1.5 px-2 py-1 text-xs cursor-grab active:cursor-grabbing select-none"
+                    :class="index === selectedResult ? 'bg-blue-400/10 text-blue-200' : 'text-gray-300 hover:bg-white/[0.04]'"
                     draggable="true"
-                    @click="onSearchResultClick(item)"
+                    @mouseenter="selectedResult = index"
+                    @click="onSearchResultClick(item, $event)"
                     @dragstart="onSearchResultDragStart($event, item)"
                 >
                     <img

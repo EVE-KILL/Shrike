@@ -21304,7 +21304,12 @@ export type FittingsCommunityLatestLegacyResponse = FittingsCommunityLatestLegac
 export type FittingsTrendingLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Rank weekly hulls by kill participation, final blows, or observed losses.
+         */
+        mode?: 'kills' | 'final_blows' | 'losses';
+    };
     url: '/fits/flavors-of-the-week';
 };
 
@@ -21336,6 +21341,7 @@ export type FittingsTrendingLegacyResponses = {
                 slot_group: number;
                 type_id: number;
             }>;
+            ranking_count: number;
             ship_name: string | null;
             ship_type_id: number;
             top_alliances?: Array<{
@@ -21347,6 +21353,7 @@ export type FittingsTrendingLegacyResponses = {
             total_uses: number;
             variant_count: number;
         }>;
+        ranking_mode: string;
         window_days: number;
     };
 };
@@ -21356,7 +21363,12 @@ export type FittingsTrendingLegacyResponse = FittingsTrendingLegacyResponses[key
 export type FittingsPopularShipsLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Rank hulls by kill participation.
+         */
+        mode?: 'kills';
+    };
     url: '/fits/popular-ships';
 };
 
@@ -21506,7 +21518,12 @@ export type FittingsSearchLegacyResponse = FittingsSearchLegacyResponses[keyof F
 export type FittingsAllianceDoctrinesLegacyData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Group doctrine losses by alliance or corporation.
+         */
+        entity_type?: 'alliance' | 'corporation';
+    };
     url: '/fits/top-alliance-doctrines';
 };
 
@@ -21516,8 +21533,6 @@ export type FittingsAllianceDoctrinesLegacyResponses = {
      */
     200: {
         doctrines: Array<{
-            alliance_id: number;
-            alliance_name: string | null;
             canonical_fit_hash: string;
             doctrine_share: number;
             doctrine_uses: number;
@@ -21526,6 +21541,8 @@ export type FittingsAllianceDoctrinesLegacyResponses = {
                 quantity: number;
                 type_id: number;
             }>;
+            entity_id: number;
+            entity_name: string | null;
             family_hash: string;
             fit_cost: number;
             hull_cost: number | null;
@@ -21545,6 +21562,7 @@ export type FittingsAllianceDoctrinesLegacyResponses = {
             ship_type_id: number;
             total_losses: number;
         }>;
+        entity_type: string;
         window_days: number;
     };
 };
@@ -21735,7 +21753,12 @@ export type FittingsCommunityTopRatedResponse = FittingsCommunityTopRatedRespons
 export type FittingsAllianceDoctrinesData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Group doctrine losses by alliance or corporation.
+         */
+        entity_type?: 'alliance' | 'corporation';
+    };
     url: '/fittings/doctrines/alliances';
 };
 
@@ -21745,8 +21768,6 @@ export type FittingsAllianceDoctrinesResponses = {
      */
     200: {
         doctrines: Array<{
-            alliance_id: number;
-            alliance_name: string | null;
             canonical_fit_hash: string;
             doctrine_share: number;
             doctrine_uses: number;
@@ -21755,6 +21776,8 @@ export type FittingsAllianceDoctrinesResponses = {
                 quantity: number;
                 type_id: number;
             }>;
+            entity_id: number;
+            entity_name: string | null;
             family_hash: string;
             fit_cost: number;
             hull_cost: number | null;
@@ -21774,6 +21797,7 @@ export type FittingsAllianceDoctrinesResponses = {
             ship_type_id: number;
             total_losses: number;
         }>;
+        entity_type: string;
         window_days: number;
     };
 };
@@ -21883,7 +21907,12 @@ export type FittingsSearchResponse = FittingsSearchResponses[keyof FittingsSearc
 export type FittingsPopularShipsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Rank hulls by kill participation.
+         */
+        mode?: 'kills';
+    };
     url: '/fittings/ships/popular';
 };
 
@@ -22012,7 +22041,12 @@ export type FittingsStatsResponse = FittingsStatsResponses[keyof FittingsStatsRe
 export type FittingsTrendingData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Rank weekly hulls by kill participation, final blows, or observed losses.
+         */
+        mode?: 'kills' | 'final_blows' | 'losses';
+    };
     url: '/fittings/trending';
 };
 
@@ -22044,6 +22078,7 @@ export type FittingsTrendingResponses = {
                 slot_group: number;
                 type_id: number;
             }>;
+            ranking_count: number;
             ship_name: string | null;
             ship_type_id: number;
             top_alliances?: Array<{
@@ -22055,6 +22090,7 @@ export type FittingsTrendingResponses = {
             total_uses: number;
             variant_count: number;
         }>;
+        ranking_mode: string;
         window_days: number;
     };
 };

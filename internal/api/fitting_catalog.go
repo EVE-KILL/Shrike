@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	fittingPublicCache = "public, max-age="
-	fittingRecentDays  = 30
+	fittingPublicCache  = "public, max-age="
+	fittingRecentDays   = 30
+	fittingTrendingDays = 7
 )
 
 func registerFittingCatalogueRoutes(a huma.API, opts Options) {
@@ -34,12 +35,12 @@ func registerFittingCatalogueRoutes(a huma.API, opts Options) {
 		},
 		{
 			"fittings-trending", "/fittings/trending",
-			"/fits/flavors-of-the-week", "Trending ship fittings",
+			"/fits/flavors-of-the-week", "Weekly ship fitting rankings",
 			30 * time.Minute, trendingFittingsHandler(opts),
 		},
 		{
 			"fittings-popular-ships", "/fittings/ships/popular",
-			"/fits/popular-ships", "Ships with the most recent fitting activity",
+			"/fits/popular-ships", "Ships participating in the most recent kills",
 			10 * time.Minute, popularFittingShipsHandler(opts),
 		},
 		{
@@ -80,13 +81,38 @@ func registerFittingCatalogueRoutes(a huma.API, opts Options) {
 			if aliasIndex > 0 {
 				id += "-legacy"
 			}
-			registerLegacy(a, huma.Operation{
+			operation := huma.Operation{
 				OperationID: id,
 				Method:      http.MethodGet,
 				Path:        path,
 				Summary:     route.summary,
 				Tags:        []string{"fittings"},
-			}, routeJSONCache(opts, route.ttl, cacheControl, route.handler))
+			}
+			if route.id == "fittings-trending" {
+				operation.Parameters = []*huma.Param{{
+					Name: "mode", In: "query",
+					Description: "Rank weekly hulls by kill participation, final blows, or observed losses.",
+					Schema: &huma.Schema{Type: huma.TypeString, Default: "kills",
+						Enum: []any{"kills", "final_blows", "losses"}},
+				}}
+			}
+			if route.id == "fittings-popular-ships" {
+				operation.Parameters = []*huma.Param{{
+					Name: "mode", In: "query",
+					Description: "Rank hulls by kill participation.",
+					Schema: &huma.Schema{Type: huma.TypeString, Default: "kills",
+						Enum: []any{"kills"}},
+				}}
+			}
+			if route.id == "fittings-alliance-doctrines" {
+				operation.Parameters = []*huma.Param{{
+					Name: "entity_type", In: "query",
+					Description: "Group doctrine losses by alliance or corporation.",
+					Schema: &huma.Schema{Type: huma.TypeString, Default: "alliance",
+						Enum: []any{"alliance", "corporation"}},
+				}}
+			}
+			registerLegacy(a, operation, routeJSONCache(opts, route.ttl, cacheControl, route.handler))
 		}
 	}
 }
@@ -142,30 +168,43 @@ func fittingFeedLimit(raw string) int {
 }
 
 func popularFittingShipsHandler(opts Options) legacyHandler {
-	return func(ctx context.Context, _ *legacyRequest) (legacyPayload, error) {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		mode := req.Query.Get("mode")
+		if mode != "" && mode != "kills" {
+			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid popular hull ranking mode")
+		}
 		rows, err := queryMaps(ctx, opts.DB, `
-			WITH ship_activity AS (
+			WITH fit_evidence AS (
 				SELECT kf.ship_type_id,
-				       COUNT(*)::int AS total_uses,
-				       COUNT(DISTINCT f.family_hash)::int AS fit_count,
-				       MAX(kf.kill_time) AS last_used
+				       COUNT(DISTINCT f.family_hash)::int AS fit_count
 				FROM killmail_fittings kf
 				JOIN fittings f ON f.fit_hash = kf.fit_hash
 				WHERE kf.kill_time >= NOW() - INTERVAL '30 days'
-				  AND kf.ship_type_id NOT IN (
-				    SELECT type_id FROM inv_types
-				    WHERE group_id IN (29, 237)
-				  )
 				GROUP BY kf.ship_type_id
+			),
+			ship_activity AS (
+				SELECT daily.entity_id AS ship_type_id,
+				       SUM(daily.kills)::int AS total_uses,
+				       MAX(daily.period_start) AS last_used
+				FROM stats daily
+				JOIN inv_types ship ON ship.type_id = daily.entity_id
+				WHERE daily.entity_type = 3
+				  AND daily.period_type = 0
+				  AND daily.period_start >= CURRENT_DATE - 29
+				  AND ship.group_id NOT IN (29, 237)
+				GROUP BY daily.entity_id
 				ORDER BY total_uses DESC
 				LIMIT 12
 			)
 			SELECT activity.ship_type_id, activity.total_uses,
-			       activity.fit_count, activity.last_used,
+			       COALESCE(evidence.fit_count, 0)::int AS fit_count,
+			       activity.last_used,
 			       ship.name AS ship_name, ship.group_id
 			FROM ship_activity activity
 			LEFT JOIN inv_types ship
 			  ON ship.type_id = activity.ship_type_id
+			LEFT JOIN fit_evidence evidence
+			  ON evidence.ship_type_id = activity.ship_type_id
 			ORDER BY activity.total_uses DESC`)
 		if err != nil {
 			return legacyPayload{}, err

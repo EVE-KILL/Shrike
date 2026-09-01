@@ -1,45 +1,113 @@
 <script setup lang="ts">
 const props = defineProps<{
-    /** Show loading skeleton instead of content */
-    loading?: boolean
-    /** Entity identity accent (opaque CSS color) — adds a top strip + background wash */
-    accent?: string | null
-}>()
+  /** Show loading skeleton instead of content */
+  loading?: boolean;
+  /** Entity identity accent (opaque CSS color) — adds a top strip + background wash */
+  accent?: string | null;
+  /** Optional large image rendered behind the entity identity content */
+  backgroundImage?: string | null;
+}>();
 
-const accentStyle = computed(() => props.accent
+const accentStyle = computed(() =>
+  props.accent
     ? {
         backgroundImage: `linear-gradient(to bottom, color-mix(in srgb, ${props.accent} 8%, transparent), transparent 60%)`,
         boxShadow: `inset 0 2px 0 0 ${props.accent}`,
-    }
-    : undefined)
+      }
+    : undefined,
+);
 </script>
 
 <template>
-    <div v-if="loading" class="h-64 rounded-lg bg-white/[0.04] animate-pulse mb-6" />
+  <div
+    v-if="loading"
+    class="h-64 rounded-lg bg-white/[0.04] animate-pulse mb-6"
+  />
 
-    <div v-else class="glass-panel overflow-hidden mb-6" :style="accentStyle">
-        <div class="p-6">
-            <div class="flex flex-col md:flex-row gap-6">
-                <!-- Image slot -->
-                <div v-if="$slots.image" class="flex-shrink-0 flex justify-center md:justify-start">
-                    <slot name="image" />
-                </div>
+  <header
+    v-else
+    class="entity-header glass-panel relative overflow-hidden mb-6"
+    :style="accentStyle"
+  >
+    <img
+      v-if="backgroundImage"
+      :src="backgroundImage"
+      alt=""
+      class="entity-header__background pointer-events-none absolute inset-0 h-full w-full object-cover"
+    />
+    <div class="entity-header__wash pointer-events-none absolute inset-0" />
+    <div
+      v-if="backgroundImage"
+      class="entity-header__shade pointer-events-none absolute inset-0"
+    />
+    <div
+      class="entity-header__contours pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/[0.035]"
+    />
+    <div
+      class="entity-header__contours pointer-events-none absolute -right-8 -top-16 h-52 w-52 rounded-full border border-white/[0.035]"
+    />
 
-                <!-- Middle: default slot -->
-                <div class="flex-1 min-w-0">
-                    <slot />
-                </div>
-
-                <!-- Right slot -->
-                <div v-if="$slots.right" class="flex-shrink-0">
-                    <slot name="right" />
-                </div>
-            </div>
+    <div class="relative p-6">
+      <div class="flex flex-col md:flex-row gap-6">
+        <!-- Image slot -->
+        <div
+          v-if="$slots.image"
+          class="flex-shrink-0 flex justify-center md:justify-start"
+        >
+          <slot name="image" />
         </div>
 
-        <!-- Stats section -->
-        <div v-if="$slots.stats" class="px-6 pb-6 pt-2 border-t border-white/[0.04]">
-            <slot name="stats" />
+        <!-- Middle: default slot -->
+        <div class="flex-1 min-w-0">
+          <slot />
         </div>
+
+        <!-- Right slot -->
+        <div v-if="$slots.right" class="flex-shrink-0">
+          <slot name="right" />
+        </div>
+      </div>
     </div>
+
+    <!-- Stats section -->
+    <div
+      v-if="$slots.stats"
+      class="relative px-6 pb-6 pt-3 border-t border-white/[0.06] bg-black/[0.08]"
+    >
+      <slot name="stats" />
+    </div>
+  </header>
 </template>
+
+<style scoped>
+.entity-header__wash {
+  background:
+    radial-gradient(
+      circle at 0 0,
+      color-mix(in srgb, var(--color-brand-primary) 12%, transparent),
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 100% 100%,
+      color-mix(in srgb, var(--color-brand-secondary) 7%, transparent),
+      transparent 42%
+    );
+}
+
+.entity-header__background {
+  filter: blur(14px) saturate(0.9);
+  opacity: 0.5;
+  transform: scale(1.08);
+}
+
+.entity-header__shade {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(8, 10, 15, 0.94) 0%,
+      rgba(8, 10, 15, 0.7) 52%,
+      rgba(8, 10, 15, 0.34) 100%
+    ),
+    linear-gradient(0deg, rgba(8, 10, 15, 0.72), transparent 70%);
+}
+</style>

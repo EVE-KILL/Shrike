@@ -19,6 +19,12 @@ import Resistance from "./Resistance.vue";
 import ShipAttribute from "./ShipAttribute.vue";
 import ShipFitIcon from "../ShipFitIcon.vue";
 
+withDefaults(defineProps<{
+    expandDetails?: boolean;
+}>(), {
+    expandDetails: false,
+});
+
 const { sde } = useEveData();
 const { stats } = useFitStatistics();
 const { currentFit } = useCurrentFit();
@@ -570,7 +576,7 @@ const hasEwar = computed(() => ewarModules.value.length > 0);
         </Category>
 
         <!-- ========== Targeting ========== -->
-        <Category header-label="Targeting" default-collapsed>
+        <Category header-label="Targeting" :default-collapsed="!expandDetails">
             <template #header>
                 <ShipAttribute name="maxTargetRange" :fixed="2" :divide-by="1000" unit="km" />
             </template>
@@ -597,7 +603,7 @@ const hasEwar = computed(() => ewarModules.value.length > 0);
         </Category>
 
         <!-- ========== Navigation (hidden for structures) ========== -->
-        <Category v-if="!isStructure" header-label="Navigation" default-collapsed>
+        <Category v-if="!isStructure" header-label="Navigation" :default-collapsed="!expandDetails">
             <template #header>
                 <ShipAttribute name="maxVelocity" :fixed="1" unit="m/s" />
             </template>
@@ -624,7 +630,7 @@ const hasEwar = computed(() => ewarModules.value.length > 0);
         </Category>
 
         <!-- ========== Drones (hidden for structures) ========== -->
-        <Category v-if="!isStructure" header-label="Drones" default-collapsed>
+        <Category v-if="!isStructure" header-label="Drones" :default-collapsed="!expandDetails">
             <template #header>
                 <ShipAttribute name="droneDamagePerSecond" :fixed="1" unit="dps" />
             </template>

@@ -18,9 +18,20 @@ const props = withDefaults(
 );
 
 const expanded = ref(!props.defaultCollapsed);
+const storageKey = computed(() => `ek-fit-stat-${props.headerLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
+
+onMounted(() => {
+    try {
+        const saved = localStorage.getItem(storageKey.value);
+        if (saved !== null) expanded.value = saved === "1";
+    } catch { /* Storage unavailable. */ }
+});
 
 function toggle() {
     expanded.value = !expanded.value;
+    if (import.meta.client) {
+        try { localStorage.setItem(storageKey.value, expanded.value ? "1" : "0"); } catch { /* Storage unavailable. */ }
+    }
 }
 </script>
 

@@ -76,6 +76,41 @@ const { data: metaData } = useApiFetch<FitMetaResponse>(
     { lazy: true, server: false },
 )
 
+type FitSort = 'observed' | 'recent' | 'cheapest' | 'expensive'
+const fitSort = ref<FitSort>('observed')
+const expandedFamily = ref<string | null>(null)
+
+const sortedFamilies = computed(() => {
+    const families = [...(data.value?.families ?? [])]
+    switch (fitSort.value) {
+        case 'recent':
+            return families.sort((a, b) => new Date(b.last_used).getTime() - new Date(a.last_used).getTime())
+        case 'cheapest':
+            return families.sort((a, b) => a.fit_cost - b.fit_cost)
+        case 'expensive':
+            return families.sort((a, b) => b.fit_cost - a.fit_cost)
+        default:
+            return families.sort((a, b) => b.total_uses - a.total_uses)
+    }
+})
+
+watch(sortedFamilies, (families) => {
+    if (expandedFamily.value === null && families[0]) {
+        expandedFamily.value = families[0].family_hash
+    }
+}, { immediate: true })
+
+const toggleFamily = (familyHash: string) => {
+    expandedFamily.value = expandedFamily.value === familyHash ? null : familyHash
+}
+
+const lastObserved = (iso: string): string => {
+    const days = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000))
+    if (days === 0) return 'today'
+    if (days === 1) return 'yesterday'
+    return `${days}d ago`
+}
+
 // Slot group metadata — matches the extractor's numbering.
 const SLOT_LABELS: Record<number, string> = {
     1: 'High',
@@ -164,71 +199,75 @@ async function loadIntoEditor(family: FittingFamily) {
             </div>
 
             <!-- Header row -->
-            <div class="flex items-baseline justify-between mb-3">
+            <div class="flex items-center justify-between gap-3 mb-3">
                 <h2 class="text-sm font-semibold text-gray-300">
                     Popular Fits
                     <span class="text-gray-600 font-normal ml-2">(last {{ data.window_days }} days)</span>
                 </h2>
-                <div class="text-xs text-gray-600">
-                    {{ data.families.length }} {{ data.families.length === 1 ? 'family' : 'families' }}
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-600 hidden sm:inline">
+                        {{ data.families.length }} {{ data.families.length === 1 ? 'family' : 'families' }}
+                    </span>
+                    <label class="relative">
+                        <span class="sr-only">Sort fitting families</span>
+                        <select v-model="fitSort"
+                            class="appearance-none rounded-md border border-white/[0.08] bg-black/30 py-1.5 pl-3 pr-8 text-xs text-gray-300 outline-none transition-colors hover:border-blue-500/30 focus:border-blue-500/40">
+                            <option value="observed">Most Observed</option>
+                            <option value="recent">Recently Seen</option>
+                            <option value="cheapest">Cheapest</option>
+                            <option value="expensive">Most Expensive</option>
+                        </select>
+                        <Icon name="lucide:chevron-down" class="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-600" />
+                    </label>
                 </div>
             </div>
 
             <!-- Fit cards -->
             <div class="space-y-3">
-                <div v-for="family in data.families" :key="family.family_hash"
-                    class="rounded-lg border border-white/[0.08] bg-white/[0.03] overflow-hidden">
+                <div v-for="(family, index) in sortedFamilies" :key="family.family_hash"
+                    class="rounded-lg border bg-white/[0.025] overflow-hidden transition-colors"
+                    :class="expandedFamily === family.family_hash ? 'border-blue-500/25' : 'border-white/[0.08] hover:border-white/[0.14]'">
                     <!-- Family header -->
-                    <div class="flex items-center justify-between gap-4 px-4 py-2.5 border-b border-white/[0.06] bg-white/[0.02]">
-                        <!-- Left: usage stats -->
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <div class="text-lg font-bold text-white tabular-nums">
-                                {{ family.total_uses }}
+                    <div class="flex items-stretch border-b border-white/[0.06] bg-white/[0.02]">
+                        <button type="button"
+                            class="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-blue-500/[0.035] sm:px-4"
+                            :aria-expanded="expandedFamily === family.family_hash"
+                            @click="toggleFamily(family.family_hash)">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.07] bg-black/20 text-fine font-bold tabular-nums text-gray-600">
+                                {{ String(index + 1).padStart(2, '0') }}
+                            </span>
+                            <Icon name="lucide:chevron-right"
+                                class="h-4 w-4 shrink-0 text-gray-600 transition-transform duration-200"
+                                :class="expandedFamily === family.family_hash ? 'rotate-90 text-blue-400' : ''" />
+                            <div class="flex min-w-0 flex-1 items-center gap-x-5 gap-y-1 flex-wrap">
+                                <div>
+                                    <span class="text-base font-bold text-white tabular-nums">{{ family.total_uses }}</span>
+                                    <span class="ml-1.5 text-xs text-gray-500">{{ family.total_uses === 1 ? 'loss' : 'losses' }}</span>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    <span class="font-medium text-gray-300 tabular-nums">{{ family.variant_count }}</span>
+                                    variant{{ family.variant_count === 1 ? '' : 's' }}
+                                </div>
+                                <div class="hidden text-xs text-gray-500 md:block">
+                                    Seen <span class="text-gray-300">{{ lastObserved(family.last_used) }}</span>
+                                </div>
+                                <div v-if="family.fit_cost > 0" class="text-xs text-gray-500 tabular-nums">
+                                    <span class="font-semibold text-yellow-400">{{ formatIsk(family.fit_cost + (data?.hull_cost ?? 0)) }}</span>
+                                    ISK total
+                                </div>
                             </div>
-                            <div class="text-xs text-gray-500">
-                                {{ family.total_uses === 1 ? 'loss' : 'losses' }}
-                            </div>
-                            <div v-if="family.variant_count > 0"
-                                class="text-xs text-gray-600 border-l border-white/[0.08] pl-3">
-                                {{ family.variant_count }} meta variant{{ family.variant_count === 1 ? '' : 's' }}
-                            </div>
-                        </div>
-                        <!-- Right: cost breakdown + hash -->
-                        <div class="flex items-center gap-3 flex-wrap justify-end">
-                            <div v-if="family.fit_cost > 0"
-                                class="text-xs tabular-nums flex items-center gap-1">
-                                <Icon name="lucide:wrench" class="w-3 h-3 text-gray-600" />
-                                <span class="text-gray-300">{{ formatIsk(family.fit_cost) }}</span>
-                                <span class="text-gray-600">fit</span>
-                            </div>
-                            <div v-if="data?.hull_cost"
-                                class="text-xs tabular-nums flex items-center gap-1">
-                                <Icon name="lucide:rocket" class="w-3 h-3 text-gray-600" />
-                                <span class="text-gray-300">{{ formatIsk(data.hull_cost) }}</span>
-                                <span class="text-gray-600">hull</span>
-                            </div>
-                            <div v-if="family.fit_cost > 0 && data?.hull_cost"
-                                class="text-xs tabular-nums flex items-center gap-1.5 border-l border-white/[0.08] pl-3">
-                                <span class="text-fine uppercase tracking-wider text-gray-600">Total</span>
-                                <span class="font-bold text-yellow-400">{{ formatIsk(family.fit_cost + data.hull_cost) }}</span>
-                                <span class="text-gray-600">ISK</span>
-                            </div>
-                            <div class="text-xs text-gray-600 font-mono hidden md:block border-l border-white/[0.08] pl-3">
-                                {{ family.family_hash.slice(0, 8) }}
-                            </div>
-                            <button
-                                type="button"
-                                class="inline-flex items-center gap-1.5 px-2.5 py-1 text-fine font-bold uppercase tracking-[0.12em] rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
-                                @click="loadIntoEditor(family)"
-                            >
-                                <Icon name="lucide:square-pen" class="w-3 h-3" />
-                                Load in Editor
-                            </button>
-                        </div>
+                        </button>
+                        <button type="button"
+                            class="m-2 ml-0 inline-flex shrink-0 items-center gap-1.5 rounded-md border border-blue-500/30 bg-blue-500/15 px-2.5 text-fine font-bold uppercase tracking-[0.1em] text-blue-400 transition-colors hover:bg-blue-500/25 sm:px-3"
+                            @click="loadIntoEditor(family)">
+                            <Icon name="lucide:square-pen" class="w-3.5 h-3.5" />
+                            <span class="hidden sm:inline">Load in Editor</span>
+                        </button>
                     </div>
 
                     <!-- Slot grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-0 divide-y md:divide-y-0 md:divide-x divide-white/[0.06]">
+                    <div v-if="expandedFamily === family.family_hash"
+                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-0 divide-y md:divide-y-0 md:divide-x divide-white/[0.06]">
                         <div v-for="slot in SLOT_ORDER" :key="slot" class="p-3">
                             <div class="text-fine uppercase tracking-wider text-gray-600 mb-2 flex items-center gap-1.5">
                                 {{ SLOT_LABELS[slot] }}
@@ -267,7 +306,7 @@ async function loadIntoEditor(family: FittingFamily) {
                     </div>
 
                     <!-- Drone bay row — only shown when the canonical fit had drones. -->
-                    <div v-if="family.drones.length > 0"
+                    <div v-if="expandedFamily === family.family_hash && family.drones.length > 0"
                         class="flex items-center gap-3 flex-wrap px-4 py-2 border-t border-white/[0.06] bg-white/[0.01]">
                         <div class="flex items-center gap-1.5 flex-shrink-0">
                             <Icon name="lucide:radar" class="w-3.5 h-3.5 text-blue-400/70" />
@@ -287,7 +326,7 @@ async function loadIntoEditor(family: FittingFamily) {
                     </div>
 
                     <!-- Alliance usage footer -->
-                    <div v-if="family.top_alliances.length > 0"
+                    <div v-if="expandedFamily === family.family_hash && family.top_alliances.length > 0"
                         class="flex items-center gap-2 flex-wrap px-4 py-2 border-t border-white/[0.06] bg-white/[0.01]">
                         <Icon name="lucide:users" class="w-3.5 h-3.5 text-gray-600" />
                         <span class="text-fine uppercase tracking-wider text-gray-600 mr-1">Flown by</span>

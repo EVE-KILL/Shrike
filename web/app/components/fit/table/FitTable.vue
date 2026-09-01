@@ -10,6 +10,54 @@
 import FitContextMenu from "./FitContextMenu.vue";
 import type { FitSlotType } from "~/composables/fit/types";
 
+defineProps<{
+    constrained?: boolean;
+}>();
+
+const tableRef = ref<HTMLTableElement | null>(null);
+const columnWidths = ref<Array<number | null>>([null, 55, 58, 46, 46, 60, 120]);
+const selectedRow = ref<{ slotType: string; slotIndex: number } | null>(null);
+const COLUMN_PREFS_KEY = "ek-fit-table-columns-v1";
+const columnMinimums = [140, 42, 48, 40, 40, 54, 80];
+
+function startColumnResize(event: PointerEvent, index: number) {
+    if (!tableRef.value || index >= columnWidths.value.length - 1) return;
+    event.preventDefault();
+
+    const headers = [...tableRef.value.querySelectorAll("thead th")];
+    const current = headers[index]?.getBoundingClientRect().width ?? 0;
+    const next = headers[index + 1]?.getBoundingClientRect().width ?? 0;
+    const startX = event.clientX;
+
+    // Freeze the live defaults only once the user begins dragging. Until
+    // then the table retains its existing responsive widths.
+    columnWidths.value = headers.map((header) => header.getBoundingClientRect().width);
+    const previousCursor = document.body.style.cursor;
+    const previousSelection = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const onMove = (move: PointerEvent) => {
+        const delta = move.clientX - startX;
+        const bounded = Math.max(
+            columnMinimums[index]! - current,
+            Math.min(delta, next - columnMinimums[index + 1]!),
+        );
+        const widths = [...columnWidths.value];
+        widths[index] = current + bounded;
+        widths[index + 1] = next - bounded;
+        columnWidths.value = widths;
+    };
+    const onUp = () => {
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.body.style.cursor = previousCursor;
+        document.body.style.userSelect = previousSelection;
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp, { once: true });
+}
+
 const { sde } = useEveData();
 const { stats } = useFitStatistics();
 const { currentFit } = useCurrentFit();
@@ -26,6 +74,8 @@ const ctxMenu = reactive({
     slotIndex: 0,
     currentState: "Active",
     hasCharge: false,
+    chargeTypeId: null as number | null,
+    canFillRack: false,
     empty: false,
 });
 
@@ -40,7 +90,12 @@ function openContextMenu(e: MouseEvent, row: ModuleRow, slotType: string) {
     ctxMenu.slotIndex = row.slotIndex;
     ctxMenu.currentState = row.state;
     ctxMenu.hasCharge = row.chargeName !== null;
+    ctxMenu.chargeTypeId = row.chargeTypeId;
     ctxMenu.empty = row.typeId === 0;
+    ctxMenu.canFillRack = slotType === "High"
+        && (capacity.needsLauncherHardpoint(row.typeId) || capacity.needsTurretHardpoint(row.typeId))
+        && capacity.slotsUsed.value.High < capacity.slotCounts.value.High
+        && capacity.hasHardpointFor(row.typeId);
 }
 
 function closeContextMenu() {
@@ -82,10 +137,55 @@ function onGlobalMousedown(e: MouseEvent) {
     }
 }
 
-onMounted(() => document.addEventListener("mousedown", onGlobalMousedown));
+onMounted(() => {
+    document.addEventListener("mousedown", onGlobalMousedown);
+    try {
+        const saved = JSON.parse(localStorage.getItem(COLUMN_PREFS_KEY) ?? "null");
+        if (Array.isArray(saved) && saved.length === columnWidths.value.length) columnWidths.value = saved;
+    } catch { /* Ignore stale preferences. */ }
+});
 onUnmounted(() => document.removeEventListener("mousedown", onGlobalMousedown));
+watch(columnWidths, widths => {
+    if (!import.meta.client) return;
+    try { localStorage.setItem(COLUMN_PREFS_KEY, JSON.stringify(widths)); } catch { /* Storage unavailable. */ }
+}, { deep: true });
 
 const fitManager = useFitManager();
+
+function removeRowItem(row: ModuleRow, slotType: string) {
+    if (row.typeId === 0) return;
+    if (row.chargeTypeId !== null) {
+        fitManager.removeCharge(slotType as FitSlotType, row.slotIndex);
+    } else {
+        fitManager.removeModule(slotType as FitSlotType, row.slotIndex);
+    }
+}
+
+function selectTableRow(event: MouseEvent, row: ModuleRow, slotType: string) {
+    selectedRow.value = { slotType, slotIndex: row.slotIndex };
+    (event.currentTarget as HTMLElement)?.focus();
+}
+
+function onRowKeydown(event: KeyboardEvent, row: ModuleRow, slotType: string) {
+    if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        removeRowItem(row, slotType);
+        return;
+    }
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    event.preventDefault();
+    const rows = [...document.querySelectorAll<HTMLElement>("[data-fit-table-row]")];
+    const current = rows.indexOf(event.currentTarget as HTMLElement);
+    const next = rows[current + (event.key === "ArrowDown" ? 1 : -1)];
+    next?.focus();
+    next?.click();
+}
+
+function fillHighRack() {
+    if (!ctxMenu.canFillRack) return;
+    fitManager.fillHighRack(ctxMenu.typeId, ctxMenu.chargeTypeId ?? undefined);
+    closeContextMenu();
+}
 
 function droneActivateAll() {
     const { typeId, passive } = droneCtx;
@@ -153,6 +253,7 @@ interface ModuleRow {
     optimal: string | null;
     capUse: number | null;
     chargeName: string | null;
+    chargeTypeId: number | null;
 }
 
 interface SlotGroup {
@@ -219,7 +320,21 @@ const groups = computed<SlotGroup[]>(() => {
     const result: SlotGroup[] = [];
 
     for (const { type, label } of SLOT_ORDER) {
-        const slotCount = slots[type as keyof typeof slots] ?? 0;
+        // T3 strategic cruisers receive their high/medium/low slots from
+        // fitted subsystems. During some engine states the hull capacity can
+        // therefore report zero even though the loaded fit already contains
+        // modules in those slots. Never hide occupied slots: the fit itself
+        // is authoritative about the minimum number of rows we must render.
+        const highestOccupiedSlot = fit.modules.reduce(
+            (highest, module) => module.slot.type === type
+                ? Math.max(highest, module.slot.index)
+                : highest,
+            0,
+        );
+        const slotCount = Math.max(
+            slots[type as keyof typeof slots] ?? 0,
+            highestOccupiedSlot,
+        );
         if (slotCount === 0) continue;
 
         const rows: ModuleRow[] = [];
@@ -252,6 +367,7 @@ const groups = computed<SlotGroup[]>(() => {
                     optimal: engineItem ? fmtRange(engineItem) : null,
                     capUse: engineItem ? attrVal(engineItem, "capacitorNeed") : null,
                     chargeName,
+                    chargeTypeId: mod.charge?.typeId ?? null,
                 });
             } else {
                 // Empty slot
@@ -267,6 +383,7 @@ const groups = computed<SlotGroup[]>(() => {
                     optimal: null,
                     capUse: null,
                     chargeName: null,
+                    chargeTypeId: null,
                 });
             }
         }
@@ -276,6 +393,31 @@ const groups = computed<SlotGroup[]>(() => {
 
     return result;
 });
+
+const selectedEntry = computed(() => {
+    if (!selectedRow.value) return null;
+    const group = groups.value.find(item => item.slotType === selectedRow.value!.slotType);
+    const row = group?.rows.find(item => item.slotIndex === selectedRow.value!.slotIndex);
+    return row && group ? { row, slotType: group.slotType } : null;
+});
+
+const selectedCanFillRack = computed(() => {
+    const selected = selectedEntry.value;
+    return Boolean(selected && selected.slotType === "High" && selected.row.typeId
+        && (capacity.needsLauncherHardpoint(selected.row.typeId) || capacity.needsTurretHardpoint(selected.row.typeId))
+        && capacity.hasFreeSlot("High") && capacity.hasHardpointFor(selected.row.typeId));
+});
+
+function removeSelectedEntry() {
+    const selected = selectedEntry.value;
+    if (selected) removeRowItem(selected.row, selected.slotType);
+}
+
+function fillSelectedRack() {
+    const selected = selectedEntry.value;
+    if (!selected || !selectedCanFillRack.value) return;
+    fitManager.fillHighRack(selected.row.typeId, selected.row.chargeTypeId ?? undefined);
+}
 
 const hasDrones = computed(() => (currentFit.value?.drones?.length ?? 0) > 0);
 
@@ -305,17 +447,40 @@ const droneRows = computed(() => {
 </script>
 
 <template>
-    <div class="w-full h-full overflow-x-hidden overflow-y-auto text-xs text-gray-300">
-        <table class="w-full border-collapse" style="table-layout: fixed;">
+    <div
+        class="w-full overflow-x-hidden text-xs text-gray-300"
+        :class="constrained ? 'h-full overflow-y-auto' : ''"
+    >
+        <div v-if="selectedEntry?.row.typeId" class="sticky left-0 top-0 z-20 flex items-center gap-2 border-b border-blue-400/10 bg-[#0b0d11]/95 px-3 py-1.5 backdrop-blur sm:hidden">
+            <span class="min-w-0 flex-1 truncate text-fine text-gray-400">{{ selectedEntry.row.name }}</span>
+            <button v-if="selectedCanFillRack" type="button" class="rounded bg-blue-400/10 px-2 py-1 text-fine text-blue-300" @click="fillSelectedRack">Fill highs</button>
+            <button type="button" class="rounded bg-red-400/10 px-2 py-1 text-fine text-red-300" @click="removeSelectedEntry">{{ selectedEntry.row.chargeTypeId !== null ? 'Unload' : 'Remove' }}</button>
+        </div>
+        <table ref="tableRef" class="w-full border-collapse" style="table-layout: fixed;">
+            <colgroup>
+                <col
+                    v-for="(width, index) in columnWidths"
+                    :key="index"
+                    :style="width === null ? undefined : { width: `${width}px` }"
+                >
+            </colgroup>
             <thead class="sticky top-0 z-10" style="background-color: #0a0a0a;">
                 <tr class="text-[10px] uppercase tracking-wider text-gray-500 border-b border-white/[0.06]">
-                    <th class="text-left py-1 px-3 font-medium" style="width: auto;">Name</th>
-                    <th class="text-right py-1 px-2 font-medium" style="width: 55px;">DPS</th>
-                    <th class="text-right py-1 px-2 font-medium" style="width: 58px;">Volley</th>
-                    <th class="text-right py-1 px-2 font-medium" style="width: 46px;">CPU</th>
-                    <th class="text-right py-1 px-2 font-medium" style="width: 46px;">PG</th>
-                    <th class="text-right py-1 px-2 font-medium" style="width: 60px;">Range</th>
-                    <th class="text-left py-1 px-3 font-medium" style="width: 120px;">Charge</th>
+                    <th
+                        v-for="(label, index) in ['Name', 'DPS', 'Volley', 'CPU', 'PG', 'Range', 'Charge']"
+                        :key="label"
+                        class="group/column relative py-1 font-medium"
+                        :class="index === 0 || index === 6 ? 'px-3 text-left' : 'px-2 text-right'"
+                    >
+                        {{ label }}
+                        <span
+                            v-if="index < 6"
+                            class="absolute -right-1 top-0 z-20 h-full w-2 cursor-col-resize touch-none after:absolute after:bottom-1 after:left-1/2 after:top-1 after:w-px after:bg-white/0 after:transition-colors hover:after:bg-blue-400/70 group-hover/column:after:bg-white/10"
+                            role="separator"
+                            :aria-label="`Resize ${label} column`"
+                            @pointerdown="startColumnResize($event, index)"
+                        />
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -334,8 +499,14 @@ const droneRows = computed(() => {
                         :class="{
                             'opacity-40': row.state === 'Passive' && row.typeId !== 0,
                             'opacity-25': row.typeId === 0,
+                            'bg-blue-400/[0.07] outline outline-1 -outline-offset-1 outline-blue-400/20': selectedRow?.slotType === group.slotType && selectedRow?.slotIndex === row.slotIndex,
                         }"
+                        tabindex="0"
+                        data-fit-table-row
+                        @click="selectTableRow($event, row, group.slotType)"
+                        @keydown="onRowKeydown($event, row, group.slotType)"
                         @contextmenu="openContextMenu($event, row, group.slotType)"
+                        @dblclick="removeRowItem(row, group.slotType)"
                     >
                         <td class="py-1 px-3 flex items-center gap-1.5">
                             <template v-if="row.typeId !== 0">
@@ -400,7 +571,7 @@ const droneRows = computed(() => {
             <div
                 v-if="droneCtx.visible"
                 ref="droneMenuEl"
-                class="fixed z-[100] whitespace-nowrap rounded-md border border-white/[0.12] shadow-xl shadow-black/70 text-xs text-gray-200 overflow-visible"
+                class="fixed z-[1100] whitespace-nowrap rounded-md border border-white/[0.12] shadow-xl shadow-black/70 text-xs text-gray-200 overflow-visible"
                 style="background-color: #1a1a1a;"
                 :style="{ left: droneCtx.x + 'px', top: droneCtx.y + 'px' }"
             >
@@ -452,8 +623,10 @@ const droneRows = computed(() => {
             :slot-index="ctxMenu.slotIndex"
             :current-state="ctxMenu.currentState"
             :has-charge="ctxMenu.hasCharge"
+            :can-fill-rack="ctxMenu.canFillRack"
             :empty="ctxMenu.empty"
             @close="closeContextMenu"
+            @fill-rack="fillHighRack"
         />
     </div>
 </template>

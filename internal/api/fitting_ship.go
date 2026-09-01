@@ -123,13 +123,15 @@ func shipFittingFamiliesHandler(opts Options) legacyHandler {
 				ORDER BY family_hash, uses DESC, fit_hash
 			),
 			family_totals AS (
-				SELECT family_hash, SUM(uses)::int AS total_uses
+				SELECT family_hash, SUM(uses)::int AS total_uses,
+				       COUNT(*)::int AS variant_count
 				FROM fit_uses
 				GROUP BY family_hash
 			)
 			SELECT canonical.family_hash,
 			       canonical.canonical_fit_hash,
 			       totals.total_uses,
+			       totals.variant_count,
 			       canonical.canonical_uses,
 			       canonical.canonical_last_used AS last_used
 			FROM canonical
@@ -247,7 +249,7 @@ func shipFittingFamiliesHandler(opts Options) legacyHandler {
 				"family_hash":        familyHash,
 				"canonical_fit_hash": canonical,
 				"total_uses":         totalUses, "canonical_uses": canonicalUses,
-				"variant_count": totalUses - canonicalUses,
+				"variant_count": int64OrZero(family["variant_count"]),
 				"last_used":     family["last_used"],
 				"fit_cost":      contents.CostByHash[canonical],
 				"modules":       catalogueList(contents.ModulesByHash, canonical),

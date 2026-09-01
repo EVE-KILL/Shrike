@@ -101,7 +101,12 @@ function addItem(typeId: number, slotType: SidebarSlotType, preview = false) {
 // component instance when props change.
 const DBLCLICK_WINDOW_MS = 400;
 let pendingClick: { typeId: number; time: number } | null = null;
-function onLeafClick(item: ListingItem) {
+function onLeafClick(item: ListingItem, event: MouseEvent) {
+    if (event.shiftKey && item.slotType === "High") {
+        pendingClick = null;
+        fitManager.fillHighRack(item.typeId);
+        return;
+    }
     const now = Date.now();
     if (
         pendingClick
@@ -166,7 +171,7 @@ const headerIcon = computed(() => undefined as string | undefined);
             :content="item.name"
             :image-url="`https://images.evetech.net/types/${item.typeId}/icon?size=32`"
             :draggable="true"
-            @click="onLeafClick(item)"
+            @click="onLeafClick(item, $event)"
             @dragstart="onItemDragStart($event, item)"
             @enter="addItem(item.typeId, item.slotType, true)"
             @leave="removePreview()"
@@ -190,7 +195,7 @@ const headerIcon = computed(() => undefined as string | undefined);
             :content="item.name"
             :image-url="`https://images.evetech.net/types/${item.typeId}/icon?size=32`"
             :draggable="true"
-            @click="onLeafClick(item)"
+            @click="onLeafClick(item, $event)"
             @dragstart="onItemDragStart($event, item)"
             @enter="addItem(item.typeId, item.slotType, true)"
             @leave="removePreview()"
