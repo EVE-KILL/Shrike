@@ -15,8 +15,8 @@
  * Arming a different row re-arms rather than firing, so clicking delete on row
  * A then row B cannot delete B on what the user experienced as a first click.
  */
-export function useConfirmTwice(timeoutMs = 5000) {
-    const pendingId = ref<number | null>(null)
+export function useConfirmTwice<T extends string | number = number>(timeoutMs = 5000) {
+    const pendingId = ref<T | null>(null)
     let timer: ReturnType<typeof setTimeout> | null = null
 
     const clear = () => {
@@ -24,7 +24,7 @@ export function useConfirmTwice(timeoutMs = 5000) {
     }
 
     /** True when this is the confirming (second) click and the caller should proceed. */
-    const confirm = (id: number): boolean => {
+    const confirm = (id: T): boolean => {
         if (pendingId.value !== id) {
             pendingId.value = id
             clear()

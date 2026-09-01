@@ -37,7 +37,7 @@ async function queueAction(q: RiverQueue, action: 'pause' | 'resume') {
     finally { busy.value = '' }
 }
 
-const { pendingId: clearConfirm, confirm: confirmClear } = useConfirmTwice()
+const { pendingId: clearConfirm, confirm: confirmClear } = useConfirmTwice<string>()
 async function clearQueue(q: RiverQueue) {
     if (!confirmClear(q.name)) return
     busy.value = `clear:${q.name}`
