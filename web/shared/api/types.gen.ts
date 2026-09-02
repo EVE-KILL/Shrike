@@ -21522,23 +21522,107 @@ export type FittingsSearchLegacyData = {
         /**
          * Sort fittings by usage or calculated all-V statistics.
          */
-        sort?: 'uses' | 'dps' | 'ehp' | 'alpha' | 'speed' | 'align' | 'repair';
-        /**
-         * Minimum all-V DPS with reload.
-         */
-        min_dps?: string;
-        /**
-         * Minimum all-V effective hit points.
-         */
-        min_ehp?: string;
-        /**
-         * Minimum strongest local effective repair rate.
-         */
-        min_repair?: string;
+        sort?: 'uses' | 'dps' | 'ehp' | 'alpha' | 'speed' | 'align' | 'repair' | 'npc_ehp';
         /**
          * Only return capacitor-stable fits.
          */
         cap_stable?: 'false' | 'true';
+        /**
+         * Minimum ehp for observed fit variants.
+         */
+        min_ehp?: string;
+        /**
+         * Maximum ehp for observed fit variants.
+         */
+        max_ehp?: string;
+        /**
+         * Minimum dps for observed fit variants.
+         */
+        min_dps?: string;
+        /**
+         * Maximum dps for observed fit variants.
+         */
+        max_dps?: string;
+        /**
+         * Minimum alpha for observed fit variants.
+         */
+        min_alpha?: string;
+        /**
+         * Maximum alpha for observed fit variants.
+         */
+        max_alpha?: string;
+        /**
+         * Minimum speed for observed fit variants.
+         */
+        min_speed?: string;
+        /**
+         * Maximum speed for observed fit variants.
+         */
+        max_speed?: string;
+        /**
+         * Minimum align for observed fit variants.
+         */
+        min_align?: string;
+        /**
+         * Maximum align for observed fit variants.
+         */
+        max_align?: string;
+        /**
+         * Minimum repair for observed fit variants.
+         */
+        min_repair?: string;
+        /**
+         * Maximum repair for observed fit variants.
+         */
+        max_repair?: string;
+        /**
+         * Minimum shield repair for observed fit variants.
+         */
+        min_shield_repair?: string;
+        /**
+         * Maximum shield repair for observed fit variants.
+         */
+        max_shield_repair?: string;
+        /**
+         * Minimum armor repair for observed fit variants.
+         */
+        min_armor_repair?: string;
+        /**
+         * Maximum armor repair for observed fit variants.
+         */
+        max_armor_repair?: string;
+        /**
+         * Minimum hull repair for observed fit variants.
+         */
+        min_hull_repair?: string;
+        /**
+         * Maximum hull repair for observed fit variants.
+         */
+        max_hull_repair?: string;
+        /**
+         * Minimum passive shield for observed fit variants.
+         */
+        min_passive_shield?: string;
+        /**
+         * Maximum passive shield for observed fit variants.
+         */
+        max_passive_shield?: string;
+        /**
+         * Incoming NPC damage profile used for NPC-specific EHP.
+         */
+        npc_profile?: '' | 'omni' | 'angels' | 'blood-raiders' | 'guristas' | 'mordus' | 'sansha' | 'serpentis' | 'triglavian' | 'amarr' | 'caldari' | 'gallente' | 'minmatar';
+        /**
+         * Minimum layered EHP against npc_profile.
+         */
+        min_npc_ehp?: string;
+        /**
+         * Maximum layered EHP against npc_profile.
+         */
+        max_npc_ehp?: string;
+        /**
+         * Comma-separated module group IDs that every matching fit must contain.
+         */
+        groups?: string;
     };
     url: '/fits/search';
 };
@@ -21649,6 +21733,290 @@ export type FittingsSearchLegacyResponses = {
 };
 
 export type FittingsSearchLegacyResponse = FittingsSearchLegacyResponses[keyof FittingsSearchLegacyResponses];
+
+export type FittingsSearchAvailabilityLegacyData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Hull type ID used to facet fitting requirements.
+         */
+        ship: number;
+        /**
+         * Currently active module or role requirements.
+         */
+        filters?: string;
+        /**
+         * Only consider capacitor-stable fits.
+         */
+        cap_stable?: 'false' | 'true';
+        /**
+         * Minimum ehp for observed fit variants.
+         */
+        min_ehp?: string;
+        /**
+         * Maximum ehp for observed fit variants.
+         */
+        max_ehp?: string;
+        /**
+         * Minimum dps for observed fit variants.
+         */
+        min_dps?: string;
+        /**
+         * Maximum dps for observed fit variants.
+         */
+        max_dps?: string;
+        /**
+         * Minimum alpha for observed fit variants.
+         */
+        min_alpha?: string;
+        /**
+         * Maximum alpha for observed fit variants.
+         */
+        max_alpha?: string;
+        /**
+         * Minimum speed for observed fit variants.
+         */
+        min_speed?: string;
+        /**
+         * Maximum speed for observed fit variants.
+         */
+        max_speed?: string;
+        /**
+         * Minimum align for observed fit variants.
+         */
+        min_align?: string;
+        /**
+         * Maximum align for observed fit variants.
+         */
+        max_align?: string;
+        /**
+         * Minimum repair for observed fit variants.
+         */
+        min_repair?: string;
+        /**
+         * Maximum repair for observed fit variants.
+         */
+        max_repair?: string;
+        /**
+         * Minimum shield repair for observed fit variants.
+         */
+        min_shield_repair?: string;
+        /**
+         * Maximum shield repair for observed fit variants.
+         */
+        max_shield_repair?: string;
+        /**
+         * Minimum armor repair for observed fit variants.
+         */
+        min_armor_repair?: string;
+        /**
+         * Maximum armor repair for observed fit variants.
+         */
+        max_armor_repair?: string;
+        /**
+         * Minimum hull repair for observed fit variants.
+         */
+        min_hull_repair?: string;
+        /**
+         * Maximum hull repair for observed fit variants.
+         */
+        max_hull_repair?: string;
+        /**
+         * Minimum passive shield for observed fit variants.
+         */
+        min_passive_shield?: string;
+        /**
+         * Maximum passive shield for observed fit variants.
+         */
+        max_passive_shield?: string;
+        /**
+         * Incoming NPC damage profile used for NPC-specific EHP.
+         */
+        npc_profile?: '' | 'omni' | 'angels' | 'blood-raiders' | 'guristas' | 'mordus' | 'sansha' | 'serpentis' | 'triglavian' | 'amarr' | 'caldari' | 'gallente' | 'minmatar';
+        /**
+         * Minimum layered EHP against npc_profile.
+         */
+        min_npc_ehp?: string;
+        /**
+         * Maximum layered EHP against npc_profile.
+         */
+        max_npc_ehp?: string;
+        /**
+         * Comma-separated module group IDs that every matching fit must contain.
+         */
+        groups?: string;
+    };
+    url: '/fits/search/availability';
+};
+
+export type FittingsSearchAvailabilityLegacyResponses = {
+    /**
+     * OK
+     */
+    200: {
+        role_counts: {
+            [key: string]: number;
+        };
+        ship_type_id: number;
+        type_counts: {
+            [key: string]: number;
+        };
+        window_days: number;
+    };
+};
+
+export type FittingsSearchAvailabilityLegacyResponse = FittingsSearchAvailabilityLegacyResponses[keyof FittingsSearchAvailabilityLegacyResponses];
+
+export type FittingsSearchDistributionsLegacyData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Hull type ID used to facet fitting requirements.
+         */
+        ship: number;
+        /**
+         * Currently active module or role requirements.
+         */
+        filters?: string;
+        /**
+         * Only consider capacitor-stable fits.
+         */
+        cap_stable?: 'false' | 'true';
+        /**
+         * Minimum ehp for observed fit variants.
+         */
+        min_ehp?: string;
+        /**
+         * Maximum ehp for observed fit variants.
+         */
+        max_ehp?: string;
+        /**
+         * Minimum dps for observed fit variants.
+         */
+        min_dps?: string;
+        /**
+         * Maximum dps for observed fit variants.
+         */
+        max_dps?: string;
+        /**
+         * Minimum alpha for observed fit variants.
+         */
+        min_alpha?: string;
+        /**
+         * Maximum alpha for observed fit variants.
+         */
+        max_alpha?: string;
+        /**
+         * Minimum speed for observed fit variants.
+         */
+        min_speed?: string;
+        /**
+         * Maximum speed for observed fit variants.
+         */
+        max_speed?: string;
+        /**
+         * Minimum align for observed fit variants.
+         */
+        min_align?: string;
+        /**
+         * Maximum align for observed fit variants.
+         */
+        max_align?: string;
+        /**
+         * Minimum repair for observed fit variants.
+         */
+        min_repair?: string;
+        /**
+         * Maximum repair for observed fit variants.
+         */
+        max_repair?: string;
+        /**
+         * Minimum shield repair for observed fit variants.
+         */
+        min_shield_repair?: string;
+        /**
+         * Maximum shield repair for observed fit variants.
+         */
+        max_shield_repair?: string;
+        /**
+         * Minimum armor repair for observed fit variants.
+         */
+        min_armor_repair?: string;
+        /**
+         * Maximum armor repair for observed fit variants.
+         */
+        max_armor_repair?: string;
+        /**
+         * Minimum hull repair for observed fit variants.
+         */
+        min_hull_repair?: string;
+        /**
+         * Maximum hull repair for observed fit variants.
+         */
+        max_hull_repair?: string;
+        /**
+         * Minimum passive shield for observed fit variants.
+         */
+        min_passive_shield?: string;
+        /**
+         * Maximum passive shield for observed fit variants.
+         */
+        max_passive_shield?: string;
+        /**
+         * Incoming NPC damage profile used for NPC-specific EHP.
+         */
+        npc_profile?: '' | 'omni' | 'angels' | 'blood-raiders' | 'guristas' | 'mordus' | 'sansha' | 'serpentis' | 'triglavian' | 'amarr' | 'caldari' | 'gallente' | 'minmatar';
+        /**
+         * Minimum layered EHP against npc_profile.
+         */
+        min_npc_ehp?: string;
+        /**
+         * Maximum layered EHP against npc_profile.
+         */
+        max_npc_ehp?: string;
+        /**
+         * Comma-separated module group IDs that every matching fit must contain.
+         */
+        groups?: string;
+    };
+    url: '/fits/search/distributions';
+};
+
+export type FittingsSearchDistributionsLegacyResponses = {
+    /**
+     * OK
+     */
+    200: {
+        metrics: Array<{
+            buckets: Array<{
+                bucket: number;
+                fit_count: number;
+                lower_bound: number;
+                observation_count: number;
+                upper_bound: number;
+            }>;
+            calculated_at: string;
+            fit_count: number;
+            lower_bound: number;
+            maximum: number;
+            median: number;
+            metric: string;
+            minimum: number;
+            observation_count: number;
+            p10: number;
+            p25: number;
+            p75: number;
+            p90: number;
+            upper_bound: number;
+        }>;
+        ship_type_id: number;
+        window_days: number;
+    };
+};
+
+export type FittingsSearchDistributionsLegacyResponse = FittingsSearchDistributionsLegacyResponses[keyof FittingsSearchDistributionsLegacyResponses];
 
 export type FittingsAllianceDoctrinesLegacyData = {
     body?: never;
@@ -21987,23 +22355,107 @@ export type FittingsSearchData = {
         /**
          * Sort fittings by usage or calculated all-V statistics.
          */
-        sort?: 'uses' | 'dps' | 'ehp' | 'alpha' | 'speed' | 'align' | 'repair';
-        /**
-         * Minimum all-V DPS with reload.
-         */
-        min_dps?: string;
-        /**
-         * Minimum all-V effective hit points.
-         */
-        min_ehp?: string;
-        /**
-         * Minimum strongest local effective repair rate.
-         */
-        min_repair?: string;
+        sort?: 'uses' | 'dps' | 'ehp' | 'alpha' | 'speed' | 'align' | 'repair' | 'npc_ehp';
         /**
          * Only return capacitor-stable fits.
          */
         cap_stable?: 'false' | 'true';
+        /**
+         * Minimum ehp for observed fit variants.
+         */
+        min_ehp?: string;
+        /**
+         * Maximum ehp for observed fit variants.
+         */
+        max_ehp?: string;
+        /**
+         * Minimum dps for observed fit variants.
+         */
+        min_dps?: string;
+        /**
+         * Maximum dps for observed fit variants.
+         */
+        max_dps?: string;
+        /**
+         * Minimum alpha for observed fit variants.
+         */
+        min_alpha?: string;
+        /**
+         * Maximum alpha for observed fit variants.
+         */
+        max_alpha?: string;
+        /**
+         * Minimum speed for observed fit variants.
+         */
+        min_speed?: string;
+        /**
+         * Maximum speed for observed fit variants.
+         */
+        max_speed?: string;
+        /**
+         * Minimum align for observed fit variants.
+         */
+        min_align?: string;
+        /**
+         * Maximum align for observed fit variants.
+         */
+        max_align?: string;
+        /**
+         * Minimum repair for observed fit variants.
+         */
+        min_repair?: string;
+        /**
+         * Maximum repair for observed fit variants.
+         */
+        max_repair?: string;
+        /**
+         * Minimum shield repair for observed fit variants.
+         */
+        min_shield_repair?: string;
+        /**
+         * Maximum shield repair for observed fit variants.
+         */
+        max_shield_repair?: string;
+        /**
+         * Minimum armor repair for observed fit variants.
+         */
+        min_armor_repair?: string;
+        /**
+         * Maximum armor repair for observed fit variants.
+         */
+        max_armor_repair?: string;
+        /**
+         * Minimum hull repair for observed fit variants.
+         */
+        min_hull_repair?: string;
+        /**
+         * Maximum hull repair for observed fit variants.
+         */
+        max_hull_repair?: string;
+        /**
+         * Minimum passive shield for observed fit variants.
+         */
+        min_passive_shield?: string;
+        /**
+         * Maximum passive shield for observed fit variants.
+         */
+        max_passive_shield?: string;
+        /**
+         * Incoming NPC damage profile used for NPC-specific EHP.
+         */
+        npc_profile?: '' | 'omni' | 'angels' | 'blood-raiders' | 'guristas' | 'mordus' | 'sansha' | 'serpentis' | 'triglavian' | 'amarr' | 'caldari' | 'gallente' | 'minmatar';
+        /**
+         * Minimum layered EHP against npc_profile.
+         */
+        min_npc_ehp?: string;
+        /**
+         * Maximum layered EHP against npc_profile.
+         */
+        max_npc_ehp?: string;
+        /**
+         * Comma-separated module group IDs that every matching fit must contain.
+         */
+        groups?: string;
     };
     url: '/fittings/search';
 };
@@ -22114,6 +22566,290 @@ export type FittingsSearchResponses = {
 };
 
 export type FittingsSearchResponse = FittingsSearchResponses[keyof FittingsSearchResponses];
+
+export type FittingsSearchAvailabilityData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Hull type ID used to facet fitting requirements.
+         */
+        ship: number;
+        /**
+         * Currently active module or role requirements.
+         */
+        filters?: string;
+        /**
+         * Only consider capacitor-stable fits.
+         */
+        cap_stable?: 'false' | 'true';
+        /**
+         * Minimum ehp for observed fit variants.
+         */
+        min_ehp?: string;
+        /**
+         * Maximum ehp for observed fit variants.
+         */
+        max_ehp?: string;
+        /**
+         * Minimum dps for observed fit variants.
+         */
+        min_dps?: string;
+        /**
+         * Maximum dps for observed fit variants.
+         */
+        max_dps?: string;
+        /**
+         * Minimum alpha for observed fit variants.
+         */
+        min_alpha?: string;
+        /**
+         * Maximum alpha for observed fit variants.
+         */
+        max_alpha?: string;
+        /**
+         * Minimum speed for observed fit variants.
+         */
+        min_speed?: string;
+        /**
+         * Maximum speed for observed fit variants.
+         */
+        max_speed?: string;
+        /**
+         * Minimum align for observed fit variants.
+         */
+        min_align?: string;
+        /**
+         * Maximum align for observed fit variants.
+         */
+        max_align?: string;
+        /**
+         * Minimum repair for observed fit variants.
+         */
+        min_repair?: string;
+        /**
+         * Maximum repair for observed fit variants.
+         */
+        max_repair?: string;
+        /**
+         * Minimum shield repair for observed fit variants.
+         */
+        min_shield_repair?: string;
+        /**
+         * Maximum shield repair for observed fit variants.
+         */
+        max_shield_repair?: string;
+        /**
+         * Minimum armor repair for observed fit variants.
+         */
+        min_armor_repair?: string;
+        /**
+         * Maximum armor repair for observed fit variants.
+         */
+        max_armor_repair?: string;
+        /**
+         * Minimum hull repair for observed fit variants.
+         */
+        min_hull_repair?: string;
+        /**
+         * Maximum hull repair for observed fit variants.
+         */
+        max_hull_repair?: string;
+        /**
+         * Minimum passive shield for observed fit variants.
+         */
+        min_passive_shield?: string;
+        /**
+         * Maximum passive shield for observed fit variants.
+         */
+        max_passive_shield?: string;
+        /**
+         * Incoming NPC damage profile used for NPC-specific EHP.
+         */
+        npc_profile?: '' | 'omni' | 'angels' | 'blood-raiders' | 'guristas' | 'mordus' | 'sansha' | 'serpentis' | 'triglavian' | 'amarr' | 'caldari' | 'gallente' | 'minmatar';
+        /**
+         * Minimum layered EHP against npc_profile.
+         */
+        min_npc_ehp?: string;
+        /**
+         * Maximum layered EHP against npc_profile.
+         */
+        max_npc_ehp?: string;
+        /**
+         * Comma-separated module group IDs that every matching fit must contain.
+         */
+        groups?: string;
+    };
+    url: '/fittings/search/availability';
+};
+
+export type FittingsSearchAvailabilityResponses = {
+    /**
+     * OK
+     */
+    200: {
+        role_counts: {
+            [key: string]: number;
+        };
+        ship_type_id: number;
+        type_counts: {
+            [key: string]: number;
+        };
+        window_days: number;
+    };
+};
+
+export type FittingsSearchAvailabilityResponse = FittingsSearchAvailabilityResponses[keyof FittingsSearchAvailabilityResponses];
+
+export type FittingsSearchDistributionsData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Hull type ID used to facet fitting requirements.
+         */
+        ship: number;
+        /**
+         * Currently active module or role requirements.
+         */
+        filters?: string;
+        /**
+         * Only consider capacitor-stable fits.
+         */
+        cap_stable?: 'false' | 'true';
+        /**
+         * Minimum ehp for observed fit variants.
+         */
+        min_ehp?: string;
+        /**
+         * Maximum ehp for observed fit variants.
+         */
+        max_ehp?: string;
+        /**
+         * Minimum dps for observed fit variants.
+         */
+        min_dps?: string;
+        /**
+         * Maximum dps for observed fit variants.
+         */
+        max_dps?: string;
+        /**
+         * Minimum alpha for observed fit variants.
+         */
+        min_alpha?: string;
+        /**
+         * Maximum alpha for observed fit variants.
+         */
+        max_alpha?: string;
+        /**
+         * Minimum speed for observed fit variants.
+         */
+        min_speed?: string;
+        /**
+         * Maximum speed for observed fit variants.
+         */
+        max_speed?: string;
+        /**
+         * Minimum align for observed fit variants.
+         */
+        min_align?: string;
+        /**
+         * Maximum align for observed fit variants.
+         */
+        max_align?: string;
+        /**
+         * Minimum repair for observed fit variants.
+         */
+        min_repair?: string;
+        /**
+         * Maximum repair for observed fit variants.
+         */
+        max_repair?: string;
+        /**
+         * Minimum shield repair for observed fit variants.
+         */
+        min_shield_repair?: string;
+        /**
+         * Maximum shield repair for observed fit variants.
+         */
+        max_shield_repair?: string;
+        /**
+         * Minimum armor repair for observed fit variants.
+         */
+        min_armor_repair?: string;
+        /**
+         * Maximum armor repair for observed fit variants.
+         */
+        max_armor_repair?: string;
+        /**
+         * Minimum hull repair for observed fit variants.
+         */
+        min_hull_repair?: string;
+        /**
+         * Maximum hull repair for observed fit variants.
+         */
+        max_hull_repair?: string;
+        /**
+         * Minimum passive shield for observed fit variants.
+         */
+        min_passive_shield?: string;
+        /**
+         * Maximum passive shield for observed fit variants.
+         */
+        max_passive_shield?: string;
+        /**
+         * Incoming NPC damage profile used for NPC-specific EHP.
+         */
+        npc_profile?: '' | 'omni' | 'angels' | 'blood-raiders' | 'guristas' | 'mordus' | 'sansha' | 'serpentis' | 'triglavian' | 'amarr' | 'caldari' | 'gallente' | 'minmatar';
+        /**
+         * Minimum layered EHP against npc_profile.
+         */
+        min_npc_ehp?: string;
+        /**
+         * Maximum layered EHP against npc_profile.
+         */
+        max_npc_ehp?: string;
+        /**
+         * Comma-separated module group IDs that every matching fit must contain.
+         */
+        groups?: string;
+    };
+    url: '/fittings/search/distributions';
+};
+
+export type FittingsSearchDistributionsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        metrics: Array<{
+            buckets: Array<{
+                bucket: number;
+                fit_count: number;
+                lower_bound: number;
+                observation_count: number;
+                upper_bound: number;
+            }>;
+            calculated_at: string;
+            fit_count: number;
+            lower_bound: number;
+            maximum: number;
+            median: number;
+            metric: string;
+            minimum: number;
+            observation_count: number;
+            p10: number;
+            p25: number;
+            p75: number;
+            p90: number;
+            upper_bound: number;
+        }>;
+        ship_type_id: number;
+        window_days: number;
+    };
+};
+
+export type FittingsSearchDistributionsResponse = FittingsSearchDistributionsResponses[keyof FittingsSearchDistributionsResponses];
 
 export type FittingsPopularShipsData = {
     body?: never;

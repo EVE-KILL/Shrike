@@ -64606,32 +64606,9 @@
                 "alpha",
                 "speed",
                 "align",
-                "repair"
+                "repair",
+                "npc_ehp"
               ],
-              "type": "string"
-            }
-          },
-          {
-            "description": "Minimum all-V DPS with reload.",
-            "in": "query",
-            "name": "min_dps",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Minimum all-V effective hit points.",
-            "in": "query",
-            "name": "min_ehp",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Minimum strongest local effective repair rate.",
-            "in": "query",
-            "name": "min_repair",
-            "schema": {
               "type": "string"
             }
           },
@@ -64645,6 +64622,213 @@
                 "false",
                 "true"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum ehp for observed fit variants.",
+            "in": "query",
+            "name": "min_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum ehp for observed fit variants.",
+            "in": "query",
+            "name": "max_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum dps for observed fit variants.",
+            "in": "query",
+            "name": "min_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum dps for observed fit variants.",
+            "in": "query",
+            "name": "max_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum alpha for observed fit variants.",
+            "in": "query",
+            "name": "min_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum alpha for observed fit variants.",
+            "in": "query",
+            "name": "max_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum speed for observed fit variants.",
+            "in": "query",
+            "name": "min_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum speed for observed fit variants.",
+            "in": "query",
+            "name": "max_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum align for observed fit variants.",
+            "in": "query",
+            "name": "min_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum align for observed fit variants.",
+            "in": "query",
+            "name": "max_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum repair for observed fit variants.",
+            "in": "query",
+            "name": "min_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum repair for observed fit variants.",
+            "in": "query",
+            "name": "max_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "min_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "max_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "min_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "max_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "min_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "max_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "min_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "max_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Incoming NPC damage profile used for NPC-specific EHP.",
+            "in": "query",
+            "name": "npc_profile",
+            "schema": {
+              "enum": [
+                "",
+                "omni",
+                "angels",
+                "blood-raiders",
+                "guristas",
+                "mordus",
+                "sansha",
+                "serpentis",
+                "triglavian",
+                "amarr",
+                "caldari",
+                "gallente",
+                "minmatar"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "min_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "max_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated module group IDs that every matching fit must contain.",
+            "in": "query",
+            "name": "groups",
+            "schema": {
               "type": "string"
             }
           }
@@ -65190,6 +65374,690 @@
           }
         },
         "summary": "Search killmail-derived ship fittings",
+        "tags": [
+          "fittings"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/fits/search/availability": {
+      "get": {
+        "operationId": "fittings-search-availability-legacy",
+        "parameters": [
+          {
+            "description": "Hull type ID used to facet fitting requirements.",
+            "in": "query",
+            "name": "ship",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "x-entity": "ship"
+          },
+          {
+            "description": "Currently active module or role requirements.",
+            "in": "query",
+            "name": "filters",
+            "schema": {
+              "format": "json",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only consider capacitor-stable fits.",
+            "in": "query",
+            "name": "cap_stable",
+            "schema": {
+              "default": "false",
+              "enum": [
+                "false",
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum ehp for observed fit variants.",
+            "in": "query",
+            "name": "min_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum ehp for observed fit variants.",
+            "in": "query",
+            "name": "max_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum dps for observed fit variants.",
+            "in": "query",
+            "name": "min_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum dps for observed fit variants.",
+            "in": "query",
+            "name": "max_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum alpha for observed fit variants.",
+            "in": "query",
+            "name": "min_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum alpha for observed fit variants.",
+            "in": "query",
+            "name": "max_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum speed for observed fit variants.",
+            "in": "query",
+            "name": "min_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum speed for observed fit variants.",
+            "in": "query",
+            "name": "max_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum align for observed fit variants.",
+            "in": "query",
+            "name": "min_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum align for observed fit variants.",
+            "in": "query",
+            "name": "max_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum repair for observed fit variants.",
+            "in": "query",
+            "name": "min_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum repair for observed fit variants.",
+            "in": "query",
+            "name": "max_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "min_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "max_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "min_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "max_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "min_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "max_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "min_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "max_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Incoming NPC damage profile used for NPC-specific EHP.",
+            "in": "query",
+            "name": "npc_profile",
+            "schema": {
+              "enum": [
+                "",
+                "omni",
+                "angels",
+                "blood-raiders",
+                "guristas",
+                "mordus",
+                "sansha",
+                "serpentis",
+                "triglavian",
+                "amarr",
+                "caldari",
+                "gallente",
+                "minmatar"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "min_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "max_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated module group IDs that every matching fit must contain.",
+            "in": "query",
+            "name": "groups",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "role_counts": {
+                      "additionalProperties": {
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      "type": "object"
+                    },
+                    "ship_type_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "type_counts": {
+                      "additionalProperties": {
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      "type": "object"
+                    },
+                    "window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "ship_type_id",
+                    "window_days",
+                    "role_counts",
+                    "type_counts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Available fitting search requirements",
+        "tags": [
+          "fittings"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/fits/search/distributions": {
+      "get": {
+        "operationId": "fittings-search-distributions-legacy",
+        "parameters": [
+          {
+            "description": "Hull type ID used to facet fitting requirements.",
+            "in": "query",
+            "name": "ship",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "x-entity": "ship"
+          },
+          {
+            "description": "Currently active module or role requirements.",
+            "in": "query",
+            "name": "filters",
+            "schema": {
+              "format": "json",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only consider capacitor-stable fits.",
+            "in": "query",
+            "name": "cap_stable",
+            "schema": {
+              "default": "false",
+              "enum": [
+                "false",
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum ehp for observed fit variants.",
+            "in": "query",
+            "name": "min_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum ehp for observed fit variants.",
+            "in": "query",
+            "name": "max_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum dps for observed fit variants.",
+            "in": "query",
+            "name": "min_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum dps for observed fit variants.",
+            "in": "query",
+            "name": "max_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum alpha for observed fit variants.",
+            "in": "query",
+            "name": "min_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum alpha for observed fit variants.",
+            "in": "query",
+            "name": "max_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum speed for observed fit variants.",
+            "in": "query",
+            "name": "min_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum speed for observed fit variants.",
+            "in": "query",
+            "name": "max_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum align for observed fit variants.",
+            "in": "query",
+            "name": "min_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum align for observed fit variants.",
+            "in": "query",
+            "name": "max_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum repair for observed fit variants.",
+            "in": "query",
+            "name": "min_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum repair for observed fit variants.",
+            "in": "query",
+            "name": "max_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "min_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "max_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "min_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "max_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "min_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "max_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "min_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "max_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Incoming NPC damage profile used for NPC-specific EHP.",
+            "in": "query",
+            "name": "npc_profile",
+            "schema": {
+              "enum": [
+                "",
+                "omni",
+                "angels",
+                "blood-raiders",
+                "guristas",
+                "mordus",
+                "sansha",
+                "serpentis",
+                "triglavian",
+                "amarr",
+                "caldari",
+                "gallente",
+                "minmatar"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "min_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "max_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated module group IDs that every matching fit must contain.",
+            "in": "query",
+            "name": "groups",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "metrics": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "buckets": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "bucket": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "fit_count": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "lower_bound": {
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                "observation_count": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "upper_bound": {
+                                  "format": "double",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "bucket",
+                                "lower_bound",
+                                "upper_bound",
+                                "fit_count",
+                                "observation_count"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "calculated_at": {
+                            "type": "string"
+                          },
+                          "fit_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "lower_bound": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "maximum": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "median": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "metric": {
+                            "type": "string"
+                          },
+                          "minimum": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "observation_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "p10": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "p25": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "p75": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "p90": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "upper_bound": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "fit_count",
+                          "observation_count",
+                          "minimum",
+                          "maximum",
+                          "p10",
+                          "p25",
+                          "median",
+                          "p75",
+                          "p90",
+                          "lower_bound",
+                          "upper_bound",
+                          "calculated_at",
+                          "buckets"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "ship_type_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "ship_type_id",
+                    "window_days",
+                    "metrics"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Calculated fitting distributions for search results",
         "tags": [
           "fittings"
         ],
@@ -66314,32 +67182,9 @@
                 "alpha",
                 "speed",
                 "align",
-                "repair"
+                "repair",
+                "npc_ehp"
               ],
-              "type": "string"
-            }
-          },
-          {
-            "description": "Minimum all-V DPS with reload.",
-            "in": "query",
-            "name": "min_dps",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Minimum all-V effective hit points.",
-            "in": "query",
-            "name": "min_ehp",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Minimum strongest local effective repair rate.",
-            "in": "query",
-            "name": "min_repair",
-            "schema": {
               "type": "string"
             }
           },
@@ -66353,6 +67198,213 @@
                 "false",
                 "true"
               ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum ehp for observed fit variants.",
+            "in": "query",
+            "name": "min_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum ehp for observed fit variants.",
+            "in": "query",
+            "name": "max_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum dps for observed fit variants.",
+            "in": "query",
+            "name": "min_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum dps for observed fit variants.",
+            "in": "query",
+            "name": "max_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum alpha for observed fit variants.",
+            "in": "query",
+            "name": "min_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum alpha for observed fit variants.",
+            "in": "query",
+            "name": "max_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum speed for observed fit variants.",
+            "in": "query",
+            "name": "min_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum speed for observed fit variants.",
+            "in": "query",
+            "name": "max_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum align for observed fit variants.",
+            "in": "query",
+            "name": "min_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum align for observed fit variants.",
+            "in": "query",
+            "name": "max_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum repair for observed fit variants.",
+            "in": "query",
+            "name": "min_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum repair for observed fit variants.",
+            "in": "query",
+            "name": "max_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "min_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "max_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "min_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "max_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "min_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "max_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "min_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "max_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Incoming NPC damage profile used for NPC-specific EHP.",
+            "in": "query",
+            "name": "npc_profile",
+            "schema": {
+              "enum": [
+                "",
+                "omni",
+                "angels",
+                "blood-raiders",
+                "guristas",
+                "mordus",
+                "sansha",
+                "serpentis",
+                "triglavian",
+                "amarr",
+                "caldari",
+                "gallente",
+                "minmatar"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "min_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "max_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated module group IDs that every matching fit must contain.",
+            "in": "query",
+            "name": "groups",
+            "schema": {
               "type": "string"
             }
           }
@@ -66898,6 +67950,690 @@
           }
         },
         "summary": "Search killmail-derived ship fittings",
+        "tags": [
+          "fittings"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/fittings/search/availability": {
+      "get": {
+        "operationId": "fittings-search-availability",
+        "parameters": [
+          {
+            "description": "Hull type ID used to facet fitting requirements.",
+            "in": "query",
+            "name": "ship",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "x-entity": "ship"
+          },
+          {
+            "description": "Currently active module or role requirements.",
+            "in": "query",
+            "name": "filters",
+            "schema": {
+              "format": "json",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only consider capacitor-stable fits.",
+            "in": "query",
+            "name": "cap_stable",
+            "schema": {
+              "default": "false",
+              "enum": [
+                "false",
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum ehp for observed fit variants.",
+            "in": "query",
+            "name": "min_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum ehp for observed fit variants.",
+            "in": "query",
+            "name": "max_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum dps for observed fit variants.",
+            "in": "query",
+            "name": "min_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum dps for observed fit variants.",
+            "in": "query",
+            "name": "max_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum alpha for observed fit variants.",
+            "in": "query",
+            "name": "min_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum alpha for observed fit variants.",
+            "in": "query",
+            "name": "max_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum speed for observed fit variants.",
+            "in": "query",
+            "name": "min_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum speed for observed fit variants.",
+            "in": "query",
+            "name": "max_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum align for observed fit variants.",
+            "in": "query",
+            "name": "min_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum align for observed fit variants.",
+            "in": "query",
+            "name": "max_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum repair for observed fit variants.",
+            "in": "query",
+            "name": "min_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum repair for observed fit variants.",
+            "in": "query",
+            "name": "max_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "min_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "max_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "min_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "max_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "min_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "max_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "min_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "max_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Incoming NPC damage profile used for NPC-specific EHP.",
+            "in": "query",
+            "name": "npc_profile",
+            "schema": {
+              "enum": [
+                "",
+                "omni",
+                "angels",
+                "blood-raiders",
+                "guristas",
+                "mordus",
+                "sansha",
+                "serpentis",
+                "triglavian",
+                "amarr",
+                "caldari",
+                "gallente",
+                "minmatar"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "min_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "max_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated module group IDs that every matching fit must contain.",
+            "in": "query",
+            "name": "groups",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "role_counts": {
+                      "additionalProperties": {
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      "type": "object"
+                    },
+                    "ship_type_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "type_counts": {
+                      "additionalProperties": {
+                        "format": "int64",
+                        "type": "integer"
+                      },
+                      "type": "object"
+                    },
+                    "window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "ship_type_id",
+                    "window_days",
+                    "role_counts",
+                    "type_counts"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Available fitting search requirements",
+        "tags": [
+          "fittings"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/fittings/search/distributions": {
+      "get": {
+        "operationId": "fittings-search-distributions",
+        "parameters": [
+          {
+            "description": "Hull type ID used to facet fitting requirements.",
+            "in": "query",
+            "name": "ship",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "x-entity": "ship"
+          },
+          {
+            "description": "Currently active module or role requirements.",
+            "in": "query",
+            "name": "filters",
+            "schema": {
+              "format": "json",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only consider capacitor-stable fits.",
+            "in": "query",
+            "name": "cap_stable",
+            "schema": {
+              "default": "false",
+              "enum": [
+                "false",
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum ehp for observed fit variants.",
+            "in": "query",
+            "name": "min_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum ehp for observed fit variants.",
+            "in": "query",
+            "name": "max_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum dps for observed fit variants.",
+            "in": "query",
+            "name": "min_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum dps for observed fit variants.",
+            "in": "query",
+            "name": "max_dps",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum alpha for observed fit variants.",
+            "in": "query",
+            "name": "min_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum alpha for observed fit variants.",
+            "in": "query",
+            "name": "max_alpha",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum speed for observed fit variants.",
+            "in": "query",
+            "name": "min_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum speed for observed fit variants.",
+            "in": "query",
+            "name": "max_speed",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum align for observed fit variants.",
+            "in": "query",
+            "name": "min_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum align for observed fit variants.",
+            "in": "query",
+            "name": "max_align",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum repair for observed fit variants.",
+            "in": "query",
+            "name": "min_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum repair for observed fit variants.",
+            "in": "query",
+            "name": "max_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "min_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum shield repair for observed fit variants.",
+            "in": "query",
+            "name": "max_shield_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "min_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum armor repair for observed fit variants.",
+            "in": "query",
+            "name": "max_armor_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "min_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum hull repair for observed fit variants.",
+            "in": "query",
+            "name": "max_hull_repair",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "min_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum passive shield for observed fit variants.",
+            "in": "query",
+            "name": "max_passive_shield",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Incoming NPC damage profile used for NPC-specific EHP.",
+            "in": "query",
+            "name": "npc_profile",
+            "schema": {
+              "enum": [
+                "",
+                "omni",
+                "angels",
+                "blood-raiders",
+                "guristas",
+                "mordus",
+                "sansha",
+                "serpentis",
+                "triglavian",
+                "amarr",
+                "caldari",
+                "gallente",
+                "minmatar"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Minimum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "min_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum layered EHP against npc_profile.",
+            "in": "query",
+            "name": "max_npc_ehp",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated module group IDs that every matching fit must contain.",
+            "in": "query",
+            "name": "groups",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "metrics": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "buckets": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "bucket": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "fit_count": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "lower_bound": {
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                "observation_count": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "upper_bound": {
+                                  "format": "double",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "bucket",
+                                "lower_bound",
+                                "upper_bound",
+                                "fit_count",
+                                "observation_count"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "calculated_at": {
+                            "type": "string"
+                          },
+                          "fit_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "lower_bound": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "maximum": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "median": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "metric": {
+                            "type": "string"
+                          },
+                          "minimum": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "observation_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "p10": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "p25": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "p75": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "p90": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "upper_bound": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "fit_count",
+                          "observation_count",
+                          "minimum",
+                          "maximum",
+                          "p10",
+                          "p25",
+                          "median",
+                          "p75",
+                          "p90",
+                          "lower_bound",
+                          "upper_bound",
+                          "calculated_at",
+                          "buckets"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "ship_type_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "ship_type_id",
+                    "window_days",
+                    "metrics"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Calculated fitting distributions for search results",
         "tags": [
           "fittings"
         ],

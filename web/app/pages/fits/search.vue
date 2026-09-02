@@ -87,6 +87,10 @@ interface FitResult {
         shield_effective_boost: number | null
         armor_effective_repair: number | null
         passive_shield_effective: number | null
+        hull_effective_repair: number | null
+        repair: number | null
+        npc_profile: string | null
+        npc_ehp: number | null
         cap_stable: boolean
         max_velocity: number | null
         align_time: number | null
@@ -101,15 +105,95 @@ type FilterPredicate =
 // ---------- state, URL-synced ----------
 
 const route = useRoute()
-const router = useRouter()
 
 const selectedShip = ref<{ id: number; name: string } | null>(null)
 const filters = ref<FilterPredicate[]>([])
-const statSort = ref(typeof route.query.sort === 'string' ? route.query.sort : 'uses')
-const minDps = ref(typeof route.query.min_dps === 'string' ? route.query.min_dps : '')
-const minEhp = ref(typeof route.query.min_ehp === 'string' ? route.query.min_ehp : '')
-const minRepair = ref(typeof route.query.min_repair === 'string' ? route.query.min_repair : '')
+interface RequirementAvailability {
+    ship_type_id: number
+    window_days: number
+    role_counts: Record<string, number>
+    type_counts: Record<string, number>
+}
+interface DistributionBucket {
+    bucket: number
+    lower_bound: number
+    upper_bound: number
+    fit_count: number
+    observation_count: number
+}
+interface DistributionMetric {
+    metric: string
+    fit_count: number
+    observation_count: number
+    minimum: number
+    maximum: number
+    p10: number
+    p25: number
+    median: number
+    p75: number
+    p90: number
+    buckets: DistributionBucket[]
+}
+interface DistributionResponse { ship_type_id: number; window_days: number; metrics: DistributionMetric[] }
+const availabilityData = ref<RequirementAvailability | null>(null)
+const availabilityPending = ref(false)
+const distributionData = ref<DistributionResponse | null>(null)
+const distributionPending = ref(false)
+type FitFilterMetric = 'ehp' | 'dps' | 'alpha' | 'speed' | 'align' | 'repair' | 'shield_repair' | 'armor_repair' | 'hull_repair' | 'passive_shield' | 'npc_ehp'
+type FitSort = 'uses' | 'ehp' | 'dps' | 'alpha' | 'repair' | 'speed' | 'align' | 'npc_ehp'
+interface StatFilter { metric: FitFilterMetric; min: number | null; max: number | null; npcProfile?: string }
+const statFilterOptions: Array<{ value: FitFilterMetric; label: string }> = [
+    { value: 'ehp', label: 'Effective hitpoints' }, { value: 'dps', label: 'Damage / second' },
+    { value: 'alpha', label: 'Alpha damage' }, { value: 'speed', label: 'Maximum velocity' },
+    { value: 'align', label: 'Align time' }, { value: 'repair', label: 'Strongest local repair' },
+    { value: 'shield_repair', label: 'Active shield repair' }, { value: 'armor_repair', label: 'Active armor repair' },
+    { value: 'hull_repair', label: 'Active hull repair' }, { value: 'passive_shield', label: 'Passive shield regeneration' },
+    { value: 'npc_ehp', label: 'EHP against NPC faction' },
+]
+const npcProfiles = [
+    ['omni', 'Omnidamage'], ['angels', 'Angel Cartel'], ['blood-raiders', 'Blood Raiders'],
+    ['guristas', 'Guristas Pirates'], ['mordus', "Mordu's Legion"], ['sansha', "Sansha's Nation"],
+    ['serpentis', 'Serpentis'], ['triglavian', 'Triglavian Collective'], ['amarr', 'Amarr Empire'],
+    ['caldari', 'Caldari State'], ['gallente', 'Gallente Federation'], ['minmatar', 'Minmatar Republic'],
+] as const
+const sortOptions: Array<{ value: FitSort; label: string }> = [
+    { value: 'uses', label: 'Most used' }, { value: 'ehp', label: 'Highest EHP' },
+    { value: 'dps', label: 'Highest DPS' }, { value: 'alpha', label: 'Highest alpha' },
+    { value: 'repair', label: 'Highest repair' }, { value: 'speed', label: 'Highest speed' },
+    { value: 'align', label: 'Fastest align' }, { value: 'npc_ehp', label: 'Highest NPC EHP' },
+]
+const requestedSort = typeof route.query.sort === 'string' ? route.query.sort as FitSort : 'uses'
+const statSort = ref<FitSort>(sortOptions.some(option => option.value === requestedSort) ? requestedSort : 'uses')
+const activeStatFilters = ref<StatFilter[]>([])
+const statMetricOpen = ref(false)
+const npcProfileOpen = ref(false)
+const sortOpen = ref(false)
+const draftMetric = ref<FitFilterMetric>('ehp')
+const draftMin = ref('')
+const draftMax = ref('')
+const draftNPCProfile = ref('guristas')
 const capStable = ref(route.query.cap_stable === 'true')
+
+function queryText(value: string | null | Array<string | null> | undefined): string | undefined {
+    return Array.isArray(value) ? value.find(item => item !== null) ?? undefined : value ?? undefined
+}
+function queryNumber(value: string | null | Array<string | null> | undefined): number | null {
+    const raw = queryText(value)
+    if (!raw?.trim()) return null
+    const parsed = Number(raw)
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+}
+for (const option of statFilterOptions) {
+    const min = queryNumber(route.query[`min_${option.value}`])
+    const max = queryNumber(route.query[`max_${option.value}`])
+    const profile = option.value === 'npc_ehp' ? queryText(route.query.npc_profile) : undefined
+    if (min !== null || max !== null || profile) activeStatFilters.value.push({ metric: option.value, min, max, npcProfile: profile })
+}
+if (activeStatFilters.value.length > 0) {
+    const initialFilter = activeStatFilters.value.at(-1)!
+    draftMetric.value = initialFilter.metric
+    if (initialFilter.npcProfile) draftNPCProfile.value = initialFilter.npcProfile
+}
 
 // Hydrate from query string on first load.
 {
@@ -157,9 +241,11 @@ const queryString = computed(() => {
         params.filters = JSON.stringify(filters.value)
     }
     if (statSort.value !== 'uses') params.sort = statSort.value
-    if (minDps.value) params.min_dps = minDps.value
-    if (minEhp.value) params.min_ehp = minEhp.value
-    if (minRepair.value) params.min_repair = minRepair.value
+    for (const filter of activeStatFilters.value) {
+        if (filter.min !== null) params[`min_${filter.metric}`] = String(filter.min)
+        if (filter.max !== null) params[`max_${filter.metric}`] = String(filter.max)
+        if (filter.metric === 'npc_ehp' && filter.npcProfile) params.npc_profile = filter.npcProfile
+    }
     if (capStable.value) params.cap_stable = 'true'
     return params
 })
@@ -167,8 +253,56 @@ const queryString = computed(() => {
 // Keep URL in sync — replace, not push, so back-button doesn't get
 // polluted with every filter toggle.
 watch(queryString, (q) => {
-    router.replace({ path: '/fits/search', query: q })
+    if (!import.meta.client) return
+    const url = new URL(window.location.href)
+    url.search = ''
+    for (const [key, value] of Object.entries(q)) url.searchParams.set(key, value)
+    const scrollX = window.scrollX
+    const scrollY = window.scrollY
+    window.history.replaceState(window.history.state, '', url)
+    requestAnimationFrame(() => window.scrollTo(scrollX, scrollY))
 }, { deep: true })
+
+function parseStatValue(raw: string): number | null {
+    const match = raw.trim().toLowerCase().replaceAll(',', '').match(/^([0-9]*\.?[0-9]+)\s*([kmb])?$/)
+    if (!match) return null
+    return Number(match[1]) * ({ k: 1e3, m: 1e6, b: 1e9 }[match[2] ?? ''] ?? 1)
+}
+function sortForMetric(metric: FitFilterMetric): FitSort {
+    return ['shield_repair', 'armor_repair', 'hull_repair', 'passive_shield'].includes(metric) ? 'repair' : metric
+}
+function selectStatMetric(metric: FitFilterMetric) {
+    draftMetric.value = metric
+    statSort.value = sortForMetric(metric)
+    if (metric === 'npc_ehp') setStatFilter(metric, null, null, draftNPCProfile.value)
+}
+function selectNPCProfile(profile: string) {
+    draftNPCProfile.value = profile
+    statSort.value = 'npc_ehp'
+    const current = activeStatFilters.value.find(filter => filter.metric === 'npc_ehp')
+    setStatFilter('npc_ehp', current?.min ?? null, current?.max ?? null, profile)
+}
+function setStatFilter(metric: FitFilterMetric, min: number | null, max: number | null, npcProfile?: string) {
+    activeStatFilters.value = activeStatFilters.value.filter(filter => filter.metric !== metric)
+    activeStatFilters.value.push({ metric, min, max, npcProfile })
+}
+function addStatFilter() {
+    const min = parseStatValue(draftMin.value)
+    const max = parseStatValue(draftMax.value)
+    statSort.value = sortForMetric(draftMetric.value)
+    if (min === null && max === null && draftMetric.value !== 'npc_ehp') return
+    setStatFilter(draftMetric.value, min, max, draftMetric.value === 'npc_ehp' ? draftNPCProfile.value : undefined)
+    draftMin.value = ''; draftMax.value = ''
+}
+function removeStatFilter(index: number) { activeStatFilters.value.splice(index, 1) }
+function clearStatFilters() { activeStatFilters.value = []; capStable.value = false }
+function statFilterLabel(filter: StatFilter): string {
+    const label = statFilterOptions.find(option => option.value === filter.metric)?.label ?? filter.metric
+    const profile = filter.metric === 'npc_ehp' ? ` · ${npcProfiles.find(item => item[0] === filter.npcProfile)?.[1] ?? filter.npcProfile}` : ''
+    if (filter.min === null && filter.max === null) return label + profile
+    const range = filter.min !== null && filter.max !== null ? `${filter.min.toLocaleString()}–${filter.max.toLocaleString()}` : filter.min !== null ? `≥ ${filter.min.toLocaleString()}` : `≤ ${filter.max?.toLocaleString()}`
+    return `${label}${profile} ${range}`
+}
 
 // ---------- roles ----------
 
@@ -182,7 +316,7 @@ const roleById = computed(() => {
 const rolesByCategory = computed(() => {
     const m = new Map<RolePublic['category'], RolePublic[]>()
     for (const r of roles.value) {
-        if (r.typeCount === 0) continue
+        if (r.typeCount === 0 || roleFitCount(r.id) === 0) continue
         const list = m.get(r.category) ?? []
         list.push(r)
         m.set(r.category, list)
@@ -260,18 +394,34 @@ const filterRoleSearch = ref('')
 
 const visibleRolesForPicker = computed(() => {
     const q = filterRoleSearch.value.trim().toLowerCase()
-    if (!q) return roles.value
+    if (!q) return roles.value.filter(role => roleFitCount(role.id) > 0)
     return roles.value.filter(
         (r) =>
-            r.label.toLowerCase().includes(q) ||
-            (r.description?.toLowerCase().includes(q) ?? false),
+            roleFitCount(r.id) > 0 &&
+            (r.label.toLowerCase().includes(q) ||
+                (r.description?.toLowerCase().includes(q) ?? false)),
     )
 })
+
+function roleFitCount(roleID: string): number {
+    if (!selectedShip.value) return 1
+    if (!availabilityData.value) return availabilityPending.value ? 0 : 1
+    return availabilityData.value.role_counts[roleID] ?? 0
+}
+function typeFitCount(typeID: number): number {
+    if (!selectedShip.value) return 1
+    if (!availabilityData.value) return availabilityPending.value ? 0 : 1
+    return availabilityData.value.type_counts[String(typeID)] ?? 0
+}
 
 // Specific-item search runs in parallel with the role-name filter so
 // the dropdown can show both lists. We only hit /api/search once the
 // query is non-trivial; otherwise it sits empty.
 const itemResults = ref<SearchHit[]>([])
+const availableItemResults = computed(() => itemResults.value.filter(hit => {
+    const typeID = hitToTypeId(hit)
+    return typeID !== null && typeFitCount(typeID) > 0
+}))
 const itemSearchPending = ref(false)
 let itemSearchTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -372,6 +522,94 @@ const total = computed(() => resultsData.value?.total ?? 0)
 const fits = computed<FitResult[]>(() => resultsData.value?.fits ?? [])
 const hasMore = computed(() => resultsData.value?.has_more ?? false)
 
+function requestStatParams(): Record<string, string | number | boolean | undefined> {
+    const params: Record<string, string | number | boolean | undefined> = {}
+    for (const filter of activeStatFilters.value) {
+        if (filter.min !== null) params[`min_${filter.metric}`] = filter.min
+        if (filter.max !== null) params[`max_${filter.metric}`] = filter.max
+        if (filter.metric === 'npc_ehp' && filter.npcProfile) params.npc_profile = filter.npcProfile
+    }
+    if (capStable.value) params.cap_stable = true
+    return params
+}
+
+let availabilityGeneration = 0
+async function loadAvailability() {
+    const generation = ++availabilityGeneration
+    const ship = selectedShip.value
+    if (!ship) {
+        availabilityData.value = null
+        availabilityPending.value = false
+        return
+    }
+    availabilityPending.value = true
+    try {
+        const data = await apiFetch<RequirementAvailability>('/api/fits/search/availability', {
+            params: {
+                ship: ship.id,
+                filters: filters.value.length ? JSON.stringify(filters.value) : undefined,
+                ...requestStatParams(),
+            },
+        })
+        if (generation === availabilityGeneration) availabilityData.value = data
+    } catch {
+        if (generation === availabilityGeneration) availabilityData.value = null
+    } finally {
+        if (generation === availabilityGeneration) availabilityPending.value = false
+    }
+}
+
+let distributionGeneration = 0
+async function loadDistributions() {
+    const generation = ++distributionGeneration
+    const ship = selectedShip.value
+    if (!ship) {
+        distributionData.value = null
+        distributionPending.value = false
+        return
+    }
+    distributionPending.value = true
+    try {
+        const data = await apiFetch<DistributionResponse>('/api/fits/search/distributions', {
+            params: {
+                ship: ship.id,
+                filters: filters.value.length ? JSON.stringify(filters.value) : undefined,
+                ...requestStatParams(),
+            },
+        })
+        if (generation === distributionGeneration) distributionData.value = data
+    } catch {
+        if (generation === distributionGeneration) distributionData.value = null
+    } finally {
+        if (generation === distributionGeneration) distributionPending.value = false
+    }
+}
+
+const visibleDistributions = computed(() => {
+    const wanted = ['ehp', 'dps', 'repair', 'speed']
+    return wanted.map(metric => distributionData.value?.metrics.find(row => row.metric === metric)).filter((row): row is DistributionMetric => Boolean(row))
+})
+const distributionLabels: Record<string, string> = { ehp: 'Effective Hitpoints', dps: 'Damage / second', repair: 'Effective repair / second', speed: 'Maximum velocity' }
+function formatDistributionValue(metric: string, value: number): string {
+    if (metric === 'speed') return `${Math.round(value).toLocaleString('en-US')} m/s`
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`
+    if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1)}k`
+    return value.toFixed(value >= 100 ? 0 : 1)
+}
+function distributionBucketHeight(metric: DistributionMetric, bucket: DistributionBucket): number {
+    if (bucket.observation_count === 0) return 0
+    const maximum = Math.max(...metric.buckets.map(item => item.observation_count), 1)
+    return Math.max(4, (bucket.observation_count / maximum) * 100)
+}
+function applyDistributionBucket(metric: DistributionMetric, bucket: DistributionBucket) {
+    const filterMetric = metric.metric as FitFilterMetric
+    setStatFilter(filterMetric, bucket.lower_bound, bucket.upper_bound)
+    statSort.value = sortForMetric(filterMetric)
+}
+function distributionBucketActive(metric: DistributionMetric, bucket: DistributionBucket): boolean {
+    return activeStatFilters.value.some(filter => filter.metric === metric.metric && filter.min === bucket.lower_bound && filter.max === bucket.upper_bound)
+}
+
 async function runSearch() {
     const generation = ++searchGeneration
     const ship = selectedShip.value
@@ -390,10 +628,7 @@ async function runSearch() {
                 limit,
                 offset: offset.value,
                 sort: statSort.value,
-                min_dps: minDps.value || undefined,
-                min_ehp: minEhp.value || undefined,
-                min_repair: minRepair.value || undefined,
-                cap_stable: capStable.value || undefined,
+                ...requestStatParams(),
             },
         })
         if (generation !== searchGeneration) return
@@ -423,17 +658,23 @@ async function runSearch() {
 // its own re-fetch explicitly. No watch on `offset` means changing
 // filters doesn't double-fetch when it resets offset.
 watch(
-    [() => selectedShip.value?.id, filters, statSort, minDps, minEhp, minRepair, capStable],
+    [() => selectedShip.value?.id, filters, activeStatFilters, statSort, capStable],
     () => {
         offset.value = 0
         fitUrls.value = new Map()
         runSearch()
+        loadAvailability()
+        loadDistributions()
     },
     { deep: true },
 )
 
 onMounted(() => {
-    if (selectedShip.value) runSearch()
+    if (selectedShip.value) {
+        runSearch()
+        loadAvailability()
+        loadDistributions()
+    }
 })
 
 function loadMore() {
@@ -488,6 +729,7 @@ const fitInsights = (fit: FitResult): string[] => fitFamilyContextParts(fit.cont
 const strongestRepair = (fit: FitResult): number => Math.max(
     fit.stats?.shield_effective_boost ?? 0,
     fit.stats?.armor_effective_repair ?? 0,
+    fit.stats?.hull_effective_repair ?? 0,
     fit.stats?.passive_shield_effective ?? 0,
 )
 
@@ -546,23 +788,27 @@ async function buildFitUrls(results: FitResult[]) {
             </template>
         </PageHeader>
 
+        <div v-if="selectedShip" class="mb-2 text-fine font-bold uppercase tracking-[0.15em] text-gray-500">
+            Search Criteria
+        </div>
+        <div :class="selectedShip ? 'mb-6 grid items-stretch gap-3 lg:grid-cols-[17rem_minmax(0,1fr)]' : ''">
         <!-- ============================ Ship Picker ============================ -->
-        <section class="mb-4">
-            <label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">
+        <section :class="selectedShip ? '' : 'mb-4'">
+            <label v-if="!selectedShip" class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">
                 Ship
             </label>
 
-            <div v-if="selectedShip" class="relative overflow-hidden rounded-xl border border-blue-500/25 bg-black/35 p-4">
+            <div v-if="selectedShip" class="relative h-full min-h-40 overflow-hidden rounded-xl border border-blue-500/25 bg-black/35 p-4">
                 <img
                     :src="shipRenderUrl(selectedShip.id)"
                     alt=""
                     class="pointer-events-none absolute -right-10 -top-20 h-56 w-56 opacity-20 blur-xl"
                 />
-                <div class="relative flex items-center gap-4">
+                <div class="relative flex h-full flex-col items-start gap-3">
                 <img
                     :src="shipRenderUrl(selectedShip.id)"
                     :alt="selectedShip.name"
-                    class="h-20 w-20 flex-shrink-0 object-contain drop-shadow-[0_8px_20px_rgba(59,130,246,0.2)]"
+                    class="h-16 w-16 flex-shrink-0 object-contain drop-shadow-[0_8px_20px_rgba(59,130,246,0.2)]"
                     loading="lazy"
                 />
                 <div class="min-w-0 flex-1">
@@ -570,9 +816,10 @@ async function buildFitUrls(results: FitResult[]) {
                     <div class="mt-1 truncate text-xl font-bold text-white">{{ selectedShip.name }}</div>
                     <div class="mt-1 text-xs text-gray-500">Observed fitting families from the last 90 days</div>
                 </div>
+                <div class="flex w-full items-center gap-2">
                 <NuxtLink
                     :to="`/item/${selectedShip.id}/fittings`"
-                    class="hidden items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-gray-400 transition-colors hover:border-blue-500/30 hover:text-blue-300 sm:inline-flex"
+                    class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-gray-400 transition-colors hover:border-blue-500/30 hover:text-blue-300"
                 >
                     <Icon name="lucide:layers-3" class="h-3.5 w-3.5" />
                     Hull fittings
@@ -585,6 +832,7 @@ async function buildFitUrls(results: FitResult[]) {
                 >
                     <Icon name="lucide:x" class="w-4 h-4" />
                 </button>
+                </div>
                 </div>
             </div>
 
@@ -672,26 +920,60 @@ async function buildFitUrls(results: FitResult[]) {
         </section>
 
         <!-- ============================ Filters ============================ -->
-        <section v-if="selectedShip" class="mb-6">
-            <label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">
-                Module Filters
-            </label>
-
-            <div class="glass-panel p-3 space-y-2">
-                <div class="grid gap-2 border-b border-white/[0.06] pb-3 sm:grid-cols-2 lg:grid-cols-6">
-                    <label class="space-y-1 lg:col-span-2">
-                        <span class="text-fine font-bold uppercase tracking-wider text-gray-600">Sort by</span>
-                        <select v-model="statSort" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40">
-                            <option value="uses">Most used</option><option value="dps">Highest DPS</option>
-                            <option value="ehp">Highest EHP</option><option value="alpha">Highest alpha</option>
-                            <option value="repair">Strongest local tank</option><option value="speed">Fastest</option>
-                            <option value="align">Quickest align</option>
-                        </select>
-                    </label>
-                    <label class="space-y-1"><span class="text-fine font-bold uppercase tracking-wider text-gray-600">Min DPS</span><input v-model="minDps" type="number" min="0" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40" placeholder="Any" /></label>
-                    <label class="space-y-1"><span class="text-fine font-bold uppercase tracking-wider text-gray-600">Min EHP</span><input v-model="minEhp" type="number" min="0" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40" placeholder="Any" /></label>
-                    <label class="space-y-1"><span class="text-fine font-bold uppercase tracking-wider text-gray-600">Min EHP/s</span><input v-model="minRepair" type="number" min="0" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40" placeholder="Any" /></label>
-                    <label class="flex h-9 self-end items-center gap-2 rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-400"><input v-model="capStable" type="checkbox" class="accent-blue-500" />Cap stable</label>
+        <section v-if="selectedShip">
+            <div class="glass-panel h-full p-3 space-y-2">
+                <div class="border-b border-white/[0.06] pb-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Dropdown v-model="sortOpen" align="left">
+                            <template #trigger>
+                                <button type="button" class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-black/30 px-3 py-2 text-xs text-gray-300 hover:border-blue-500/30">
+                                    <span class="text-gray-600">Sort by</span>
+                                    {{ sortOptions.find(option => option.value === statSort)?.label }}
+                                    <Icon name="lucide:chevron-down" class="h-3.5 w-3.5 text-gray-600" />
+                                </button>
+                            </template>
+                            <template #default="{ close }">
+                                <button v-for="option in sortOptions" :key="option.value" type="button"
+                                    class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs hover:bg-blue-500/[0.08] hover:text-blue-300"
+                                    :class="statSort === option.value ? 'text-blue-300' : 'text-gray-400'"
+                                    @click="statSort = option.value; close()">
+                                    <Icon name="lucide:check" class="h-3.5 w-3.5" :class="statSort === option.value ? 'opacity-100' : 'opacity-0'" />
+                                    {{ option.label }}
+                                </button>
+                            </template>
+                        </Dropdown>
+                        <label class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-gray-400">
+                            <input v-model="capStable" type="checkbox" class="accent-blue-500" /> Capacitor stable
+                        </label>
+                        <button v-for="(filter, index) in activeStatFilters" :key="filter.metric" type="button"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/[0.08] px-2.5 py-2 text-xs text-blue-300"
+                            :title="`Remove ${statFilterLabel(filter)}`" @click="removeStatFilter(index)">
+                            {{ statFilterLabel(filter) }} <Icon name="lucide:x" class="h-3 w-3" />
+                        </button>
+                        <button v-if="activeStatFilters.length || capStable" type="button" class="ml-auto inline-flex items-center gap-1 text-xs text-gray-500 hover:text-red-300" @click="clearStatFilters">
+                            <Icon name="lucide:rotate-ccw" class="h-3.5 w-3.5" /> Clear statistics
+                        </button>
+                    </div>
+                    <form class="mt-3 grid gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-2 xl:grid-cols-[minmax(170px,1.5fr)_minmax(150px,1.2fr)_1fr_1fr_auto]" @submit.prevent="addStatFilter">
+                        <label>
+                            <span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">Statistic</span>
+                            <Dropdown v-model="statMetricOpen" align="left" class="w-full">
+                                <template #trigger><button type="button" class="flex w-full items-center justify-between rounded-md border border-white/[0.08] bg-black/35 px-2.5 py-2 text-left text-xs text-gray-300 hover:border-blue-500/30">{{ statFilterOptions.find(option => option.value === draftMetric)?.label }}<Icon name="lucide:chevron-down" class="h-3.5 w-3.5 text-gray-600" /></button></template>
+                                <template #default="{ close }"><button v-for="option in statFilterOptions" :key="option.value" type="button" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs hover:bg-blue-500/[0.08] hover:text-blue-300" :class="draftMetric === option.value ? 'text-blue-300' : 'text-gray-400'" @click="selectStatMetric(option.value); close()"><Icon name="lucide:check" class="h-3.5 w-3.5" :class="draftMetric === option.value ? 'opacity-100' : 'opacity-0'" />{{ option.label }}</button></template>
+                            </Dropdown>
+                        </label>
+                        <label v-if="draftMetric === 'npc_ehp'">
+                            <span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">NPC damage</span>
+                            <Dropdown v-model="npcProfileOpen" align="left" class="w-full">
+                                <template #trigger><button type="button" class="flex w-full items-center justify-between rounded-md border border-white/[0.08] bg-black/35 px-2.5 py-2 text-left text-xs text-gray-300 hover:border-blue-500/30">{{ npcProfiles.find(profile => profile[0] === draftNPCProfile)?.[1] }}<Icon name="lucide:chevron-down" class="h-3.5 w-3.5 text-gray-600" /></button></template>
+                                <template #default="{ close }"><button v-for="profile in npcProfiles" :key="profile[0]" type="button" class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs hover:bg-blue-500/[0.08] hover:text-blue-300" :class="draftNPCProfile === profile[0] ? 'text-blue-300' : 'text-gray-400'" @click="selectNPCProfile(profile[0]); close()"><Icon name="lucide:check" class="h-3.5 w-3.5" :class="draftNPCProfile === profile[0] ? 'opacity-100' : 'opacity-0'" />{{ profile[1] }}</button></template>
+                            </Dropdown>
+                        </label>
+                        <div v-else class="hidden xl:block" />
+                        <label><span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">Minimum</span><input v-model="draftMin" inputmode="decimal" placeholder="e.g. 50k" class="w-full rounded-md border border-white/[0.08] bg-black/35 px-2.5 py-2 text-xs tabular-nums text-gray-300 outline-none placeholder:text-gray-700 focus:border-blue-500/40"></label>
+                        <label><span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">Maximum</span><input v-model="draftMax" inputmode="decimal" placeholder="optional" class="w-full rounded-md border border-white/[0.08] bg-black/35 px-2.5 py-2 text-xs tabular-nums text-gray-300 outline-none placeholder:text-gray-700 focus:border-blue-500/40"></label>
+                        <button type="submit" class="self-end rounded-md border border-blue-500/30 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/25">Apply range</button>
+                    </form>
                 </div>
                 <!-- Existing filter pills -->
                 <div v-if="filters.length === 0" class="text-fine text-gray-500 py-1">
@@ -781,7 +1063,7 @@ async function buildFitUrls(results: FitResult[]) {
                         @click="filterPickerOpen = !filterPickerOpen"
                     >
                         <Icon name="lucide:plus" class="w-3.5 h-3.5" />
-                        Add filter
+                        Add module requirement
                         <span v-if="filters.length > 0" class="text-fine text-gray-500">
                             ({{ filters.length }}/8)
                         </span>
@@ -799,6 +1081,9 @@ async function buildFitUrls(results: FitResult[]) {
                             class="w-full h-9 px-3 mb-3 rounded-md bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500/50"
                             autofocus
                         />
+                        <div v-if="availabilityPending" class="mb-2 flex items-center gap-2 px-2 text-fine text-blue-300/70">
+                            <Icon name="lucide:loader-circle" class="h-3 w-3 animate-spin" /> Updating available requirements…
+                        </div>
                         <div v-if="filterRoleSearch.trim().length > 0">
                             <!-- Role matches -->
                             <div v-if="visibleRolesForPicker.length > 0" class="mb-3">
@@ -815,17 +1100,17 @@ async function buildFitUrls(results: FitResult[]) {
                                 >
                                     <Icon :name="r.icon" class="w-4 h-4 text-gray-400" />
                                     <span class="text-sm text-gray-200 flex-1">{{ r.label }}</span>
-                                    <span class="text-fine text-gray-600 tabular-nums">{{ r.typeCount }}</span>
+                                    <span class="text-fine text-gray-600 tabular-nums">{{ roleFitCount(r.id).toLocaleString('en-US') }} fits</span>
                                 </button>
                             </div>
 
                             <!-- Specific item matches -->
-                            <div v-if="itemResults.length > 0" class="mb-1">
+                            <div v-if="availableItemResults.length > 0" class="mb-1">
                                 <div class="text-fine font-bold uppercase tracking-wider text-amber-400/70 mb-1 px-1">
                                     Specific items
                                 </div>
                                 <button
-                                    v-for="hit in itemResults"
+                                    v-for="hit in availableItemResults"
                                     :key="hit.id"
                                     type="button"
                                     class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-amber-500/[0.08] transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
@@ -839,11 +1124,12 @@ async function buildFitUrls(results: FitResult[]) {
                                         loading="lazy"
                                     />
                                     <span class="text-sm text-gray-200 flex-1 truncate">{{ hit.name }}</span>
+                                    <span class="text-fine text-gray-600 tabular-nums">{{ typeFitCount(hitToTypeId(hit) ?? 0).toLocaleString('en-US') }} fits</span>
                                 </button>
                             </div>
 
                             <div
-                                v-if="visibleRolesForPicker.length === 0 && itemResults.length === 0 && !itemSearchPending"
+                                v-if="visibleRolesForPicker.length === 0 && availableItemResults.length === 0 && !itemSearchPending && !availabilityPending"
                                 class="text-fine text-gray-500 px-2 py-2"
                             >
                                 No matches — try a different word.
@@ -873,6 +1159,7 @@ async function buildFitUrls(results: FitResult[]) {
                                         >
                                             <Icon :name="r.icon" class="w-4 h-4 text-gray-400 flex-shrink-0" />
                                             <span class="text-sm text-gray-200 flex-1 truncate">{{ r.label }}</span>
+                                            <span class="text-fine text-gray-600 tabular-nums">{{ roleFitCount(r.id).toLocaleString('en-US') }}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -882,6 +1169,43 @@ async function buildFitUrls(results: FitResult[]) {
                                 (e.g. <span class="text-amber-300/80">Damage Control II</span>).
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        </div>
+
+        <section v-if="selectedShip && (visibleDistributions.length || distributionPending)" class="mb-6">
+            <div class="mb-2 flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Observed Fit Profiles</div>
+                    <div class="mt-0.5 text-fine text-gray-600">Click a range to filter the current results</div>
+                </div>
+                <div v-if="distributionPending" class="flex items-center gap-1.5 text-fine text-blue-300/60">
+                    <Icon name="lucide:loader-circle" class="h-3 w-3 animate-spin" /> Updating profiles…
+                </div>
+            </div>
+            <div v-if="visibleDistributions.length" class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" :class="distributionPending ? 'opacity-60' : ''">
+                <div v-for="metric in visibleDistributions" :key="metric.metric" class="rounded-lg border border-white/[0.08] bg-gradient-to-br from-blue-500/[0.04] to-transparent px-2.5 py-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="truncate text-fine font-semibold uppercase tracking-wide text-gray-500">{{ distributionLabels[metric.metric] }}</div>
+                            <div class="text-sm font-bold tabular-nums text-white">{{ formatDistributionValue(metric.metric, metric.median) }} <span class="font-normal text-gray-600">median</span></div>
+                        </div>
+                        <div class="shrink-0 text-right text-fine tabular-nums text-blue-200/55">
+                            {{ formatDistributionValue(metric.metric, metric.p10) }}–{{ formatDistributionValue(metric.metric, metric.p90) }}
+                        </div>
+                    </div>
+                    <div class="mt-1.5 flex h-7 items-end gap-px border-b border-white/[0.08]" :aria-label="`${distributionLabels[metric.metric]} histogram`">
+                        <button v-for="bucket in metric.buckets" :key="bucket.bucket" type="button"
+                            class="group relative min-w-0 flex-1 rounded-t-[1px] transition-all hover:bg-blue-300/90"
+                            :class="distributionBucketActive(metric, bucket) ? 'bg-blue-300' : 'bg-blue-400/45'"
+                            :style="{ height: `${distributionBucketHeight(metric, bucket)}%` }"
+                            @click="applyDistributionBucket(metric, bucket)">
+                            <div class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded border border-white/10 bg-gray-950 px-2 py-1 text-fine text-gray-300 shadow-xl group-hover:block">
+                                {{ formatDistributionValue(metric.metric, bucket.lower_bound) }}–{{ formatDistributionValue(metric.metric, bucket.upper_bound) }} · {{ bucket.observation_count.toLocaleString('en-US') }} losses
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -904,6 +1228,11 @@ async function buildFitUrls(results: FitResult[]) {
                 </div>
             </div>
 
+            <div v-if="resultsPending && fits.length > 0" class="mb-3 flex items-center gap-2 text-fine font-medium text-blue-300/70" role="status" aria-live="polite">
+                <Icon name="lucide:loader-circle" class="h-3.5 w-3.5 animate-spin" />
+                Updating fits…
+            </div>
+
             <div
                 v-if="resultsPending && fits.length === 0"
                 class="glass-panel flex items-center justify-center py-20"
@@ -919,7 +1248,7 @@ async function buildFitUrls(results: FitResult[]) {
             </div>
 
             <div v-else>
-                <div class="space-y-2.5">
+                <div class="space-y-2.5 transition-opacity" :class="resultsPending ? 'pointer-events-none opacity-60' : ''">
                     <article
                         v-for="(f, index) in fits"
                         :key="f.fit_hash"
@@ -963,6 +1292,7 @@ async function buildFitUrls(results: FitResult[]) {
                                 <span v-if="f.stats.dps_with_reload != null" class="tabular-nums text-red-300/80">{{ Math.round(f.stats.dps_with_reload) }} DPS</span>
                                 <span v-if="f.stats.ehp != null" class="tabular-nums text-emerald-300/80">{{ formatCompactNumber(f.stats.ehp) }} EHP</span>
                                 <span v-if="strongestRepair(f) > 0" class="tabular-nums text-cyan-300/80">{{ Math.round(strongestRepair(f)) }} EHP/s</span>
+                                <span v-if="f.stats.npc_ehp != null && f.stats.npc_profile" class="tabular-nums text-amber-300/80">{{ formatCompactNumber(f.stats.npc_ehp) }} EHP vs {{ npcProfiles.find(profile => profile[0] === f.stats?.npc_profile)?.[1] ?? f.stats.npc_profile }}</span>
                                 <span v-if="f.stats.cap_stable" class="text-blue-300/80">Cap stable</span>
                             </template>
                             <span

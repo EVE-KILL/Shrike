@@ -148,7 +148,7 @@ func warMemberParams(limitFallback, limitMaximum int) []*huma.Param {
 
 // fittingSearchParams is the shared fitting search contract.
 func fittingSearchParams() []*huma.Param {
-	return []*huma.Param{
+	params := []*huma.Param{
 		requiredQuery(entityQuery(
 			"ship", "Hull type ID to search fittings for. Required.", "ship",
 		)),
@@ -159,12 +159,21 @@ func fittingSearchParams() []*huma.Param {
 		),
 		limitQuery(24, 1, 50),
 		cappedQuery("offset", "Rows to skip before the page.", 0, maxInt32Page),
-		enumQuery("sort", "Sort fittings by usage or calculated all-V statistics.", "uses", "uses", "dps", "ehp", "alpha", "speed", "align", "repair"),
-		textQuery("min_dps", "Minimum all-V DPS with reload."),
-		textQuery("min_ehp", "Minimum all-V effective hit points."),
-		textQuery("min_repair", "Minimum strongest local effective repair rate."),
+		enumQuery("sort", "Sort fittings by usage or calculated all-V statistics.", "uses", "uses", "dps", "ehp", "alpha", "speed", "align", "repair", "npc_ehp"),
 		enumQuery("cap_stable", "Only return capacitor-stable fits.", "false", "false", "true"),
 	}
+	params = append(params, fittingShipFamilyFilterParams()...)
+	return params
+}
+
+func fittingSearchAvailabilityParams() []*huma.Param {
+	params := []*huma.Param{
+		requiredQuery(entityQuery("ship", "Hull type ID used to facet fitting requirements.", "ship")),
+		jsonQuery("filters", "Currently active module or role requirements."),
+		enumQuery("cap_stable", "Only consider capacitor-stable fits.", "false", "false", "true"),
+	}
+	params = append(params, fittingShipFamilyFilterParams()...)
+	return params
 }
 
 func communityFittingsParams() []*huma.Param {
@@ -626,12 +635,16 @@ var operationQueryParameters = map[string][]*huma.Param{
 	},
 
 	// --- Fittings ------------------------------------------------------------
-	"fittings-search":                     fittingSearchParams(),
-	"fittings-search-legacy":              fittingSearchParams(),
-	"fittings-community-latest":           communityFittingsParams(),
-	"fittings-community-latest-legacy":    communityFittingsParams(),
-	"fittings-community-top-rated":        communityFittingsParams(),
-	"fittings-community-top-rated-legacy": communityFittingsParams(),
+	"fittings-search":                      fittingSearchParams(),
+	"fittings-search-legacy":               fittingSearchParams(),
+	"fittings-search-availability":         fittingSearchAvailabilityParams(),
+	"fittings-search-availability-legacy":  fittingSearchAvailabilityParams(),
+	"fittings-search-distributions":        fittingSearchAvailabilityParams(),
+	"fittings-search-distributions-legacy": fittingSearchAvailabilityParams(),
+	"fittings-community-latest":            communityFittingsParams(),
+	"fittings-community-latest-legacy":     communityFittingsParams(),
+	"fittings-community-top-rated":         communityFittingsParams(),
+	"fittings-community-top-rated-legacy":  communityFittingsParams(),
 	"fittings-alliance-doctrines": {
 		enumQuery("entity_type", "Group doctrine losses by alliance or corporation.",
 			"alliance", "alliance", "corporation"),

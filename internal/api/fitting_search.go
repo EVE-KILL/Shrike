@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/eve-kill/shrike/internal/fitting"
 )
 
 type fittingSearchFilter struct {
@@ -18,9 +20,8 @@ type fittingSearchFilter struct {
 }
 
 type fittingStatQuery struct {
-	Sort                      string
-	MinDPS, MinEHP, MinRepair *float64
-	CapStable                 bool
+	Sort      string
+	CapStable bool
 }
 
 func parseFittingStatQuery(req *legacyRequest) (fittingStatQuery, error) {
@@ -28,20 +29,9 @@ func parseFittingStatQuery(req *legacyRequest) (fittingStatQuery, error) {
 	if result.Sort == "" {
 		result.Sort = "uses"
 	}
-	allowed := map[string]bool{"uses": true, "dps": true, "ehp": true, "alpha": true, "speed": true, "align": true, "repair": true}
+	allowed := map[string]bool{"uses": true, "dps": true, "ehp": true, "alpha": true, "speed": true, "align": true, "repair": true, "npc_ehp": true}
 	if !allowed[result.Sort] {
 		return result, apiError(http.StatusBadRequest, "unsupported fitting sort")
-	}
-	for name, target := range map[string]**float64{"min_dps": &result.MinDPS, "min_ehp": &result.MinEHP, "min_repair": &result.MinRepair} {
-		raw := strings.TrimSpace(req.Query.Get(name))
-		if raw == "" {
-			continue
-		}
-		value, err := strconv.ParseFloat(raw, 64)
-		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
-			return result, apiError(http.StatusBadRequest, name+" must be a non-negative number")
-		}
-		*target = &value
 	}
 	result.CapStable = req.Query.Get("cap_stable") == "true"
 	return result, nil
@@ -93,9 +83,12 @@ func searchFittingsHandler(opts Options) legacyHandler {
 			}
 		}
 
-		query, args := buildFittingSearchQuery(
-			ship, filters, resolved, statQuery, limit, offset,
+		query, args, err := buildFittingSearchQuery(
+			req, ship, filters, resolved, statQuery, limit, offset,
 		)
+		if err != nil {
+			return legacyPayload{}, err
+		}
 		rows, err := queryMaps(ctx, opts.DB, query, args...)
 		if err != nil {
 			return legacyPayload{}, err
@@ -193,6 +186,240 @@ func searchFittingsHandler(opts Options) legacyHandler {
 			"filters_applied": applied, "fits": fits,
 		}), nil
 	}
+}
+
+func fittingSearchAvailabilityHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		ship, err := parseSearchShip(req.Query.Get("ship"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		filters, err := parseFittingSearchFilters(req.Query.Get("filters"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		resolved, err := resolveFittingRoles(ctx, opts.DB)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		query, args, err := buildFittingAvailabilityQuery(req, ship, filters, resolved)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		rows, err := queryMaps(ctx, opts.DB, query, args...)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		roleCounts := make(map[string]int64)
+		typeCounts := make(map[string]int64)
+		for _, row := range rows {
+			key := stringOrEmpty(row["key"])
+			if key == "" {
+				continue
+			}
+			if stringOrEmpty(row["kind"]) == "role" {
+				roleCounts[key] = int64OrZero(row["fit_count"])
+			} else {
+				typeCounts[key] = int64OrZero(row["fit_count"])
+			}
+		}
+		return jsonPayload(map[string]any{
+			"ship_type_id": ship, "window_days": 90,
+			"role_counts": roleCounts, "type_counts": typeCounts,
+		}), nil
+	}
+}
+
+func fittingSearchDistributionsHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		ship, err := parseSearchShip(req.Query.Get("ship"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		filters, err := parseFittingSearchFilters(req.Query.Get("filters"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		resolved, err := resolveFittingRoles(ctx, opts.DB)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		eligibility, args, err := buildFittingEligibilityCTE(req, ship, filters, resolved)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		metrics, err := fittingSearchDistributionMetrics(ctx, opts, eligibility, args)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		return jsonPayload(map[string]any{
+			"ship_type_id": ship, "window_days": 90, "metrics": metrics,
+		}), nil
+	}
+}
+
+func fittingSearchDistributionMetrics(ctx context.Context, opts Options, eligibility string, args []any) ([]map[string]any, error) {
+	metricNames := []string{"ehp", "dps", "repair", "speed"}
+	queries := make([]databaseQuery, 0, len(metricNames))
+	for _, metric := range metricNames {
+		expression := fittingDistributionExpression("fs", metric)
+		metricArgs := append(append([]any{}, args...), fitting.DistributionBuckets)
+		bucketParameter := len(metricArgs)
+		queries = append(queries, databaseQuery{SQL: fmt.Sprintf(`
+			WITH %s,
+			samples AS (
+				SELECT fs.fit_hash,%s::double precision value,COUNT(*)::bigint observations
+				FROM eligible
+				JOIN fitting_stats fs USING (fit_hash)
+				JOIN killmail_fittings kf USING (fit_hash)
+				WHERE kf.kill_time>=NOW()-INTERVAL '90 days' AND %s>0
+				GROUP BY fs.fit_hash,%s
+			), weighted AS (
+				SELECT samples.*,
+				  SUM(observations) OVER (ORDER BY value,fit_hash ROWS UNBOUNDED PRECEDING) cumulative,
+				  SUM(observations) OVER () total_observations
+				FROM samples
+			), summary AS (
+				SELECT COUNT(*)::int fit_count,MAX(total_observations)::bigint observation_count,
+				  MIN(value) minimum,MAX(value) maximum,
+				  MIN(value) FILTER (WHERE cumulative>=total_observations*.01) p01,
+				  MIN(value) FILTER (WHERE cumulative>=total_observations*.10) p10,
+				  MIN(value) FILTER (WHERE cumulative>=total_observations*.25) p25,
+				  MIN(value) FILTER (WHERE cumulative>=total_observations*.50) median,
+				  MIN(value) FILTER (WHERE cumulative>=total_observations*.75) p75,
+				  MIN(value) FILTER (WHERE cumulative>=total_observations*.90) p90,
+				  MIN(value) FILTER (WHERE cumulative>=total_observations*.99) p99
+				FROM weighted
+			), assigned AS (
+				SELECT samples.*,
+				  CASE WHEN summary.p99<=summary.p01 THEN 1 ELSE LEAST($%d,GREATEST(1,width_bucket(samples.value,summary.p01,summary.p99,$%d))) END bucket
+				FROM samples CROSS JOIN summary
+			), aggregated AS (
+				SELECT bucket,COUNT(*)::int fit_count,SUM(observations)::bigint observation_count
+				FROM assigned GROUP BY bucket
+			)
+			SELECT summary.fit_count,summary.observation_count,summary.minimum,summary.maximum,
+			  summary.p10,summary.p25,summary.median,summary.p75,summary.p90,series.bucket,
+			  CASE WHEN summary.p99<=summary.p01 THEN summary.p01 ELSE summary.p01+(series.bucket-1)*(summary.p99-summary.p01)/$%d END lower_bound,
+			  CASE WHEN summary.p99<=summary.p01 THEN summary.p99 ELSE summary.p01+series.bucket*(summary.p99-summary.p01)/$%d END upper_bound,
+			  COALESCE(aggregated.fit_count,0)::int bucket_fit_count,
+			  COALESCE(aggregated.observation_count,0)::bigint bucket_observation_count
+			FROM summary
+			CROSS JOIN LATERAL generate_series(1,CASE WHEN summary.p99<=summary.p01 THEN 1 ELSE $%d END) series(bucket)
+			LEFT JOIN aggregated USING (bucket)
+			WHERE summary.fit_count>0 ORDER BY series.bucket`, eligibility, expression, expression, expression,
+			bucketParameter, bucketParameter, bucketParameter, bucketParameter, bucketParameter), Args: metricArgs})
+	}
+	results, err := queryMapsConcurrent(ctx, opts.DB, queries...)
+	if err != nil {
+		return nil, err
+	}
+	metrics := make([]map[string]any, 0, len(results))
+	for index, rows := range results {
+		if len(rows) == 0 {
+			continue
+		}
+		buckets := make([]map[string]any, 0, len(rows))
+		for _, row := range rows {
+			buckets = append(buckets, map[string]any{
+				"bucket": row["bucket"], "lower_bound": row["lower_bound"], "upper_bound": row["upper_bound"],
+				"fit_count": row["bucket_fit_count"], "observation_count": row["bucket_observation_count"],
+			})
+		}
+		row := rows[0]
+		metrics = append(metrics, map[string]any{
+			"metric": metricNames[index], "fit_count": row["fit_count"], "observation_count": row["observation_count"],
+			"minimum": row["minimum"], "maximum": row["maximum"], "p10": row["p10"], "p25": row["p25"],
+			"median": row["median"], "p75": row["p75"], "p90": row["p90"], "buckets": buckets,
+		})
+	}
+	return metrics, nil
+}
+
+func buildFittingAvailabilityQuery(req *legacyRequest, ship int32, filters []fittingSearchFilter, resolved resolvedFittingRoles) (string, []any, error) {
+	eligibility, args, err := buildFittingEligibilityCTE(req, ship, filters, resolved)
+	if err != nil {
+		return "", nil, err
+	}
+	roleQueries := make([]string, 0, len(fittingRoleDefinitions))
+	for _, role := range fittingRoleDefinitions {
+		ids := resolved[role.ID]
+		if len(ids) == 0 {
+			continue
+		}
+		args = append(args, role.ID, ids)
+		roleQueries = append(roleQueries, fmt.Sprintf(
+			"SELECT $%d::text AS role_id, unnest($%d::int[]) AS type_id",
+			len(args)-1, len(args),
+		))
+	}
+	roleTypes := strings.Join(roleQueries, " UNION ALL ")
+	query := fmt.Sprintf(`
+		WITH %s,
+		role_types AS (%s),
+		type_counts AS (
+			SELECT item.type_id, COUNT(DISTINCT eligible.fit_hash)::int AS fit_count
+			FROM eligible JOIN fitting_items item USING (fit_hash)
+			GROUP BY item.type_id
+		),
+		role_counts AS (
+			SELECT role_types.role_id, COUNT(DISTINCT eligible.fit_hash)::int AS fit_count
+			FROM eligible JOIN fitting_items item USING (fit_hash)
+			JOIN role_types ON role_types.type_id=item.type_id
+			GROUP BY role_types.role_id
+		)
+		SELECT 'type' AS kind, type_id::text AS key, fit_count FROM type_counts
+		UNION ALL
+		SELECT 'role' AS kind, role_id AS key, fit_count FROM role_counts`, eligibility, roleTypes)
+	return query, args, nil
+}
+
+func buildFittingEligibilityCTE(req *legacyRequest, ship int32, filters []fittingSearchFilter, resolved resolvedFittingRoles) (string, []any, error) {
+	args := []any{ship}
+	having := make([]string, 0, len(filters))
+	for _, filter := range filters {
+		var ids []int32
+		if filter.Kind == "role" {
+			ids = resolved[filter.RoleID]
+		} else {
+			ids = []int32{filter.TypeID}
+		}
+		args = append(args, ids, filter.Count)
+		having = append(having, fmt.Sprintf(
+			"SUM(CASE WHEN item.type_id = ANY($%d::int[]) THEN item.quantity ELSE 0 END) %s $%d",
+			len(args)-1, filter.Op, len(args),
+		))
+	}
+	matched := "matched AS (SELECT fit_hash FROM ship_fit_uses)"
+	if len(having) > 0 {
+		matched = `matched AS (
+			SELECT item.fit_hash FROM fitting_items item
+			WHERE item.fit_hash IN (SELECT fit_hash FROM ship_fit_uses)
+			GROUP BY item.fit_hash HAVING ` + strings.Join(having, " AND ") + `
+		)`
+	}
+	args, filterSQL, _, _, err := buildFittingFilterSQL(req, "stats", "matched.fit_hash", args)
+	if err != nil {
+		return "", nil, err
+	}
+	statWhere := "TRUE"
+	if filterSQL != "" {
+		statWhere = strings.TrimPrefix(filterSQL, "AND ")
+	}
+	if req.Query.Get("cap_stable") == "true" {
+		statWhere += " AND stats.cap_stable = true"
+	}
+	cte := fmt.Sprintf(`ship_fit_uses AS (
+			SELECT DISTINCT fit_hash FROM killmail_fittings
+			WHERE ship_type_id=$1 AND kill_time >= NOW() - INTERVAL '90 days'
+		),
+		%s,
+		eligible AS (
+			SELECT matched.fit_hash FROM matched
+			LEFT JOIN fitting_stats stats USING (fit_hash)
+			WHERE %s
+		)`, matched, statWhere)
+	return cte, args, nil
 }
 
 func parseSearchShip(raw string) (int32, error) {
@@ -329,12 +556,13 @@ func emptyFittingSearchResponse(
 }
 
 func buildFittingSearchQuery(
+	req *legacyRequest,
 	ship int32,
 	filters []fittingSearchFilter,
 	resolved resolvedFittingRoles,
 	statQuery fittingStatQuery,
 	limit, offset int,
-) (string, []any) {
+) (string, []any, error) {
 	args := []any{ship}
 	slotSet := make(map[int32]bool)
 	slotHintDisabled := false
@@ -415,17 +643,26 @@ func buildFittingSearchQuery(
 	limitPlaceholder := len(args)
 	args = append(args, offset)
 	offsetPlaceholder := len(args)
+	var filterSQL, profileID string
+	var filterErr error
+	args, filterSQL, profileID, _, filterErr = buildFittingFilterSQL(req, "stats", "matched.fit_hash", args)
+	if filterErr != nil {
+		return "", nil, filterErr
+	}
 	statWhere := []string{"TRUE"}
-	for column, value := range map[string]*float64{"stats.dps_with_reload": statQuery.MinDPS, "stats.ehp": statQuery.MinEHP, "GREATEST(COALESCE(stats.shield_effective_boost,0),COALESCE(stats.armor_effective_repair,0),COALESCE(stats.passive_shield_effective,0))": statQuery.MinRepair} {
-		if value != nil {
-			args = append(args, *value)
-			statWhere = append(statWhere, fmt.Sprintf("%s >= $%d", column, len(args)))
-		}
+	if filterSQL != "" {
+		statWhere = append(statWhere, strings.TrimPrefix(filterSQL, "AND "))
 	}
 	if statQuery.CapStable {
 		statWhere = append(statWhere, "stats.cap_stable = true")
 	}
-	order := map[string]string{"uses": "uses.total_uses DESC, uses.last_used DESC", "dps": "stats.dps_with_reload DESC NULLS LAST", "ehp": "stats.ehp DESC NULLS LAST", "alpha": "stats.alpha DESC NULLS LAST", "speed": "stats.max_velocity DESC NULLS LAST", "align": "stats.align_time ASC NULLS LAST", "repair": "GREATEST(COALESCE(stats.shield_effective_boost,0),COALESCE(stats.armor_effective_repair,0),COALESCE(stats.passive_shield_effective,0)) DESC"}[statQuery.Sort]
+	npcExpression := "NULL::double precision"
+	if profileID != "" {
+		profile, _ := fitting.NPCProfile(profileID)
+		npcExpression = "(" + fitting.NPCDamageEHPExpression("stats", profile) + ")"
+	}
+	repairExpression := "GREATEST(COALESCE(stats.shield_effective_boost,0),COALESCE(stats.armor_effective_repair,0),COALESCE(stats.hull_effective_repair,0),COALESCE(stats.passive_shield_effective,0))"
+	order := map[string]string{"uses": "uses.total_uses DESC, uses.last_used DESC", "dps": "stats.dps_with_reload DESC NULLS LAST", "ehp": "stats.ehp DESC NULLS LAST", "alpha": "stats.alpha DESC NULLS LAST", "speed": "stats.max_velocity DESC NULLS LAST", "align": "stats.align_time ASC NULLS LAST", "repair": repairExpression + " DESC", "npc_ehp": npcExpression + " DESC NULLS LAST"}[statQuery.Sort]
 	query := fmt.Sprintf(`
 		WITH ship_fit_uses AS (
 			SELECT kf.fit_hash,
@@ -449,7 +686,8 @@ func buildFittingSearchQuery(
 			SELECT fit.fit_hash, fit.family_hash, fit.ship_type_id,
 			       ship.name AS ship_name,
 			       uses.total_uses, uses.last_used,
-			       to_jsonb(stats) - 'fit_hash' - 'ship_type_id' AS stats,
+			       (to_jsonb(stats) - 'fit_hash' - 'ship_type_id') ||
+			         jsonb_build_object('repair', %s, 'npc_profile', %s, 'npc_ehp', %s) AS stats,
 			       ROW_NUMBER() OVER (ORDER BY %s) AS sort_rank
 			FROM stats_matched
 			JOIN ship_fit_uses uses USING (fit_hash)
@@ -464,8 +702,8 @@ func buildFittingSearchQuery(
 		FROM result_count
 		LEFT JOIN page ON TRUE
 		ORDER BY page.sort_rank NULLS LAST`,
-		matched, strings.Join(statWhere, " AND "), order, order,
+		matched, strings.Join(statWhere, " AND "), repairExpression, "'"+strings.ReplaceAll(profileID, "'", "''")+"'", npcExpression, order, order,
 		limitPlaceholder, offsetPlaceholder,
 	)
-	return query, args
+	return query, args, nil
 }

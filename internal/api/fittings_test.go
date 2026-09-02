@@ -264,6 +264,32 @@ func TestFittingSearchPaginationMatchesJavaScriptClamp(t *testing.T) {
 	}
 }
 
+func TestFittingSearchSupportsSharedStatisticFilters(t *testing.T) {
+	req := &legacyRequest{Query: url.Values{
+		"sort":             {"npc_ehp"},
+		"npc_profile":      {"guristas"},
+		"min_npc_ehp":      {"150000"},
+		"max_speed":        {"2200"},
+		"min_armor_repair": {"100"},
+	}}
+	statQuery, err := parseFittingStatQuery(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query, args, err := buildFittingSearchQuery(req, 29990, nil, nil, statQuery, 24, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fragment := range []string{"stats.max_velocity <=", "stats.armor_effective_repair >=", "'npc_profile', 'guristas'", "'npc_ehp'"} {
+		if !strings.Contains(query, fragment) {
+			t.Errorf("query does not contain %q", fragment)
+		}
+	}
+	if len(args) != 6 {
+		t.Fatalf("args = %#v, want ship, limit, offset, and three statistic bounds", args)
+	}
+}
+
 func TestGenerateFittingIDUsesFrontendLengthAndAlphabet(t *testing.T) {
 	id, err := generateFittingID()
 	if err != nil {

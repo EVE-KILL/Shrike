@@ -62,6 +62,16 @@ func registerFittingCatalogueRoutes(a huma.API, opts Options) {
 			2 * time.Minute, searchFittingsHandler(opts),
 		},
 		{
+			"fittings-search-availability", "/fittings/search/availability",
+			"/fits/search/availability", "Available fitting search requirements",
+			2 * time.Minute, fittingSearchAvailabilityHandler(opts),
+		},
+		{
+			"fittings-search-distributions", "/fittings/search/distributions",
+			"/fits/search/distributions", "Calculated fitting distributions for search results",
+			2 * time.Minute, fittingSearchDistributionsHandler(opts),
+		},
+		{
 			"fittings-alliance-doctrines", "/fittings/doctrines/alliances",
 			"/fits/top-alliance-doctrines", "Popular alliance doctrines",
 			30 * time.Minute, allianceDoctrineHandler(opts),

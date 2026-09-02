@@ -288,6 +288,11 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		}, "roles")
 	case "fittings-search", "fittings-search-legacy":
 		return fittingSearchResponseSchema()
+	case "fittings-search-availability", "fittings-search-availability-legacy":
+		return responseSchema(map[string]*huma.Schema{
+			"ship_type_id": intSchema(), "window_days": intSchema(),
+			"role_counts": mapOfSchema(intSchema()), "type_counts": mapOfSchema(intSchema()),
+		}, "ship_type_id", "window_days", "role_counts", "type_counts")
 	case "fittings-alliance-doctrines",
 		"fittings-alliance-doctrines-legacy":
 		return responseSchema(map[string]*huma.Schema{
@@ -303,7 +308,8 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		}, "ship_type_id", "window_days", "is_rare_hull", "families")
 	case "fittings-ship-metadata", "fittings-ship-metadata-legacy":
 		return fittingShipMetadataSchema()
-	case "fittings-ship-distributions", "fittings-ship-distributions-legacy":
+	case "fittings-ship-distributions", "fittings-ship-distributions-legacy",
+		"fittings-search-distributions", "fittings-search-distributions-legacy":
 		bucket := responseSchema(map[string]*huma.Schema{
 			"bucket": intSchema(), "lower_bound": numberSchema(), "upper_bound": numberSchema(),
 			"fit_count": intSchema(), "observation_count": intSchema(),
