@@ -18,15 +18,12 @@ func shipFittingMetadataHandler(opts Options) legacyHandler {
 			return legacyPayload{}, err
 		}
 		args := []any{shipID, fitting.DogmaEngineVersion, fitting.DogmaSDEVersion}
-		args, filterSQL, _, needsStats, filterErr := buildFittingFilterSQL(req, "filtered_stats", "kf.fit_hash", args)
+		args, filterSQL, _, _, filterErr := buildFittingFilterSQL(req, "filtered_stats", "kf.fit_hash", args)
 		if filterErr != nil {
 			return legacyPayload{}, filterErr
 		}
-		statsJoin := ""
-		if needsStats {
-			statsJoin = `JOIN fitting_stats filtered_stats ON filtered_stats.fit_hash=kf.fit_hash
+		statsJoin := `LEFT JOIN fitting_stats filtered_stats ON filtered_stats.fit_hash=kf.fit_hash
 				  AND filtered_stats.engine_version=$2 AND filtered_stats.sde_version=$3`
-		}
 		results, err := queryMapsConcurrent(ctx, opts.DB,
 			databaseQuery{
 				SQL: fmt.Sprintf(`
