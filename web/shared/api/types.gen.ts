@@ -21508,12 +21508,28 @@ export type FittingsSearchLegacyResponses = {
             type_name?: string;
         }>;
         fits: Array<{
+            context: {
+                median_attackers: number;
+                median_loss_value: number;
+                security_distribution: Array<{
+                    count: number;
+                    name: string;
+                    pct: number;
+                }>;
+                top_region: {
+                    count: number;
+                    name: string | null;
+                    pct: number;
+                    region_id: number;
+                } | null;
+            };
             drones: Array<{
                 name: string | null;
                 quantity: number;
                 type_id: number;
             }>;
             family_hash: string;
+            family_total_uses: number;
             fit_cost: number;
             fit_hash: string;
             hull_cost: number | null;
@@ -21532,6 +21548,7 @@ export type FittingsSearchLegacyResponses = {
             ship_name: string | null;
             ship_type_id: number;
             total_uses: number;
+            variant_count: number;
         }>;
         has_more: boolean;
         limit: number;
@@ -21897,12 +21914,28 @@ export type FittingsSearchResponses = {
             type_name?: string;
         }>;
         fits: Array<{
+            context: {
+                median_attackers: number;
+                median_loss_value: number;
+                security_distribution: Array<{
+                    count: number;
+                    name: string;
+                    pct: number;
+                }>;
+                top_region: {
+                    count: number;
+                    name: string | null;
+                    pct: number;
+                    region_id: number;
+                } | null;
+            };
             drones: Array<{
                 name: string | null;
                 quantity: number;
                 type_id: number;
             }>;
             family_hash: string;
+            family_total_uses: number;
             fit_cost: number;
             fit_hash: string;
             hull_cost: number | null;
@@ -21921,6 +21954,7 @@ export type FittingsSearchResponses = {
             ship_name: string | null;
             ship_type_id: number;
             total_uses: number;
+            variant_count: number;
         }>;
         has_more: boolean;
         limit: number;

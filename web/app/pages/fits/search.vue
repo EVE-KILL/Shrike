@@ -70,11 +70,14 @@ interface FitResult {
     ship_type_id: number
     ship_name: string | null
     total_uses: number
+    family_total_uses: number
+    variant_count: number
     last_used: string
     fit_cost: number
     hull_cost: number | null
     modules: FittingModule[]
     drones: FittingDrone[]
+    context?: FitFamilyContext
 }
 
 type FilterOp = '>=' | '<=' | '=' | '>' | '<'
@@ -453,6 +456,7 @@ function fittingGroups(fit: FitResult) {
 }
 
 const fitName = (fit: FitResult): string => classifyFitFamily(fit.modules, fit.drones)
+const fitInsights = (fit: FitResult): string[] => fitFamilyContextParts(fit.context)
 
 const timeAgo = (iso: string | null): string => {
     if (!iso) return ''
@@ -873,12 +877,52 @@ async function buildFitUrls(results: FitResult[]) {
                         :key="f.fit_hash"
                         class="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] transition-colors hover:border-blue-500/25 hover:bg-blue-500/[0.035]"
                     >
+                        <div class="flex min-w-0 items-center gap-2.5 px-3.5 pb-0 pt-3">
+                            <span class="text-[10px] font-bold tabular-nums text-white/20">
+                                {{ String(index + 1).padStart(2, '0') }}
+                            </span>
+                            <h3 class="min-w-0 flex-1 truncate text-sm font-semibold text-gray-100 transition-colors group-hover:text-blue-300">
+                                {{ fitName(f) }}
+                            </h3>
+                            <div class="flex flex-shrink-0 items-center gap-1.5">
+                                <NuxtLink
+                                    :to="fitUrls.get(f.fit_hash) ?? '#'"
+                                    class="inline-flex items-center justify-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/[0.08] px-2.5 py-1.5 text-fine font-semibold text-blue-300 transition-colors hover:bg-blue-500/[0.15]"
+                                >
+                                    <Icon name="lucide:wrench" class="h-3 w-3" />
+                                    <span class="hidden sm:inline">Open editor</span>
+                                </NuxtLink>
+                                <NuxtLink
+                                    :to="`/item/${f.ship_type_id}/fittings`"
+                                    class="inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-fine text-gray-500 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
+                                >
+                                    <Icon name="lucide:layers-3" class="h-3 w-3" />
+                                    <span class="hidden sm:inline">All variants</span>
+                                </NuxtLink>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 pt-1.5 text-fine">
+                            <span class="font-bold tabular-nums text-blue-400">
+                                {{ f.total_uses.toLocaleString('en-US') }} exact uses
+                            </span>
+                            <span class="tabular-nums text-purple-300/80">
+                                {{ f.family_total_uses.toLocaleString('en-US') }} family uses
+                            </span>
+                            <span class="text-gray-500">
+                                {{ f.variant_count.toLocaleString('en-US') }} variant{{ f.variant_count === 1 ? '' : 's' }}
+                            </span>
+                            <span
+                                v-for="insight in fitInsights(f).slice(0, 3)"
+                                :key="insight"
+                                class="inline-flex items-center gap-1 text-gray-500"
+                            >
+                                <span class="text-white/10">·</span>
+                                {{ insight }}
+                            </span>
+                        </div>
                         <div class="flex flex-col gap-3 p-3.5 lg:flex-row lg:items-stretch">
                             <div class="flex min-w-0 items-center gap-3 lg:w-72 lg:flex-shrink-0">
                                 <div class="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-black/30">
-                                    <span class="absolute left-1.5 top-1 text-[9px] font-bold tabular-nums text-white/15">
-                                        {{ String(index + 1).padStart(2, '0') }}
-                                    </span>
                             <img
                                 :src="shipRenderUrl(f.ship_type_id)"
                                 :alt="f.ship_name ?? ''"
@@ -887,16 +931,10 @@ async function buildFitUrls(results: FitResult[]) {
                             />
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <div class="truncate text-sm font-semibold text-gray-100 transition-colors group-hover:text-blue-300">
-                                        {{ fitName(f) }}
-                                    </div>
-                                    <div class="mt-0.5 truncate text-xs text-gray-500">
+                                    <div class="truncate text-xs font-medium text-gray-400">
                                         {{ f.ship_name ?? `Type ${f.ship_type_id}` }}
                                     </div>
                                     <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-fine">
-                                        <span class="font-bold tabular-nums text-blue-400">
-                                            {{ f.total_uses.toLocaleString('en-US') }} use{{ f.total_uses === 1 ? '' : 's' }}
-                                        </span>
                                         <span class="tabular-nums text-yellow-400/80">
                                             {{ formatIsk((f.fit_cost ?? 0) + (f.hull_cost ?? 0)) }} ISK
                                         </span>
@@ -939,22 +977,6 @@ async function buildFitUrls(results: FitResult[]) {
                                 </div>
                             </div>
 
-                            <div class="flex flex-shrink-0 items-center justify-end gap-2 border-t border-white/[0.05] pt-3 lg:w-36 lg:flex-col lg:items-stretch lg:justify-center lg:border-l lg:border-t-0 lg:pl-3 lg:pt-0">
-                                <NuxtLink
-                                    :to="fitUrls.get(f.fit_hash) ?? '#'"
-                                    class="inline-flex items-center justify-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/[0.08] px-3 py-2 text-xs font-semibold text-blue-300 transition-colors hover:bg-blue-500/[0.15]"
-                                >
-                                    <Icon name="lucide:wrench" class="h-3.5 w-3.5" />
-                                    Open editor
-                                </NuxtLink>
-                                <NuxtLink
-                                    :to="`/item/${f.ship_type_id}/fittings`"
-                                    class="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-fine text-gray-500 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
-                                >
-                                    <Icon name="lucide:layers-3" class="h-3 w-3" />
-                                    All variants
-                                </NuxtLink>
-                            </div>
                         </div>
                     </article>
                 </div>

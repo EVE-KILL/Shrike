@@ -1900,11 +1900,14 @@ func fittingSearchFitSchema() *huma.Schema {
 		"fit_hash": stringSchema(), "family_hash": stringSchema(),
 		"ship_type_id": intSchema(), "ship_name": nullable(stringSchema()),
 		"total_uses": intSchema(), "last_used": timestampSchema(),
+		"family_total_uses": intSchema(), "variant_count": intSchema(),
 		"fit_cost": numberSchema(), "hull_cost": nullable(numberSchema()),
 		"modules": arraySchema(fittingCatalogueModuleSchema()),
 		"drones":  arraySchema(fittingCatalogueDroneSchema()),
+		"context": fittingFamilyContextSchema(),
 	}, "fit_hash", "family_hash", "ship_type_id", "ship_name", "total_uses",
-		"last_used", "fit_cost", "hull_cost", "modules", "drones")
+		"last_used", "family_total_uses", "variant_count", "fit_cost",
+		"hull_cost", "modules", "drones", "context")
 }
 
 func fittingSearchResponseSchema() *huma.Schema {

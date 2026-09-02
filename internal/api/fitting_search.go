@@ -90,14 +90,42 @@ func searchFittingsHandler(opts Options) legacyHandler {
 		}
 
 		hashes := make([]string, 0, len(fitRows))
+		familyHashSet := make(map[string]bool, len(fitRows))
+		familyHashes := make([]string, 0, len(fitRows))
 		for _, fit := range fitRows {
 			hashes = append(hashes, stringOrEmpty(fit["fit_hash"]))
+			familyHash := stringOrEmpty(fit["family_hash"])
+			if familyHash != "" && !familyHashSet[familyHash] {
+				familyHashSet[familyHash] = true
+				familyHashes = append(familyHashes, familyHash)
+			}
 		}
 		contents, err := loadCatalogueContents(
 			ctx, opts.DB, hashes, []int32{ship},
 		)
 		if err != nil {
 			return legacyPayload{}, err
+		}
+		contexts, err := loadFittingContexts(ctx, opts.DB, int64(ship), familyHashes)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		familyRows, err := queryMaps(ctx, opts.DB, `
+			SELECT fit.family_hash,
+			       COUNT(*)::int AS family_total_uses,
+			       COUNT(DISTINCT fitting.fit_hash)::int AS variant_count
+			FROM killmail_fittings fitting
+			JOIN fittings fit ON fit.fit_hash = fitting.fit_hash
+			WHERE fitting.ship_type_id = $1
+			  AND fitting.kill_time >= NOW() - INTERVAL '90 days'
+			  AND fit.family_hash = ANY($2::text[])
+			GROUP BY fit.family_hash`, ship, familyHashes)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		familyTotals := make(map[string]map[string]any, len(familyRows))
+		for _, row := range familyRows {
+			familyTotals[stringOrEmpty(row["family_hash"])] = row
 		}
 		shipName := fitRows[0]["ship_name"]
 		hullCost := any(nil)
@@ -107,13 +135,18 @@ func searchFittingsHandler(opts Options) legacyHandler {
 		fits := make([]map[string]any, 0, len(fitRows))
 		for _, fit := range fitRows {
 			hash := stringOrEmpty(fit["fit_hash"])
+			familyHash := stringOrEmpty(fit["family_hash"])
+			familyTotal := familyTotals[familyHash]
 			fits = append(fits, map[string]any{
-				"fit_hash": hash, "family_hash": fit["family_hash"],
+				"fit_hash": hash, "family_hash": familyHash,
 				"ship_type_id": fit["ship_type_id"], "ship_name": shipName,
 				"total_uses": fit["total_uses"], "last_used": fit["last_used"],
-				"fit_cost": contents.CostByHash[hash], "hull_cost": hullCost,
+				"family_total_uses": int64OrZero(familyTotal["family_total_uses"]),
+				"variant_count":     int64OrZero(familyTotal["variant_count"]),
+				"fit_cost":          contents.CostByHash[hash], "hull_cost": hullCost,
 				"modules": catalogueList(contents.ModulesByHash, hash),
 				"drones":  catalogueList(contents.DronesByHash, hash),
+				"context": contexts[familyHash],
 			})
 		}
 		return jsonPayload(map[string]any{
