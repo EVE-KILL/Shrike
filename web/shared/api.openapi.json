@@ -21886,6 +21886,84 @@
                   "format": "int64",
                   "type": "integer"
                 },
+                "context": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "median_attackers": {
+                      "format": "double",
+                      "type": "number"
+                    },
+                    "median_loss_value": {
+                      "format": "double",
+                      "type": "number"
+                    },
+                    "security_distribution": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "pct": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "count",
+                          "pct"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "top_region": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "pct": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "region_id": {
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "region_id",
+                        "name",
+                        "count",
+                        "pct"
+                      ],
+                      "type": [
+                        "object",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "security_distribution",
+                    "top_region",
+                    "median_attackers",
+                    "median_loss_value"
+                  ],
+                  "type": "object"
+                },
                 "family_hash": {
                   "type": "string"
                 },
@@ -65961,6 +66039,84 @@
                             "format": "int64",
                             "type": "integer"
                           },
+                          "context": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "median_attackers": {
+                                "format": "double",
+                                "type": "number"
+                              },
+                              "median_loss_value": {
+                                "format": "double",
+                                "type": "number"
+                              },
+                              "security_distribution": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "count": {
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "pct": {
+                                      "format": "double",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "count",
+                                    "pct"
+                                  ],
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "top_region": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "count": {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "pct": {
+                                    "format": "double",
+                                    "type": "number"
+                                  },
+                                  "region_id": {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "region_id",
+                                  "name",
+                                  "count",
+                                  "pct"
+                                ],
+                                "type": [
+                                  "object",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "security_distribution",
+                              "top_region",
+                              "median_attackers",
+                              "median_loss_value"
+                            ],
+                            "type": "object"
+                          },
                           "drones": {
                             "items": {
                               "additionalProperties": false,
@@ -66110,7 +66266,8 @@
                           "last_used",
                           "fit_cost",
                           "modules",
-                          "drones"
+                          "drones",
+                          "context"
                         ],
                         "type": "object"
                       },
@@ -70194,6 +70351,84 @@
                             "format": "int64",
                             "type": "integer"
                           },
+                          "context": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "median_attackers": {
+                                "format": "double",
+                                "type": "number"
+                              },
+                              "median_loss_value": {
+                                "format": "double",
+                                "type": "number"
+                              },
+                              "security_distribution": {
+                                "items": {
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "count": {
+                                      "format": "int64",
+                                      "type": "integer"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "pct": {
+                                      "format": "double",
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "count",
+                                    "pct"
+                                  ],
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "top_region": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "count": {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "pct": {
+                                    "format": "double",
+                                    "type": "number"
+                                  },
+                                  "region_id": {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "region_id",
+                                  "name",
+                                  "count",
+                                  "pct"
+                                ],
+                                "type": [
+                                  "object",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "security_distribution",
+                              "top_region",
+                              "median_attackers",
+                              "median_loss_value"
+                            ],
+                            "type": "object"
+                          },
                           "drones": {
                             "items": {
                               "additionalProperties": false,
@@ -70343,7 +70578,8 @@
                           "last_used",
                           "fit_cost",
                           "modules",
-                          "drones"
+                          "drones",
+                          "context"
                         ],
                         "type": "object"
                       },

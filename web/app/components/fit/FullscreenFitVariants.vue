@@ -27,6 +27,7 @@ interface FittingFamily {
     fit_cost: number;
     modules: FittingModule[];
     drones: FittingDrone[];
+    context?: FitFamilyContext;
 }
 
 interface FittingsResponse {
@@ -317,6 +318,20 @@ const observedAgo = (iso: string): string => {
 const suggestionExplanation = computed(() => currentFit.value?.modules.length
     ? "Ranked by observed fits sharing your current modules."
     : "Ranked by the most common observed fits for this hull.");
+
+const familySearchQuery = computed(() => fitFamilyAdvancedSearchQuery(data.value?.window_days ?? 90));
+
+function familySearchLink(family: FittingFamily, view: "kills" | "fits") {
+    return {
+        path: "/advancedsearch",
+        query: {
+            q: familySearchQuery.value,
+            dh: family.family_hash,
+            dm: "family",
+            ...(view === "fits" ? { view: "fits", dedup: "exact" } : {}),
+        },
+    };
+}
 </script>
 
 <template>
@@ -430,23 +445,27 @@ const suggestionExplanation = computed(() => currentFit.value?.modules.length
                 </div>
                 <div class="mt-1 px-1 text-[9px] leading-3 text-gray-700">{{ suggestionExplanation }} Only options fitting open slots, hardpoints, CPU and powergrid are shown. Hover to preview.</div>
             </div>
-            <button
+            <div
                 v-for="(family, index) in data.families"
                 :key="family.family_hash"
-                type="button"
-                class="group mb-1.5 w-full rounded-lg border px-2.5 py-2 text-left transition-colors last:mb-0"
+                class="group relative mb-1.5 w-full rounded-lg border px-2.5 py-2 text-left transition-colors last:mb-0"
                 :class="selectedFamily === family.family_hash
                     ? 'border-purple-400/35 bg-purple-400/[0.09]'
                     : 'border-white/[0.06] bg-white/[0.02] hover:border-purple-400/20 hover:bg-purple-400/[0.045]'"
-                @click="loadFamily(family, index)"
             >
-                <div class="flex items-center gap-2">
+                <button
+                    type="button"
+                    class="absolute inset-0 z-0 rounded-lg"
+                    :aria-label="`Preview ${classifyFamily(family)} fitting family`"
+                    @click="loadFamily(family, index)"
+                />
+                <div class="pointer-events-none relative z-10 flex items-center gap-2">
                     <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-black/25 text-fine font-bold tabular-nums text-gray-600">
                         {{ String(index + 1).padStart(2, "0") }}
                     </span>
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-baseline justify-between gap-2">
-                            <span class="truncate text-xs font-semibold text-gray-200">
+                        <div class="flex w-full items-baseline justify-between gap-2 text-left">
+                            <span class="truncate text-xs font-semibold text-gray-200 group-hover:text-purple-100">
                                 {{ classifyFamily(family) }}
                             </span>
                             <span class="shrink-0 text-fine text-gray-600">
@@ -454,14 +473,29 @@ const suggestionExplanation = computed(() => currentFit.value?.modules.length
                             </span>
                         </div>
                         <div class="mt-0.5 flex items-center justify-between gap-2 text-fine text-gray-600">
-                            <span>{{ family.total_uses.toLocaleString("en-US") }} losses · {{ family.variant_count }} variants</span>
+                            <span class="flex min-w-0 items-center gap-1">
+                                <NuxtLink :to="familySearchLink(family, 'kills')" target="_blank" rel="noopener" class="pointer-events-auto rounded hover:text-blue-300 hover:underline">
+                                    {{ family.total_uses.toLocaleString("en-US") }} losses
+                                </NuxtLink>
+                                <span>·</span>
+                                <NuxtLink :to="familySearchLink(family, 'fits')" target="_blank" rel="noopener" class="pointer-events-auto rounded hover:text-blue-300 hover:underline">
+                                    {{ family.variant_count }} {{ family.variant_count === 1 ? "variant" : "variants" }}
+                                </NuxtLink>
+                            </span>
                             <span class="shrink-0 tabular-nums text-yellow-400/75">
                                 {{ formatIsk(family.fit_cost + (data?.hull_cost ?? 0)) }}
                             </span>
                         </div>
+                        <div
+                            v-if="fitFamilyContextParts(family.context).length"
+                            class="mt-1 block w-full truncate text-left text-[9px] text-gray-600 transition-colors hover:text-purple-300/80"
+                            :title="fitFamilyContextParts(family.context).join(' · ')"
+                        >
+                            {{ fitFamilyContextParts(family.context).join(" · ") }}
+                        </div>
                     </div>
                 </div>
-            </button>
+            </div>
         </div>
     </aside>
 </template>

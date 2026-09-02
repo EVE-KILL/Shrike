@@ -216,6 +216,10 @@ func shipFittingFamiliesHandler(opts Options) legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
+		contexts, err := loadFittingContexts(ctx, opts.DB, shipID, familyHashes)
+		if err != nil {
+			return legacyPayload{}, err
+		}
 		alliancesByFamily := make(map[string][]map[string]any)
 		for _, row := range allianceRows {
 			hash := stringOrEmpty(row["family_hash"])
@@ -255,6 +259,7 @@ func shipFittingFamiliesHandler(opts Options) legacyHandler {
 				"modules":       catalogueList(contents.ModulesByHash, canonical),
 				"drones":        catalogueList(contents.DronesByHash, canonical),
 				"top_alliances": topAlliances,
+				"context":       contexts[familyHash],
 			})
 		}
 		hullCost := any(nil)

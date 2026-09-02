@@ -374,6 +374,11 @@ const fetchFits = async (append = false) => {
             view: 'fits',
             limit: '50',
         }
+        if (drilldownHash.value && drilldownMode.value === 'family') {
+            params.familyHash = drilldownHash.value
+        } else if (drilldownHash.value && drilldownMode.value === 'exact') {
+            params.fitHash = drilldownHash.value
+        }
         if (fitsDedup.value !== 'none') params.dedup = fitsDedup.value
         if (append && fitsCursor.value) params.after = String(fitsCursor.value)
         const res = await apiFetch<{ fits: FitEntry[]; hasMore: boolean; cursor: number | null }>(
@@ -477,12 +482,10 @@ const applyParsedFilters = (parsed: any) => {
 
 // Restore from URL
 const restoreFromUrl = () => {
-    const q = route.query.q as string
-    if (!q) return
+    const q = route.query.q as string | undefined
     try {
-        const parsed = JSON.parse(q)
+        const parsed = q ? JSON.parse(q) : {}
         applyParsedFilters(parsed)
-        showResults.value = true
 
         // Restore view mode + dedup from URL
         const urlView = route.query.view as string
@@ -490,19 +493,20 @@ const restoreFromUrl = () => {
         const urlDm = route.query.dm as string
 
         if (urlDh && (urlDm === 'exact' || urlDm === 'family')) {
-            // Restore fit drill-down → kills view filtered by hash
             drilldownHash.value = urlDh
             drilldownMode.value = urlDm
-            viewMode.value = 'kills'
-            appliedKillListParams.value = killListParams.value
-        } else if (urlView === 'fits') {
+        }
+
+        if (urlView === 'fits') {
             viewMode.value = 'fits'
             const urlDedup = route.query.dedup as string
             if (urlDedup === 'exact' || urlDedup === 'family' || urlDedup === 'none') {
                 fitsDedup.value = urlDedup
             }
+            showResults.value = true
             fetchFits()
-        } else {
+        } else if (q || drilldownHash.value) {
+            showResults.value = true
             appliedKillListParams.value = killListParams.value
         }
     } catch { /* ignore */ }
@@ -544,13 +548,7 @@ let typedEditPending = false
 let debounceTimer: ReturnType<typeof setTimeout>
 watch(() => serializedFilters.value, () => {
     clearTimeout(debounceTimer)
-    // Clear drill-down when filters change — the new filter set may not intersect the hash
-    if (drilldownHash.value) {
-        drilldownHash.value = null
-        drilldownMode.value = null
-        drilldownShipName.value = ''
-    }
-    if (!hasFilters.value) {
+    if (!hasFilters.value && !drilldownHash.value) {
         showResults.value = false
         fitsData.value = []
         return
@@ -573,13 +571,7 @@ watch(() => serializedFilters.value, () => {
 
 // Re-fetch when view mode changes (if filters are active)
 watch(viewMode, () => {
-    // Clear drill-down when user switches back to fits
-    if (viewMode.value === 'fits' && drilldownHash.value) {
-        drilldownHash.value = null
-        drilldownMode.value = null
-        drilldownShipName.value = ''
-    }
-    if (!hasFilters.value || !showResults.value) return
+    if ((!hasFilters.value && !drilldownHash.value) || !showResults.value) return
     if (viewMode.value === 'fits') {
         fetchFits()
     } else {
@@ -1422,6 +1414,17 @@ const locationLabel = computed(() => {
 
         <!-- Results: Fits view -->
         <div v-else-if="showResults && viewMode === 'fits'">
+            <div v-if="drilldownHash"
+                 class="mb-3 flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+                <button @click="clearDrilldown"
+                        class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 transition-colors hover:text-blue-300">
+                    <Icon name="lucide:x" class="text-sm" />
+                    Clear family filter
+                </button>
+                <span class="text-xs text-gray-400">
+                    Showing {{ drilldownMode === 'family' ? 'variants from one fitting family' : 'one exact fitting' }}
+                </span>
+            </div>
             <!-- Grouping mode -->
             <div class="flex items-center gap-1 mb-3">
                 <span class="text-fine text-gray-500 mr-1">Group:</span>

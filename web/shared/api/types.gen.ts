@@ -5463,6 +5463,21 @@ export type ShipFittingsResponse = {
     families: Array<{
         canonical_fit_hash?: string;
         canonical_uses?: number;
+        context?: {
+            median_attackers: number;
+            median_loss_value: number;
+            security_distribution: Array<{
+                count: number;
+                name: string;
+                pct: number;
+            }>;
+            top_region: {
+                count: number;
+                name: string | null;
+                pct: number;
+                region_id: number;
+            } | null;
+        };
         family_hash?: string;
         fit_cost?: number;
         /**
@@ -9218,6 +9233,21 @@ export type ShipFittingsResponseWritable = {
     families: Array<{
         canonical_fit_hash?: string;
         canonical_uses?: number;
+        context?: {
+            median_attackers: number;
+            median_loss_value: number;
+            security_distribution: Array<{
+                count: number;
+                name: string;
+                pct: number;
+            }>;
+            top_region: {
+                count: number;
+                name: string | null;
+                pct: number;
+                region_id: number;
+            } | null;
+        };
         family_hash?: string;
         fit_cost?: number;
         /**
@@ -21953,6 +21983,21 @@ export type FittingsShipFamiliesResponses = {
         families: Array<{
             canonical_fit_hash: string;
             canonical_uses: number;
+            context: {
+                median_attackers: number;
+                median_loss_value: number;
+                security_distribution: Array<{
+                    count: number;
+                    name: string;
+                    pct: number;
+                }>;
+                top_region: {
+                    count: number;
+                    name: string | null;
+                    pct: number;
+                    region_id: number;
+                } | null;
+            };
             drones: Array<{
                 name: string | null;
                 quantity: number;
@@ -23427,6 +23472,21 @@ export type FittingsShipFamiliesLegacyResponses = {
         families: Array<{
             canonical_fit_hash: string;
             canonical_uses: number;
+            context: {
+                median_attackers: number;
+                median_loss_value: number;
+                security_distribution: Array<{
+                    count: number;
+                    name: string;
+                    pct: number;
+                }>;
+                top_region: {
+                    count: number;
+                    name: string | null;
+                    pct: number;
+                    region_id: number;
+                } | null;
+            };
             drones: Array<{
                 name: string | null;
                 quantity: number;

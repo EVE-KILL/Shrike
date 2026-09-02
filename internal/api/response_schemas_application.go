@@ -267,7 +267,7 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		return responseSchema(map[string]*huma.Schema{
 			"window_days":  intSchema(),
 			"ranking_mode": stringSchema(),
-			"families":     arraySchema(fittingFamilySchema(true)),
+			"families":     arraySchema(fittingFamilySchema(true, false)),
 		}, "window_days", "ranking_mode", "families")
 	case "fittings-popular-ships", "fittings-popular-ships-legacy":
 		return responseSchema(map[string]*huma.Schema{
@@ -299,7 +299,7 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		return responseSchema(map[string]*huma.Schema{
 			"ship_type_id": intSchema(), "window_days": intSchema(),
 			"is_rare_hull": boolSchema(), "hull_cost": nullable(numberSchema()),
-			"families": arraySchema(fittingFamilySchema(false)),
+			"families": arraySchema(fittingFamilySchema(false, true)),
 		}, "ship_type_id", "window_days", "is_rare_hull", "families")
 	case "fittings-ship-metadata", "fittings-ship-metadata-legacy":
 		return fittingShipMetadataSchema()
@@ -1822,7 +1822,21 @@ func fittingCatalogueDroneSchema() *huma.Schema {
 	}, "type_id", "name", "quantity")
 }
 
-func fittingFamilySchema(includeShip bool) *huma.Schema {
+func fittingFamilyContextSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"security_distribution": arraySchema(responseSchema(map[string]*huma.Schema{
+			"name": stringSchema(), "count": intSchema(), "pct": numberSchema(),
+		}, "name", "count", "pct")),
+		"top_region": nullable(responseSchema(map[string]*huma.Schema{
+			"region_id": intSchema(), "name": nullable(stringSchema()),
+			"count": intSchema(), "pct": numberSchema(),
+		}, "region_id", "name", "count", "pct")),
+		"median_attackers":  numberSchema(),
+		"median_loss_value": numberSchema(),
+	}, "security_distribution", "top_region", "median_attackers", "median_loss_value")
+}
+
+func fittingFamilySchema(includeShip, includeContext bool) *huma.Schema {
 	properties := map[string]*huma.Schema{
 		"family_hash":        stringSchema(),
 		"canonical_fit_hash": stringSchema(),
@@ -1842,6 +1856,10 @@ func fittingFamilySchema(includeShip bool) *huma.Schema {
 	required := []string{
 		"family_hash", "canonical_fit_hash", "total_uses", "canonical_uses",
 		"variant_count", "last_used", "fit_cost", "modules", "drones",
+	}
+	if includeContext {
+		properties["context"] = fittingFamilyContextSchema()
+		required = append(required, "context")
 	}
 	if includeShip {
 		properties["ship_type_id"] = intSchema()

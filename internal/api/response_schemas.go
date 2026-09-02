@@ -681,6 +681,7 @@ func shipFittingsSchema() *huma.Schema {
 			"fit_cost":           numberSchema(),
 			"modules":            arraySchema(recordSchema(map[string]*huma.Schema{})),
 			"top_alliances":      arraySchema(recordSchema(map[string]*huma.Schema{})),
+			"context":            fittingFamilyContextSchema(),
 		})),
 	}, "ship_type_id", "window_days", "module_filter", "is_rare_hull",
 		"hull_cost", "families")

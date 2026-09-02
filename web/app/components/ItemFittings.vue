@@ -44,6 +44,7 @@ interface FittingFamily {
     modules: FittingModule[]
     drones: FittingDrone[]
     top_alliances: AllianceUsage[]
+    context?: FitFamilyContext
 }
 
 interface FittingsResponse {
@@ -254,6 +255,11 @@ async function loadIntoEditor(family: FittingFamily) {
                                 <div v-if="family.fit_cost > 0" class="text-xs text-gray-500 tabular-nums">
                                     <span class="font-semibold text-yellow-400">{{ formatIsk(family.fit_cost + (data?.hull_cost ?? 0)) }}</span>
                                     ISK total
+                                </div>
+                                <div v-if="fitFamilyContextParts(family.context).length"
+                                    class="w-full truncate text-fine text-gray-600"
+                                    :title="fitFamilyContextParts(family.context).join(' · ')">
+                                    {{ fitFamilyContextParts(family.context).join(' · ') }}
                                 </div>
                             </div>
                         </button>

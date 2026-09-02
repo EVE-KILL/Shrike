@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/eve-kill/shrike/internal/killtype"
 )
 
 const (
@@ -163,6 +164,10 @@ func loadShipFittings(
 	if err != nil {
 		return nil, err
 	}
+	contexts, err := loadFittingContexts(ctx, db, shipID, familyHashes)
+	if err != nil {
+		return nil, err
+	}
 
 	priceIDs := []int32{int32(shipID)}
 	for _, item := range items {
@@ -218,6 +223,7 @@ func loadShipFittings(
 		canonical, _ := stringValue(family["canonical_fit_hash"])
 		total, _ := int64Value(family["total_uses"])
 		canonicalUses, _ := int64Value(family["canonical_uses"])
+		variantCount, _ := int64Value(family["variant_count"])
 		moduleList := itemsByHash[canonical]
 		if moduleList == nil {
 			moduleList = []map[string]any{}
@@ -231,11 +237,12 @@ func loadShipFittings(
 			"canonical_fit_hash": canonical,
 			"total_uses":         total,
 			"canonical_uses":     canonicalUses,
-			"variant_count":      total - canonicalUses,
+			"variant_count":      variantCount,
 			"last_used":          family["last_used"],
 			"fit_cost":           fitCosts[canonical],
 			"modules":            moduleList,
 			"top_alliances":      topAlliances,
+			"context":            contexts[hash],
 		})
 	}
 	return map[string]any{
@@ -324,11 +331,13 @@ func loadFittingFamilies(
 		  ORDER BY family_hash, uses DESC, fit_hash
 		),
 		family_totals AS (
-		  SELECT family_hash, SUM(uses)::int AS total_uses
+		  SELECT family_hash, SUM(uses)::int AS total_uses,
+		         COUNT(*)::int AS variant_count
 		  FROM fit_uses GROUP BY family_hash
 		)
 		SELECT c.family_hash, c.canonical_fit_hash, ft.total_uses,
-		       c.canonical_uses, c.canonical_last_used AS last_used
+		       c.canonical_uses, ft.variant_count,
+		       c.canonical_last_used AS last_used
 		FROM canonical c
 		JOIN family_totals ft ON ft.family_hash = c.family_hash
 		WHERE ft.total_uses >= $`+fmt.Sprintf("%d", len(args)-1)+`
@@ -336,6 +345,125 @@ func loadFittingFamilies(
 		LIMIT $`+fmt.Sprintf("%d", len(args)),
 		args...,
 	)
+}
+
+func loadFittingContexts(
+	ctx context.Context,
+	db Database,
+	shipID int64,
+	familyHashes []string,
+) (map[string]map[string]any, error) {
+	rows, err := queryMaps(ctx, db, fmt.Sprintf(`
+		WITH selected AS MATERIALIZED (
+		  SELECT family.family_hash, killmail.region_id,
+		         killmail.attacker_count, killmail.total_value,
+		         CASE
+		           WHEN killmail.region_id = %d THEN 'Pochven'
+		           WHEN killmail.region_id IN (10000004, 10000017, 10000019) THEN 'Jove space'
+		           WHEN killmail.region_id BETWEEN %d AND %d THEN 'Abyssal space'
+		           WHEN killmail.region_id BETWEEN %d AND %d THEN 'W-space'
+		           WHEN system.security >= 0.45 THEN 'Highsec'
+		           WHEN system.security > 0 THEN 'Lowsec'
+		           ELSE 'Nullsec'
+		         END AS security_bucket
+		  FROM killmail_fittings fitting
+		  JOIN fittings family ON family.fit_hash = fitting.fit_hash
+		  JOIN killmails killmail ON killmail.killmail_id = fitting.killmail_id
+		  LEFT JOIN solar_systems system
+		    ON system.solar_system_id = killmail.solar_system_id
+		  WHERE fitting.ship_type_id = $1
+		    AND fitting.kill_time >= now() - INTERVAL '90 days'
+		    AND family.family_hash = ANY($2::text[])
+		),
+		totals AS (
+		  SELECT family_hash, COUNT(*)::bigint AS loss_count,
+		         percentile_disc(0.5) WITHIN GROUP (ORDER BY attacker_count)::double precision AS median_attackers,
+		         percentile_disc(0.5) WITHIN GROUP (ORDER BY total_value)::double precision AS median_loss_value
+		  FROM selected GROUP BY family_hash
+		),
+		security_counts AS (
+		  SELECT family_hash, security_bucket AS label, COUNT(*)::bigint AS count
+		  FROM selected GROUP BY family_hash, security_bucket
+		),
+		region_counts AS (
+		  SELECT selected.family_hash, selected.region_id,
+		         region.name AS label, COUNT(*)::bigint AS count
+		  FROM selected
+		  LEFT JOIN regions region ON region.region_id = selected.region_id
+		  WHERE selected.region_id IS NOT NULL
+		  GROUP BY selected.family_hash, selected.region_id, region.name
+		),
+		ranked_regions AS (
+		  SELECT region_counts.*,
+		         ROW_NUMBER() OVER (
+		           PARTITION BY family_hash ORDER BY count DESC, region_id
+		         ) AS rank
+		  FROM region_counts
+		)
+		SELECT totals.family_hash, 'summary'::text AS kind,
+		       NULL::text AS label, NULL::integer AS entity_id,
+		       totals.loss_count AS count, 100::double precision AS pct,
+		       totals.median_attackers, totals.median_loss_value
+		FROM totals
+		UNION ALL
+		SELECT security.family_hash, 'security', security.label, NULL,
+		       security.count,
+		       ROUND(security.count::numeric / totals.loss_count * 1000) / 10,
+		       NULL, NULL
+		FROM security_counts security
+		JOIN totals USING (family_hash)
+		UNION ALL
+		SELECT region.family_hash, 'region', region.label, region.region_id,
+		       region.count,
+		       ROUND(region.count::numeric / totals.loss_count * 1000) / 10,
+		       NULL, NULL
+		FROM ranked_regions region
+		JOIN totals USING (family_hash)
+		WHERE region.rank = 1
+		ORDER BY family_hash, kind, count DESC`,
+		killtype.PochvenRegionID,
+		killtype.AbyssalRegionMin,
+		killtype.AbyssalRegionMax,
+		killtype.WSpaceRegionMin,
+		killtype.WSpaceRegionMax,
+	), shipID, familyHashes)
+	if err != nil {
+		return nil, err
+	}
+
+	contexts := make(map[string]map[string]any, len(familyHashes))
+	for _, hash := range familyHashes {
+		contexts[hash] = map[string]any{
+			"security_distribution": []map[string]any{},
+			"top_region":            nil,
+			"median_attackers":      float64(0),
+			"median_loss_value":     float64(0),
+		}
+	}
+	for _, row := range rows {
+		hash, _ := stringValue(row["family_hash"])
+		context := contexts[hash]
+		if context == nil {
+			continue
+		}
+		kind, _ := stringValue(row["kind"])
+		switch kind {
+		case "summary":
+			context["median_attackers"] = float64OrZero(row["median_attackers"])
+			context["median_loss_value"] = float64OrZero(row["median_loss_value"])
+		case "security":
+			distribution, _ := context["security_distribution"].([]map[string]any)
+			context["security_distribution"] = append(distribution, map[string]any{
+				"name": row["label"], "count": row["count"], "pct": row["pct"],
+			})
+		case "region":
+			context["top_region"] = map[string]any{
+				"region_id": row["entity_id"], "name": row["label"],
+				"count": row["count"], "pct": row["pct"],
+			}
+		}
+	}
+	return contexts, nil
 }
 
 func loadFittingAlliances(
