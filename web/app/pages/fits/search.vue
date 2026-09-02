@@ -224,6 +224,9 @@ const { data: popularData } = await useApiFetch<{
 }>('/api/fits/popular-ships', { lazy: true })
 const popularShips = computed(() => (popularData.value?.ships ?? []).slice(0, 12))
 
+const formatCompactNumber = (value: number): string =>
+    new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+
 // ---------- filters ----------
 
 const filterPickerOpen = ref(false)
@@ -337,17 +340,21 @@ interface SearchResponse {
 
 const resultsData = ref<SearchResponse | null>(null)
 const resultsPending = ref(false)
+let searchGeneration = 0
 
 const total = computed(() => resultsData.value?.total ?? 0)
 const fits = computed<FitResult[]>(() => resultsData.value?.fits ?? [])
 const hasMore = computed(() => resultsData.value?.has_more ?? false)
 
 async function runSearch() {
+    const generation = ++searchGeneration
     const ship = selectedShip.value
     if (!ship) {
         resultsData.value = null
+        resultsPending.value = false
         return
     }
+    const requestedOffset = offset.value
     resultsPending.value = true
     try {
         const data = await apiFetch<SearchResponse>('/api/fits/search', {
@@ -358,15 +365,26 @@ async function runSearch() {
                 offset: offset.value,
             },
         })
-        resultsData.value = data
+        if (generation !== searchGeneration) return
+        if (requestedOffset > 0 && resultsData.value?.ship_type_id === data.ship_type_id) {
+            resultsData.value = {
+                ...data,
+                fits: [...resultsData.value.fits, ...data.fits],
+            }
+        } else {
+            resultsData.value = data
+        }
         if (data.ship_name && data.ship_name !== ship.name) {
             selectedShip.value = { id: ship.id, name: data.ship_name }
         }
         if (data.fits.length > 0) buildFitUrls(data.fits)
     } catch {
-        resultsData.value = null
+        if (generation === searchGeneration) {
+            if (requestedOffset === 0) resultsData.value = null
+            else offset.value = Math.max(0, requestedOffset - limit)
+        }
     } finally {
-        resultsPending.value = false
+        if (generation === searchGeneration) resultsPending.value = false
     }
 }
 
@@ -388,6 +406,7 @@ onMounted(() => {
 })
 
 function loadMore() {
+    if (resultsPending.value || !hasMore.value) return
     offset.value += limit
     runSearch()
 }
@@ -396,6 +415,44 @@ function loadMore() {
 
 const shipRenderUrl = (typeId: number) =>
     `/images/types/${typeId}/render?size=256`
+
+const moduleIconUrl = (typeId: number) =>
+    `/images/types/${typeId}/icon?size=32`
+
+const SLOT_LABELS: Record<number, string> = {
+    1: 'High',
+    2: 'Mid',
+    3: 'Low',
+    4: 'Rigs',
+    5: 'Subsystems',
+}
+
+function fittingGroups(fit: FitResult) {
+    const groups = [1, 2, 3, 4, 5]
+        .map(slot => ({
+            slot,
+            label: SLOT_LABELS[slot] ?? 'Other',
+            modules: fit.modules.filter(module => module.slot_group === slot),
+        }))
+        .filter(group => group.modules.length > 0)
+    if (fit.drones.length > 0) {
+        groups.push({
+            slot: 6,
+            label: 'Drones',
+            modules: fit.drones.map((drone, index) => ({
+                slot_group: 6,
+                ordinal: index,
+                type_id: drone.type_id,
+                name: drone.name,
+                charge_type_id: null,
+                charge_name: drone.quantity > 1 ? `${drone.quantity}×` : null,
+            })),
+        })
+    }
+    return groups
+}
+
+const fitName = (fit: FitResult): string => classifyFitFamily(fit.modules, fit.drones)
 
 const timeAgo = (iso: string | null): string => {
     if (!iso) return ''
@@ -458,17 +515,31 @@ async function buildFitUrls(results: FitResult[]) {
                 Ship
             </label>
 
-            <div v-if="selectedShip" class="rounded-lg bg-blue-500/[0.06] border border-blue-500/30 p-3 flex items-center gap-3">
+            <div v-if="selectedShip" class="relative overflow-hidden rounded-xl border border-blue-500/25 bg-black/35 p-4">
+                <img
+                    :src="shipRenderUrl(selectedShip.id)"
+                    alt=""
+                    class="pointer-events-none absolute -right-10 -top-20 h-56 w-56 opacity-20 blur-xl"
+                />
+                <div class="relative flex items-center gap-4">
                 <img
                     :src="shipRenderUrl(selectedShip.id)"
                     :alt="selectedShip.name"
-                    class="w-12 h-12 rounded-md bg-black/30 flex-shrink-0"
+                    class="h-20 w-20 flex-shrink-0 object-contain drop-shadow-[0_8px_20px_rgba(59,130,246,0.2)]"
                     loading="lazy"
                 />
                 <div class="min-w-0 flex-1">
-                    <div class="text-sm font-medium text-white truncate">{{ selectedShip.name }}</div>
-                    <div class="text-fine text-gray-400">type {{ selectedShip.id }}</div>
+                    <div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80">Selected hull</div>
+                    <div class="mt-1 truncate text-xl font-bold text-white">{{ selectedShip.name }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Observed fitting families from the last 90 days</div>
                 </div>
+                <NuxtLink
+                    :to="`/item/${selectedShip.id}/fittings`"
+                    class="hidden items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-gray-400 transition-colors hover:border-blue-500/30 hover:text-blue-300 sm:inline-flex"
+                >
+                    <Icon name="lucide:layers-3" class="h-3.5 w-3.5" />
+                    Hull fittings
+                </NuxtLink>
                 <button
                     type="button"
                     class="flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
@@ -477,6 +548,7 @@ async function buildFitUrls(results: FitResult[]) {
                 >
                     <Icon name="lucide:x" class="w-4 h-4" />
                 </button>
+                </div>
             </div>
 
             <div v-else>
@@ -514,26 +586,48 @@ async function buildFitUrls(results: FitResult[]) {
                     </div>
                 </div>
 
-                <!-- Popular ships as quick-pick buttons -->
+                <!-- Popular attacker hulls as quick-pick cards -->
                 <div v-if="popularShips.length > 0" class="mt-3">
-                    <div class="text-fine uppercase tracking-wider text-gray-600 mb-2">
-                        Popular hulls — click to pick
+                    <div class="mb-3 flex items-end justify-between gap-3">
+                        <div>
+                            <div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80">
+                                Popular hulls
+                            </div>
+                            <div class="mt-1 text-sm text-gray-400">
+                                Ships participating in the most kills over the last {{ popularData?.window_days ?? 30 }} days
+                            </div>
+                        </div>
+                        <div class="hidden text-fine text-gray-600 sm:block">Click a hull to explore its fits</div>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                         <button
-                            v-for="ship in popularShips"
+                            v-for="(ship, index) in popularShips"
                             :key="ship.ship_type_id"
                             type="button"
-                            class="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/[0.04] border border-white/[0.08] hover:bg-blue-500/[0.08] hover:border-blue-500/30 transition-colors"
+                            class="group relative flex min-w-0 items-center gap-3 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025] p-3 text-left transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-blue-500/[0.06]"
                             @click="selectShip({ id: String(ship.ship_type_id), type: 'ship', name: ship.ship_name ?? `Type ${ship.ship_type_id}` })"
                         >
+                            <span class="absolute right-2 top-1 text-[10px] font-bold tabular-nums text-white/[0.08]">
+                                {{ String(index + 1).padStart(2, '0') }}
+                            </span>
                             <img
-                                :src="`/images/types/${ship.ship_type_id}/icon?size=32`"
+                                :src="shipRenderUrl(ship.ship_type_id)"
                                 :alt="ship.ship_name ?? ''"
-                                class="w-5 h-5 rounded"
+                                class="h-12 w-12 flex-shrink-0 object-contain transition-transform duration-200 group-hover:scale-110"
                                 loading="lazy"
                             />
-                            <span class="text-xs text-gray-300">{{ ship.ship_name ?? `Type ${ship.ship_type_id}` }}</span>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-sm font-semibold text-gray-200 group-hover:text-blue-300">
+                                    {{ ship.ship_name ?? `Type ${ship.ship_type_id}` }}
+                                </span>
+                                <span class="mt-0.5 block text-fine text-gray-500">
+                                    <span class="font-semibold tabular-nums text-gray-300">{{ formatCompactNumber(ship.total_uses) }}</span>
+                                    kill participations
+                                </span>
+                                <span class="block text-[10px] text-gray-600">
+                                    {{ ship.fit_count.toLocaleString('en-US') }} observed fit families
+                                </span>
+                            </span>
                         </button>
                     </div>
                 </div>
@@ -773,37 +867,96 @@ async function buildFitUrls(results: FitResult[]) {
             </div>
 
             <div v-else>
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    <NuxtLink
-                        v-for="f in fits"
+                <div class="space-y-2.5">
+                    <article
+                        v-for="(f, index) in fits"
                         :key="f.fit_hash"
-                        :to="fitUrls.get(f.fit_hash) ?? '#'"
-                        class="group rounded-lg bg-white/[0.04] border border-white/[0.08] overflow-hidden hover:bg-blue-500/[0.06] hover:border-blue-500/30 transition-colors text-left block"
+                        class="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] transition-colors hover:border-blue-500/25 hover:bg-blue-500/[0.035]"
                     >
-                        <div class="aspect-square bg-black/40 relative">
+                        <div class="flex flex-col gap-3 p-3.5 lg:flex-row lg:items-stretch">
+                            <div class="flex min-w-0 items-center gap-3 lg:w-72 lg:flex-shrink-0">
+                                <div class="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-black/30">
+                                    <span class="absolute left-1.5 top-1 text-[9px] font-bold tabular-nums text-white/15">
+                                        {{ String(index + 1).padStart(2, '0') }}
+                                    </span>
                             <img
                                 :src="shipRenderUrl(f.ship_type_id)"
                                 :alt="f.ship_name ?? ''"
-                                class="w-full h-full object-cover"
+                                        class="h-14 w-14 object-contain"
                                 loading="lazy"
                             />
-                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 to-transparent p-2">
-                                <div class="text-fine font-bold text-blue-400 tabular-nums">
-                                    {{ f.total_uses.toLocaleString('en-US') }} use{{ f.total_uses === 1 ? '' : 's' }}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="truncate text-sm font-semibold text-gray-100 transition-colors group-hover:text-blue-300">
+                                        {{ fitName(f) }}
+                                    </div>
+                                    <div class="mt-0.5 truncate text-xs text-gray-500">
+                                        {{ f.ship_name ?? `Type ${f.ship_type_id}` }}
+                                    </div>
+                                    <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-fine">
+                                        <span class="font-bold tabular-nums text-blue-400">
+                                            {{ f.total_uses.toLocaleString('en-US') }} use{{ f.total_uses === 1 ? '' : 's' }}
+                                        </span>
+                                        <span class="tabular-nums text-yellow-400/80">
+                                            {{ formatIsk((f.fit_cost ?? 0) + (f.hull_cost ?? 0)) }} ISK
+                                        </span>
+                                        <span class="text-gray-600">seen {{ timeAgo(f.last_used) }}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="p-2">
-                            <div class="text-xs text-gray-200 font-medium truncate group-hover:text-blue-400 transition-colors">
-                                {{ f.ship_name ?? `Type ${f.ship_type_id}` }}
+
+                            <div class="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-flow-col xl:auto-cols-fr xl:grid-cols-none">
+                                <div
+                                    v-for="group in fittingGroups(f)"
+                                    :key="group.slot"
+                                    class="min-w-0 rounded-md border border-white/[0.05] bg-black/15 px-2 py-1.5"
+                                >
+                                    <div class="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-gray-600">
+                                        {{ group.label }} · {{ group.modules.length }}
+                                    </div>
+                                    <div class="space-y-1">
+                                        <div
+                                            v-for="module in group.modules.slice(0, 3)"
+                                            :key="`${module.type_id}-${module.ordinal}`"
+                                            class="flex min-w-0 items-center gap-1.5"
+                                            :title="module.name ?? `Type ${module.type_id}`"
+                                        >
+                                            <img
+                                                :src="moduleIconUrl(module.type_id)"
+                                                alt=""
+                                                class="h-4 w-4 flex-shrink-0 rounded-sm"
+                                                loading="lazy"
+                                            />
+                                            <span class="truncate text-[10px] text-gray-400">
+                                                <span v-if="module.charge_name" class="mr-1 text-gray-600">{{ module.charge_name }}</span>
+                                                {{ module.name ?? `Type ${module.type_id}` }}
+                                            </span>
+                                        </div>
+                                        <div v-if="group.modules.length > 3" class="pl-5 text-[9px] text-gray-600">
+                                            +{{ group.modules.length - 3 }} more
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="text-fine text-gray-500 tabular-nums mt-0.5">
-                                {{ formatIsk((f.fit_cost ?? 0) + (f.hull_cost ?? 0)) }} ISK
-                                <span class="text-gray-600 mx-1">·</span>
-                                {{ timeAgo(f.last_used) }}
+
+                            <div class="flex flex-shrink-0 items-center justify-end gap-2 border-t border-white/[0.05] pt-3 lg:w-36 lg:flex-col lg:items-stretch lg:justify-center lg:border-l lg:border-t-0 lg:pl-3 lg:pt-0">
+                                <NuxtLink
+                                    :to="fitUrls.get(f.fit_hash) ?? '#'"
+                                    class="inline-flex items-center justify-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/[0.08] px-3 py-2 text-xs font-semibold text-blue-300 transition-colors hover:bg-blue-500/[0.15]"
+                                >
+                                    <Icon name="lucide:wrench" class="h-3.5 w-3.5" />
+                                    Open editor
+                                </NuxtLink>
+                                <NuxtLink
+                                    :to="`/item/${f.ship_type_id}/fittings`"
+                                    class="inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-fine text-gray-500 transition-colors hover:bg-white/[0.04] hover:text-gray-300"
+                                >
+                                    <Icon name="lucide:layers-3" class="h-3 w-3" />
+                                    All variants
+                                </NuxtLink>
                             </div>
                         </div>
-                    </NuxtLink>
+                    </article>
                 </div>
 
                 <div v-if="hasMore" class="mt-4 flex justify-center">
@@ -815,7 +968,7 @@ async function buildFitUrls(results: FitResult[]) {
                     >
                         <Icon v-if="resultsPending" name="lucide:loader-2" class="w-3.5 h-3.5 animate-spin" />
                         <Icon v-else name="lucide:plus" class="w-3.5 h-3.5" />
-                        Show more
+                        Show more fits
                     </button>
                 </div>
             </div>
