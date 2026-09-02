@@ -56,6 +56,7 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 	register("system_activity", d.cronSystemActivity)
 	register("feed_purge", d.cronFeedPurge)
 	register("fittings_purge", d.cronFittingsPurge)
+	register("fitting_distributions", d.cronFittingDistributions)
 	register("price_compaction", d.cronPriceCompaction)
 	register("entity_snapshot", d.cronEntitySnapshot)
 	register("kills_daily_count_reconcile", d.cronKillsDailyCountReconcile)

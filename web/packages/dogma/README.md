@@ -21,6 +21,19 @@ cd packages/dogma
 bun run fetch-upstream
 ```
 
+The upstream data package can lag behind CCP's current SDE. Rebuild only its
+protobuf data from Shrike's current official JSONL source with:
+
+```bash
+go run ./cmd/shrike sde:build-dogma
+```
+
+This converter is implemented in Go. It fetches EVEShipFit's calculation
+patches from a commit-pinned revision, applies them to the same archive used by
+Shrike's database importer, validates references and synthetic definitions,
+then atomically replaces the bundle used by the browser and server bridge.
+
+
 Requirements:
 - `gh` CLI authenticated with `read:packages` scope (check with `gh auth status`)
 - `bun` installed

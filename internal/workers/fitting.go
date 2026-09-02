@@ -51,11 +51,27 @@ func (w *FitExtractWorker) Work(ctx context.Context, job *river.Job[queue.FitExt
 		return nil
 	}
 
-	return fitting.Store(ctx, w.Deps.Pool, f, fitting.Link{
+	if err := fitting.Store(ctx, w.Deps.Pool, f, fitting.Link{
 		KillmailID:          p.Killmail.KillmailID,
 		ShipTypeID:          p.Killmail.VictimShipTypeID,
 		KillTime:            p.Killmail.KillmailTime,
 		VictimAllianceID:    p.Killmail.VictimAllianceID,
 		VictimCorporationID: p.Killmail.VictimCorporationID,
-	})
+	}); err != nil {
+		return err
+	}
+	if w.Deps.Queue == nil {
+		return fitting.CalculateStoredStats(ctx, w.Deps.Pool, f.FitHash)
+	}
+	_, err = queue.Dispatch(ctx, w.Deps.Queue, queue.FitStatsArgs{FitHash: f.FitHash}, queue.Immediate)
+	return err
+}
+
+type FitStatsWorker struct {
+	river.WorkerDefaults[queue.FitStatsArgs]
+	Deps *Deps
+}
+
+func (w *FitStatsWorker) Work(ctx context.Context, job *river.Job[queue.FitStatsArgs]) error {
+	return fitting.CalculateStoredStats(ctx, w.Deps.Pool, job.Args.FitHash)
 }

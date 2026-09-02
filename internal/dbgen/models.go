@@ -731,6 +731,89 @@ type FittingItem struct {
 	Quantity     int16  `json:"quantity"`
 }
 
+type FittingStat struct {
+	FitHash                string             `json:"fit_hash"`
+	ShipTypeID             int32              `json:"ship_type_id"`
+	SkillLevel             int16              `json:"skill_level"`
+	DpsWithReload          *float64           `json:"dps_with_reload"`
+	DpsWithoutReload       *float64           `json:"dps_without_reload"`
+	Alpha                  *float64           `json:"alpha"`
+	Ehp                    *float64           `json:"ehp"`
+	ShieldEhp              *float64           `json:"shield_ehp"`
+	ArmorEhp               *float64           `json:"armor_ehp"`
+	HullEhp                *float64           `json:"hull_ehp"`
+	ShieldBoost            *float64           `json:"shield_boost"`
+	ShieldEffectiveBoost   *float64           `json:"shield_effective_boost"`
+	ArmorRepair            *float64           `json:"armor_repair"`
+	ArmorEffectiveRepair   *float64           `json:"armor_effective_repair"`
+	HullRepair             *float64           `json:"hull_repair"`
+	HullEffectiveRepair    *float64           `json:"hull_effective_repair"`
+	PassiveShield          *float64           `json:"passive_shield"`
+	PassiveShieldEffective *float64           `json:"passive_shield_effective"`
+	RemoteShield           *float64           `json:"remote_shield"`
+	RemoteArmor            *float64           `json:"remote_armor"`
+	RemoteHull             *float64           `json:"remote_hull"`
+	RemoteCap              *float64           `json:"remote_cap"`
+	Neut                   *float64           `json:"neut"`
+	Nos                    *float64           `json:"nos"`
+	CapStable              bool               `json:"cap_stable"`
+	CapDepletesIn          *float64           `json:"cap_depletes_in"`
+	CapCapacity            *float64           `json:"cap_capacity"`
+	CapPeakDelta           *float64           `json:"cap_peak_delta"`
+	MaxVelocity            *float64           `json:"max_velocity"`
+	AlignTime              *float64           `json:"align_time"`
+	SignatureRadius        *float64           `json:"signature_radius"`
+	MaxTargetRange         *float64           `json:"max_target_range"`
+	ScanResolution         *float64           `json:"scan_resolution"`
+	EngineVersion          string             `json:"engine_version"`
+	SdeVersion             string             `json:"sde_version"`
+	CalculatedAt           pgtype.Timestamptz `json:"calculated_at"`
+	ShieldHp               *float64           `json:"shield_hp"`
+	ArmorHp                *float64           `json:"armor_hp"`
+	HullHp                 *float64           `json:"hull_hp"`
+	ShieldEmResist         *float64           `json:"shield_em_resist"`
+	ShieldThermalResist    *float64           `json:"shield_thermal_resist"`
+	ShieldKineticResist    *float64           `json:"shield_kinetic_resist"`
+	ShieldExplosiveResist  *float64           `json:"shield_explosive_resist"`
+	ArmorEmResist          *float64           `json:"armor_em_resist"`
+	ArmorThermalResist     *float64           `json:"armor_thermal_resist"`
+	ArmorKineticResist     *float64           `json:"armor_kinetic_resist"`
+	ArmorExplosiveResist   *float64           `json:"armor_explosive_resist"`
+	HullEmResist           *float64           `json:"hull_em_resist"`
+	HullThermalResist      *float64           `json:"hull_thermal_resist"`
+	HullKineticResist      *float64           `json:"hull_kinetic_resist"`
+	HullExplosiveResist    *float64           `json:"hull_explosive_resist"`
+}
+
+type FittingStatDistributionBucket struct {
+	ShipTypeID       int32   `json:"ship_type_id"`
+	WindowDays       int16   `json:"window_days"`
+	Metric           string  `json:"metric"`
+	Bucket           int16   `json:"bucket"`
+	LowerBound       float64 `json:"lower_bound"`
+	UpperBound       float64 `json:"upper_bound"`
+	FitCount         int32   `json:"fit_count"`
+	ObservationCount int64   `json:"observation_count"`
+}
+
+type FittingStatDistributionSummary struct {
+	ShipTypeID       int32              `json:"ship_type_id"`
+	WindowDays       int16              `json:"window_days"`
+	Metric           string             `json:"metric"`
+	FitCount         int32              `json:"fit_count"`
+	ObservationCount int64              `json:"observation_count"`
+	Minimum          float64            `json:"minimum"`
+	Maximum          float64            `json:"maximum"`
+	P10              float64            `json:"p10"`
+	P25              float64            `json:"p25"`
+	Median           float64            `json:"median"`
+	P75              float64            `json:"p75"`
+	P90              float64            `json:"p90"`
+	LowerBound       float64            `json:"lower_bound"`
+	UpperBound       float64            `json:"upper_bound"`
+	CalculatedAt     pgtype.Timestamptz `json:"calculated_at"`
+}
+
 type FwFactionStat struct {
 	FactionID         int32              `json:"faction_id"`
 	Pilots            int32              `json:"pilots"`

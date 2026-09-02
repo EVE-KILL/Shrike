@@ -3,13 +3,17 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/achievements"
 	"github.com/eve-kill/shrike/internal/campaign"
+	"github.com/eve-kill/shrike/internal/fitting"
 	"github.com/eve-kill/shrike/internal/killmail"
 	"github.com/eve-kill/shrike/internal/killtype"
 	"github.com/eve-kill/shrike/internal/queue"
@@ -50,7 +54,7 @@ a fix that only affects recent data.`,
 var (
 	flagBackfillFrom  string
 	flagBackfillTo    string
-	flagBackfillLimit int
+	flagBackfillLimit int //nolint:unused // retained with the dormant generic killmail backfill builder
 	flagBackfillApply bool
 )
 
@@ -280,7 +284,7 @@ func enqueueByKillmail(ctx context.Context, pool *pgxpool.Pool, c *queue.Client,
 //
 // Five commands that differ only in which job they enqueue, so the shape is
 // written once — the alternative is five near-identical files that drift.
-func killmailBackfill(name, short, long string, build func(int64) river.JobArgs) *cobra.Command {
+func killmailBackfill(name, short, long string, build func(int64) river.JobArgs) *cobra.Command { //nolint:unused // retained for the generic backfill command family
 	return &cobra.Command{
 		Use:   name,
 		Short: short,
@@ -435,10 +439,15 @@ refused unless --reset is supplied, because aggregation is additive.`,
 }
 
 var (
-	flagFittingsDays   int
-	flagFittingsFromID int64
-	flagGraphDays      int
-	flagGraphClear     bool
+	flagFittingsDays     int
+	flagFittingsFromID   int64
+	flagFitStatsDays     int
+	flagFitStatsInline   bool
+	flagFitStatsWorkers  int
+	flagFitStatsHash     string
+	flagDistributionDays int
+	flagGraphDays        int
+	flagGraphClear       bool
 )
 
 var backfillFittingsCmd = &cobra.Command{
@@ -477,6 +486,197 @@ killmail id cursor, not a date.`,
 		ui.Success("Enqueued %s fit-extraction jobs.", fmtCount(n))
 		return nil
 	},
+}
+
+var backfillFittingStatsCmd = &cobra.Command{
+	Use:   "fitting-stats",
+	Short: "Calculate missing or stale fitting statistics",
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		if flagFitStatsDays < 0 {
+			return fmt.Errorf("--days cannot be negative")
+		}
+		if flagFitStatsWorkers < 1 || flagFitStatsWorkers > 32 {
+			return fmt.Errorf("--workers must be between 1 and 32")
+		}
+		pool, err := openPool(cmd)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		if flagFitStatsInline {
+			if flagFitStatsHash != "" {
+				if err := fitting.CalculateStoredStats(cmd.Context(), pool, flagFitStatsHash); err != nil {
+					return err
+				}
+				ui.Success("Calculated fitting statistics for %s.", flagFitStatsHash)
+				return nil
+			}
+			return calculateFittingStatsInline(cmd.Context(), pool, flagFitStatsDays, flagFitStatsWorkers)
+		}
+		client, err := queue.New(queue.Options{Pool: pool})
+		if err != nil {
+			return err
+		}
+		cursor := ""
+		var total int
+		for {
+			rows, err := pool.Query(cmd.Context(), `
+				SELECT f.fit_hash FROM fittings f
+				LEFT JOIN fitting_stats s USING (fit_hash)
+				WHERE f.fit_hash > $1
+				  AND ($4 = 0 OR EXISTS (SELECT 1 FROM killmail_fittings kf WHERE kf.fit_hash = f.fit_hash AND kf.kill_time >= now() - make_interval(days => $4)))
+				  AND (s.fit_hash IS NULL OR s.engine_version <> $2 OR s.sde_version <> $3)
+				ORDER BY f.fit_hash LIMIT 5000`, cursor, fitting.DogmaEngineVersion, fitting.DogmaSDEVersion, flagFitStatsDays)
+			if err != nil {
+				return err
+			}
+			batch := make([]river.JobArgs, 0, 5000)
+			for rows.Next() {
+				var hash string
+				if err := rows.Scan(&hash); err != nil {
+					rows.Close()
+					return err
+				}
+				cursor = hash
+				batch = append(batch, queue.FitStatsArgs{FitHash: hash})
+			}
+			if err := rows.Err(); err != nil {
+				rows.Close()
+				return err
+			}
+			rows.Close()
+			if len(batch) == 0 {
+				break
+			}
+			inserted, err := queue.DispatchMany(cmd.Context(), client, batch, queue.DormantBackfill)
+			if err != nil {
+				return err
+			}
+			total += inserted
+		}
+		ui.Success("Enqueued %s fitting-stat jobs.", fmtCount(int64(total)))
+		return nil
+	},
+}
+
+var rebuildFittingDistributionsCmd = &cobra.Command{
+	Use:   "fitting-distributions",
+	Short: "Rebuild fitting-stat histograms and percentiles",
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		pool, err := openPool(cmd)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+		result, err := fitting.RefreshDistributions(cmd.Context(), pool, flagDistributionDays)
+		if err != nil {
+			return err
+		}
+		ui.Section("Fitting distributions")
+		ui.KV("Window", fmt.Sprintf("%d days", result.WindowDays))
+		ui.KV("Summaries", fmtCount(result.Summaries))
+		ui.KV("Buckets", fmtCount(result.Buckets))
+		ui.KV("Total", result.Elapsed.Round(time.Millisecond).String())
+		ui.Newline()
+		return nil
+	},
+}
+
+func calculateFittingStatsInline(ctx context.Context, pool *pgxpool.Pool, days, workers int) error {
+	if err := os.Setenv("DOGMA_BRIDGE_PROCESSES", strconv.Itoa(workers)); err != nil {
+		return err
+	}
+	query := `
+		SELECT f.fit_hash
+		FROM fittings f
+		LEFT JOIN fitting_stats s USING (fit_hash)
+		WHERE ($1 = 0 OR EXISTS (
+			SELECT 1 FROM killmail_fittings kf
+			WHERE kf.fit_hash = f.fit_hash
+			  AND kf.kill_time >= now() - make_interval(days => $1)
+		))
+		  AND (s.fit_hash IS NULL OR s.engine_version <> $2 OR s.sde_version <> $3)
+		ORDER BY f.fit_hash`
+	countQuery := `SELECT count(*) FROM (` + strings.TrimSuffix(query, "\n\t\tORDER BY f.fit_hash") + `) pending`
+	var pending int64
+	if err := pool.QueryRow(ctx, countQuery, days, fitting.DogmaEngineVersion, fitting.DogmaSDEVersion).Scan(&pending); err != nil {
+		return err
+	}
+	ui.Printf("  %s fitting-stat rows pending (%d local workers)\n", fmtCount(pending), workers)
+	rows, err := pool.Query(ctx, query, days, fitting.DogmaEngineVersion, fitting.DogmaSDEVersion)
+	if err != nil {
+		return err
+	}
+
+	start := time.Now()
+	jobs := make(chan string, workers*2)
+	var completed, failed atomic.Int64
+	var samplesMu sync.Mutex
+	var samples []string
+	group, workerCtx := errgroup.WithContext(ctx)
+	for range workers {
+		group.Go(func() error {
+			for hash := range jobs {
+				if err := fitting.CalculateStoredStats(workerCtx, pool, hash); err != nil {
+					failed.Add(1)
+					samplesMu.Lock()
+					if len(samples) < 10 {
+						samples = append(samples, hash+": "+err.Error())
+					}
+					samplesMu.Unlock()
+				} else {
+					done := completed.Add(1)
+					if done%1000 == 0 {
+						ui.Printf("  calculated %s fits in %s (%s failed)\n", fmtCount(done), time.Since(start).Round(time.Second), fmtCount(failed.Load()))
+					}
+				}
+			}
+			return nil
+		})
+	}
+	for rows.Next() {
+		var hash string
+		if err := rows.Scan(&hash); err != nil {
+			rows.Close()
+			close(jobs)
+			return err
+		}
+		select {
+		case jobs <- hash:
+		case <-workerCtx.Done():
+			rows.Close()
+			close(jobs)
+			return workerCtx.Err()
+		}
+	}
+	rowsErr := rows.Err()
+	rows.Close()
+	close(jobs)
+	if err := group.Wait(); err != nil {
+		return err
+	}
+	if rowsErr != nil {
+		return rowsErr
+	}
+
+	ui.Section("Fitting statistics")
+	ui.KV("Window", func() string {
+		if days == 0 {
+			return "all time"
+		}
+		return fmt.Sprintf("last %d days", days)
+	}())
+	ui.KV("Calculated", fmtCount(completed.Load()))
+	ui.KV("Failed", fmtCount(failed.Load()))
+	ui.KV("Total", time.Since(start).Round(time.Second).String())
+	for _, sample := range samples {
+		ui.Warn("%s", sample)
+	}
+	ui.Newline()
+	if failed.Load() > 0 {
+		return fmt.Errorf("%d fitting-stat calculations failed", failed.Load())
+	}
+	return nil
 }
 
 func enqueueFittings(
@@ -1014,6 +1214,11 @@ func init() {
 
 	backfillFittingsCmd.Flags().IntVarP(&flagFittingsDays, "days", "d", 90, "How many days back to process")
 	backfillFittingsCmd.Flags().Int64Var(&flagFittingsFromID, "from", 0, "Start killmail ID cursor")
+	backfillFittingStatsCmd.Flags().IntVarP(&flagFitStatsDays, "days", "d", 0, "Only fits observed in the last N days (0 is all time)")
+	backfillFittingStatsCmd.Flags().BoolVar(&flagFitStatsInline, "inline", false, "Calculate locally instead of enqueuing jobs")
+	backfillFittingStatsCmd.Flags().IntVarP(&flagFitStatsWorkers, "workers", "w", 4, "Concurrent local Dogma processes with --inline")
+	backfillFittingStatsCmd.Flags().StringVar(&flagFitStatsHash, "fit", "", "Calculate one fit hash with --inline")
+	rebuildFittingDistributionsCmd.Flags().IntVarP(&flagDistributionDays, "days", "d", 90, "Observation window in days")
 	backfillGraphCmd.Flags().IntVarP(&flagGraphDays, "days", "d", 90, "Days to backfill")
 	backfillGraphCmd.Flags().BoolVar(&flagGraphClear, "clear", false, "Clear the graph before backfill")
 	backfillKillsDailyCountCmd.Flags().StringVarP(&flagDailyCountFromMonth, "from", "f", "2007-12", "Start month (YYYY-MM)")
@@ -1031,8 +1236,9 @@ func init() {
 	dbVacuumCmd.Flags().BoolVar(&flagDBVacuumFull, "full", false, "Run VACUUM FULL (locks tables)")
 	dbVacuumCmd.Flags().StringVarP(&flagDBVacuumTable, "table", "t", "", "Only vacuum one table")
 
-	backfillCmd.AddCommand(backfillStatsCmd, backfillFittingsCmd, backfillGraphCmd,
+	backfillCmd.AddCommand(backfillStatsCmd, backfillFittingsCmd, backfillFittingStatsCmd, backfillGraphCmd,
 		backfillAchievementsCmd, backfillKillsDailyCountCmd, backfillStableFactsCmd)
+	rebuildCmd.AddCommand(rebuildFittingDistributionsCmd)
 	campaignCmd.AddCommand(campaignProcessCmd)
 	dbCmd.AddCommand(dbVacuumCmd)
 }

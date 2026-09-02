@@ -78,6 +78,19 @@ interface FitResult {
     modules: FittingModule[]
     drones: FittingDrone[]
     context?: FitFamilyContext
+    stats?: {
+        dps_with_reload: number | null
+        alpha: number | null
+        ehp: number | null
+        shield_ehp: number | null
+        armor_ehp: number | null
+        shield_effective_boost: number | null
+        armor_effective_repair: number | null
+        passive_shield_effective: number | null
+        cap_stable: boolean
+        max_velocity: number | null
+        align_time: number | null
+    } | null
 }
 
 type FilterOp = '>=' | '<=' | '=' | '>' | '<'
@@ -92,6 +105,11 @@ const router = useRouter()
 
 const selectedShip = ref<{ id: number; name: string } | null>(null)
 const filters = ref<FilterPredicate[]>([])
+const statSort = ref(typeof route.query.sort === 'string' ? route.query.sort : 'uses')
+const minDps = ref(typeof route.query.min_dps === 'string' ? route.query.min_dps : '')
+const minEhp = ref(typeof route.query.min_ehp === 'string' ? route.query.min_ehp : '')
+const minRepair = ref(typeof route.query.min_repair === 'string' ? route.query.min_repair : '')
+const capStable = ref(route.query.cap_stable === 'true')
 
 // Hydrate from query string on first load.
 {
@@ -138,6 +156,11 @@ const queryString = computed(() => {
     if (filters.value.length > 0) {
         params.filters = JSON.stringify(filters.value)
     }
+    if (statSort.value !== 'uses') params.sort = statSort.value
+    if (minDps.value) params.min_dps = minDps.value
+    if (minEhp.value) params.min_ehp = minEhp.value
+    if (minRepair.value) params.min_repair = minRepair.value
+    if (capStable.value) params.cap_stable = 'true'
     return params
 })
 
@@ -366,6 +389,11 @@ async function runSearch() {
                 filters: filters.value.length > 0 ? JSON.stringify(filters.value) : undefined,
                 limit,
                 offset: offset.value,
+                sort: statSort.value,
+                min_dps: minDps.value || undefined,
+                min_ehp: minEhp.value || undefined,
+                min_repair: minRepair.value || undefined,
+                cap_stable: capStable.value || undefined,
             },
         })
         if (generation !== searchGeneration) return
@@ -395,7 +423,7 @@ async function runSearch() {
 // its own re-fetch explicitly. No watch on `offset` means changing
 // filters doesn't double-fetch when it resets offset.
 watch(
-    [() => selectedShip.value?.id, filters],
+    [() => selectedShip.value?.id, filters, statSort, minDps, minEhp, minRepair, capStable],
     () => {
         offset.value = 0
         fitUrls.value = new Map()
@@ -457,6 +485,11 @@ function fittingGroups(fit: FitResult) {
 
 const fitName = (fit: FitResult): string => classifyFitFamily(fit.modules, fit.drones)
 const fitInsights = (fit: FitResult): string[] => fitFamilyContextParts(fit.context)
+const strongestRepair = (fit: FitResult): number => Math.max(
+    fit.stats?.shield_effective_boost ?? 0,
+    fit.stats?.armor_effective_repair ?? 0,
+    fit.stats?.passive_shield_effective ?? 0,
+)
 
 const timeAgo = (iso: string | null): string => {
     if (!iso) return ''
@@ -645,6 +678,21 @@ async function buildFitUrls(results: FitResult[]) {
             </label>
 
             <div class="glass-panel p-3 space-y-2">
+                <div class="grid gap-2 border-b border-white/[0.06] pb-3 sm:grid-cols-2 lg:grid-cols-6">
+                    <label class="space-y-1 lg:col-span-2">
+                        <span class="text-fine font-bold uppercase tracking-wider text-gray-600">Sort by</span>
+                        <select v-model="statSort" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40">
+                            <option value="uses">Most used</option><option value="dps">Highest DPS</option>
+                            <option value="ehp">Highest EHP</option><option value="alpha">Highest alpha</option>
+                            <option value="repair">Strongest local tank</option><option value="speed">Fastest</option>
+                            <option value="align">Quickest align</option>
+                        </select>
+                    </label>
+                    <label class="space-y-1"><span class="text-fine font-bold uppercase tracking-wider text-gray-600">Min DPS</span><input v-model="minDps" type="number" min="0" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40" placeholder="Any" /></label>
+                    <label class="space-y-1"><span class="text-fine font-bold uppercase tracking-wider text-gray-600">Min EHP</span><input v-model="minEhp" type="number" min="0" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40" placeholder="Any" /></label>
+                    <label class="space-y-1"><span class="text-fine font-bold uppercase tracking-wider text-gray-600">Min EHP/s</span><input v-model="minRepair" type="number" min="0" class="h-9 w-full rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-300 outline-none focus:border-blue-500/40" placeholder="Any" /></label>
+                    <label class="flex h-9 self-end items-center gap-2 rounded-md border border-white/[0.08] bg-black/30 px-2 text-xs text-gray-400"><input v-model="capStable" type="checkbox" class="accent-blue-500" />Cap stable</label>
+                </div>
                 <!-- Existing filter pills -->
                 <div v-if="filters.length === 0" class="text-fine text-gray-500 py-1">
                     No filters yet — leave empty to see the most-flown fits for this hull.
@@ -911,6 +959,12 @@ async function buildFitUrls(results: FitResult[]) {
                             <span class="text-gray-500">
                                 {{ f.variant_count.toLocaleString('en-US') }} variant{{ f.variant_count === 1 ? '' : 's' }}
                             </span>
+                            <template v-if="f.stats">
+                                <span v-if="f.stats.dps_with_reload != null" class="tabular-nums text-red-300/80">{{ Math.round(f.stats.dps_with_reload) }} DPS</span>
+                                <span v-if="f.stats.ehp != null" class="tabular-nums text-emerald-300/80">{{ formatCompactNumber(f.stats.ehp) }} EHP</span>
+                                <span v-if="strongestRepair(f) > 0" class="tabular-nums text-cyan-300/80">{{ Math.round(strongestRepair(f)) }} EHP/s</span>
+                                <span v-if="f.stats.cap_stable" class="text-blue-300/80">Cap stable</span>
+                            </template>
                             <span
                                 v-for="insight in fitInsights(f).slice(0, 3)"
                                 :key="insight"

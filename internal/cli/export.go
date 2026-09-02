@@ -62,7 +62,7 @@ Examples:
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(outDir, 0o755); err != nil {
+		if err := os.MkdirAll(outDir, 0o750); err != nil {
 			return err
 		}
 
@@ -226,6 +226,7 @@ func (e entityExport) run(ctx context.Context, pool *pgxpool.Pool, dir string, b
 		batch = 1
 	}
 	path := filepath.Join(dir, e.name+".json")
+	// #nosec G304 -- path is the explicit operator-selected export destination.
 	f, err := os.Create(path)
 	if err != nil {
 		return 0, err

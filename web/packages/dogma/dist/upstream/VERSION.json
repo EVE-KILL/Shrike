@@ -1,5 +1,8 @@
 {
-  "data": "10.4.20260324",
+  "data": "10.4.20260609",
+  "data_converter_commit": "dc5c21440d6ac91e8753d520412ec4ccae266167",
   "dogma_engine": "7.1.0",
-  "fetched_at": "2026-04-08T20:28:21Z"
+  "fetched_at": "2026-09-02T15:10:08Z",
+  "generated_at": "2026-09-02T15:34:19Z",
+  "sde_build": 3489895
 }

@@ -17,6 +17,36 @@ type fittingSearchFilter struct {
 	Count                      int
 }
 
+type fittingStatQuery struct {
+	Sort                      string
+	MinDPS, MinEHP, MinRepair *float64
+	CapStable                 bool
+}
+
+func parseFittingStatQuery(req *legacyRequest) (fittingStatQuery, error) {
+	result := fittingStatQuery{Sort: strings.TrimSpace(req.Query.Get("sort"))}
+	if result.Sort == "" {
+		result.Sort = "uses"
+	}
+	allowed := map[string]bool{"uses": true, "dps": true, "ehp": true, "alpha": true, "speed": true, "align": true, "repair": true}
+	if !allowed[result.Sort] {
+		return result, apiError(http.StatusBadRequest, "unsupported fitting sort")
+	}
+	for name, target := range map[string]**float64{"min_dps": &result.MinDPS, "min_ehp": &result.MinEHP, "min_repair": &result.MinRepair} {
+		raw := strings.TrimSpace(req.Query.Get(name))
+		if raw == "" {
+			continue
+		}
+		value, err := strconv.ParseFloat(raw, 64)
+		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+			return result, apiError(http.StatusBadRequest, name+" must be a non-negative number")
+		}
+		*target = &value
+	}
+	result.CapStable = req.Query.Get("cap_stable") == "true"
+	return result, nil
+}
+
 func (filter fittingSearchFilter) JSON() map[string]any {
 	result := map[string]any{
 		"kind": filter.Kind, "op": filter.Op, "count": filter.Count,
@@ -42,6 +72,10 @@ func searchFittingsHandler(opts Options) legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
+		statQuery, err := parseFittingStatQuery(req)
+		if err != nil {
+			return legacyPayload{}, err
+		}
 		limit := fittingSearchPageNumber(req, "limit", 24, 1, 50)
 		offset := fittingSearchPageNumber(req, "offset", 0, 0, math.MaxInt32)
 		applied := fittingSearchFiltersJSON(filters)
@@ -60,7 +94,7 @@ func searchFittingsHandler(opts Options) legacyHandler {
 		}
 
 		query, args := buildFittingSearchQuery(
-			ship, filters, resolved, limit, offset,
+			ship, filters, resolved, statQuery, limit, offset,
 		)
 		rows, err := queryMaps(ctx, opts.DB, query, args...)
 		if err != nil {
@@ -81,6 +115,7 @@ func searchFittingsHandler(opts Options) legacyHandler {
 				continue
 			}
 			delete(row, "result_total")
+			delete(row, "sort_rank")
 			fitRows = append(fitRows, row)
 		}
 		if len(fitRows) == 0 {
@@ -147,6 +182,7 @@ func searchFittingsHandler(opts Options) legacyHandler {
 				"modules": catalogueList(contents.ModulesByHash, hash),
 				"drones":  catalogueList(contents.DronesByHash, hash),
 				"context": contexts[familyHash],
+				"stats":   fit["stats"],
 			})
 		}
 		return jsonPayload(map[string]any{
@@ -188,10 +224,6 @@ func parseFittingSearchFilters(raw string) ([]fittingSearchFilter, error) {
 	values, ok := decoded.([]any)
 	if !ok {
 		return nil, apiError(http.StatusBadRequest, "filters must be an array")
-	}
-	if len(values) > 8 {
-		// The TypeScript implementation reports this only after validating
-		// each row. Keep that order below by checking again before returning.
 	}
 	result := make([]fittingSearchFilter, 0, len(values))
 	allowedOps := map[string]bool{">=": true, "<=": true, "=": true, ">": true, "<": true}
@@ -300,6 +332,7 @@ func buildFittingSearchQuery(
 	ship int32,
 	filters []fittingSearchFilter,
 	resolved resolvedFittingRoles,
+	statQuery fittingStatQuery,
 	limit, offset int,
 ) (string, []any) {
 	args := []any{ship}
@@ -382,6 +415,17 @@ func buildFittingSearchQuery(
 	limitPlaceholder := len(args)
 	args = append(args, offset)
 	offsetPlaceholder := len(args)
+	statWhere := []string{"TRUE"}
+	for column, value := range map[string]*float64{"stats.dps_with_reload": statQuery.MinDPS, "stats.ehp": statQuery.MinEHP, "GREATEST(COALESCE(stats.shield_effective_boost,0),COALESCE(stats.armor_effective_repair,0),COALESCE(stats.passive_shield_effective,0))": statQuery.MinRepair} {
+		if value != nil {
+			args = append(args, *value)
+			statWhere = append(statWhere, fmt.Sprintf("%s >= $%d", column, len(args)))
+		}
+	}
+	if statQuery.CapStable {
+		statWhere = append(statWhere, "stats.cap_stable = true")
+	}
+	order := map[string]string{"uses": "uses.total_uses DESC, uses.last_used DESC", "dps": "stats.dps_with_reload DESC NULLS LAST", "ehp": "stats.ehp DESC NULLS LAST", "alpha": "stats.alpha DESC NULLS LAST", "speed": "stats.max_velocity DESC NULLS LAST", "align": "stats.align_time ASC NULLS LAST", "repair": "GREATEST(COALESCE(stats.shield_effective_boost,0),COALESCE(stats.armor_effective_repair,0),COALESCE(stats.passive_shield_effective,0)) DESC"}[statQuery.Sort]
 	query := fmt.Sprintf(`
 		WITH ship_fit_uses AS (
 			SELECT kf.fit_hash,
@@ -393,27 +437,35 @@ func buildFittingSearchQuery(
 			GROUP BY kf.fit_hash
 		),
 		%s,
+		stats_matched AS (
+			SELECT matched.fit_hash FROM matched
+			LEFT JOIN fitting_stats stats USING (fit_hash)
+			WHERE %s
+		),
 		result_count AS (
-			SELECT COUNT(*)::int AS total FROM matched
+			SELECT COUNT(*)::int AS total FROM stats_matched
 		),
 		page AS (
 			SELECT fit.fit_hash, fit.family_hash, fit.ship_type_id,
 			       ship.name AS ship_name,
-			       uses.total_uses, uses.last_used
-			FROM matched
+			       uses.total_uses, uses.last_used,
+			       to_jsonb(stats) - 'fit_hash' - 'ship_type_id' AS stats,
+			       ROW_NUMBER() OVER (ORDER BY %s) AS sort_rank
+			FROM stats_matched
 			JOIN ship_fit_uses uses USING (fit_hash)
 			JOIN fittings fit USING (fit_hash)
+			LEFT JOIN fitting_stats stats USING (fit_hash)
 			LEFT JOIN inv_types ship
 			  ON ship.type_id = fit.ship_type_id
-			ORDER BY uses.total_uses DESC, uses.last_used DESC
+			ORDER BY %s
 			LIMIT $%d OFFSET $%d
 		)
 		SELECT page.*, result_count.total AS result_total
 		FROM result_count
 		LEFT JOIN page ON TRUE
-		ORDER BY page.total_uses DESC NULLS LAST,
-		         page.last_used DESC NULLS LAST`,
-		matched, limitPlaceholder, offsetPlaceholder,
+		ORDER BY page.sort_rank NULLS LAST`,
+		matched, strings.Join(statWhere, " AND "), order, order,
+		limitPlaceholder, offsetPlaceholder,
 	)
 	return query, args
 }

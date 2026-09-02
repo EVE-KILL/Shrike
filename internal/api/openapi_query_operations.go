@@ -1,6 +1,10 @@
 package api
 
-import "github.com/danielgtaylor/huma/v2"
+import (
+	"strings"
+
+	"github.com/danielgtaylor/huma/v2"
+)
 
 // Query parameters per operation. See openapi_query.go for why they live here
 // and what they are (and are not) allowed to do.
@@ -155,11 +159,34 @@ func fittingSearchParams() []*huma.Param {
 		),
 		limitQuery(24, 1, 50),
 		cappedQuery("offset", "Rows to skip before the page.", 0, maxInt32Page),
+		enumQuery("sort", "Sort fittings by usage or calculated all-V statistics.", "uses", "uses", "dps", "ehp", "alpha", "speed", "align", "repair"),
+		textQuery("min_dps", "Minimum all-V DPS with reload."),
+		textQuery("min_ehp", "Minimum all-V effective hit points."),
+		textQuery("min_repair", "Minimum strongest local effective repair rate."),
+		enumQuery("cap_stable", "Only return capacitor-stable fits.", "false", "false", "true"),
 	}
 }
 
 func communityFittingsParams() []*huma.Param {
 	return []*huma.Param{limitQuery(20, 1, 50)}
+}
+
+func fittingShipFamilyFilterParams() []*huma.Param {
+	params := make([]*huma.Param, 0, 24)
+	for _, metric := range []string{"ehp", "dps", "alpha", "speed", "align", "repair", "shield_repair", "armor_repair", "hull_repair", "passive_shield"} {
+		label := strings.ReplaceAll(metric, "_", " ")
+		params = append(params,
+			textQuery("min_"+metric, "Minimum "+label+" for observed fit variants."),
+			textQuery("max_"+metric, "Maximum "+label+" for observed fit variants."))
+	}
+	params = append(params,
+		enumQuery("npc_profile", "Incoming NPC damage profile used for NPC-specific EHP.", "",
+			"", "omni", "angels", "blood-raiders", "guristas", "mordus", "sansha", "serpentis", "triglavian", "amarr", "caldari", "gallente", "minmatar"),
+		textQuery("min_npc_ehp", "Minimum layered EHP against npc_profile."),
+		textQuery("max_npc_ehp", "Maximum layered EHP against npc_profile."),
+		textQuery("groups", "Comma-separated module group IDs that every matching fit must contain."),
+	)
+	return params
 }
 
 // entityTopParams is the leaderboard selector on the per-entity top lists.
@@ -613,6 +640,8 @@ var operationQueryParameters = map[string][]*huma.Param{
 		enumQuery("entity_type", "Group doctrine losses by alliance or corporation.",
 			"alliance", "alliance", "corporation"),
 	},
+	"fittings-ship-families":        fittingShipFamilyFilterParams(),
+	"fittings-ship-families-legacy": fittingShipFamilyFilterParams(),
 	"ship-fittings": {
 		textQuery(
 			"modules",

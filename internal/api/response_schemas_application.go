@@ -303,6 +303,21 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		}, "ship_type_id", "window_days", "is_rare_hull", "families")
 	case "fittings-ship-metadata", "fittings-ship-metadata-legacy":
 		return fittingShipMetadataSchema()
+	case "fittings-ship-distributions", "fittings-ship-distributions-legacy":
+		bucket := responseSchema(map[string]*huma.Schema{
+			"bucket": intSchema(), "lower_bound": numberSchema(), "upper_bound": numberSchema(),
+			"fit_count": intSchema(), "observation_count": intSchema(),
+		}, "bucket", "lower_bound", "upper_bound", "fit_count", "observation_count")
+		metric := responseSchema(map[string]*huma.Schema{
+			"metric": stringSchema(), "fit_count": intSchema(), "observation_count": intSchema(),
+			"minimum": numberSchema(), "maximum": numberSchema(), "p10": numberSchema(), "p25": numberSchema(),
+			"median": numberSchema(), "p75": numberSchema(), "p90": numberSchema(),
+			"lower_bound": numberSchema(), "upper_bound": numberSchema(), "calculated_at": stringSchema(),
+			"buckets": arraySchema(bucket),
+		}, "metric", "fit_count", "observation_count", "minimum", "maximum", "p10", "p25", "median", "p75", "p90", "lower_bound", "upper_bound", "calculated_at", "buckets")
+		return responseSchema(map[string]*huma.Schema{
+			"ship_type_id": intSchema(), "window_days": intSchema(), "metrics": arraySchema(metric),
+		}, "ship_type_id", "window_days", "metrics")
 
 	// Battle reports, wars, and faction warfare dashboards.
 	case "battle-generator-entities":
@@ -1859,7 +1874,13 @@ func fittingFamilySchema(includeShip, includeContext bool) *huma.Schema {
 	}
 	if includeContext {
 		properties["context"] = fittingFamilyContextSchema()
-		required = append(required, "context")
+		properties["stats"] = responseSchema(map[string]*huma.Schema{
+			"ehp": nullable(numberSchema()), "dps": nullable(numberSchema()),
+			"alpha": nullable(numberSchema()), "speed": nullable(numberSchema()),
+			"align": nullable(numberSchema()), "repair": nullable(numberSchema()),
+			"npc_profile": stringSchema(), "npc_ehp": nullable(numberSchema()),
+		}, "ehp", "dps", "alpha", "speed", "align", "repair", "npc_profile", "npc_ehp")
+		required = append(required, "context", "stats")
 	}
 	if includeShip {
 		properties["ship_type_id"] = intSchema()
@@ -1895,6 +1916,29 @@ func fittingSearchFilterSchema() *huma.Schema {
 	}, "kind", "op", "count")
 }
 
+func fittingStatsSchema() *huma.Schema {
+	fields := map[string]*huma.Schema{
+		"skill_level": intSchema(), "dps_with_reload": nullable(numberSchema()),
+		"dps_without_reload": nullable(numberSchema()), "alpha": nullable(numberSchema()),
+		"ehp": nullable(numberSchema()), "shield_ehp": nullable(numberSchema()),
+		"armor_ehp": nullable(numberSchema()), "hull_ehp": nullable(numberSchema()),
+		"shield_boost": nullable(numberSchema()), "shield_effective_boost": nullable(numberSchema()),
+		"armor_repair": nullable(numberSchema()), "armor_effective_repair": nullable(numberSchema()),
+		"hull_repair": nullable(numberSchema()), "hull_effective_repair": nullable(numberSchema()),
+		"passive_shield": nullable(numberSchema()), "passive_shield_effective": nullable(numberSchema()),
+		"remote_shield": nullable(numberSchema()), "remote_armor": nullable(numberSchema()),
+		"remote_hull": nullable(numberSchema()), "remote_cap": nullable(numberSchema()),
+		"neut": nullable(numberSchema()), "nos": nullable(numberSchema()),
+		"cap_stable": boolSchema(), "cap_depletes_in": nullable(numberSchema()),
+		"cap_capacity": nullable(numberSchema()), "cap_peak_delta": nullable(numberSchema()),
+		"max_velocity": nullable(numberSchema()), "align_time": nullable(numberSchema()),
+		"signature_radius": nullable(numberSchema()), "max_target_range": nullable(numberSchema()),
+		"scan_resolution": nullable(numberSchema()), "engine_version": stringSchema(),
+		"sde_version": stringSchema(), "calculated_at": timestampSchema(),
+	}
+	return responseSchema(fields)
+}
+
 func fittingSearchFitSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
 		"fit_hash": stringSchema(), "family_hash": stringSchema(),
@@ -1905,6 +1949,7 @@ func fittingSearchFitSchema() *huma.Schema {
 		"modules": arraySchema(fittingCatalogueModuleSchema()),
 		"drones":  arraySchema(fittingCatalogueDroneSchema()),
 		"context": fittingFamilyContextSchema(),
+		"stats":   nullable(fittingStatsSchema()),
 	}, "fit_hash", "family_hash", "ship_type_id", "ship_name", "total_uses",
 		"last_used", "family_total_uses", "variant_count", "fit_cost",
 		"hull_cost", "modules", "drones", "context")

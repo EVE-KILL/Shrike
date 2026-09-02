@@ -144,7 +144,7 @@ func checkPostgres(ctx context.Context, c *config.Config) checkResult {
 	if err != nil {
 		return fail(r, err)
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 	r.Connect = dur(time.Since(start))
 
 	var version string
@@ -183,7 +183,7 @@ func pingRedis(ctx context.Context, name, addr, password string, db int) checkRe
 		MaxRetries:  -1,
 		DialTimeout: checkTimeout,
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// First Ping pays dial + RESP3 HELLO + CLIENT SETINFO; that is setup, not RTT.
 	start := time.Now()

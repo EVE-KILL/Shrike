@@ -74,6 +74,7 @@ requests, so two fetches of the same mail can disagree on it.`,
 
 		var km killmail.ESIKillmail
 		if flagKMFromFile != "" {
+			// #nosec G304 -- flagKMFromFile is an explicit operator-provided input path.
 			raw, err := os.ReadFile(flagKMFromFile)
 			if err != nil {
 				return err

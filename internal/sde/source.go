@@ -191,6 +191,36 @@ func (s *Source) Stream(ctx context.Context, member string, fn func(Row) error) 
 	return nil
 }
 
+// Collect reads a complete member into a map keyed by its SDE identifier.
+// Most import paths must use Stream; this exists for bounded reference-data
+// transformations such as the Dogma bundle, whose patch rules need cross-file
+// name and relationship lookups before they can emit output.
+func (s *Source) Collect(ctx context.Context, member string) (map[int32]map[string]any, error) {
+	rows := make(map[int32]map[string]any)
+	err := s.Stream(ctx, member, func(row Row) error {
+		// Unlike the relational importer, the upstream Dogma bundle retains
+		// CCP's ID-zero placeholder records: some unpublished visual types refer
+		// to group 0 and EVEShipFit's converter preserves that relationship.
+		keyValue := toInt64(row["_key"])
+		if keyValue == nil || *keyValue > 2147483647 || *keyValue < -2147483648 {
+			return nil
+		}
+		key := *keyValue
+		copy := make(map[string]any, len(row)-1)
+		for field, value := range row {
+			if field != "_key" {
+				copy[field] = value
+			}
+		}
+		rows[int32(key)] = copy
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func archiveURL(build int64) string {
 	return fmt.Sprintf("%s/eve-online-static-data-%d-jsonl.zip", baseURL, build)
 }

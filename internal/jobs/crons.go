@@ -65,6 +65,8 @@ var Crons = []Cron{
 		Description: "Probe IDs above MAX(character_id) to discover newly-allocated chars"},
 	{Name: "fittings_purge", Schedule: "1d",
 		Description: "Purge fittings, fitting_items, killmail_fittings older than 90 days"},
+	{Name: "fitting_distributions", Schedule: "1d",
+		Description: "Rebuild 90-day fitting-stat histograms and percentiles"},
 	{Name: "fw_stats", Schedule: "6h", RunOnStart: true, RequiresTQ: true,
 		Description: "Fetch faction warfare stats and leaderboards from ESI (11:05 UTC)"},
 	{Name: "fw_update", Schedule: "30m", RunOnStart: true, RequiresTQ: true,

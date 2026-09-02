@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/eve-kill/shrike/internal/fitting"
 )
 
 const (
@@ -73,6 +76,11 @@ func registerFittingCatalogueRoutes(a huma.API, opts Options) {
 			"/item/{id}/fit-meta", "Module group usage for a ship",
 			5 * time.Minute, shipFittingMetadataHandler(opts),
 		},
+		{
+			"fittings-ship-distributions", "/fittings/ships/{id}/distributions",
+			"/item/{id}/fit-distributions", "Fitting-stat distributions for a ship",
+			30 * time.Minute, shipFittingDistributionsHandler(opts),
+		},
 	}
 	for _, route := range routes {
 		cacheControl := fittingPublicCache + strconv.Itoa(int(route.ttl.Seconds()))
@@ -112,8 +120,185 @@ func registerFittingCatalogueRoutes(a huma.API, opts Options) {
 						Enum: []any{"alliance", "corporation"}},
 				}}
 			}
+			if route.id == "fittings-ship-distributions" {
+				operation.Parameters = append(fittingShipFamilyFilterParams(), &huma.Param{
+					Name: "days", In: "query",
+					Description: "Observation window represented by a generated distribution rollup.",
+					Schema:      &huma.Schema{Type: huma.TypeInteger, Format: "int32", Default: 90},
+				})
+			}
+			if route.id == "fittings-ship-metadata" {
+				operation.Parameters = fittingShipFamilyFilterParams()
+			}
 			registerLegacy(a, operation, routeJSONCache(opts, route.ttl, cacheControl, route.handler))
 		}
+	}
+}
+
+func shipFittingDistributionsHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		shipID, err := strconv.Atoi(req.Param("id"))
+		if err != nil || shipID <= 0 {
+			return legacyPayload{}, huma.Error400BadRequest("invalid ship type id")
+		}
+		days := 90
+		if raw := req.Query.Get("days"); raw != "" {
+			parsed, parseErr := strconv.Atoi(raw)
+			if parseErr != nil || parsed < 1 || parsed > 3650 {
+				return legacyPayload{}, huma.Error400BadRequest("days must be between 1 and 3650")
+			}
+			days = parsed
+		}
+		filterArgs := []any{shipID, days, fitting.DogmaEngineVersion, fitting.DogmaSDEVersion}
+		filterArgs, filterSQL, _, _, filterErr := buildFittingFilterSQL(req, "fs", "fs.fit_hash", filterArgs)
+		if filterErr != nil {
+			return legacyPayload{}, filterErr
+		}
+		if filterSQL != "" {
+			metrics, dynamicErr := filteredFittingDistributions(ctx, opts, shipID, days, filterSQL, filterArgs)
+			if dynamicErr != nil {
+				return legacyPayload{}, dynamicErr
+			}
+			return legacyPayload{Body: map[string]any{"ship_type_id": shipID, "window_days": days, "metrics": metrics}}, nil
+		}
+		rows, err := opts.DB.Query(ctx, `
+			SELECT s.metric,s.fit_count,s.observation_count,s.minimum,s.maximum,
+			       s.p10,s.p25,s.median,s.p75,s.p90,s.lower_bound,s.upper_bound,s.calculated_at,
+			       coalesce(jsonb_agg(jsonb_build_object(
+			           'bucket',b.bucket,'lower_bound',b.lower_bound,'upper_bound',b.upper_bound,
+			           'fit_count',b.fit_count,'observation_count',b.observation_count
+			       ) ORDER BY b.bucket) FILTER (WHERE b.bucket IS NOT NULL),'[]'::jsonb)
+			FROM fitting_stat_distribution_summaries s
+			LEFT JOIN fitting_stat_distribution_buckets b USING (ship_type_id,window_days,metric)
+			WHERE s.ship_type_id=$1 AND s.window_days=$2
+			GROUP BY s.ship_type_id,s.window_days,s.metric,s.fit_count,s.observation_count,s.minimum,s.maximum,
+			         s.p10,s.p25,s.median,s.p75,s.p90,s.lower_bound,s.upper_bound,s.calculated_at
+			ORDER BY array_position(ARRAY['ehp','dps','alpha','repair','speed','align','signature','capacitor'],s.metric)`, shipID, days)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		defer rows.Close()
+		metrics := make([]map[string]any, 0, 8)
+		for rows.Next() {
+			var metric string
+			var fits int32
+			var observations int64
+			var minimum, maximum, p10, p25, median, p75, p90, lower, upper float64
+			var calculated time.Time
+			var buckets []byte
+			if err := rows.Scan(&metric, &fits, &observations, &minimum, &maximum, &p10, &p25, &median, &p75, &p90, &lower, &upper, &calculated, &buckets); err != nil {
+				return legacyPayload{}, err
+			}
+			var decoded any
+			if err := json.Unmarshal(buckets, &decoded); err != nil {
+				return legacyPayload{}, err
+			}
+			metrics = append(metrics, map[string]any{"metric": metric, "fit_count": fits, "observation_count": observations,
+				"minimum": minimum, "maximum": maximum, "p10": p10, "p25": p25, "median": median, "p75": p75, "p90": p90,
+				"lower_bound": lower, "upper_bound": upper, "calculated_at": calculated, "buckets": decoded})
+		}
+		if err := rows.Err(); err != nil {
+			return legacyPayload{}, err
+		}
+		return legacyPayload{Body: map[string]any{"ship_type_id": shipID, "window_days": days, "metrics": metrics}}, nil
+	}
+}
+
+func filteredFittingDistributions(ctx context.Context, opts Options, shipID, days int, filterSQL string, args []any) ([]map[string]any, error) {
+	queries := make([]databaseQuery, 0, len(fitting.DistributionMetrics))
+	for _, metric := range fitting.DistributionMetrics {
+		expression := fittingDistributionExpression("fs", metric.Name)
+		metricArgs := append(append([]any{}, args...), fitting.DistributionBuckets)
+		bucketParameter := len(metricArgs)
+		queries = append(queries, databaseQuery{SQL: fmt.Sprintf(`
+			WITH samples AS (
+				SELECT fs.fit_hash,%[1]s::double precision value,count(*)::bigint observations
+				FROM fitting_stats fs JOIN killmail_fittings kf USING (fit_hash)
+				WHERE fs.ship_type_id=$1 AND kf.kill_time>=now()-make_interval(days=>$2)
+				  AND fs.engine_version=$3 AND fs.sde_version=$4 AND %[1]s>0 %[2]s
+				GROUP BY fs.fit_hash,%[1]s
+			), weighted AS (
+				SELECT samples.*,
+				  sum(observations) OVER (ORDER BY value,fit_hash ROWS UNBOUNDED PRECEDING) cumulative,
+				  sum(observations) OVER () total_observations
+				FROM samples
+			), summary AS (
+				SELECT count(*)::int fit_count,max(total_observations)::bigint observation_count,
+				  min(value) minimum,max(value) maximum,
+				  min(value) FILTER (WHERE cumulative>=total_observations*.01) p01,
+				  min(value) FILTER (WHERE cumulative>=total_observations*.10) p10,
+				  min(value) FILTER (WHERE cumulative>=total_observations*.25) p25,
+				  min(value) FILTER (WHERE cumulative>=total_observations*.50) median,
+				  min(value) FILTER (WHERE cumulative>=total_observations*.75) p75,
+				  min(value) FILTER (WHERE cumulative>=total_observations*.90) p90,
+				  min(value) FILTER (WHERE cumulative>=total_observations*.99) p99
+				FROM weighted
+			), assigned AS (
+				SELECT samples.*,
+				  CASE WHEN summary.p99<=summary.p01 THEN 1 ELSE LEAST($%[3]d,GREATEST(1,width_bucket(samples.value,summary.p01,summary.p99,$%[3]d))) END bucket
+				FROM samples CROSS JOIN summary
+			), aggregated AS (
+				SELECT bucket,count(*)::int fit_count,sum(observations)::bigint observation_count
+				FROM assigned GROUP BY bucket
+			)
+			SELECT summary.fit_count,summary.observation_count,summary.minimum,summary.maximum,
+			  summary.p10,summary.p25,summary.median,summary.p75,summary.p90,
+			  series.bucket,
+			  CASE WHEN summary.p99<=summary.p01 THEN summary.p01 ELSE summary.p01+(series.bucket-1)*(summary.p99-summary.p01)/$%[3]d END lower_bound,
+			  CASE WHEN summary.p99<=summary.p01 THEN summary.p99 ELSE summary.p01+series.bucket*(summary.p99-summary.p01)/$%[3]d END upper_bound,
+			  coalesce(aggregated.fit_count,0)::int bucket_fit_count,
+			  coalesce(aggregated.observation_count,0)::bigint bucket_observation_count
+			FROM summary
+			CROSS JOIN LATERAL generate_series(1,CASE WHEN summary.p99<=summary.p01 THEN 1 ELSE $%[3]d END) series(bucket)
+			LEFT JOIN aggregated USING (bucket)
+			WHERE summary.fit_count>0 ORDER BY series.bucket`, expression, filterSQL, bucketParameter), Args: metricArgs})
+	}
+	results, err := queryMapsConcurrent(ctx, opts.DB, queries...)
+	if err != nil {
+		return nil, err
+	}
+	metrics := make([]map[string]any, 0, len(results))
+	for index, rows := range results {
+		if len(rows) == 0 {
+			continue
+		}
+		buckets := make([]map[string]any, 0, len(rows))
+		for _, row := range rows {
+			buckets = append(buckets, map[string]any{
+				"bucket": row["bucket"], "lower_bound": row["lower_bound"], "upper_bound": row["upper_bound"],
+				"fit_count": row["bucket_fit_count"], "observation_count": row["bucket_observation_count"],
+			})
+		}
+		row := rows[0]
+		metrics = append(metrics, map[string]any{
+			"metric": fitting.DistributionMetrics[index].Name, "fit_count": row["fit_count"], "observation_count": row["observation_count"],
+			"minimum": row["minimum"], "maximum": row["maximum"], "p10": row["p10"], "p25": row["p25"],
+			"median": row["median"], "p75": row["p75"], "p90": row["p90"], "buckets": buckets,
+		})
+	}
+	return metrics, nil
+}
+
+func fittingDistributionExpression(alias, metric string) string {
+	switch metric {
+	case "ehp":
+		return alias + ".ehp"
+	case "dps":
+		return alias + ".dps_with_reload"
+	case "alpha":
+		return alias + ".alpha"
+	case "repair":
+		return fmt.Sprintf("GREATEST(COALESCE(%[1]s.shield_effective_boost,0),COALESCE(%[1]s.armor_effective_repair,0),COALESCE(%[1]s.hull_effective_repair,0),COALESCE(%[1]s.passive_shield_effective,0))", alias)
+	case "speed":
+		return alias + ".max_velocity"
+	case "align":
+		return alias + ".align_time"
+	case "signature":
+		return alias + ".signature_radius"
+	case "capacitor":
+		return alias + ".cap_capacity"
+	default:
+		return "0"
 	}
 }
 

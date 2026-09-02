@@ -3,7 +3,7 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/EVEShipFit"
   },
-  "version": "10.4.20260324",
+  "version": "10.4.20260609",
   "description": "Converted data from the EVE Online SDE",
   "scripts": {
     "build": "rollup -c",

@@ -93,6 +93,10 @@ var registrations = []registration{
 		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &FitExtractWorker{Deps: d}) },
 	},
 	{
+		kind: queue.FitStatsArgs{}.Kind(),
+		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &FitStatsWorker{Deps: d}) },
+	},
+	{
 		kind: queue.BattleDetectionArgs{}.Kind(),
 		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &BattleDetectionWorker{Deps: d}) },
 	},

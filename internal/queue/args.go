@@ -193,6 +193,13 @@ type FitExtractArgs struct {
 
 func (FitExtractArgs) Kind() string { return "fit_extract" }
 
+// FitStatsArgs calculates the canonical all-V statistics for one stored fit.
+type FitStatsArgs struct {
+	FitHash string `json:"fit_hash" river:"unique"`
+}
+
+func (FitStatsArgs) Kind() string { return "fit_stats" }
+
 // AchievementsArgs awards the badges one killmail earned.
 //
 // Carries the killmail's shape rather than its id: the fields are a small fixed

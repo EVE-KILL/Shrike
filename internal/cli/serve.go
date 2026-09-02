@@ -370,9 +370,9 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			return nil
 		case <-nuxtDone:
 			if exitErr := nuxt.Err(); exitErr != nil {
-				return fmt.Errorf("Nuxt renderer stopped: %w", exitErr)
+				return fmt.Errorf("nuxt renderer stopped: %w", exitErr)
 			}
-			return fmt.Errorf("Nuxt renderer stopped unexpectedly")
+			return fmt.Errorf("nuxt renderer stopped unexpectedly")
 		case <-privateAPIDone:
 			if serveErr := privateAPI.Err(); serveErr != nil {
 				return fmt.Errorf("private SSR API stopped: %w", serveErr)

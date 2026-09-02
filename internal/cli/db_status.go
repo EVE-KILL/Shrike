@@ -35,7 +35,7 @@ var dbStatusCmd = &cobra.Command{
 				return err
 			}
 			if !terminated {
-				return fmt.Errorf("Postgres did not terminate PID %d", flagDBStatusKillPID)
+				return fmt.Errorf("postgres did not terminate PID %d", flagDBStatusKillPID)
 			}
 			ui.Success("Sent terminate signal to PID %d.", flagDBStatusKillPID)
 			return nil

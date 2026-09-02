@@ -135,6 +135,11 @@ var Queues = []Queue{
 		Concurrency: 5, Retries: 3, BackoffDelay: 1000,
 	},
 	{
+		Name:        "fit_stats",
+		Description: "Calculate canonical all-V statistics for a stored fit",
+		Concurrency: 4, Retries: 3, BackoffDelay: 1000,
+	},
+	{
 		Name:        "graph_ingest",
 		Description: "Ingest killmail relationships into Memgraph",
 		Concurrency: 12, Retries: 2, BackoffDelay: 2000,

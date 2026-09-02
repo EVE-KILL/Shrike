@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/entities"
+	"github.com/eve-kill/shrike/internal/fitting"
 	"github.com/eve-kill/shrike/internal/fw"
 	"github.com/eve-kill/shrike/internal/intelrollup"
 	"github.com/eve-kill/shrike/internal/killmail"
@@ -21,6 +23,14 @@ import (
 )
 
 // The scheduled jobs whose dependencies were already ported.
+
+func (d *Deps) cronFittingDistributions(ctx context.Context) (string, error) {
+	result, err := fitting.RefreshDistributions(ctx, d.Pool, 90)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("rebuilt %d fitting distribution summaries and %d buckets in %s", result.Summaries, result.Buckets, result.Elapsed.Round(time.Millisecond)), nil
+}
 
 // cronWars discovers wars worth fetching and queues them.
 func (d *Deps) cronWars(ctx context.Context) (string, error) {
