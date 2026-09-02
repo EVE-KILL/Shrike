@@ -9,6 +9,7 @@ import { killmailFitToEditorUrl } from "~/composables/fit/killmailToFit"
 
 const props = defineProps<{
     shipTypeId: number
+    hullGroupName?: string | null
 }>()
 
 interface FittingModule {
@@ -240,24 +241,29 @@ async function loadIntoEditor(family: FittingFamily) {
                             <Icon name="lucide:chevron-right"
                                 class="h-4 w-4 shrink-0 text-gray-600 transition-transform duration-200"
                                 :class="expandedFamily === family.family_hash ? 'rotate-90 text-blue-400' : ''" />
-                            <div class="flex min-w-0 flex-1 items-center gap-x-5 gap-y-1 flex-wrap">
-                                <div>
-                                    <span class="text-base font-bold text-white tabular-nums">{{ family.total_uses }}</span>
-                                    <span class="ml-1.5 text-xs text-gray-500">{{ family.total_uses === 1 ? 'loss' : 'losses' }}</span>
+                            <div class="min-w-0 flex-1">
+                                <div class="truncate text-sm font-semibold text-gray-200">
+                                    {{ classifyFitFamily(family.modules, family.drones, { hullGroupName: props.hullGroupName }) }}
                                 </div>
-                                <div class="text-xs text-gray-500">
-                                    <span class="font-medium text-gray-300 tabular-nums">{{ family.variant_count }}</span>
-                                    variant{{ family.variant_count === 1 ? '' : 's' }}
-                                </div>
-                                <div class="hidden text-xs text-gray-500 md:block">
-                                    Seen <span class="text-gray-300">{{ lastObserved(family.last_used) }}</span>
-                                </div>
-                                <div v-if="family.fit_cost > 0" class="text-xs text-gray-500 tabular-nums">
-                                    <span class="font-semibold text-yellow-400">{{ formatIsk(family.fit_cost + (data?.hull_cost ?? 0)) }}</span>
-                                    ISK total
+                                <div class="mt-0.5 flex flex-wrap items-center gap-x-5 gap-y-1">
+                                    <div>
+                                        <span class="text-base font-bold text-white tabular-nums">{{ family.total_uses }}</span>
+                                        <span class="ml-1.5 text-xs text-gray-500">{{ family.total_uses === 1 ? 'loss' : 'losses' }}</span>
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        <span class="font-medium text-gray-300 tabular-nums">{{ family.variant_count }}</span>
+                                        variant{{ family.variant_count === 1 ? '' : 's' }}
+                                    </div>
+                                    <div class="hidden text-xs text-gray-500 md:block">
+                                        Seen <span class="text-gray-300">{{ lastObserved(family.last_used) }}</span>
+                                    </div>
+                                    <div v-if="family.fit_cost > 0" class="text-xs text-gray-500 tabular-nums">
+                                        <span class="font-semibold text-yellow-400">{{ formatIsk(family.fit_cost + (data?.hull_cost ?? 0)) }}</span>
+                                        ISK total
+                                    </div>
                                 </div>
                                 <div v-if="fitFamilyContextParts(family.context).length"
-                                    class="w-full truncate text-fine text-gray-600"
+                                    class="mt-0.5 w-full truncate text-fine text-gray-600"
                                     :title="fitFamilyContextParts(family.context).join(' · ')">
                                     {{ fitFamilyContextParts(family.context).join(' · ') }}
                                 </div>

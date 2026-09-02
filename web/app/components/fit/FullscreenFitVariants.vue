@@ -79,6 +79,10 @@ const shipTypeId = computed(() => currentFit.value?.shipTypeId ?? 0);
 const shipName = computed(() =>
     sde.value?.types.get(shipTypeId.value)?.name ?? "Current hull",
 );
+const shipGroupName = computed(() => {
+    const type = sde.value?.types.get(shipTypeId.value);
+    return type ? sde.value?.groups.get(type.groupID)?.name ?? null : null;
+});
 
 const suggestionSlots: Array<{ group: number; slot: FitSlotType; label: string }> = [
     { group: 1, slot: "High", label: "High slots" },
@@ -271,43 +275,6 @@ const moduleDifference = computed(() => {
     return { added, removed, addedNames, removedNames };
 });
 
-function classifyFamily(family: FittingFamily): string {
-    const names = family.modules.map(module => (module.name ?? "").toLowerCase());
-    const has = (...terms: string[]) => names.some(name => terms.some(term => name.includes(term)));
-    const weapon = has("heavy assault missile launcher") ? "Heavy Assault Missile"
-        : has("rapid light missile launcher") ? "Rapid Light Missile"
-            : has("heavy missile launcher") ? "Heavy Missile"
-                : has("rocket launcher") ? "Rocket"
-                    : has("light missile launcher") ? "Light Missile"
-                        : has("torpedo launcher") ? "Torpedo"
-                            : has("cruise missile launcher") ? "Cruise Missile"
-                                : has("mega pulse", "heavy pulse", "medium pulse", "small pulse") ? "Pulse Laser"
-                                    : has("beam laser") ? "Beam Laser"
-                                        : has("autocannon") ? "Autocannon"
-                                            : has("artillery") ? "Artillery"
-                                                : has("blaster") ? "Blaster"
-                                                    : has("railgun") ? "Railgun"
-                                                        : null;
-    const role = has("remote shield booster") ? "Remote Shield Boost"
-        : has("remote armor repairer") ? "Remote Armor Repair"
-            : has("mining laser", "strip miner") ? "Mining"
-                : has("command burst") ? "Command"
-                    : has("data analyzer", "relic analyzer") ? "Exploration"
-                        : has("interdiction nullifier") ? "Travel"
-                : has("energy neutralizer") ? "Neut"
-                    : weapon;
-    const modifier = has("covert ops cloaking") ? "Covert " : "";
-    const tank = has("shield booster", "shield extender", "shield hardener") ? "Shield"
-        : has("armor repairer", "armor plate", "energized adaptive") ? "Armor"
-            : "";
-    const style = has("warp scrambler", "stasis webifier") && has("heavy assault missile", "autocannon", "blaster", "pulse laser") ? "Brawler"
-        : has("warp disruptor") && has("artillery", "beam laser", "railgun", "heavy missile", "cruise missile") ? "Kite"
-            : has("shield booster", "armor repairer") && !has("remote shield booster", "remote armor repairer") ? "Active"
-                : has("shield extender", "armor plate") ? "Buffer"
-                    : "";
-    return [modifier.trim(), role ?? "General Purpose", tank, style].filter(Boolean).join(" ");
-}
-
 const observedAgo = (iso: string): string => {
     const days = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000));
     if (days === 0) return "today";
@@ -456,7 +423,7 @@ function familySearchLink(family: FittingFamily, view: "kills" | "fits") {
                 <button
                     type="button"
                     class="absolute inset-0 z-0 rounded-lg"
-                    :aria-label="`Preview ${classifyFamily(family)} fitting family`"
+                    :aria-label="`Preview ${classifyFitFamily(family.modules, family.drones, { hullGroupName: shipGroupName })} fitting family`"
                     @click="loadFamily(family, index)"
                 />
                 <div class="pointer-events-none relative z-10 flex items-center gap-2">
@@ -466,7 +433,7 @@ function familySearchLink(family: FittingFamily, view: "kills" | "fits") {
                     <div class="min-w-0 flex-1">
                         <div class="flex w-full items-baseline justify-between gap-2 text-left">
                             <span class="truncate text-xs font-semibold text-gray-200 group-hover:text-purple-100">
-                                {{ classifyFamily(family) }}
+                                {{ classifyFitFamily(family.modules, family.drones, { hullGroupName: shipGroupName }) }}
                             </span>
                             <span class="shrink-0 text-fine text-gray-600">
                                 {{ observedAgo(family.last_used) }}

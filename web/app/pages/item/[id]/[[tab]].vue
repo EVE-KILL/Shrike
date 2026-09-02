@@ -741,7 +741,7 @@ const hasStats = computed(() =>
 
             <!-- FITTINGS TAB (ships only — gated by the computed tabs list) -->
             <div v-if="activeTab === 'fittings' && isShip">
-                <ItemFittings :ship-type-id="id" />
+                <ItemFittings :ship-type-id="id" :hull-group-name="item?.group_name" />
             </div>
         </div>
     </div>
