@@ -1297,6 +1297,7 @@ async function buildFitUrls(results: FitResult[]) {
                                 <span v-if="f.stats.dps_with_reload != null" class="tabular-nums text-red-300/80">{{ Math.round(f.stats.dps_with_reload) }} DPS</span>
                                 <span v-if="f.stats.ehp != null" class="tabular-nums text-emerald-300/80">{{ formatCompactNumber(f.stats.ehp) }} EHP</span>
                                 <span v-if="strongestRepair(f) > 0" class="tabular-nums text-cyan-300/80">{{ Math.round(strongestRepair(f)) }} EHP/s</span>
+                                <span v-if="f.stats.max_velocity != null" class="tabular-nums text-sky-300/80">{{ Math.round(f.stats.max_velocity).toLocaleString('en-US') }} m/s</span>
                                 <span v-if="f.stats.npc_ehp != null && f.stats.npc_profile" class="tabular-nums text-amber-300/80">{{ formatCompactNumber(f.stats.npc_ehp) }} EHP vs {{ npcProfiles.find(profile => profile[0] === f.stats?.npc_profile)?.[1] ?? f.stats.npc_profile }}</span>
                                 <span v-if="f.stats.cap_stable" class="text-blue-300/80">Cap stable</span>
                             </template>
