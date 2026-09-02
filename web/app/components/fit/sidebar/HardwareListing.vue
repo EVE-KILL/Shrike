@@ -582,6 +582,7 @@ function onSearchKeydown(event: KeyboardEvent) {
 
 function onSearchResultDragStart(e: DragEvent, item: ListingItem) {
     if (!e.dataTransfer) return;
+    e.dataTransfer.effectAllowed = "copy";
     const img = new Image();
     img.src = `https://images.evetech.net/types/${item.typeId}/icon?size=64`;
     e.dataTransfer.setDragImage(img, 32, 32);
@@ -600,9 +601,19 @@ function onSearchResultDragStart(e: DragEvent, item: ListingItem) {
                 v-model="search"
                 type="text"
                 placeholder="Search modules & charges…"
-                class="flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-600 outline-none"
+                class="min-w-0 flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-600 outline-none"
                 @keydown="onSearchKeydown"
             />
+            <button
+                v-if="search"
+                type="button"
+                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-gray-600 transition-colors hover:bg-white/[0.06] hover:text-gray-300"
+                aria-label="Clear hardware search"
+                @mousedown.prevent
+                @click="search = ''; selectedResult = 0; fillPromptItem = null; searchInput?.focus()"
+            >
+                <Icon name="lucide:x" class="h-3.5 w-3.5" />
+            </button>
         </div>
 
         <div v-if="fillPromptItem" class="border-b border-blue-400/15 bg-blue-400/[0.06] px-3 py-2">

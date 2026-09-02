@@ -22,8 +22,7 @@
  *
  * Right-side status:
  *   - Fit name display
- *   - "All Skills L5" skill profile indicator (clickable later
- *     when we add ESI skill import)
+ *   - Skill profile selector (all skills III, IV, or V)
  *   - Loading spinner while calculateFit runs
  */
 
@@ -48,6 +47,7 @@ const emit = defineEmits<{
 
 const { currentFit, isSaved, canUndo, canRedo, undo, redo } = useCurrentFit();
 const { isLoading } = useFitStatistics();
+const { level: skillLevel } = useFitSkillProfile();
 const { issues: fitIssues, isValid: fitIsValid } = useFitValidity();
 const { sde } = useEveData();
 const fitManager = useFitManager();
@@ -351,10 +351,20 @@ const hasFit = computed(() => isMounted.value && currentFit.value !== null);
                     {{ hasFitPrice ? `${formatIsk(fitIskTotal)} ISK` : '— ISK' }}
                 </span>
             </ClientOnly>
-            <span class="flex items-center gap-1 px-2 py-1 rounded-md text-fine font-bold uppercase tracking-[0.12em] bg-blue-500/[0.08] text-blue-400/80">
+            <label class="flex items-center gap-1 rounded-md bg-blue-500/[0.08] px-2 py-1 text-blue-400/80 transition-colors hover:bg-blue-500/[0.12] hover:text-blue-300">
                 <Icon name="lucide:zap" class="w-3 h-3" />
-                All Skills L5
-            </span>
+                <select
+                    v-model.number="skillLevel"
+                    class="cursor-pointer appearance-none bg-transparent pr-0.5 text-fine font-bold uppercase tracking-[0.12em] outline-none"
+                    aria-label="Fitting skill profile"
+                    title="Calculate this fit using a uniform skill level"
+                >
+                    <option :value="5">All Skills L5</option>
+                    <option :value="4">All Skills L4</option>
+                    <option :value="3">All Skills L3</option>
+                </select>
+                <Icon name="lucide:chevron-down" class="h-3 w-3" />
+            </label>
             <button
                 v-if="expandable"
                 type="button"

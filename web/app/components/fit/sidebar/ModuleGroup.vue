@@ -126,6 +126,7 @@ function removePreview() {
 
 function onItemDragStart(e: DragEvent, item: ListingItem) {
     if (!e.dataTransfer) return;
+    e.dataTransfer.effectAllowed = "copy";
     // Ghost image from the EVE type icon — gives the browser's drag
     // cursor a readable preview instead of a blurry clone of the leaf
     // row. Using `new Image()` here is deliberate: setDragImage needs

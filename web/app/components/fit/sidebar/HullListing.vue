@@ -213,9 +213,19 @@ const filterPills = computed<FilterPill[]>(() => [
                 v-model="search"
                 type="text"
                 placeholder="Search hulls…"
-                class="flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-600 outline-none"
+                class="min-w-0 flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-600 outline-none"
                 @keydown="onSearchKeydown"
             />
+            <button
+                v-if="search"
+                type="button"
+                class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded text-gray-600 transition-colors hover:bg-white/[0.06] hover:text-gray-300"
+                aria-label="Clear hull search"
+                @mousedown.prevent
+                @click="search = ''; selectedResult = 0; searchInput?.focus()"
+            >
+                <Icon name="lucide:x" class="h-3.5 w-3.5" />
+            </button>
         </div>
 
         <!-- Filter pills -->

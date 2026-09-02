@@ -17,6 +17,7 @@ defineProps<{
 const tableRef = ref<HTMLTableElement | null>(null);
 const columnWidths = ref<Array<number | null>>([null, 55, 58, 46, 46, 60, 120]);
 const selectedRow = ref<{ slotType: string; slotIndex: number } | null>(null);
+const dropTarget = ref<{ slotType: string; slotIndex: number } | null>(null);
 const COLUMN_PREFS_KEY = "ek-fit-table-columns-v1";
 const columnMinimums = [140, 42, 48, 40, 40, 54, 80];
 
@@ -151,6 +152,61 @@ watch(columnWidths, widths => {
 }, { deep: true });
 
 const fitManager = useFitManager();
+
+function draggedNumber(event: DragEvent, key: string): number | undefined {
+    const raw = event.dataTransfer?.getData(key) ?? "";
+    const value = Number.parseInt(raw, 10);
+    return Number.isInteger(value) ? value : undefined;
+}
+
+function hasFittingPayload(event: DragEvent): boolean {
+    return Array.from(event.dataTransfer?.types ?? []).includes("application/esf-type-id");
+}
+
+function canDropOnRow(event: DragEvent, slotType: string): boolean {
+    const draggedSlotType = event.dataTransfer?.getData("application/esf-slot-type");
+    return draggedSlotType === "Charge" || draggedSlotType === slotType;
+}
+
+function onRowDragOver(event: DragEvent, row: ModuleRow, slotType: string) {
+    // Firefox does not expose custom drag data until `drop`, but it does expose
+    // the MIME types. Accept the drag here and do the compatibility check once
+    // the payload becomes readable in onRowDrop.
+    if (!event.dataTransfer || !hasFittingPayload(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    dropTarget.value = { slotType, slotIndex: row.slotIndex };
+}
+
+function onRowDragLeave(event: DragEvent) {
+    const row = event.currentTarget as HTMLElement;
+    if (event.relatedTarget instanceof Node && row.contains(event.relatedTarget)) return;
+    dropTarget.value = null;
+}
+
+function onRowDrop(event: DragEvent, row: ModuleRow, slotType: string) {
+    dropTarget.value = null;
+    if (!event.dataTransfer || !canDropOnRow(event, slotType)) return;
+    event.preventDefault();
+
+    const typeId = draggedNumber(event, "application/esf-type-id");
+    const sourceIndex = draggedNumber(event, "application/esf-slot-index");
+    const sourceSlotType = event.dataTransfer.getData("application/esf-slot-type");
+    if (typeId === undefined) return;
+
+    if (sourceSlotType === "Charge") {
+        fitManager.setCharge(slotType as FitSlotType, row.slotIndex, typeId);
+    } else if (sourceIndex !== undefined) {
+        fitManager.swapModule(
+            sourceSlotType as FitSlotType,
+            sourceIndex,
+            slotType as FitSlotType,
+            row.slotIndex,
+        );
+    } else {
+        fitManager.addModule(typeId, slotType as FitSlotType, { index: row.slotIndex });
+    }
+}
 
 function removeRowItem(row: ModuleRow, slotType: string) {
     if (row.typeId === 0) return;
@@ -500,6 +556,7 @@ const droneRows = computed(() => {
                             'opacity-40': row.state === 'Passive' && row.typeId !== 0,
                             'opacity-25': row.typeId === 0,
                             'bg-blue-400/[0.07] outline outline-1 -outline-offset-1 outline-blue-400/20': selectedRow?.slotType === group.slotType && selectedRow?.slotIndex === row.slotIndex,
+                            'bg-cyan-400/[0.12] outline outline-1 -outline-offset-1 outline-cyan-300/50': dropTarget?.slotType === group.slotType && dropTarget?.slotIndex === row.slotIndex,
                         }"
                         tabindex="0"
                         data-fit-table-row
@@ -507,6 +564,9 @@ const droneRows = computed(() => {
                         @keydown="onRowKeydown($event, row, group.slotType)"
                         @contextmenu="openContextMenu($event, row, group.slotType)"
                         @dblclick="removeRowItem(row, group.slotType)"
+                        @dragover="onRowDragOver($event, row, group.slotType)"
+                        @dragleave="onRowDragLeave"
+                        @drop="onRowDrop($event, row, group.slotType)"
                     >
                         <td class="py-1 px-3 flex items-center gap-1.5">
                             <template v-if="row.typeId !== 0">

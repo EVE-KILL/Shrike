@@ -33,10 +33,9 @@
  * enough (<50 ms per fit after warmup) that debouncing adds more
  * latency than it saves.
  *
- * Skills: we pass `undefined` to calculateFit, which @evekill/dogma
- * resolves to an all-V skill map internally. When we add ESI skill
- * import later, this composable will accept a `useFitCharacter()`
- * skill map instead.
+ * Skills come from useFitSkillProfile. Its current presets generate a full
+ * all-III/all-IV/all-V map; ESI and custom maps can be added there later
+ * without changing any statistics consumers.
  */
 
 import { effectScope } from "vue";
@@ -65,11 +64,12 @@ export function useFitStatistics() {
         const scope = effectScope(true);
         scope.run(() => {
             const { fit, currentFit, isPreview } = useCurrentFit();
+            const { skills } = useFitSkillProfile();
             let generation = 0;
 
             watch(
-                fit,
-                async (next) => {
+                [fit, skills],
+                async ([next, skillMap]) => {
                     if (next === null) {
                         stats.value = null;
                         return;
@@ -80,7 +80,7 @@ export function useFitStatistics() {
                     error.value = null;
 
                     try {
-                        const result = await calculateFit(fitToEngine(next));
+                        const result = await calculateFit(fitToEngine(next), skillMap);
                         if (gen !== generation) return; // a newer request superseded us
                         // CRITICAL: markRaw to keep Vue from reactively
                         // wrapping the result. FitStats contains a
