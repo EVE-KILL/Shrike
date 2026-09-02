@@ -12,7 +12,6 @@ const props = defineProps<{
     hullGroupName?: string | null
 }>()
 const route = useRoute()
-const router = useRouter()
 
 interface FittingModule {
     slot_group: number
@@ -69,7 +68,7 @@ interface FittingsResponse {
 }
 
 type FitFilterMetric = 'ehp' | 'dps' | 'alpha' | 'speed' | 'align' | 'repair' | 'shield_repair' | 'armor_repair' | 'hull_repair' | 'passive_shield' | 'npc_ehp'
-type FitSort = 'observed' | 'recent' | 'cheapest' | 'expensive' | 'ehp' | 'dps' | 'alpha' | 'repair' | 'speed' | 'align'
+type FitSort = 'observed' | 'recent' | 'cheapest' | 'expensive' | 'ehp' | 'dps' | 'alpha' | 'repair' | 'speed' | 'align' | 'npc_ehp'
 interface FitFilter { metric: FitFilterMetric; min: number | null; max: number | null; npcProfile?: string }
 const fitFilterOptions: Array<{ value: FitFilterMetric; label: string }> = [
     { value: 'ehp', label: 'Effective hitpoints' }, { value: 'dps', label: 'Damage / second' },
@@ -101,6 +100,7 @@ const fitSortOptions: Array<{ value: FitSort; label: string }> = [
     { value: 'ehp', label: 'Highest EHP' }, { value: 'dps', label: 'Highest DPS' },
     { value: 'alpha', label: 'Highest alpha' }, { value: 'repair', label: 'Highest repair' },
     { value: 'speed', label: 'Highest speed' }, { value: 'align', label: 'Fastest align' },
+    { value: 'npc_ehp', label: 'Highest NPC EHP' },
 ]
 const selectedSortLabel = computed(() => fitSortOptions.find(option => option.value === fitSort.value)?.label ?? 'Most observed')
 const fitFilterMetrics = new Set<FitFilterMetric>(fitFilterOptions.map(option => option.value))
@@ -117,8 +117,8 @@ function loadFiltersFromRoute() {
     for (const metric of fitFilterMetrics) {
         const min = queryNumber(route.query[`min_${metric}`])
         const max = queryNumber(route.query[`max_${metric}`])
-        if (min === null && max === null) continue
         const requestedProfile = queryValue(route.query.npc_profile)
+        if (min === null && max === null && !(metric === 'npc_ehp' && requestedProfile && npcProfileIDs.has(requestedProfile))) continue
         const npcProfile = metric === 'npc_ehp' && requestedProfile && npcProfileIDs.has(requestedProfile)
             ? requestedProfile
             : metric === 'npc_ehp' ? 'guristas' : undefined
@@ -145,10 +145,29 @@ function parseFitFilterValue(raw: string): number | null {
 function addFitFilter() {
     const min = parseFitFilterValue(draftMin.value)
     const max = parseFitFilterValue(draftMax.value)
-    if (min === null && max === null) return
+    fitSort.value = sortForMetric(draftMetric.value)
+    if (min === null && max === null && draftMetric.value !== 'npc_ehp') return
     activeFilters.value = activeFilters.value.filter(item => item.metric !== draftMetric.value)
     activeFilters.value.push({ metric: draftMetric.value, min, max, npcProfile: draftMetric.value === 'npc_ehp' ? draftNPCProfile.value : undefined })
     draftMin.value = ''; draftMax.value = ''
+}
+function sortForMetric(metric: FitFilterMetric): FitSort {
+    if (metric === 'shield_repair' || metric === 'armor_repair' || metric === 'hull_repair' || metric === 'passive_shield') return 'repair'
+    return metric
+}
+function selectDraftMetric(metric: FitFilterMetric) {
+    draftMetric.value = metric
+    fitSort.value = sortForMetric(metric)
+    if (metric === 'npc_ehp') {
+        const current = activeFilters.value.find(filter => filter.metric === 'npc_ehp')
+        setFitMetricFilter('npc_ehp', current?.min ?? null, current?.max ?? null, draftNPCProfile.value)
+    }
+}
+function selectDraftNPCProfile(profile: string) {
+    draftNPCProfile.value = profile
+    fitSort.value = 'npc_ehp'
+    const current = activeFilters.value.find(filter => filter.metric === 'npc_ehp')
+    setFitMetricFilter('npc_ehp', current?.min ?? null, current?.max ?? null, profile)
 }
 function setFitMetricFilter(metric: FitFilterMetric, min: number | null, max: number | null, npcProfile?: string) {
     activeFilters.value = activeFilters.value.filter(item => item.metric !== metric)
@@ -171,6 +190,7 @@ function toggleModuleGroup(groupID: number) {
 function filterLabel(filter: FitFilter): string {
     const metric = fitFilterOptions.find(option => option.value === filter.metric)?.label ?? filter.metric
     const profile = filter.metric === 'npc_ehp' ? ` · ${npcProfiles.find(item => item[0] === filter.npcProfile)?.[1] ?? filter.npcProfile}` : ''
+    if (filter.min === null && filter.max === null) return `${metric}${profile}`
     const range = filter.min != null && filter.max != null ? `${filter.min.toLocaleString()}–${filter.max.toLocaleString()}` : filter.min != null ? `≥ ${filter.min.toLocaleString()}` : `≤ ${filter.max?.toLocaleString()}`
     return `${metric}${profile} ${range}`
 }
@@ -189,11 +209,12 @@ const managedFilterQueryKeys = new Set([
     ...fitFilterOptions.flatMap(option => [`min_${option.value}`, `max_${option.value}`]),
     'npc_profile', 'groups', 'sort',
 ])
-watch([activeFilters, moduleGroupFilters, fitSort], async () => {
-    const query = { ...route.query }
-    for (const key of managedFilterQueryKeys) delete query[key]
-    for (const [key, value] of activeFilterParams()) query[key] = value
-    await router.replace({ query })
+watch([activeFilters, moduleGroupFilters, fitSort], () => {
+    if (!import.meta.client) return
+    const url = new URL(window.location.href)
+    for (const key of managedFilterQueryKeys) url.searchParams.delete(key)
+    for (const [key, value] of activeFilterParams()) url.searchParams.set(key, value)
+    window.history.replaceState(window.history.state, '', url)
 }, { deep: true })
 const fittingsURL = computed(() => {
     const params = activeFilterParams()
@@ -219,7 +240,7 @@ interface FitMetaResponse {
     total_kills: number
     groups: FitMetaGroup[]
 }
-const { data: metaData } = useApiFetch<FitMetaResponse>(
+const { data: metaData, pending: metaPending } = useApiFetch<FitMetaResponse>(
     computed(() => {
         const params = activeFilterParams()
         params.delete('sort')
@@ -259,7 +280,7 @@ const distributionURL = computed(() => {
     const params = activeFilterParams(); params.delete('sort'); params.set('days', '90')
     return `/api/item/${props.shipTypeId}/fit-distributions?${params.toString()}`
 })
-const { data: distributionData } = useApiFetch<DistributionResponse>(
+const { data: distributionData, pending: distributionPending } = useApiFetch<DistributionResponse>(
     distributionURL,
     { lazy: true, server: false },
 )
@@ -267,6 +288,7 @@ const visibleDistributions = computed(() => {
     const wanted = ['ehp', 'dps', 'repair', 'speed']
     return wanted.map(metric => distributionData.value?.metrics.find(row => row.metric === metric)).filter((row): row is DistributionMetric => Boolean(row))
 })
+const isRefreshing = computed(() => pending.value || metaPending.value || distributionPending.value)
 const distributionLabels: Record<string, string> = { ehp: 'Effective Hitpoints', dps: 'Damage / second', repair: 'Effective repair / second', speed: 'Maximum velocity' }
 function formatDistributionValue(metric: string, value: number): string {
     if (metric === 'speed') return `${Math.round(value).toLocaleString('en-US')} m/s`
@@ -301,7 +323,7 @@ const sortedFamilies = computed(() => {
             return families.sort((a, b) => a.fit_cost - b.fit_cost)
         case 'expensive':
             return families.sort((a, b) => b.fit_cost - a.fit_cost)
-        case 'ehp': case 'dps': case 'alpha': case 'repair': case 'speed': {
+        case 'ehp': case 'dps': case 'alpha': case 'repair': case 'speed': case 'npc_ehp': {
             const metric = fitSort.value
             return families.sort((a, b) => (b.stats?.[metric] ?? -1) - (a.stats?.[metric] ?? -1))
         }
@@ -361,7 +383,7 @@ async function loadIntoEditor(family: FittingFamily) {
 
 <template>
     <div>
-        <div v-if="pending" class="py-12 text-center text-gray-500 text-sm">
+        <div v-if="pending && !data" class="py-12 text-center text-gray-500 text-sm">
             Loading fits…
         </div>
 
@@ -478,7 +500,7 @@ async function loadIntoEditor(family: FittingFamily) {
                                 <button v-for="option in fitFilterOptions" :key="option.value" type="button"
                                     class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-blue-500/[0.08] hover:text-blue-300"
                                     :class="draftMetric === option.value ? 'text-blue-300' : 'text-gray-400'"
-                                    @click="draftMetric = option.value; close()">
+                                    @click="selectDraftMetric(option.value); close()">
                                     <Icon name="lucide:check" class="h-3.5 w-3.5" :class="draftMetric === option.value ? 'opacity-100' : 'opacity-0'" />
                                     {{ option.label }}
                                 </button>
@@ -498,7 +520,7 @@ async function loadIntoEditor(family: FittingFamily) {
                                 <button v-for="profile in npcProfiles" :key="profile[0]" type="button"
                                     class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs transition-colors hover:bg-blue-500/[0.08] hover:text-blue-300"
                                     :class="draftNPCProfile === profile[0] ? 'text-blue-300' : 'text-gray-400'"
-                                    @click="draftNPCProfile = profile[0]; close()">
+                                    @click="selectDraftNPCProfile(profile[0]); close()">
                                     <Icon name="lucide:check" class="h-3.5 w-3.5" :class="draftNPCProfile === profile[0] ? 'opacity-100' : 'opacity-0'" />
                                     {{ profile[1] }}
                                 </button>
@@ -516,6 +538,11 @@ async function loadIntoEditor(family: FittingFamily) {
                     </label>
                     <button type="submit" class="self-end rounded-md border border-blue-500/30 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/25">Add filter</button>
                 </form>
+            </div>
+
+            <div v-if="isRefreshing" class="mb-3 flex items-center gap-2 text-fine font-medium text-blue-300/70" role="status" aria-live="polite">
+                <Icon name="lucide:loader-circle" class="h-3.5 w-3.5 animate-spin" />
+                Updating fits…
             </div>
 
             <div v-if="data.families.length === 0" class="rounded-lg border border-white/[0.07] bg-white/[0.015] py-12 text-center">
@@ -568,7 +595,7 @@ async function loadIntoEditor(family: FittingFamily) {
             </div>
 
             <!-- Fit cards -->
-            <div v-if="data.families.length > 0" class="space-y-3">
+            <div v-if="data.families.length > 0" class="space-y-3 transition-opacity" :class="isRefreshing ? 'pointer-events-none opacity-60' : ''">
                 <div v-for="(family, index) in sortedFamilies" :key="family.family_hash"
                     class="rounded-lg border bg-white/[0.025] overflow-hidden transition-colors"
                     :class="expandedFamily === family.family_hash ? 'border-blue-500/25' : 'border-white/[0.08] hover:border-white/[0.14]'">
