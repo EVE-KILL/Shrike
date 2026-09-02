@@ -269,7 +269,12 @@ function parseStatValue(raw: string): number | null {
     return Number(match[1]) * ({ k: 1e3, m: 1e6, b: 1e9 }[match[2] ?? ''] ?? 1)
 }
 function sortForMetric(metric: FitFilterMetric): FitSort {
-    return ['shield_repair', 'armor_repair', 'hull_repair', 'passive_shield'].includes(metric) ? 'repair' : metric
+    switch (metric) {
+        case 'shield_repair': case 'armor_repair': case 'hull_repair': case 'passive_shield':
+            return 'repair'
+        default:
+            return metric
+    }
 }
 function selectStatMetric(metric: FitFilterMetric) {
     draftMetric.value = metric
