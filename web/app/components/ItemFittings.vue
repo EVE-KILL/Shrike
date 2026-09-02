@@ -105,10 +105,10 @@ const fitSortOptions: Array<{ value: FitSort; label: string }> = [
 const selectedSortLabel = computed(() => fitSortOptions.find(option => option.value === fitSort.value)?.label ?? 'Most observed')
 const fitFilterMetrics = new Set<FitFilterMetric>(fitFilterOptions.map(option => option.value))
 const npcProfileIDs = new Set<string>(npcProfiles.map(profile => profile[0]))
-function queryValue(value: string | string[] | null | undefined): string | undefined {
-    return Array.isArray(value) ? value[0] : value ?? undefined
+function queryValue(value: string | null | Array<string | null> | undefined): string | undefined {
+    return Array.isArray(value) ? value.find(item => item !== null) ?? undefined : value ?? undefined
 }
-function queryNumber(value: string | string[] | null | undefined): number | null {
+function queryNumber(value: string | null | Array<string | null> | undefined): number | null {
     const parsed = Number(queryValue(value))
     return Number.isFinite(parsed) ? parsed : null
 }
