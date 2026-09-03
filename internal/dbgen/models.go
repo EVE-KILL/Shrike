@@ -692,6 +692,36 @@ type EntitySnapshot struct {
 	TopAchieverPoints      *int32      `json:"top_achiever_points"`
 }
 
+type EntityTracker struct {
+	TrackerID            int64              `json:"tracker_id"`
+	CharacterID          int32              `json:"character_id"`
+	TargetType           string             `json:"target_type"`
+	TargetID             int32              `json:"target_id"`
+	TargetName           string             `json:"target_name"`
+	TargetTicker         *string            `json:"target_ticker"`
+	Enabled              bool               `json:"enabled"`
+	NotificationsEnabled bool               `json:"notifications_enabled"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
+type EntityTrackerEvent struct {
+	EventID    int64              `json:"event_id"`
+	TrackerID  int64              `json:"tracker_id"`
+	KillmailID int32              `json:"killmail_id"`
+	MatchRole  string             `json:"match_role"`
+	OccurredAt pgtype.Timestamptz `json:"occurred_at"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type EntityTrackerNotification struct {
+	NotificationID int64              `json:"notification_id"`
+	EventID        int64              `json:"event_id"`
+	CharacterID    int32              `json:"character_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ReadAt         pgtype.Timestamptz `json:"read_at"`
+}
+
 type EsiKillmailDelayed struct {
 	KillmailID   int32              `json:"killmail_id"`
 	KillmailHash string             `json:"killmail_hash"`

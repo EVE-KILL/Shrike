@@ -90,6 +90,41 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		return responseSchema(map[string]*huma.Schema{
 			"lastSeenNotificationId": intSchema(),
 		}, "lastSeenNotificationId")
+	case "account-trackers":
+		return responseSchema(map[string]*huma.Schema{
+			"trackers": arraySchema(accountTrackerSchema()),
+			"limit":    intSchema(),
+		}, "trackers", "limit")
+	case "account-tracker-create", "account-tracker-update":
+		return accountTrackerSchema()
+	case "account-tracker-delete":
+		return responseSchema(map[string]*huma.Schema{
+			"deleted": boolSchema(),
+		}, "deleted")
+	case "account-tracker-killmails":
+		return killlistFrontendResponseSchema()
+	case "account-tracker-notifications":
+		return accountTrackerNotificationsSchema()
+	case "account-tracker-notifications-read":
+		return responseSchema(map[string]*huma.Schema{
+			"updated": intSchema(), "unreadCount": intSchema(),
+		}, "updated", "unreadCount")
+	case "account-tracked-config", "account-tracked-config-update":
+		return trackedDashboardConfigSchema()
+	case "account-tracked-summary":
+		return responseSchema(map[string]*huma.Schema{
+			"tracker_count":        intSchema(),
+			"active_tracker_count": intSchema(),
+			"kill_count":           intSchema(),
+			"total_value":          numberSchema(),
+			"last_kill_at":         nullable(timestampSchema()),
+			"window_days":          intSchema(),
+		}, "tracker_count", "active_tracker_count", "kill_count",
+			"total_value", "last_kill_at", "window_days")
+	case "account-tracked-killmails":
+		return killlistFrontendResponseSchema()
+	case "account-tracked-statistics":
+		return domainStatisticsSchema()
 
 	// Administration.
 	case "admin-overview":
@@ -948,6 +983,70 @@ func notificationRepliesSchema() *huma.Schema {
 		"replies":   arraySchema(reply),
 		"highestId": intSchema(),
 	}, "replies", "highestId")
+}
+
+func accountTrackerSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"id":                    intSchema(),
+		"target_type":           stringSchema(),
+		"target_id":             intSchema(),
+		"target_name":           stringSchema(),
+		"target_ticker":         nullable(stringSchema()),
+		"enabled":               boolSchema(),
+		"notifications_enabled": boolSchema(),
+		"created_at":            timestampSchema(),
+		"updated_at":            timestampSchema(),
+		"event_count":           intSchema(),
+		"last_event_at":         nullable(timestampSchema()),
+		"unread_notifications":  intSchema(),
+	}, "id", "target_type", "target_id", "target_name", "target_ticker",
+		"enabled", "notifications_enabled", "created_at", "updated_at",
+		"event_count", "last_event_at", "unread_notifications")
+}
+
+func accountTrackerNotificationsSchema() *huma.Schema {
+	notification := responseSchema(map[string]*huma.Schema{
+		"id":                    intSchema(),
+		"created_at":            timestampSchema(),
+		"is_read":               boolSchema(),
+		"tracker_id":            intSchema(),
+		"target_type":           stringSchema(),
+		"target_id":             intSchema(),
+		"target_name":           stringSchema(),
+		"target_ticker":         nullable(stringSchema()),
+		"match_role":            stringSchema(),
+		"killmail_id":           intSchema(),
+		"occurred_at":           timestampSchema(),
+		"total_value":           numberSchema(),
+		"ship_type_id":          nullable(intSchema()),
+		"ship_name":             nullable(stringSchema()),
+		"victim_character_id":   nullable(intSchema()),
+		"victim_character_name": nullable(stringSchema()),
+		"solar_system_id":       intSchema(),
+		"solar_system_name":     nullable(stringSchema()),
+		"region_id":             nullable(intSchema()),
+		"region_name":           nullable(stringSchema()),
+	}, "id", "created_at", "is_read", "tracker_id", "target_type",
+		"target_id", "target_name", "target_ticker", "match_role",
+		"killmail_id", "occurred_at", "total_value", "ship_type_id",
+		"ship_name", "victim_character_id", "victim_character_name",
+		"solar_system_id", "solar_system_name", "region_id", "region_name")
+	return responseSchema(map[string]*huma.Schema{
+		"notifications": arraySchema(notification),
+		"unreadCount":   intSchema(),
+	}, "notifications", "unreadCount")
+}
+
+func trackedDashboardConfigSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"configured": boolSchema(),
+		"widgets": responseSchema(map[string]*huma.Schema{
+			"top":         arraySchema(domainWidgetSchema()),
+			"left":        arraySchema(domainWidgetSchema()),
+			"right":       arraySchema(domainWidgetSchema()),
+			"columnRatio": nullable(stringSchema()),
+		}, "top", "left", "right"),
+	}, "configured", "widgets")
 }
 
 func adminOverviewSchema() *huma.Schema {

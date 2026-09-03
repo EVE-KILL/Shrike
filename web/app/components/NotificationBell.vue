@@ -1,26 +1,39 @@
 <script setup lang="ts">
-/**
- * NotificationBell — bell icon + dropdown shown in the navbar when the user
- * is logged in. Surfaces direct replies to the user's comments.
- *
- * State (items, unread count, read cursor) lives in the shared
- * `useNotifications` composable, which manages the global WS connection and
- * the `/api/notifications/replies` backfill.
- */
+import type { NotificationItem } from '~/composables/useNotifications'
+import type { TrackerNotification } from '~/composables/useTrackerNotifications'
+
+type BellRow =
+    | { kind: 'reply'; created_at: string; item: NotificationItem }
+    | { kind: 'tracker'; created_at: string; item: TrackerNotification }
 
 const open = ref(false)
-// Destructure so the template auto-unwraps the refs (Vue only auto-unwraps
-// top-level setup-scope refs, not ref properties of plain objects).
-const { items, unreadCount, isUnread, markAllRead } = useNotifications()
+const {
+    items: replyItems,
+    unreadCount: replyUnread,
+    isUnread: isReplyUnread,
+    markAllRead: markRepliesRead,
+} = useNotifications()
+const {
+    notifications: trackerItems,
+    unreadCount: trackerUnread,
+    markAllRead: markTrackersRead,
+    refreshNotifications: refreshTrackerNotifications,
+} = useTrackerNotifications()
 const router = useRouter()
 
+const unreadCount = computed(() => replyUnread.value + trackerUnread.value)
+const rows = computed<BellRow[]>(() => [
+    ...replyItems.value.map(item => ({ kind: 'reply' as const, created_at: item.created_at, item })),
+    ...trackerItems.value.map(item => ({ kind: 'tracker' as const, created_at: item.created_at, item })),
+].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+
 const TARGET_META: Record<number, { label: string; icon: string; color: string; pathFn: (id: number, commentId: number) => string }> = {
-    1: { label: 'Killmail', icon: 'lucide:swords',   color: 'text-red-400',     pathFn: (id, c) => `/kill/${id}#comment-${c}` },
-    2: { label: 'Character',icon: 'lucide:user',     color: 'text-blue-400',    pathFn: (id, c) => `/character/${id}#comment-${c}` },
-    3: { label: 'Corp',     icon: 'lucide:building', color: 'text-amber-400',   pathFn: (id, c) => `/corporation/${id}#comment-${c}` },
-    4: { label: 'Alliance', icon: 'lucide:flag',     color: 'text-purple-400',  pathFn: (id, c) => `/alliance/${id}#comment-${c}` },
-    5: { label: 'System',   icon: 'lucide:globe',    color: 'text-emerald-400', pathFn: (id, c) => `/system/${id}#comment-${c}` },
-    7: { label: 'Battle',   icon: 'lucide:shield',   color: 'text-orange-400',  pathFn: (id, c) => `/battle/${id}/comments#comment-${c}` },
+    1: { label: 'Killmail', icon: 'lucide:swords', color: 'text-red-400', pathFn: (id, c) => `/kill/${id}#comment-${c}` },
+    2: { label: 'Character', icon: 'lucide:user', color: 'text-blue-400', pathFn: (id, c) => `/character/${id}#comment-${c}` },
+    3: { label: 'Corp', icon: 'lucide:building', color: 'text-amber-400', pathFn: (id, c) => `/corporation/${id}#comment-${c}` },
+    4: { label: 'Alliance', icon: 'lucide:flag', color: 'text-purple-400', pathFn: (id, c) => `/alliance/${id}#comment-${c}` },
+    5: { label: 'System', icon: 'lucide:globe', color: 'text-emerald-400', pathFn: (id, c) => `/system/${id}#comment-${c}` },
+    7: { label: 'Battle', icon: 'lucide:shield', color: 'text-orange-400', pathFn: (id, c) => `/battle/${id}/comments#comment-${c}` },
 }
 
 function targetFor(targetType: number) {
@@ -28,8 +41,7 @@ function targetFor(targetType: number) {
 }
 
 function timeAgo(iso: string): string {
-    const d = new Date(iso).getTime()
-    const diff = Date.now() - d
+    const diff = Date.now() - new Date(iso).getTime()
     if (diff < 60_000) return 'just now'
     if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`
     if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`
@@ -37,23 +49,45 @@ function timeAgo(iso: string): string {
     return new Date(iso).toLocaleDateString()
 }
 
-/** Strip HTML for the snippet preview. */
 function snippet(html: string, max = 120): string {
     const txt = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-    return txt.length > max ? txt.slice(0, max - 1) + '…' : txt
+    return txt.length > max ? `${txt.slice(0, max - 1)}…` : txt
 }
 
-function navigate(item: { id: number; target_type: number; target_id: number }) {
-    const path = targetFor(item.target_type).pathFn(item.target_id, item.id)
+function trackerSummary(item: TrackerNotification): string {
+    const ship = item.ship_name || 'Ship'
+    const victim = item.victim_character_name ? ` piloted by ${item.victim_character_name}` : ''
+    const system = item.solar_system_name ? ` in ${item.solar_system_name}` : ''
+    return `${ship}${victim}${system}`
+}
+
+function trackerRole(item: TrackerNotification): string {
+    if (item.match_role === 'victim') return 'loss'
+    if (item.match_role === 'attacker') return 'kill'
+    if (item.match_role === 'both') return 'both sides'
+    return 'location'
+}
+
+function rowUnread(row: BellRow): boolean {
+    return row.kind === 'reply' ? isReplyUnread(row.item) : !row.item.is_read
+}
+
+function navigate(row: BellRow) {
     open.value = false
-    router.push(path)
+    if (row.kind === 'tracker') {
+        void router.push(`/kill/${row.item.killmail_id}`)
+        return
+    }
+    void router.push(targetFor(row.item.target_type).pathFn(row.item.target_id, row.item.id))
 }
 
 function onMarkAllRead() {
-    markAllRead()
+    void Promise.allSettled([markRepliesRead(), markTrackersRead()])
 }
 
-// Close dropdown on route change so it doesn't linger over a new page.
+watch(open, value => {
+    if (value) void refreshTrackerNotifications()
+})
 router.afterEach(() => { open.value = false })
 
 const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/60 hover:bg-blue-500/10 hover:text-blue-400 transition-colors relative'
@@ -64,103 +98,84 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
         <template #trigger>
             <button :class="iconBtn" aria-label="Notifications">
                 <Icon name="lucide:bell" class="text-lg" />
-                <span
-                    v-if="unreadCount > 0"
-                    class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full text-fine font-bold text-white bg-red-500 ring-2 ring-black/80 tabular-nums"
-                >
+                <span v-if="unreadCount > 0" class="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-fine font-bold tabular-nums text-white ring-2 ring-black/80">
                     {{ unreadCount > 99 ? '99+' : unreadCount }}
                 </span>
             </button>
         </template>
 
         <template #default>
-            <div class="w-[360px] max-h-[480px] flex flex-col">
-                <!-- Header -->
-                <div class="flex items-center justify-between px-3 py-2 border-b border-white/[0.08]">
+            <div class="flex max-h-[500px] w-[380px] max-w-[calc(100vw-1rem)] flex-col">
+                <div class="flex items-center justify-between border-b border-white/[0.08] px-3 py-2">
                     <div class="flex items-center gap-2">
-                        <Icon name="lucide:bell" class="text-blue-400 text-sm" />
+                        <Icon name="lucide:bell" class="text-sm text-blue-400" />
                         <span class="text-sm font-semibold text-white">Notifications</span>
-                        <span
-                            v-if="unreadCount > 0"
-                            class="text-fine font-semibold text-blue-300 bg-blue-500/[0.12] border border-blue-500/20 rounded-full px-1.5 py-px"
-                        >
+                        <span v-if="unreadCount > 0" class="rounded-full border border-blue-500/20 bg-blue-500/[0.12] px-1.5 py-px text-fine font-semibold text-blue-300">
                             {{ unreadCount }} new
                         </span>
                     </div>
-                    <button
-                        v-if="unreadCount > 0"
-                        class="text-xs text-gray-400 hover:text-blue-400 cursor-pointer transition-colors"
-                        @click="onMarkAllRead"
-                    >
+                    <button v-if="unreadCount > 0" class="cursor-pointer text-xs text-gray-400 transition-colors hover:text-blue-400" @click="onMarkAllRead">
                         Mark all read
                     </button>
                 </div>
 
-                <!-- List -->
-                <div class="overflow-y-auto flex-1">
-                    <div v-if="items.length === 0" class="px-4 py-10 text-center">
-                        <Icon name="lucide:bell-off" class="text-3xl text-gray-600 mb-2 inline-block" />
+                <div class="flex-1 overflow-y-auto">
+                    <div v-if="rows.length === 0" class="px-4 py-10 text-center">
+                        <Icon name="lucide:bell-off" class="mb-2 inline-block text-3xl text-gray-600" />
                         <p class="text-sm text-gray-500">No notifications yet</p>
-                        <p class="text-xs text-gray-600 mt-1">Replies to your comments will appear here.</p>
+                        <p class="mt-1 text-xs text-gray-600">Comment replies and opted-in tracker alerts will appear here.</p>
                     </div>
 
                     <button
-                        v-for="item in items"
-                        :key="item.id"
-                        class="w-full text-left px-3 py-2.5 border-b border-white/[0.04] last:border-b-0 hover:bg-blue-500/[0.06] transition-colors cursor-pointer relative"
-                        :class="isUnread(item) ? 'bg-blue-500/[0.03]' : ''"
-                        @click="navigate(item)"
+                        v-for="row in rows"
+                        :key="`${row.kind}-${row.item.id}`"
+                        class="relative w-full cursor-pointer border-b border-white/[0.04] px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-blue-500/[0.06]"
+                        :class="rowUnread(row) ? 'bg-blue-500/[0.03]' : ''"
+                        @click="navigate(row)"
                     >
-                        <!-- Unread dot -->
-                        <span
-                            v-if="isUnread(item)"
-                            class="absolute left-1 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-400"
-                        />
-                        <div class="flex items-start gap-2.5 pl-3">
-                            <EveImage
-                                :src="`/images/characters/${item.character_id}/portrait?size=64`"
-                                :size="32"
-                                :alt="item.character_name"
-                                class="w-8 h-8 rounded-md ring-1 ring-white/[0.08] flex-shrink-0"
-                            />
-                            <div class="flex-1 min-w-0">
+                        <span v-if="rowUnread(row)" class="absolute left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-blue-400" />
+
+                        <div v-if="row.kind === 'reply'" class="flex items-start gap-2.5 pl-3">
+                            <EveImage :src="`/images/characters/${row.item.character_id}/portrait?size=64`" :size="32" :alt="row.item.character_name" class="h-8 w-8 flex-shrink-0 rounded-md ring-1 ring-white/[0.08]" />
+                            <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-1.5 text-fine">
-                                    <span class="text-white font-semibold truncate">{{ item.character_name }}</span>
+                                    <span class="truncate font-semibold text-white">{{ row.item.character_name }}</span>
                                     <span class="text-gray-600">replied</span>
-                                    <span
-                                        class="inline-flex items-center gap-1 px-1.5 py-px rounded text-fine font-medium"
-                                        :class="targetFor(item.target_type).color"
-                                    >
-                                        <Icon :name="targetFor(item.target_type).icon" class="text-fine" />
-                                        {{ targetFor(item.target_type).label }}
+                                    <span class="inline-flex items-center gap-1 rounded px-1.5 py-px text-fine font-medium" :class="targetFor(row.item.target_type).color">
+                                        <Icon :name="targetFor(row.item.target_type).icon" class="text-fine" />
+                                        {{ targetFor(row.item.target_type).label }}
                                     </span>
-                                    <span class="ml-auto text-gray-600 tabular-nums">{{ timeAgo(item.created_at) }}</span>
+                                    <span class="ml-auto tabular-nums text-gray-600">{{ timeAgo(row.created_at) }}</span>
                                 </div>
-                                <p class="text-xs text-gray-300 mt-1 line-clamp-2">{{ snippet(item.body_html) }}</p>
-                                <p
-                                    v-if="item.parent_snippet"
-                                    class="text-fine text-gray-500 mt-1 italic line-clamp-1"
-                                    v-tooltip="item.parent_snippet"
-                                >
-                                    in reply to: {{ item.parent_snippet }}
+                                <p class="mt-1 line-clamp-2 text-xs text-gray-300">{{ snippet(row.item.body_html) }}</p>
+                                <p v-if="row.item.parent_snippet" class="mt-1 line-clamp-1 text-fine italic text-gray-500" v-tooltip="row.item.parent_snippet">
+                                    in reply to: {{ row.item.parent_snippet }}
                                 </p>
+                            </div>
+                        </div>
+
+                        <div v-else class="flex items-start gap-2.5 pl-3">
+                            <EveImage v-if="row.item.ship_type_id" :src="`/images/types/${row.item.ship_type_id}/icon?size=64`" :size="32" :alt="row.item.ship_name || 'Destroyed ship'" class="h-8 w-8 flex-shrink-0 rounded-md ring-1 ring-white/[0.08]" />
+                            <span v-else class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-red-500/10 text-red-400">
+                                <Icon name="lucide:crosshair" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 text-fine">
+                                    <span class="truncate font-semibold text-white">{{ row.item.target_name }}</span>
+                                    <span class="rounded bg-amber-500/10 px-1.5 py-px capitalize text-amber-300">{{ trackerRole(row.item) }}</span>
+                                    <span class="ml-auto tabular-nums text-gray-600">{{ timeAgo(row.created_at) }}</span>
+                                </div>
+                                <p class="mt-1 line-clamp-2 text-xs text-gray-300">{{ trackerSummary(row.item) }}</p>
+                                <p class="mt-1 text-fine tabular-nums text-gray-500">{{ formatIsk(row.item.total_value) }} ISK</p>
                             </div>
                         </div>
                     </button>
                 </div>
 
-                <!-- Footer -->
-                <div
-                    v-if="items.length > 0"
-                    class="px-3 py-2 border-t border-white/[0.08] text-center"
-                >
-                    <NuxtLink
-                        to="/comments"
-                        class="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                        @click="open = false"
-                    >
-                        See all comments →
-                    </NuxtLink>
+                <div v-if="rows.length > 0" class="flex items-center justify-center gap-4 border-t border-white/[0.08] px-3 py-2">
+                    <NuxtLink to="/comments" class="text-xs text-blue-400 transition-colors hover:text-blue-300" @click="open = false">Comments</NuxtLink>
+                    <span class="text-gray-700">·</span>
+                    <NuxtLink to="/trackers" class="text-xs text-blue-400 transition-colors hover:text-blue-300" @click="open = false">Manage trackers</NuxtLink>
                 </div>
             </div>
         </template>

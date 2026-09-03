@@ -888,10 +888,19 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"domain-assets-delete-type": {domainAssetTypeQuery()},
 
 	// --- Account -------------------------------------------------------------
-	"account-esi-logs":             esiLogParams(),
-	"user-esi-logs-compat":         esiLogParams(),
-	"account-notification-replies": notificationParams(),
-	"notification-replies-compat":  notificationParams(),
+	"account-esi-logs":              esiLogParams(),
+	"user-esi-logs-compat":          esiLogParams(),
+	"account-notification-replies":  notificationParams(),
+	"notification-replies-compat":   notificationParams(),
+	"account-tracker-killmails":     {limitQuery(50, 10, 100), afterQuery()},
+	"account-tracker-notifications": {limitQuery(50, 1, 100)},
+	"account-tracked-summary":       {daysQuery(7, 1, 90)},
+	"account-tracked-killmails": {
+		killTypeQuery(), limitQuery(50, 10, 100), afterQuery(),
+	},
+	"account-tracked-statistics": {
+		trackedDashboardDataTypeQuery(), daysQuery(7, 1, 90), limitQuery(10, 1, 100),
+	},
 	"wallet-account":               {walletPageQuery()},
 	"wallet-account-legacy":        {walletPageQuery()},
 	"wallet-public":                walletParams(),
@@ -1098,6 +1107,14 @@ func domainDataTypeQuery() *huma.Param {
 		"dataType", "Which leaderboard to build.", "characters",
 		"characters", "corporations", "alliances", "ships", "systems",
 		"regions",
+	)
+}
+
+func trackedDashboardDataTypeQuery() *huma.Param {
+	return enumQuery(
+		"dataType", "Which personal-board widget data to build.", "characters",
+		"characters", "corporations", "alliances", "ships", "systems", "regions",
+		"most_valuable_kills", "most_valuable_ships", "most_valuable_structures",
 	)
 }
 

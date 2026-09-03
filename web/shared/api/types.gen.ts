@@ -29884,6 +29884,545 @@ export type MeSettingsResponses = {
 
 export type MeSettingsResponse = MeSettingsResponses[keyof MeSettingsResponses];
 
+export type AccountTrackedConfigData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/me/tracked/config';
+};
+
+export type AccountTrackedConfigResponses = {
+    /**
+     * OK
+     */
+    200: {
+        configured: boolean;
+        widgets: {
+            columnRatio?: string | null;
+            left: Array<{
+                campaignId?: string;
+                content?: string;
+                enabled?: boolean;
+                killlistType?: string;
+                title?: string;
+                type?: string;
+                [key: string]: unknown;
+            }>;
+            right: Array<{
+                campaignId?: string;
+                content?: string;
+                enabled?: boolean;
+                killlistType?: string;
+                title?: string;
+                type?: string;
+                [key: string]: unknown;
+            }>;
+            top: Array<{
+                campaignId?: string;
+                content?: string;
+                enabled?: boolean;
+                killlistType?: string;
+                title?: string;
+                type?: string;
+                [key: string]: unknown;
+            }>;
+        };
+    };
+};
+
+export type AccountTrackedConfigResponse = AccountTrackedConfigResponses[keyof AccountTrackedConfigResponses];
+
+export type AccountTrackedConfigUpdateData = {
+    body: {
+        widgets: SiteDomainWidgets;
+    };
+    path?: never;
+    query?: never;
+    url: '/me/tracked/config';
+};
+
+export type AccountTrackedConfigUpdateResponses = {
+    /**
+     * OK
+     */
+    200: {
+        configured: boolean;
+        widgets: {
+            columnRatio?: string | null;
+            left: Array<{
+                campaignId?: string;
+                content?: string;
+                enabled?: boolean;
+                killlistType?: string;
+                title?: string;
+                type?: string;
+                [key: string]: unknown;
+            }>;
+            right: Array<{
+                campaignId?: string;
+                content?: string;
+                enabled?: boolean;
+                killlistType?: string;
+                title?: string;
+                type?: string;
+                [key: string]: unknown;
+            }>;
+            top: Array<{
+                campaignId?: string;
+                content?: string;
+                enabled?: boolean;
+                killlistType?: string;
+                title?: string;
+                type?: string;
+                [key: string]: unknown;
+            }>;
+        };
+    };
+};
+
+export type AccountTrackedConfigUpdateResponse = AccountTrackedConfigUpdateResponses[keyof AccountTrackedConfigUpdateResponses];
+
+export type AccountTrackedKillmailsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Killmail category: space, ship class, tech level, or value band.
+         */
+        type?: '100b-1t' | '10b' | '10b-100b' | '1b-5b' | '1t-plus' | '5b' | '5b-10b' | 'abyssal' | 'at-ship-involved' | 'attackers-1' | 'attackers-10-24' | 'attackers-100-999' | 'attackers-1000-plus' | 'attackers-2-4' | 'attackers-25-49' | 'attackers-5-9' | 'attackers-50-99' | 'awox' | 'battlecruisers' | 'battleships' | 'big' | 'capital-involved' | 'capitals' | 'category-deployable' | 'category-drone' | 'category-fighter' | 'category-infantry' | 'category-orbital' | 'category-ship' | 'category-sovereignty' | 'category-starbase' | 'category-structure' | 'citadels' | 'cruisers' | 'destroyers' | 'faction' | 'freighters' | 'frigates' | 'fw-amarr-minmatar' | 'fw-amarr-winner' | 'fw-caldari-gallente' | 'fw-caldari-winner' | 'fw-gallente-winner' | 'fw-minmatar-winner' | 'ganked' | 'highsec' | 'jove' | 'latest' | 'lowsec' | 'npc' | 'nullsec' | 'pochven' | 'pvp' | 'solo' | 'supercarrier-involved' | 'supercarriers' | 't1' | 't2' | 't3' | 'timezone-au' | 'timezone-eu' | 'timezone-ru' | 'timezone-us-east' | 'timezone-us-west' | 'titan-involved' | 'titans' | 'under-1b' | 'wspace';
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
+    url: '/me/tracked/killmails';
+};
+
+export type AccountTrackedKillmailsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_id: number | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            victim_faction_id: number | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
+    };
+};
+
+export type AccountTrackedKillmailsResponse = AccountTrackedKillmailsResponses[keyof AccountTrackedKillmailsResponses];
+
+export type AccountTrackedStatisticsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Which personal-board widget data to build.
+         */
+        dataType?: 'characters' | 'corporations' | 'alliances' | 'ships' | 'systems' | 'regions' | 'most_valuable_kills' | 'most_valuable_ships' | 'most_valuable_structures';
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
+    url: '/me/tracked/stats';
+};
+
+export type AccountTrackedStatisticsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        entries: Array<{
+            killmail_hash: string;
+            killmail_id: number;
+            ship_name: string;
+            ship_type_id: number;
+            total_value: number;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_name: string | null;
+        } | {
+            count?: number;
+            id?: number;
+            isk_destroyed?: number;
+            isk_lost?: number;
+            kills?: number;
+            losses?: number;
+            name?: string;
+            palette?: string | null;
+            type?: string;
+            value?: number;
+            [key: string]: unknown;
+        }>;
+    };
+};
+
+export type AccountTrackedStatisticsResponse = AccountTrackedStatisticsResponses[keyof AccountTrackedStatisticsResponses];
+
+export type AccountTrackedSummaryData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+    };
+    url: '/me/tracked/summary';
+};
+
+export type AccountTrackedSummaryResponses = {
+    /**
+     * OK
+     */
+    200: {
+        active_tracker_count: number;
+        kill_count: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        last_kill_at: string | null;
+        total_value: number;
+        tracker_count: number;
+        window_days: number;
+    };
+};
+
+export type AccountTrackedSummaryResponse = AccountTrackedSummaryResponses[keyof AccountTrackedSummaryResponses];
+
+export type AccountTrackerNotificationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
+    url: '/me/tracker-notifications';
+};
+
+export type AccountTrackerNotificationsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        notifications: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            id: number;
+            is_read: boolean;
+            killmail_id: number;
+            match_role: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            occurred_at: string;
+            region_id: number | null;
+            region_name: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            target_id: number;
+            target_name: string;
+            target_ticker: string | null;
+            target_type: string;
+            total_value: number;
+            tracker_id: number;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+        }>;
+        unreadCount: number;
+    };
+};
+
+export type AccountTrackerNotificationsResponse = AccountTrackerNotificationsResponses[keyof AccountTrackerNotificationsResponses];
+
+export type AccountTrackerNotificationsReadData = {
+    body: {
+        /**
+         * Marks every unread tracker notification when true.
+         */
+        all?: boolean;
+    };
+    path?: never;
+    query?: never;
+    url: '/me/tracker-notifications/read';
+};
+
+export type AccountTrackerNotificationsReadResponses = {
+    /**
+     * OK
+     */
+    200: {
+        unreadCount: number;
+        updated: number;
+    };
+};
+
+export type AccountTrackerNotificationsReadResponse = AccountTrackerNotificationsReadResponses[keyof AccountTrackerNotificationsReadResponses];
+
+export type AccountTrackersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/me/trackers';
+};
+
+export type AccountTrackersResponses = {
+    /**
+     * OK
+     */
+    200: {
+        limit: number;
+        trackers: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            enabled: boolean;
+            event_count: number;
+            id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_event_at: string | null;
+            notifications_enabled: boolean;
+            target_id: number;
+            target_name: string;
+            target_ticker: string | null;
+            target_type: string;
+            unread_notifications: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+        }>;
+    };
+};
+
+export type AccountTrackersResponse = AccountTrackersResponses[keyof AccountTrackersResponses];
+
+export type AccountTrackerCreateData = {
+    body: {
+        notifications_enabled?: boolean;
+        target_id: number;
+        target_type: 'character' | 'corporation' | 'alliance' | 'system' | 'constellation' | 'region';
+    };
+    path?: never;
+    query?: never;
+    url: '/me/trackers';
+};
+
+export type AccountTrackerCreateResponses = {
+    /**
+     * Created
+     */
+    201: {
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at: string;
+        enabled: boolean;
+        event_count: number;
+        id: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        last_event_at: string | null;
+        notifications_enabled: boolean;
+        target_id: number;
+        target_name: string;
+        target_ticker: string | null;
+        target_type: string;
+        unread_notifications: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        updated_at: string;
+    };
+};
+
+export type AccountTrackerCreateResponse = AccountTrackerCreateResponses[keyof AccountTrackerCreateResponses];
+
+export type AccountTrackerDeleteData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/me/trackers/{id}';
+};
+
+export type AccountTrackerDeleteResponses = {
+    /**
+     * OK
+     */
+    200: {
+        deleted: boolean;
+    };
+};
+
+export type AccountTrackerDeleteResponse = AccountTrackerDeleteResponses[keyof AccountTrackerDeleteResponses];
+
+export type AccountTrackerUpdateData = {
+    body: {
+        enabled?: boolean;
+        notifications_enabled?: boolean;
+    };
+    path?: never;
+    query?: never;
+    url: '/me/trackers/{id}';
+};
+
+export type AccountTrackerUpdateResponses = {
+    /**
+     * OK
+     */
+    200: {
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at: string;
+        enabled: boolean;
+        event_count: number;
+        id: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        last_event_at: string | null;
+        notifications_enabled: boolean;
+        target_id: number;
+        target_name: string;
+        target_ticker: string | null;
+        target_type: string;
+        unread_notifications: number;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        updated_at: string;
+    };
+};
+
+export type AccountTrackerUpdateResponse = AccountTrackerUpdateResponses[keyof AccountTrackerUpdateResponses];
+
+export type AccountTrackerKillmailsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+        /**
+         * Ascending cursor. Pass the previous response's pagination cursor to fetch the next page.
+         */
+        after?: number;
+    };
+    url: '/me/trackers/{id}/killmails';
+};
+
+export type AccountTrackerKillmailsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_id: number | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            victim_faction_id: number | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
+    };
+};
+
+export type AccountTrackerKillmailsResponse = AccountTrackerKillmailsResponses[keyof AccountTrackerKillmailsResponses];
+
 export type WalletAccountData = {
     body?: never;
     path?: never;

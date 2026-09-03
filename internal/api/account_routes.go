@@ -32,6 +32,7 @@ func registerAccountServiceRoutes(
 	}
 	requiredSession := []map[string][]string{{"eveSession": {}}}
 	optionalSession := []map[string][]string{{}, {"eveSession": {}}}
+	registerTrackerAccountRoutes(a, opts, requiredSession)
 
 	preferences := service.preferencesHandler()
 	registerLegacy(a, huma.Operation{

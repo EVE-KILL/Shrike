@@ -245,6 +245,115 @@ func TestApplyOnFreshDatabaseCreatesSchema(t *testing.T) {
 	if !hasTrgm {
 		t.Fatal("pg_trgm missing — entity search would fail on a fresh database")
 	}
+
+	assertEntityTrackerMatching(t, ctx, pool)
+}
+
+// Trackers must see attacker rows written after the parent killmail, keep
+// activity separate from optional notifications, and never duplicate a match.
+// Exercising it against the freshly migrated schema catches both migration
+// syntax and the deferred-trigger transaction semantics.
+func assertEntityTrackerMatching(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+	t.Helper()
+	const (
+		characterID = 2_140_003_001
+		killmailID  = 1_900_003_001
+		allianceID  = 99_000_301
+		corporation = 98_000_301
+		systemID    = 30_000_142
+	)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO users (
+			character_id, character_name, character_owner_hash, session_id
+		) VALUES ($1, 'Tracker Migration Test', 'tracker-migration-test', gen_random_uuid())`,
+		characterID); err != nil {
+		t.Fatalf("seed tracker user: %v", err)
+	}
+
+	var allianceTracker, systemTracker, disabledTracker int64
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO entity_trackers (
+			character_id, target_type, target_id, target_name, notifications_enabled
+		) VALUES ($1, 'alliance', $2, 'Both Sides Alliance', true)
+		RETURNING tracker_id`, characterID, allianceID).Scan(&allianceTracker); err != nil {
+		t.Fatalf("seed alliance tracker: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO entity_trackers (
+			character_id, target_type, target_id, target_name, notifications_enabled
+		) VALUES ($1, 'system', $2, 'Tracker Test System', false)
+		RETURNING tracker_id`, characterID, systemID).Scan(&systemTracker); err != nil {
+		t.Fatalf("seed system tracker: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO entity_trackers (
+			character_id, target_type, target_id, target_name, enabled, notifications_enabled
+		) VALUES ($1, 'corporation', $2, 'Paused Corporation', false, true)
+		RETURNING tracker_id`, characterID, corporation).Scan(&disabledTracker); err != nil {
+		t.Fatalf("seed disabled tracker: %v", err)
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin killmail insert: %v", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO killmails (
+			killmail_id, killmail_time, killmail_hash, solar_system_id,
+			victim_alliance_id, victim_corporation_id
+		) VALUES ($1, now(), 'tracker-migration-hash', $2, $3, 98000999)`,
+		killmailID, systemID, allianceID); err != nil {
+		t.Fatalf("insert tracked killmail: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO killmail_attackers (
+			killmail_id, attacker_index, alliance_id, corporation_id, killmail_time
+		) VALUES ($1, 0, $2, $3, now())`, killmailID, allianceID, corporation); err != nil {
+		t.Fatalf("insert tracked attacker: %v", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit tracked killmail: %v", err)
+	}
+
+	roles := map[int64]string{}
+	rows, err := pool.Query(ctx, `
+		SELECT tracker_id, match_role
+		FROM entity_tracker_events
+		WHERE killmail_id = $1`, killmailID)
+	if err != nil {
+		t.Fatalf("query tracker events: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var trackerID int64
+		var role string
+		if err := rows.Scan(&trackerID, &role); err != nil {
+			t.Fatalf("scan tracker event: %v", err)
+		}
+		roles[trackerID] = role
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate tracker events: %v", err)
+	}
+	if len(roles) != 2 || roles[allianceTracker] != "both" || roles[systemTracker] != "location" {
+		t.Fatalf("tracker roles = %#v; want alliance=both and system=location only", roles)
+	}
+	if _, ok := roles[disabledTracker]; ok {
+		t.Fatal("disabled tracker recorded an event")
+	}
+
+	var notified []int64
+	if err := pool.QueryRow(ctx, `
+		SELECT COALESCE(array_agg(e.tracker_id ORDER BY e.tracker_id), '{}')
+		FROM entity_tracker_notifications n
+		JOIN entity_tracker_events e USING (event_id)
+		WHERE e.killmail_id = $1`, killmailID).Scan(&notified); err != nil {
+		t.Fatalf("query tracker notifications: %v", err)
+	}
+	if len(notified) != 1 || notified[0] != allianceTracker {
+		t.Fatalf("notified trackers = %v; want only %d", notified, allianceTracker)
+	}
 }
 
 // Goose intentionally replaces Drizzle as the migration mechanism. That is

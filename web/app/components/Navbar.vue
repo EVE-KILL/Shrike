@@ -426,6 +426,9 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
                      .auth-login-hint / .auth-avatar-hint via CSS. Once Vue hydrates,
                      ClientOnly swaps in the real interactive dropdown. -->
                 <ClientOnly>
+                <NuxtLink v-if="isAuthenticated" to="/tracker" :class="iconBtn" aria-label="Tracker" v-tooltip="'Tracker'">
+                    <Icon name="lucide:scan-eye" class="text-lg" />
+                </NuxtLink>
                 <NotificationBell v-if="isAuthenticated" />
 
                 <Dropdown v-if="isAuthenticated" v-model="userOpen" align="right">
@@ -478,6 +481,14 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
                                 <NuxtLink v-if="user!.isAdmin" to="/admin" :class="dropdownDangerRow" @click="userOpen = false">
                                     <span :class="dropdownDangerIcon"><Icon name="lucide:shield-alert" class="text-sm" /></span>
                                     Admin
+                                </NuxtLink>
+                                <NuxtLink to="/tracker" :class="dropdownRow" @click="userOpen = false">
+                                    <span :class="dropdownIcon"><Icon name="lucide:scan-eye" class="text-sm" /></span>
+                                    Tracker
+                                </NuxtLink>
+                                <NuxtLink to="/trackers" :class="dropdownRow" @click="userOpen = false">
+                                    <span :class="dropdownIcon"><Icon name="lucide:radar" class="text-sm" /></span>
+                                    Manage Trackers
                                 </NuxtLink>
                                 <NuxtLink to="/settings" :class="dropdownRow" @click="userOpen = false">
                                     <span :class="dropdownIcon"><Icon name="lucide:settings" class="text-sm" /></span>
@@ -679,6 +690,14 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
                                     <NuxtLink v-if="user!.isAdmin" to="/admin" class="flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10" @click="isMobileMenuOpen = false">
                                         <Icon name="lucide:shield-alert" class="text-lg opacity-60" />
                                         Admin
+                                    </NuxtLink>
+                                    <NuxtLink to="/tracker" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]" @click="isMobileMenuOpen = false">
+                                        <Icon name="lucide:scan-eye" class="text-lg opacity-60" />
+                                        Tracker
+                                    </NuxtLink>
+                                    <NuxtLink to="/trackers" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]" @click="isMobileMenuOpen = false">
+                                        <Icon name="lucide:radar" class="text-lg opacity-60" />
+                                        Manage Trackers
                                     </NuxtLink>
                                     <NuxtLink to="/settings" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]" @click="isMobileMenuOpen = false">
                                         <Icon name="lucide:settings" class="text-lg opacity-60" />
