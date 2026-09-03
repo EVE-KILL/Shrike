@@ -21,6 +21,7 @@ const metadataSuffix = ".shrike-meta.json"
 type FileStore struct {
 	root    string
 	maximum int64
+	usage   func() (filesystemUsage, error)
 }
 
 type fileMetadata struct {
@@ -44,7 +45,9 @@ func NewFileStore(root string, maximum int64) (*FileStore, error) {
 	if err := os.MkdirAll(abs, 0o750); err != nil {
 		return nil, fmt.Errorf("create filesystem object storage root: %w", err)
 	}
-	return &FileStore{root: abs, maximum: maximum}, nil
+	store := &FileStore{root: abs, maximum: maximum}
+	store.usage = func() (filesystemUsage, error) { return readFilesystemUsage(abs) }
+	return store, nil
 }
 
 func (s *FileStore) objectPath(key string) (string, error) {

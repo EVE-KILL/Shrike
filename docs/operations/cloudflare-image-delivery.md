@@ -12,6 +12,26 @@ Production image storage is a local filesystem selected with:
 IMAGE_STORAGE_PATH=/data/images
 ```
 
+## Capacity eviction
+
+The filesystem store supports a coarse LRU eviction pass based on filesystem
+access time. The production NFS mount uses `relatime`, which records whether an
+image was used recently without writing on every request. Do not mount the
+image volume with `noatime`.
+
+Run the pass periodically from exactly one process:
+
+```bash
+shrike images prune --high-watermark 90 --low-watermark 80 --min-age 24h
+```
+
+Both byte and inode utilization are checked. Crossing either high watermark
+starts eviction; old character, corporation, and alliance objects and their
+`.shrike-meta.json` sidecars are removed until both are at the low watermark.
+Static types, old-character archives, maps, UI assets, and every other tree are
+never eligible. Recent dynamic images are protected by `--min-age`. Use
+`--dry-run` to inspect the selected amount without deleting files.
+
 On Caparison this directory is backed by the `shrike-images` PVC using the
 `local-nvme` StorageClass. The data is deliberately treated as rebuildable:
 the volume is fast node-local storage, not a replicated backup.

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/images"
+	"github.com/eve-kill/shrike/internal/objectstore"
 	"github.com/eve-kill/shrike/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -36,6 +37,10 @@ var (
 	flagMapSize              int
 	flagMapSizes             []int
 	flagMapConcurrency       int
+	flagImagesPruneHigh      int
+	flagImagesPruneLow       int
+	flagImagesPruneMinAge    time.Duration
+	flagImagesPruneDryRun    bool
 )
 
 var imagesImportStaticCmd = &cobra.Command{
@@ -184,6 +189,47 @@ celestials tables and writes them directly to the configured image storage.`,
 	},
 }
 
+var imagesPruneCmd = &cobra.Command{
+	Use:   "prune",
+	Short: "Evict least-recently-used filesystem images near capacity",
+	Long: `Checks both byte and inode utilization on filesystem image storage.
+When either reaches the high watermark, least-recently-accessed character,
+corporation, and alliance objects older than the minimum age are removed until
+both resources reach the low watermark. Static image trees are never eligible.
+Filesystem atime must be enabled; relatime is supported.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		store, err := openImageStore()
+		if err != nil {
+			return err
+		}
+		fileStore, ok := store.(*objectstore.FileStore)
+		if !ok {
+			return fmt.Errorf("image pruning is available only for IMAGE_STORAGE_PATH filesystem storage")
+		}
+		result, err := fileStore.Prune(cmd.Context(), objectstore.FilePruneOptions{
+			HighWatermarkPercent: flagImagesPruneHigh,
+			LowWatermarkPercent:  flagImagesPruneLow,
+			MinimumAge:           flagImagesPruneMinAge,
+			DryRun:               flagImagesPruneDryRun,
+		})
+		if err != nil {
+			return err
+		}
+		if ui.JSONMode {
+			return ui.JSON(result)
+		}
+		ui.Section("Image storage eviction")
+		ui.KV("Triggered", yesNo(result.Triggered))
+		ui.KV("Dry run", yesNo(result.DryRun))
+		ui.KV("Objects scanned", fmtCount(int64(result.ObjectsScanned)))
+		ui.KV("Objects evicted", fmtCount(int64(result.ObjectsDeleted)))
+		ui.KV("Bytes reclaimed", formatBytes(int64(result.BytesReclaimed)))
+		ui.KV("Inodes reclaimed", fmtCount(int64(result.InodesReclaimed)))
+		ui.Newline()
+		return nil
+	},
+}
+
 func openImageStore() (images.ObjectStore, error) {
 	if err := requireConfig(); err != nil {
 		return nil, err
@@ -321,11 +367,16 @@ func init() {
 	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapSize, "size", "s", 1024, "Base image size in pixels")
 	imagesGenerateMapsCmd.Flags().IntSliceVar(&flagMapSizes, "sizes", []int{512, 256, 128, 64, 32}, "Derived image sizes generated from the base image")
 	imagesGenerateMapsCmd.Flags().IntVarP(&flagMapConcurrency, "concurrency", "c", 1, "Parallel render workers")
+	imagesPruneCmd.Flags().IntVar(&flagImagesPruneHigh, "high-watermark", 90, "Start eviction at this byte or inode utilization percentage")
+	imagesPruneCmd.Flags().IntVar(&flagImagesPruneLow, "low-watermark", 80, "Stop eviction below this byte and inode utilization percentage")
+	imagesPruneCmd.Flags().DurationVar(&flagImagesPruneMinAge, "min-age", 24*time.Hour, "Never evict objects accessed more recently than this")
+	imagesPruneCmd.Flags().BoolVar(&flagImagesPruneDryRun, "dry-run", false, "Report what would be evicted without deleting it")
 	imagesCmd.AddCommand(
 		imagesImportStaticCmd,
 		imagesImportOldCharactersCmd,
 		imagesSyncTypesCmd,
 		imagesGenerateMapsCmd,
+		imagesPruneCmd,
 	)
 }
 

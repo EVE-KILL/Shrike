@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestFileStoreRoundTrip(t *testing.T) {
@@ -38,6 +39,92 @@ func TestFileStoreRoundTrip(t *testing.T) {
 	object, err = store.GetObject(ctx, "static/systems/1.png")
 	if err != nil || object != nil {
 		t.Fatalf("deleted object = %#v, %v", object, err)
+	}
+}
+
+func TestFileStorePruneEvictsOldestObjectAtInodeWatermark(t *testing.T) {
+	root := t.TempDir()
+	store, err := NewFileStore(root, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for _, key := range []string{
+		"entities/characters/1/old/image.webp",
+		"entities/corporations/2/recent/image.webp",
+		"types/static/image.webp",
+		"oldcharacters/3_256.jpg",
+	} {
+		if err := store.PutWithOptions(ctx, key, []byte("image body"), PutOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().Round(time.Second)
+	old := now.Add(-48 * time.Hour)
+	recent := now.Add(-2 * time.Hour)
+	for _, key := range []string{
+		"entities/characters/1/old/image.webp",
+		"types/static/image.webp",
+		"oldcharacters/3_256.jpg",
+	} {
+		for _, suffix := range []string{"", metadataSuffix} {
+			if err := os.Chtimes(filepath.Join(root, key)+suffix, old, old); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, suffix := range []string{"", metadataSuffix} {
+		if err := os.Chtimes(filepath.Join(root, "entities/corporations/2/recent/image.webp")+suffix, recent, recent); err != nil {
+			t.Fatal(err)
+		}
+	}
+	calls := 0
+	store.usage = func() (filesystemUsage, error) {
+		calls++
+		if calls == 1 {
+			return filesystemUsage{BytesTotal: 100, BytesFree: 50, InodesTotal: 10, InodesFree: 1}, nil
+		}
+		return filesystemUsage{BytesTotal: 100, BytesFree: 50, InodesTotal: 10, InodesFree: 3}, nil
+	}
+	result, err := store.Prune(ctx, FilePruneOptions{
+		HighWatermarkPercent: 90, LowWatermarkPercent: 70,
+		MinimumAge: 24 * time.Hour, Now: now,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Triggered || result.ObjectsDeleted != 1 || result.InodesReclaimed != 2 {
+		t.Fatalf("result = %#v", result)
+	}
+	if _, err := os.Stat(filepath.Join(root, "entities/characters/1/old/image.webp")); !os.IsNotExist(err) {
+		t.Fatalf("old object still exists: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "entities/corporations/2/recent/image.webp")); err != nil {
+		t.Fatalf("recent object was removed: %v", err)
+	}
+	for _, key := range []string{"types/static/image.webp", "oldcharacters/3_256.jpg"} {
+		if _, err := os.Stat(filepath.Join(root, key)); err != nil {
+			t.Fatalf("static object %q was removed: %v", key, err)
+		}
+	}
+}
+
+func TestFileStorePruneDoesNothingBelowHighWatermark(t *testing.T) {
+	store, err := NewFileStore(t.TempDir(), 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.usage = func() (filesystemUsage, error) {
+		return filesystemUsage{BytesTotal: 100, BytesFree: 11, InodesTotal: 100, InodesFree: 11}, nil
+	}
+	result, err := store.Prune(context.Background(), FilePruneOptions{
+		HighWatermarkPercent: 90, LowWatermarkPercent: 80,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Triggered {
+		t.Fatalf("unexpected eviction: %#v", result)
 	}
 }
 
