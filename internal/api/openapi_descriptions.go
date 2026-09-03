@@ -131,6 +131,8 @@ var operationDescriptions = map[string]string{
 	"sde-sovereignty":         "Current sovereignty holder for every claimed system. Refreshed from ESI rather than shipped with the SDE.",
 	"sde-sovereignty-system":  "Current sovereignty holder for one system.",
 	"sde-sovereignty-history": "Every recorded sovereignty change for this system, newest first. Every row under history; not paginated.",
+	"map-sovereignty":         "Current player-alliance sovereignty across New Eden, with map geometry, activity, and recent ownership changes. NPC and empire topology is retained as unclaimed context.",
+	"map-aiid":                "A local danger watch around up to eight selected systems. Returns the stitched ten-jump stargate neighborhood and recent killmails within it for live client-side monitoring.",
 }
 
 // applyOperationDescriptions fills in the prose above, leaving any description

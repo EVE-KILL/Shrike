@@ -610,6 +610,32 @@ var operationQueryParameters = map[string][]*huma.Param{
 			"type", "Which slice of New Eden to return.", "new-eden",
 			"new-eden", "zarzakh", "wormhole", "abyssal", "proving",
 		),
+		integerEnumQuery(
+			"hours", "Trailing activity window in hours.", 24,
+			1, 6, 24, 168,
+		),
+	},
+	"map-region": {
+		integerEnumQuery(
+			"hours", "Trailing activity window in hours.", 24,
+			1, 6, 24, 168,
+		),
+	},
+	"map-sovereignty": {
+		integerEnumQuery(
+			"hours", "Trailing activity window in hours.", 24,
+			1, 6, 24, 168,
+		),
+	},
+	"map-aiid": {
+		textQuery(
+			"systems",
+			"One to eight comma-separated anchor solar-system IDs. The response includes every system within ten stargate jumps.",
+		),
+		integerEnumQuery(
+			"hours", "Trailing activity window in hours.", 24,
+			1, 6, 24, 168,
+		),
 	},
 	"bulk-prices": {
 		textQuery(

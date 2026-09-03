@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,12 @@ type mapData struct {
 }
 
 var mapScopeNames = []string{"new-eden", "zarzakh", "wormhole", "abyssal", "proving"}
+var mapActivityWindows = map[int]bool{1: true, 6: true, 24: true, 168: true}
+
+const (
+	mapAIIDJumpRadius = 10
+	mapAIIDMaxAnchors = 8
+)
 
 func registerMapRoutes(a huma.API, opts Options) {
 	registerLegacy(a, huma.Operation{
@@ -55,6 +62,30 @@ func registerMapRoutes(a huma.API, opts Options) {
 		opts, 10*time.Minute,
 		"public, max-age=60, s-maxage=600, stale-while-revalidate=60",
 		mapRegionHandler(opts),
+	))
+
+	registerLegacy(a, huma.Operation{
+		OperationID: "map-sovereignty",
+		Method:      http.MethodGet,
+		Path:        "/map/sovereignty",
+		Summary:     "Alliance sovereignty map",
+		Tags:        []string{"map"},
+	}, routeJSONCache(
+		opts, 10*time.Minute,
+		"public, max-age=60, s-maxage=600, stale-while-revalidate=60",
+		mapSovereigntyHandler(opts),
+	))
+
+	registerLegacy(a, huma.Operation{
+		OperationID: "map-aiid",
+		Method:      http.MethodGet,
+		Path:        "/map/aiid",
+		Summary:     "Am I In Danger watch map",
+		Tags:        []string{"map", "killmails"},
+	}, routeJSONCache(
+		opts, 30*time.Second,
+		"public, max-age=15, s-maxage=30, stale-while-revalidate=30",
+		mapAIIDHandler(opts),
 	))
 }
 
@@ -124,6 +155,10 @@ func regionInMapScope(scope string, id int64) bool {
 
 func mapScopeHandler(opts Options) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		activityHours, err := parseMapActivityHours(req.Query.Get("hours"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
 		scope := strings.TrimSpace(req.Query.Get("type"))
 		if scope == "" {
 			scope = "new-eden"
@@ -153,24 +188,24 @@ func mapScopeHandler(opts Options) legacyHandler {
 			}
 		}
 		if len(regionValues) == 0 {
-			return jsonPayload(emptyMapScope(scope, regions)), nil
+			return jsonPayload(emptyMapScope(scope, regions, activityHours)), nil
 		}
 
-		data, err := loadMapData(ctx, opts.DB, int32Slice(regionValues...))
+		data, err := loadMapData(ctx, opts.DB, int32Slice(regionValues...), activityHours)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		return jsonPayload(map[string]any{
-			"scope": scope, "regions": regions,
+			"scope": scope, "activity_hours": activityHours, "regions": regions,
 			"systems": data.Systems, "jumps": data.Jumps,
 			"externalJumps": data.ExternalJumps, "activity": data.Activity,
 		}), nil
 	}
 }
 
-func emptyMapScope(scope string, regions []map[string]any) map[string]any {
+func emptyMapScope(scope string, regions []map[string]any, activityHours int) map[string]any {
 	return map[string]any{
-		"scope": scope, "regions": regions,
+		"scope": scope, "activity_hours": activityHours, "regions": regions,
 		"systems": []any{}, "jumps": []any{},
 		"externalJumps": []any{}, "activity": []any{},
 	}
@@ -178,6 +213,10 @@ func emptyMapScope(scope string, regions []map[string]any) map[string]any {
 
 func mapRegionHandler(opts Options) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		activityHours, err := parseMapActivityHours(req.Query.Get("hours"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
 		id, err := parseID(req.Param("id"))
 		if err != nil || id > pgInt4Max {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid ID")
@@ -191,7 +230,7 @@ func mapRegionHandler(opts Options) legacyHandler {
 			return legacyPayload{}, apiError(http.StatusNotFound, "Region not found")
 		}
 
-		data, err := loadMapData(ctx, opts.DB, []int32{int32(id)})
+		data, err := loadMapData(ctx, opts.DB, []int32{int32(id)}, activityHours)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -216,7 +255,7 @@ func mapRegionHandler(opts Options) legacyHandler {
 		}
 
 		return jsonPayload(map[string]any{
-			"region": region, "systems": data.Systems,
+			"region": region, "activity_hours": activityHours, "systems": data.Systems,
 			"constellations": constellations, "jumps": data.Jumps,
 			"externalJumps": data.ExternalJumps, "activity": data.Activity,
 			"celestials": celestials,
@@ -224,7 +263,223 @@ func mapRegionHandler(opts Options) legacyHandler {
 	}
 }
 
-func loadMapData(ctx context.Context, db Database, regionIDs []int32) (mapData, error) {
+func mapSovereigntyHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		activityHours, err := parseMapActivityHours(req.Query.Get("hours"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+
+		// Keep the complete K-space topology as faint context. Only player-alliance
+		// claims paint territory below, leaving empire and NPC nullsec as negative space.
+		regions, err := queryMaps(ctx, opts.DB, `
+			SELECT region_id, name
+			FROM regions
+			WHERE region_id >= 10000001
+			  AND region_id < 11000000
+			  AND region_id <> 10001000
+			ORDER BY name`)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		regionValues := make([]any, 0, len(regions))
+		for _, region := range regions {
+			regionValues = append(regionValues, region["region_id"])
+		}
+		regionIDs := int32Slice(regionValues...)
+		data, err := loadMapData(ctx, opts.DB, regionIDs, activityHours)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+
+		claims, err := queryMaps(ctx, opts.DB, `
+			SELECT sov.system_id, sov.alliance_id, sov.date_added,
+			       COALESCE(a.name, 'Unknown Alliance') AS alliance_name,
+			       COALESCE(a.ticker, '?') AS alliance_ticker,
+			       COALESCE(a.member_count, 0)::int AS member_count
+			FROM sovereignty sov
+			JOIN solar_systems s ON s.solar_system_id = sov.system_id
+			LEFT JOIN alliances a ON a.alliance_id = sov.alliance_id
+			WHERE s.region_id = ANY($1::int[])
+			  AND sov.alliance_id IS NOT NULL
+			ORDER BY sov.system_id`, regionIDs)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		changes, err := queryMaps(ctx, opts.DB, `
+			SELECT DISTINCT ON (h.system_id)
+			       h.system_id, h.alliance_id, h.date_added,
+			       a.name AS alliance_name,
+			       a.ticker AS alliance_ticker
+			FROM sovereignty_history h
+			JOIN solar_systems s ON s.solar_system_id = h.system_id
+			LEFT JOIN alliances a ON a.alliance_id = h.alliance_id
+			WHERE s.region_id = ANY($1::int[])
+			  AND h.date_added >= now() - interval '7 days'
+			ORDER BY h.system_id, h.date_added DESC, h.id DESC`, regionIDs)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		snapshot, err := queryMap(ctx, opts.DB, `
+			SELECT COALESCE(MAX(sov.date_added), now()) AS snapshot_at
+			FROM sovereignty sov
+			JOIN solar_systems s ON s.solar_system_id = sov.system_id
+			WHERE s.region_id = ANY($1::int[])`, regionIDs)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+
+		return jsonPayload(map[string]any{
+			"scope": "sovereignty", "activity_hours": activityHours,
+			"snapshot_at": snapshot["snapshot_at"], "regions": regions,
+			"systems": data.Systems, "jumps": data.Jumps,
+			"externalJumps": data.ExternalJumps, "activity": data.Activity,
+			"sovereignty": claims, "changes": changes,
+		}), nil
+	}
+}
+
+func mapAIIDHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		activityHours, err := parseMapActivityHours(req.Query.Get("hours"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		anchorIDs, err := parseMapSystemIDs(req.Query.Get("systems"))
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		if len(anchorIDs) == 0 {
+			return jsonPayload(emptyMapAIID(activityHours)), nil
+		}
+
+		systems, err := queryMaps(ctx, opts.DB, `
+			WITH RECURSIVE neighborhood(system_id, distance) AS (
+				SELECT anchor_id, 0
+				FROM unnest($1::int[]) AS anchor_id
+				UNION
+				SELECT CASE
+					WHEN jump.from_solar_system_id = neighborhood.system_id
+					THEN jump.to_solar_system_id
+					ELSE jump.from_solar_system_id
+				END,
+				neighborhood.distance + 1
+				FROM neighborhood
+				JOIN solar_system_jumps jump
+				  ON jump.from_solar_system_id = neighborhood.system_id
+				  OR jump.to_solar_system_id = neighborhood.system_id
+				WHERE neighborhood.distance < $2
+			), distances AS (
+				SELECT system_id, MIN(distance)::int AS distance
+				FROM neighborhood
+				GROUP BY system_id
+			)
+			SELECT system.solar_system_id, system.system_name,
+			       system.x, system.y, system.z, system.x2d, system.z2d,
+			       system.security, system.region_id, system.constellation_id,
+			       distances.distance,
+			       system.solar_system_id = ANY($1::int[]) AS is_anchor
+			FROM distances
+			JOIN solar_systems system
+			  ON system.solar_system_id = distances.system_id
+			ORDER BY distances.distance, system.solar_system_id`,
+			anchorIDs, mapAIIDJumpRadius)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		if len(systems) == 0 {
+			return legacyPayload{}, apiError(http.StatusNotFound, "Systems not found")
+		}
+
+		values := make([]any, 0, len(systems))
+		for _, system := range systems {
+			values = append(values, system["solar_system_id"])
+		}
+		systemIDs := int32Slice(values...)
+		data, err := loadMapDataForSystems(ctx, opts.DB, systems, systemIDs, activityHours)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		regions, err := queryMaps(ctx, opts.DB, `
+			SELECT region.region_id, region.name, COUNT(*)::int AS system_count
+			FROM solar_systems system
+			JOIN regions region ON region.region_id = system.region_id
+			WHERE system.solar_system_id = ANY($1::int[])
+			GROUP BY region.region_id, region.name
+			ORDER BY region.name`, systemIDs)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+
+		killRows, err := queryMaps(ctx, opts.DB, campaignKilllistSelect+`
+			WHERE k.solar_system_id = ANY($1::int[])
+			  AND k.killmail_time >= now() - interval '24 hours'
+			ORDER BY k.killmail_time DESC, k.killmail_id DESC
+			LIMIT 101`, systemIDs)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		kills, _, _, err := finishUniverseKilllist(ctx, opts.DB, killRows, 100)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+
+		anchors := make([]map[string]any, 0, len(anchorIDs))
+		for _, system := range systems {
+			if isAnchor, _ := system["is_anchor"].(bool); isAnchor {
+				anchors = append(anchors, map[string]any{
+					"solar_system_id": system["solar_system_id"],
+					"system_name":     system["system_name"],
+					"region_id":       system["region_id"],
+				})
+			}
+		}
+
+		return jsonPayload(map[string]any{
+			"scope": "aiid", "activity_hours": activityHours,
+			"jump_radius": mapAIIDJumpRadius, "anchors": anchors,
+			"regions": regions, "systems": data.Systems, "jumps": data.Jumps,
+			"externalJumps": data.ExternalJumps, "activity": data.Activity,
+			"kills": kills,
+		}), nil
+	}
+}
+
+func emptyMapAIID(activityHours int) map[string]any {
+	return map[string]any{
+		"scope": "aiid", "activity_hours": activityHours,
+		"jump_radius": mapAIIDJumpRadius, "anchors": []any{},
+		"regions": []any{}, "systems": []any{}, "jumps": []any{},
+		"externalJumps": []any{}, "activity": []any{}, "kills": []any{},
+	}
+}
+
+func parseMapSystemIDs(raw string) ([]int32, error) {
+	seen := map[int32]bool{}
+	ids := make([]int32, 0, mapAIIDMaxAnchors)
+	for part := range strings.SplitSeq(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		value, err := strconv.ParseInt(part, 10, 32)
+		if err != nil || value <= 0 {
+			return nil, apiError(http.StatusBadRequest, "systems must be comma-separated positive IDs")
+		}
+		id := int32(value)
+		if seen[id] {
+			continue
+		}
+		if len(ids) >= mapAIIDMaxAnchors {
+			return nil, apiError(http.StatusBadRequest, fmt.Sprintf("systems accepts at most %d IDs", mapAIIDMaxAnchors))
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+func loadMapData(ctx context.Context, db Database, regionIDs []int32, activityHours int) (mapData, error) {
 	empty := mapData{
 		Systems: []map[string]any{}, Jumps: []map[string]any{},
 		ExternalJumps: []map[string]any{}, Activity: []map[string]any{},
@@ -250,6 +505,17 @@ func loadMapData(ctx context.Context, db Database, regionIDs []int32) (mapData, 
 		values = append(values, system["solar_system_id"])
 	}
 	systemIDs := int32Slice(values...)
+	return loadMapDataForSystems(ctx, db, systems, systemIDs, activityHours)
+}
+
+func loadMapDataForSystems(ctx context.Context, db Database, systems []map[string]any, systemIDs []int32, activityHours int) (mapData, error) {
+	empty := mapData{
+		Systems: []map[string]any{}, Jumps: []map[string]any{},
+		ExternalJumps: []map[string]any{}, Activity: []map[string]any{},
+	}
+	if len(systemIDs) == 0 {
+		return empty, nil
+	}
 
 	var jumps, external, activity []map[string]any
 	group, groupCtx := errgroup.WithContext(ctx)
@@ -298,9 +564,9 @@ func loadMapData(ctx context.Context, db Database, regionIDs []int32) (mapData, 
 			       COALESCE(SUM(ship_jumps), 0)::int AS ship_jumps
 			FROM system_activity
 			WHERE system_id = ANY($1::int[])
-			  AND timestamp >= now() - interval '24 hours'
+			  AND timestamp >= now() - ($2 * interval '1 hour')
 			GROUP BY system_id
-			ORDER BY system_id`, systemIDs)
+			ORDER BY system_id`, systemIDs, activityHours)
 		return queryErr
 	})
 	if err := group.Wait(); err != nil {
@@ -310,6 +576,18 @@ func loadMapData(ctx context.Context, db Database, regionIDs []int32) (mapData, 
 		Systems: systems, Jumps: nonNilRows(jumps),
 		ExternalJumps: nonNilRows(external), Activity: nonNilRows(activity),
 	}, nil
+}
+
+func parseMapActivityHours(raw string) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 24, nil
+	}
+	hours, err := strconv.Atoi(raw)
+	if err != nil || !mapActivityWindows[hours] {
+		return 0, apiError(http.StatusBadRequest, "hours must be one of 1, 6, 24, or 168")
+	}
+	return hours, nil
 }
 
 func nonNilRows(rows []map[string]any) []map[string]any {

@@ -1,124 +1,120 @@
 <script setup lang="ts">
+import type { MapActivityHours, MapActivityLayer, MapRenderBaseLayer } from '~/utils/map/layers'
+import { isMapActivityHours, isMapActivityLayer, isMapRenderBaseLayer, isMapLayer, MAP_ACTIVITY_WINDOWS } from '~/utils/map/layers'
+import { primeAIIDAudio } from '~/utils/map/aiidAudio'
+
 useHead({ title: 'Map' })
 useSeoMeta({
-    description: 'Interactive map of New Eden and the rest of EVE Online — every region, system, and connection.',
-    ogTitle: 'Map',
+    description: 'Interactive map of New Eden and the rest of EVE Online — explore geography, security, activity, danger, and traffic.',
+    ogTitle: 'New Eden Map',
 })
 
-interface Tab { id: string; label: string; description: string }
-
-// Tabs that render a MapScopeView (need scope id matching /api/map/scope?type=...)
-const SCOPE_TABS: Tab[] = [
-    { id: 'new-eden', label: 'New Eden', description: 'K-Space + Pochven + Exordium' },
-    { id: 'zarzakh', label: 'Zarzakh', description: 'Deathless space' },
-    { id: 'wormhole', label: 'Wormhole', description: 'J-Space' },
-    { id: 'abyssal', label: 'Abyssal', description: 'Abyssal deadspace' },
-    { id: 'proving', label: 'Proving', description: 'Arena regions' },
+const scopes = [
+    { id: 'new-eden', label: 'New Eden' },
+    { id: 'zarzakh', label: 'Zarzakh' },
+    { id: 'wormhole', label: 'Wormhole' },
+    { id: 'abyssal', label: 'Abyssal' },
+    { id: 'proving', label: 'Proving' },
 ]
-
-// Region-list tab uses the existing /api/map/regions payload.
 const route = useRoute()
 const router = useRouter()
-const initialTab = (typeof route.query.tab === 'string' ? route.query.tab : null) ?? 'new-eden'
-const validTabs = new Set([...SCOPE_TABS.map(t => t.id), 'regions'])
-const activeTab = ref<string>(validTabs.has(initialTab) ? initialTab : 'new-eden')
+const scopeIds = new Set(scopes.map(scope => scope.id))
+const requestedScope = typeof route.query.scope === 'string' ? route.query.scope : 'new-eden'
+const activeScope = ref(scopeIds.has(requestedScope) ? requestedScope : 'new-eden')
+const watchedSystemIds = ref(
+    (typeof route.query.watch === 'string' ? route.query.watch.split(',') : [])
+        .map(Number)
+        .filter((id, index, ids) => Number.isInteger(id) && id > 0 && ids.indexOf(id) === index)
+        .slice(0, 8),
+)
+const legacyLayer = isMapLayer(route.query.layer) ? route.query.layer : undefined
+const requestedBase = isMapRenderBaseLayer(route.query.base) ? route.query.base : legacyLayer === 'security' ? 'security' : 'geography'
+const specialBases = new Set<MapRenderBaseLayer>(['sovereignty', 'live', 'aiid'])
+const baseLayer = ref<MapRenderBaseLayer>(activeScope.value === 'new-eden' ? requestedBase : specialBases.has(requestedBase) ? 'geography' : requestedBase)
+const legacyActivityLayer: MapActivityLayer = isMapActivityLayer(legacyLayer) ? legacyLayer : 'none'
+const activityLayer = ref<MapActivityLayer>(isMapActivityLayer(route.query.activity) ? route.query.activity : legacyActivityLayer)
+const requestedHours = Number(route.query.hours)
+const activityHours = ref<MapActivityHours>(isMapActivityHours(requestedHours) ? requestedHours : 24)
+const showConnections = ref(route.query.routes !== '0')
+const showSystems = ref(route.query.systems !== '0')
+const showLabels = ref(route.query.labels !== '0')
+const showChanges = ref(route.query.changes === '1')
+const nearAlarmEnabled = ref(false)
+const outerAlarmEnabled = ref(false)
 
-watch(activeTab, (v) => {
-    router.replace({ query: { ...route.query, tab: v } })
-})
-
-const isScopeTab = computed(() => SCOPE_TABS.some(t => t.id === activeTab.value))
-
-// Region-list data only loaded when the user actually visits that tab.
-const regionsData = ref<any | null>(null)
-const regionsPending = ref(false)
-async function ensureRegionsLoaded() {
-    if (regionsData.value || regionsPending.value) return
-    regionsPending.value = true
-    try {
-        regionsData.value = await apiFetch('/api/map/regions')
-    } finally {
-        regionsPending.value = false
-    }
+function toggleAIIDAlarm(band: 'near' | 'outer') {
+    const alarm = band === 'near' ? nearAlarmEnabled : outerAlarmEnabled
+    alarm.value = !alarm.value
+    if (alarm.value) void primeAIIDAudio()
 }
 
-watchEffect(() => {
-    if (activeTab.value === 'regions') ensureRegionsLoaded()
+watch(activeScope, (scope) => {
+    if (scope !== 'new-eden' && specialBases.has(baseLayer.value)) baseLayer.value = 'geography'
 })
 
-const sections = computed(() => {
-    const d = regionsData.value
-    if (!d) return []
-    return [
-        { id: 'kspace', label: 'New Eden', description: 'K-Space regions', regions: d.kspace },
-        { id: 'pochven', label: 'Pochven', description: 'Triglavian space', regions: d.pochven },
-        { id: 'zarzakh', label: 'Zarzakh', description: 'Deathless space', regions: d.zarzakh },
-        { id: 'wormhole', label: 'Wormhole Space', description: 'J-Space regions', regions: d.wormhole },
-        { id: 'abyssal', label: 'Abyssal Deadspace', description: 'Abyssal regions', regions: d.abyssal },
-        { id: 'proving', label: 'Proving Grounds', description: 'Arena regions', regions: d.proving },
-    ].filter(s => s.regions?.length > 0)
-})
+watch(
+    [activeScope, baseLayer, activityLayer, activityHours, showConnections, showSystems, showLabels, showChanges, watchedSystemIds],
+    ([scope, base, activity, hours, connections, systems, labels, changes, watched]) => router.replace({ query: {
+        scope, base, activity, hours,
+        routes: connections ? undefined : '0',
+        systems: systems ? undefined : '0',
+        labels: labels ? undefined : '0',
+        changes: base === 'sovereignty' && changes ? '1' : undefined,
+        watch: base === 'aiid' && watched.length ? watched.join(',') : undefined,
+    } }),
+    { deep: true },
+)
 </script>
 
 <template>
     <div>
-        <div class="glass-panel overflow-hidden mb-4">
-            <div class="px-4 pt-3 pb-0 flex items-baseline justify-between flex-wrap gap-2">
-                <h1 class="text-xl font-bold text-white">Map</h1>
-                <span class="text-xs text-gray-500">click a system to drill into its region</span>
-            </div>
-            <div class="px-2 pt-2 flex gap-1 overflow-x-auto">
-                <button
-                    v-for="t in SCOPE_TABS"
-                    :key="t.id"
-                    type="button"
-                    class="px-3 py-1.5 text-sm rounded-t whitespace-nowrap transition-colors"
-                    :class="activeTab === t.id
-                        ? 'bg-[#0a0a0f] text-white border border-white/[0.08] border-b-transparent'
-                        : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'"
-                    @click="activeTab = t.id"
-                >
-                    {{ t.label }}
-                </button>
-                <button
-                    type="button"
-                    class="px-3 py-1.5 text-sm rounded-t whitespace-nowrap transition-colors"
-                    :class="activeTab === 'regions'
-                        ? 'bg-[#0a0a0f] text-white border border-white/[0.08] border-b-transparent'
-                        : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'"
-                    @click="activeTab = 'regions'"
-                >
-                    Regions
-                </button>
+        <div class="glass-panel mb-4 overflow-hidden">
+            <MapPixiLayerControls
+                v-model:base-layer="baseLayer"
+                v-model:activity-layer="activityLayer"
+                v-model:hours="activityHours"
+                v-model:show-connections="showConnections"
+                v-model:show-systems="showSystems"
+                v-model:show-labels="showLabels"
+                :allow-sovereignty="activeScope === 'new-eden'"
+                compact
+            />
+            <div class="flex items-end gap-1 overflow-x-auto px-2 pt-2">
+                <button v-for="scope in scopes" :key="scope.id" type="button" class="whitespace-nowrap rounded-t px-3 py-1.5 text-sm transition-colors" :class="activeScope === scope.id ? 'border border-b-transparent border-white/[0.08] bg-[#0a0a0f] text-white' : 'text-gray-400 hover:bg-white/[0.04] hover:text-white'" @click="activeScope = scope.id">{{ scope.label }}</button>
+                <div class="mb-1 ml-auto flex shrink-0 items-center gap-1">
+                    <span class="mr-1 text-[9px] font-bold uppercase tracking-[0.16em] text-gray-600">Window</span>
+                    <button v-for="window in MAP_ACTIVITY_WINDOWS" :key="window.value" type="button" class="rounded px-2 py-1 text-[10px] transition-colors" :class="activityHours === window.value ? 'bg-white/[0.09] text-white' : 'text-gray-600 hover:bg-white/[0.04] hover:text-gray-300'" :disabled="activityLayer === 'none'" @click="activityHours = window.value">{{ window.label }}</button>
+                    <span class="ml-3 mr-1 text-[9px] font-bold uppercase tracking-[0.16em] text-gray-600">Show</span>
+                    <button type="button" class="rounded px-2 py-1 text-[10px] transition-colors" :class="showConnections ? 'bg-white/[0.08] text-gray-200' : 'text-gray-600'" @click="showConnections = !showConnections">Routes</button>
+                    <button type="button" class="rounded px-2 py-1 text-[10px] transition-colors" :class="showSystems ? 'bg-white/[0.08] text-gray-200' : 'text-gray-600'" @click="showSystems = !showSystems">Systems</button>
+                    <button type="button" class="rounded px-2 py-1 text-[10px] transition-colors" :class="showLabels ? 'bg-white/[0.08] text-gray-200' : 'text-gray-600'" @click="showLabels = !showLabels">Labels</button>
+                    <template v-if="baseLayer === 'aiid'">
+                        <span class="ml-2 mr-1 text-[9px] font-bold uppercase tracking-[0.16em] text-gray-600">Alarms</span>
+                        <button type="button" class="flex items-center gap-1 rounded border px-2 py-1 text-[10px] transition-colors" :class="nearAlarmEnabled ? 'border-rose-400/30 bg-rose-400/10 text-rose-200' : 'border-white/[0.08] text-gray-600 hover:text-gray-300'" title="Sound an urgent alarm for kills fewer than five jumps away" @click="toggleAIIDAlarm('near')"><Icon :name="nearAlarmEnabled ? 'lucide:volume-2' : 'lucide:volume-x'" class="text-[11px]" />Near &lt;5</button>
+                        <button type="button" class="flex items-center gap-1 rounded border px-2 py-1 text-[10px] transition-colors" :class="outerAlarmEnabled ? 'border-amber-400/30 bg-amber-400/10 text-amber-200' : 'border-white/[0.08] text-gray-600 hover:text-gray-300'" title="Sound a scanner alert for kills five to ten jumps away" @click="toggleAIIDAlarm('outer')"><Icon :name="outerAlarmEnabled ? 'lucide:volume-2' : 'lucide:volume-x'" class="text-[11px]" />Outer 5–10</button>
+                    </template>
+                    <button v-if="baseLayer === 'sovereignty'" type="button" class="ml-2 shrink-0 rounded border px-2.5 py-1 text-[10px] transition-colors" :class="showChanges ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-200' : 'border-white/[0.08] text-gray-500 hover:bg-white/[0.04] hover:text-gray-300'" @click="showChanges = !showChanges">Recent changes</button>
+                </div>
             </div>
         </div>
-
-        <!-- Scope map view: re-mounts on tab change so the fetch runs cleanly. -->
-        <MapScopeView v-if="isScopeTab" :key="activeTab" :type="activeTab" />
-
-        <!-- Region grid view -->
-        <template v-else-if="activeTab === 'regions'">
-            <div v-if="regionsPending && !regionsData" class="h-64 rounded-lg bg-white/[0.04] animate-pulse" />
-            <template v-else>
-                <div v-for="section in sections" :key="section.id" class="mb-8">
-                    <div class="mb-3 flex items-baseline gap-3">
-                        <h2 class="text-lg font-semibold text-white">{{ section.label }}</h2>
-                        <span class="text-xs text-gray-500">{{ section.description }} · {{ section.regions.length }} regions</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
-                        <NuxtLink
-                            v-for="r in section.regions"
-                            :key="r.region_id"
-                            :to="`/map/region/${r.region_id}`"
-                            class="rounded-lg bg-white/[0.04] border border-white/[0.08] p-3 hover:bg-blue-500/[0.08] hover:border-white/[0.15] transition-all group"
-                        >
-                            <div class="text-sm font-medium text-white group-hover:text-blue-400 transition-colors truncate" :class="pochvenClass(r.region_id)">{{ r.name }}</div>
-                            <div class="text-fine text-gray-500 mt-0.5">{{ r.system_count }} systems</div>
-                        </NuxtLink>
-                    </div>
-                </div>
-            </template>
-        </template>
+        <ClientOnly>
+            <MapPixiScopeView
+                :key="`${activeScope}-${specialBases.has(baseLayer) ? baseLayer : 'map'}`"
+                :type="activeScope"
+                :base-layer="baseLayer"
+                :activity-layer="activityLayer"
+                :hours="activityHours"
+                :show-connections="showConnections"
+                :show-systems="showSystems"
+                :show-labels="showLabels"
+                :mode="baseLayer === 'sovereignty' ? 'sovereignty' : baseLayer === 'live' ? 'live' : baseLayer === 'aiid' ? 'aiid' : 'map'"
+                :show-changes="showChanges"
+                :watched-system-ids="watchedSystemIds"
+                :near-alarm-enabled="nearAlarmEnabled"
+                :outer-alarm-enabled="outerAlarmEnabled"
+                @update:watched-system-ids="watchedSystemIds = $event"
+            />
+            <template #fallback><div class="flex h-[78vh] items-center justify-center rounded-lg border border-white/[0.08] bg-[#08090d] text-sm text-gray-500 animate-pulse">Loading map...</div></template>
+        </ClientOnly>
     </div>
 </template>

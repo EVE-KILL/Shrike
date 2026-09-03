@@ -144,6 +144,8 @@ export function useKillStream(topics: string[] | null) {
     }
 
     let sharedSocket: PoolEntry | null = null
+    const connected = ref(false)
+    let stopConnectedWatch: (() => void) | null = null
 
     onMounted(() => {
         if (!topics || topics.length === 0) return
@@ -152,16 +154,19 @@ export function useKillStream(topics: string[] | null) {
 
         sharedSocket = getOrCreateSocket(topics, wsUrl)
         sharedSocket.listeners.add(onKill)
+        stopConnectedWatch = watch(sharedSocket.socket.connected, (value) => {
+            connected.value = value
+        }, { immediate: true })
     })
 
     onUnmounted(() => {
+        stopConnectedWatch?.()
+        stopConnectedWatch = null
         if (topics && sharedSocket) {
             releaseSocket(topics, onKill)
             sharedSocket = null
         }
     })
-
-    const connected = computed(() => sharedSocket?.socket.connected.value ?? false)
 
     const pause = () => { paused.value = true }
 
@@ -175,6 +180,9 @@ export function useKillStream(topics: string[] | null) {
     }
 
     const disconnect = () => {
+        stopConnectedWatch?.()
+        stopConnectedWatch = null
+        connected.value = false
         if (topics && sharedSocket) {
             releaseSocket(topics, onKill)
             sharedSocket = null
@@ -183,7 +191,7 @@ export function useKillStream(topics: string[] | null) {
 
     return {
         kills: readonly(kills),
-        connected,
+        connected: readonly(connected),
         paused,
         newCount: readonly(newCount),
         pause,

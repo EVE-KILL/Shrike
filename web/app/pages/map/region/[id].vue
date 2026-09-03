@@ -1,12 +1,38 @@
 <script setup lang="ts">
 import { Delaunay } from 'd3-delaunay'
+import type { MapActivity, MapActivityHours, MapActivityLayer, MapRenderBaseLayer } from '~/utils/map/layers'
+import { heatColor, isMapActivityHours, isMapActivityLayer, isMapBaseLayer, isMapLayer, mapActivityLayerLabel, mapActivityRatio, mapActivityValue } from '~/utils/map/layers'
 import { secColorStr, secLabel } from '~/utils/map/colors'
 
 const route = useRoute()
+const router = useRouter()
 const id = Number(route.params.id)
 if (!Number.isInteger(id) || id < 1 || id > 2147483647) throw createError({ statusCode: 404, statusMessage: 'Region not found' })
 
-const { data, pending, error } = await useApiFetch<any>(`/api/map/region/${id}`)
+const legacyLayer = isMapLayer(route.query.layer) ? route.query.layer : undefined
+const baseLayer = ref<MapRenderBaseLayer>(isMapBaseLayer(route.query.base) ? route.query.base : legacyLayer === 'security' ? 'security' : 'geography')
+const legacyActivityLayer: MapActivityLayer = isMapActivityLayer(legacyLayer) ? legacyLayer : 'none'
+const activityLayer = ref<MapActivityLayer>(isMapActivityLayer(route.query.activity) ? route.query.activity : legacyActivityLayer)
+const requestedHours = Number(route.query.hours)
+const activityHours = ref<MapActivityHours>(isMapActivityHours(requestedHours) ? requestedHours : 24)
+const showConnections = ref(route.query.routes !== '0')
+const showSystems = ref(route.query.systems !== '0')
+const showLabels = ref(route.query.labels !== '0')
+const sharedMapQuery = computed(() => ({
+    base: baseLayer.value,
+    activity: activityLayer.value,
+    hours: activityHours.value,
+    routes: showConnections.value ? undefined : '0',
+    systems: showSystems.value ? undefined : '0',
+    labels: showLabels.value ? undefined : '0',
+}))
+
+function navigateToExternalMap(regionId: number | null, systemId: number) {
+    if (regionId) return navigateTo({ path: `/map/region/${regionId}`, query: sharedMapQuery.value })
+    return navigateTo(`/system/${systemId}`)
+}
+
+const { data, pending, error } = await useApiFetch<any>(() => `/api/map/region/${id}?hours=${activityHours.value}`, { watch: [activityHours] })
 
 if (error.value) {
     throw createError({
@@ -16,6 +42,15 @@ if (error.value) {
 }
 
 const region = computed(() => data.value?.region)
+watch(
+    [baseLayer, activityLayer, activityHours, showConnections, showSystems, showLabels],
+    ([base, activity, hours, connections, systems, labels]) => router.replace({ query: {
+        base, activity, hours,
+        routes: connections ? undefined : '0',
+        systems: systems ? undefined : '0',
+        labels: labels ? undefined : '0',
+    } }),
+)
 
 useHead({ title: computed(() => region.value?.name ? `${region.value.name} Map` : 'Region Map') })
 useSeoMeta({
@@ -28,7 +63,10 @@ const CONST_COLORS = [
     '#64748b', '#84cc16', '#f43f5e', '#0ea5e9', '#d946ef',
 ]
 
-const R = 19
+// Dense regions can place neighbouring systems very close together. Keeping
+// the canonical CCP layout while slightly reducing each system footprint gives
+// routes and labels breathing room without changing the universe overview.
+const R = 16
 // Inner sun + planet sizes for the mini-system render
 const SUN_R = 2
 const PLANET_R = 1
@@ -50,6 +88,39 @@ interface LaidLink {
 interface VoronoiCell {
     path: string
     constellation_id: number
+    security: number
+}
+
+function relaxSystemSpacing(nodes: LaidNode[]): void {
+    const anchors = nodes.map(node => ({ x: node.x, y: node.y }))
+    const minimumDistance = R * 4.25
+    for (let iteration = 0; iteration < 64; iteration++) {
+        for (let leftIndex = 0; leftIndex < nodes.length; leftIndex++) {
+            const left = nodes[leftIndex]!
+            for (let rightIndex = leftIndex + 1; rightIndex < nodes.length; rightIndex++) {
+                const right = nodes[rightIndex]!
+                let dx = right.x - left.x
+                let dy = right.y - left.y
+                let distance = Math.hypot(dx, dy)
+                if (distance >= minimumDistance) continue
+                if (distance < 0.001) {
+                    const angle = ((left.id + right.id) % 360) * Math.PI / 180
+                    dx = Math.cos(angle); dy = Math.sin(angle); distance = 1
+                }
+                const push = (minimumDistance - distance) * 0.24
+                const pushX = dx / distance * push
+                const pushY = dy / distance * push
+                left.x -= pushX; left.y -= pushY
+                right.x += pushX; right.y += pushY
+            }
+        }
+        // Keep the recognizable CCP layout while allowing congested local
+        // clusters to open up just enough for system names and routes.
+        for (let index = 0; index < nodes.length; index++) {
+            nodes[index]!.x += (anchors[index]!.x - nodes[index]!.x) * 0.015
+            nodes[index]!.y += (anchors[index]!.y - nodes[index]!.y) * 0.015
+        }
+    }
 }
 
 const constIds = computed<number[]>(() => (data.value?.constellations ?? []).map((c: any) => c.constellation_id))
@@ -103,6 +174,7 @@ const layout = computed<{ nodes: LaidNode[]; links: LaidLink[]; cells: VoronoiCe
         system_name: s.system_name,
         security: s.security,
     }))
+    relaxSystemSpacing(nodes)
 
     const ids = new Set<number>(nodes.map(n => n.id))
     const links: LaidLink[] = (jumps ?? [])
@@ -133,7 +205,7 @@ const layout = computed<{ nodes: LaidNode[]; links: LaidLink[]; cells: VoronoiCe
     for (let i = 0; i < nodes.length; i++) {
         const path = voronoi.renderCell(i)
         if (!path) continue
-        cells.push({ path, constellation_id: nodes[i]!.constellation_id })
+        cells.push({ path, constellation_id: nodes[i]!.constellation_id, security: nodes[i]!.security })
     }
 
     return {
@@ -283,53 +355,9 @@ function linkColor(link: LaidLink): string {
     return src ? constColor(src.constellation_id) : '#64748b'
 }
 
-// ─── System halo color blend ─────────────────────────────
-// Halo behind each system blends three signals: constellation color (spatial
-// grouping, dominant), security tint (so a null pocket reads hotter than a hi-sec
-// pocket in the same const), and 24h kill activity (drives opacity — busy systems
-// glow brighter against the muted Voronoi backdrop).
-function hexToRgb(hex: string): [number, number, number] {
-    const h = hex.replace('#', '')
-    const v = h.length === 3 ? h.split('').map(c => c + c).join('') : h
-    return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)]
-}
-function mixRgb(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
-    return [
-        Math.round(a[0] + (b[0] - a[0]) * t),
-        Math.round(a[1] + (b[1] - a[1]) * t),
-        Math.round(a[2] + (b[2] - a[2]) * t),
-    ]
-}
-function systemHaloFill(n: LaidNode): string {
-    const cRgb = hexToRgb(constColor(n.constellation_id))
-    const sRgb = hexToRgb(secColorStr(n.security))
-    const act = activityById.value.get(n.id)
-    const kills = (act?.ship_kills ?? 0) + (act?.pod_kills ?? 0)
-    // 0 kills → 0; ≥20 kills/24h → 1
-    const intensity = Math.min(1, kills / 20)
-
-    // Hue starts as the constellation (cell) color and skews toward the sec tint
-    // proportional to activity — so a busy null system runs hotter (redder) than
-    // its calm neighbors in the same constellation.
-    const skew = intensity * 0.35
-    const mixed = mixRgb(cRgb, sRgb, skew)
-
-    // Brightness: dim when calm (matches the muted cell), bright when active.
-    const brightness = 0.65 + intensity * 0.75
-    const r = Math.min(255, Math.round(mixed[0] * brightness))
-    const g = Math.min(255, Math.round(mixed[1] * brightness))
-    const b = Math.min(255, Math.round(mixed[2] * brightness))
-
-    // Alpha rises a bit too so hot systems pop against the soft cells.
-    const alpha = 0.5 + 0.4 * intensity
-    return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`
-}
-
 // ─── Lookups for hover card ──────────────────────────────
-interface SystemActivity { ship_kills: number; pod_kills: number; npc_kills: number; ship_jumps: number }
-
-const activityById = computed<Map<number, SystemActivity>>(() => {
-    const m = new Map<number, SystemActivity>()
+const activityById = computed<Map<number, MapActivity>>(() => {
+    const m = new Map<number, MapActivity>()
     for (const row of (data.value?.activity ?? []) as any[]) {
         m.set(row.system_id, {
             ship_kills: row.ship_kills ?? 0,
@@ -340,6 +368,36 @@ const activityById = computed<Map<number, SystemActivity>>(() => {
     }
     return m
 })
+
+const activityMaximums = computed<MapActivity>(() => ({
+    ship_kills: Math.max(0, ...[...activityById.value.values()].map(activity => activity.ship_kills)),
+    pod_kills: Math.max(0, ...[...activityById.value.values()].map(activity => activity.pod_kills)),
+    npc_kills: Math.max(0, ...[...activityById.value.values()].map(activity => activity.npc_kills)),
+    ship_jumps: Math.max(0, ...[...activityById.value.values()].map(activity => activity.ship_jumps)),
+}))
+
+function systemActivityValue(node: LaidNode): number {
+    return mapActivityValue(activityLayer.value, activityById.value.get(node.id), activityMaximums.value)
+}
+
+const maximumActivity = computed(() => Math.max(0, ...layout.value.nodes.map(systemActivityValue)))
+const activityWindowLabel = computed(() => activityHours.value === 168 ? '7 days' : `${activityHours.value} hour${activityHours.value === 1 ? '' : 's'}`)
+const activeLayerLabel = computed(() => mapActivityLayerLabel(activityLayer.value))
+const maximumActivityLabel = computed(() => {
+    if (activityLayer.value === 'danger') return `${maximumActivity.value.toFixed(1)} / 100 jumps`
+    if (activityLayer.value === 'activity') return `${Math.round(maximumActivity.value)} score`
+    return formatNumber(Math.round(maximumActivity.value))
+})
+
+function systemHaloFill(node: LaidNode): string {
+    if (activityLayer.value === 'none') return baseLayer.value === 'geography' ? constColor(node.constellation_id) : secColorStr(node.security)
+    return heatColor(mapActivityRatio(activityLayer.value, systemActivityValue(node), maximumActivity.value))
+}
+
+function systemHaloRadius(node: LaidNode): number {
+    if (activityLayer.value === 'none') return R + 2.5
+    return R + 2.5 + mapActivityRatio(activityLayer.value, systemActivityValue(node), maximumActivity.value) * 10
+}
 
 const gateCountById = computed<Map<number, number>>(() => {
     const m = new Map<number, number>()
@@ -354,6 +412,30 @@ const constNameById = computed<Map<number, string>>(() => {
     const m = new Map<number, string>()
     for (const c of (data.value?.constellations ?? []) as any[]) m.set(c.constellation_id, c.constellation_name)
     return m
+})
+
+const constellationLabels = computed(() => {
+    const groups = new Map<number, { x: number; y: number; count: number }>()
+    for (const node of layout.value.nodes) {
+        const group = groups.get(node.constellation_id) ?? { x: 0, y: 0, count: 0 }
+        group.x += node.x; group.y += node.y; group.count++
+        groups.set(node.constellation_id, group)
+    }
+    return [...groups].map(([constellationId, group]) => ({
+        id: constellationId,
+        name: constNameById.value.get(constellationId) ?? '',
+        x: group.x / group.count,
+        y: group.y / group.count,
+    }))
+})
+
+const systemQuery = ref('')
+const searchFocused = ref(false)
+function closeSearchSoon() { window.setTimeout(() => { searchFocused.value = false }, 150) }
+const systemResults = computed(() => {
+    const query = systemQuery.value.trim().toLowerCase()
+    if (!query) return []
+    return layout.value.nodes.filter(node => node.system_name.toLowerCase().includes(query)).slice(0, 8)
 })
 
 const systemRawById = computed<Map<number, any>>(() => {
@@ -568,15 +650,19 @@ const hoverCardStyle = computed(() => {
     <div>
         <!-- Header -->
         <div class="glass-panel overflow-hidden mb-4">
-            <div class="p-4 flex items-center justify-between">
+            <div class="p-4 flex items-center justify-between gap-4 flex-wrap">
                 <div class="flex items-center gap-2 text-sm">
-                    <NuxtLink to="/map" class="text-gray-400 hover:text-blue-400 transition-colors">
+                    <NuxtLink :to="{ path: '/map', query: sharedMapQuery }" class="text-gray-400 hover:text-blue-400 transition-colors">
                         Map <span class="text-gray-600 ml-2">/</span>
                     </NuxtLink>
                     <span class="text-white font-semibold text-lg" :class="pochvenClass(id)">{{ region?.name ?? 'Loading...' }}</span>
                 </div>
                 <div class="flex items-center gap-2 text-xs text-gray-500">
                     <span v-if="data">{{ data.systems?.length }} systems</span>
+                    <template v-if="activityLayer !== 'none'">
+                        <span class="text-gray-600">|</span>
+                        <span class="flex items-center gap-1.5 text-emerald-400/80"><span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />Hourly data · {{ activityWindowLabel }}</span>
+                    </template>
                     <span class="text-gray-600">|</span>
                     <span class="text-gray-400">scroll to zoom · drag to pan</span>
                     <button
@@ -592,10 +678,30 @@ const hoverCardStyle = computed(() => {
                     </NuxtLink>
                 </div>
             </div>
+            <MapPixiLayerControls
+                v-model:base-layer="baseLayer"
+                v-model:activity-layer="activityLayer"
+                v-model:hours="activityHours"
+                v-model:show-connections="showConnections"
+                v-model:show-systems="showSystems"
+                v-model:show-labels="showLabels"
+            />
         </div>
 
         <!-- Map -->
         <div ref="mapContainerRef" class="relative rounded-lg overflow-hidden border border-white/[0.08] bg-[#0a0a0f]">
+            <div class="absolute left-3 top-3 z-20 w-[min(20rem,calc(100%-6rem))]">
+                <div class="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-black/70 px-3 py-2 shadow-lg backdrop-blur-md">
+                    <span aria-hidden="true" class="shrink-0 text-sm text-gray-500">⌕</span>
+                    <input v-model="systemQuery" type="search" placeholder="Find a system in this region" class="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600" @focus="searchFocused = true" @blur="closeSearchSoon">
+                </div>
+                <div v-if="searchFocused && systemQuery" class="mt-1 overflow-hidden rounded-lg border border-white/[0.1] bg-[#101116]/95 shadow-xl backdrop-blur-md">
+                    <NuxtLink v-for="system in systemResults" :key="system.id" :to="`/system/${system.id}`" class="flex items-center justify-between px-3 py-2 text-sm hover:bg-white/[0.06]">
+                        <span class="text-gray-200">{{ system.system_name }}</span><span class="font-mono text-[10px]" :style="{ color: secColorStr(system.security) }">{{ secLabel(system.security) }}</span>
+                    </NuxtLink>
+                    <div v-if="!systemResults.length" class="px-3 py-2 text-xs text-gray-500">No matching systems</div>
+                </div>
+            </div>
             <div v-if="pending" class="h-[80vh] flex items-center justify-center">
                 <div class="text-gray-400 text-sm animate-pulse">Loading map data...</div>
             </div>
@@ -605,14 +711,14 @@ const hoverCardStyle = computed(() => {
                 ref="svgRef"
                 :viewBox="viewBoxStr"
                 class="w-full h-auto select-none"
-                :class="panning ? 'cursor-grabbing' : 'cursor-grab'"
+                :class="[panning ? 'cursor-grabbing' : 'cursor-grab', { 'map-labels-hidden': !showLabels }]"
                 preserveAspectRatio="xMidYMid meet"
                 @wheel.prevent="onWheel"
                 @pointerdown="onBgPointerDown"
                 @click.capture="onSvgClickCapture"
             >
-                <!-- Constellation Voronoi cells (blurred at the group level so
-                     neighboring cells bleed into each other at their shared edges) -->
+                <!-- Base geography or security remains visible beneath an optional
+                     activity overlay, matching the universe map. -->
                 <defs>
                     <filter id="cellBlur" x="-10%" y="-10%" width="120%" height="120%">
                         <feGaussianBlur stdDeviation="4" />
@@ -623,33 +729,56 @@ const hoverCardStyle = computed(() => {
                         v-for="(cell, i) in layout.cells"
                         :key="'c-' + i"
                         :d="cell.path"
-                        :fill="constColor(cell.constellation_id)"
-                        fill-opacity="0.16"
+                        :fill="baseLayer === 'geography' ? constColor(cell.constellation_id) : secColorStr(cell.security)"
+                        :fill-opacity="baseLayer === 'geography' ? 0.12 : 0.07"
                     />
                 </g>
 
                 <!-- Jump lines -->
-                <line
-                    v-for="(link, i) in layout.links"
-                    :key="'l-' + i"
-                    :x1="nodeById.get(link.from)!.x"
-                    :y1="nodeById.get(link.from)!.y"
-                    :x2="nodeById.get(link.to)!.x"
-                    :y2="nodeById.get(link.to)!.y"
-                    :stroke="linkColor(link)"
-                    stroke-opacity="0.35"
-                    stroke-width="1.25"
-                    class="pointer-events-none"
-                />
+                <g v-show="showConnections">
+                    <line
+                        v-for="(link, i) in layout.links"
+                        :key="'l-' + i"
+                        :x1="nodeById.get(link.from)!.x"
+                        :y1="nodeById.get(link.from)!.y"
+                        :x2="nodeById.get(link.to)!.x"
+                        :y2="nodeById.get(link.to)!.y"
+                        :stroke="baseLayer === 'geography' ? linkColor(link) : '#64748b'"
+                        :stroke-opacity="baseLayer === 'geography' ? 0.35 : 0.22"
+                        stroke-width="1.25"
+                        class="pointer-events-none"
+                    />
+                </g>
+
+                <g class="map-label pointer-events-none">
+                    <text
+                        v-for="label in constellationLabels"
+                        :key="label.id"
+                        :x="label.x"
+                        :y="label.y"
+                        text-anchor="middle"
+                        dominant-baseline="middle"
+                        fill="rgba(255,255,255,.48)"
+                        stroke="rgba(0,0,0,.96)"
+                        stroke-width="4"
+                        paint-order="stroke"
+                        font-size="20"
+                        font-weight="800"
+                        letter-spacing="2.5"
+                    >
+                        {{ label.name.toUpperCase() }}
+                    </text>
+                </g>
 
                 <!-- Out-of-region stubs — dotlan-style fake system attached to the
                      in-region system in the correct direction (distance is fixed). -->
-                <g
-                    v-for="s in externalStubs"
-                    :key="'stub-' + s.internal_id + '-' + s.external_id"
-                    class="cursor-pointer"
-                    @click="s.region_id ? navigateTo(`/map/region/${s.region_id}`) : navigateTo(`/system/${s.external_id}`)"
-                >
+                <g v-show="showConnections">
+                    <g
+                        v-for="s in externalStubs"
+                        :key="'stub-' + s.internal_id + '-' + s.external_id"
+                        class="cursor-pointer"
+                        @click="navigateToExternalMap(s.region_id, s.external_id)"
+                    >
                     <line
                         :x1="s.line_x1"
                         :y1="s.line_y1"
@@ -674,10 +803,13 @@ const hoverCardStyle = computed(() => {
                         :x="s.cx"
                         :y="s.cy + STUB_R + 7"
                         text-anchor="middle"
-                        fill="rgba(255,255,255,0.85)"
-                        font-size="7"
-                        font-weight="600"
-                        class="select-none pointer-events-none"
+                        fill="rgba(255,255,255,0.96)"
+                        stroke="rgba(0,0,0,.95)"
+                        stroke-width="1.6"
+                        paint-order="stroke"
+                        font-size="8.5"
+                        font-weight="700"
+                        class="map-label select-none pointer-events-none"
                     >
                         {{ s.name ?? '?' }}
                     </text>
@@ -685,32 +817,38 @@ const hoverCardStyle = computed(() => {
                         :x="s.cx"
                         :y="s.cy + STUB_R + 14"
                         text-anchor="middle"
-                        font-size="6"
-                        class="select-none pointer-events-none"
+                        stroke="rgba(0,0,0,.95)"
+                        stroke-width="1.2"
+                        paint-order="stroke"
+                        font-size="7"
+                        class="map-label select-none pointer-events-none"
                     >
                         <tspan fill="#9ca3af">{{ s.region_name ?? '' }}</tspan>
                         <tspan dx="3" :fill="secColorStr(s.security)">{{ secLabel(s.security) }}</tspan>
                     </text>
+                    </g>
                 </g>
 
                 <!-- System nodes — click navigates unless a pan drag was in progress
                      (suppressed by onSvgClickCapture on the svg). -->
-                <g
-                    v-for="n in layout.nodes"
-                    :key="n.id"
-                    class="cursor-pointer"
-                    @pointerenter="(e) => onNodeHoverEnter(e, n)"
-                    @pointermove="onNodeHoverMove"
-                    @pointerleave="onNodeHoverLeave"
-                    @click="navigateTo(`/system/${n.id}`)"
-                >
+                <g v-show="showSystems">
+                    <g
+                        v-for="n in layout.nodes"
+                        :key="n.id"
+                        class="cursor-pointer"
+                        @pointerenter="(e) => onNodeHoverEnter(e, n)"
+                        @pointermove="onNodeHoverMove"
+                        @pointerleave="onNodeHoverLeave"
+                        @click="navigateTo(`/system/${n.id}`)"
+                    >
                     <!-- Mini-system: blended halo (const + sec + activity) behind the
                          sec-tinted disc; planets + sun on top. -->
                     <circle
                         :cx="n.x"
                         :cy="n.y"
-                        :r="R + 2.5"
+                        :r="systemHaloRadius(n)"
                         :fill="systemHaloFill(n)"
+                        :fill-opacity="activityLayer === 'none' ? 0.55 : 0.9"
                         class="pointer-events-none"
                     />
                     <circle
@@ -746,10 +884,13 @@ const hoverCardStyle = computed(() => {
                         :x="n.x"
                         :y="n.y + R + 9"
                         text-anchor="middle"
-                        fill="rgba(255,255,255,0.85)"
-                        font-size="9"
-                        font-weight="600"
-                        class="select-none pointer-events-none"
+                        fill="rgba(255,255,255,0.98)"
+                        stroke="rgba(0,0,0,.98)"
+                        stroke-width="2"
+                        paint-order="stroke"
+                        font-size="10.5"
+                        font-weight="700"
+                        class="map-label select-none pointer-events-none"
                         :class="pochvenClass(id)"
                     >
                         {{ n.system_name }}
@@ -759,13 +900,34 @@ const hoverCardStyle = computed(() => {
                         :y="n.y + R + 19"
                         text-anchor="middle"
                         :fill="secColorStr(n.security)"
-                        font-size="7.5"
-                        class="select-none pointer-events-none"
+                        stroke="rgba(0,0,0,.98)"
+                        stroke-width="1.5"
+                        paint-order="stroke"
+                        font-size="8.5"
+                        font-weight="700"
+                        class="map-label select-none pointer-events-none"
                     >
                         {{ secLabel(n.security) }}
                     </text>
+                    </g>
                 </g>
+
             </svg>
+
+            <div class="pointer-events-none absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/[0.08] bg-black/65 px-3 py-2 text-[10px] text-gray-400 shadow-lg backdrop-blur-md">
+                <span class="flex items-center gap-1.5">
+                    <span v-if="baseLayer === 'geography'" class="h-2.5 w-4 rounded-sm bg-gradient-to-r from-blue-500/50 via-purple-500/50 to-amber-500/50" />
+                    <span v-else class="h-2 w-16 rounded-full" style="background: linear-gradient(90deg, #22d3ee, #a3e635, #fbbf24, #b91c1c)" />
+                    {{ baseLayer === 'geography' ? 'Constellation grouping' : 'System security' }}
+                </span>
+                <template v-if="activityLayer !== 'none'">
+                    <span class="h-2 w-24 rounded-full" style="background: linear-gradient(90deg, #475569, #3b82f6, #a855f7, #f97316, #ef4444)" />
+                    <span class="font-semibold text-gray-300">{{ activeLayerLabel }}</span>
+                    <span>Quiet</span><span>Peak {{ maximumActivityLabel }}</span>
+                    <span class="text-gray-600">last {{ activityWindowLabel }} · log scale</span>
+                </template>
+                <span v-if="showConnections && externalStubs.length" class="flex items-center gap-1.5"><span class="w-4 border-t border-dashed border-blue-300/70" />Out-of-region gate</span>
+            </div>
 
             <!-- Hover card -->
             <div
@@ -839,8 +1001,14 @@ const hoverCardStyle = computed(() => {
                         <span v-if="systemRawById.get(hoverNode.id)?.international" class="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-400/20">int'l</span>
                     </span>
                 </div>
-                <div class="text-[10px] text-gray-600 mt-1">last 24h · ESI</div>
+                <div class="text-[10px] text-gray-600 mt-1">last {{ activityWindowLabel }} · ESI</div>
             </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+.map-labels-hidden .map-label {
+    display: none;
+}
+</style>

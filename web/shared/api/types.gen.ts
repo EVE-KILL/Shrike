@@ -26249,10 +26249,130 @@ export type LocationResponses = {
 
 export type LocationResponse2 = LocationResponses[keyof LocationResponses];
 
+export type MapAiidData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * One to eight comma-separated anchor solar-system IDs. The response includes every system within ten stargate jumps.
+         */
+        systems?: string;
+        /**
+         * Trailing activity window in hours.
+         */
+        hours?: 1 | 6 | 24 | 168;
+    };
+    url: '/map/aiid';
+};
+
+export type MapAiidResponses = {
+    /**
+     * OK
+     */
+    200: {
+        activity: Array<{
+            npc_kills: number;
+            pod_kills: number;
+            ship_jumps: number;
+            ship_kills: number;
+            system_id: number;
+        }>;
+        activity_hours: number;
+        anchors: Array<{
+            region_id: number;
+            solar_system_id: number;
+            system_name: string;
+        }>;
+        externalJumps: Array<{
+            external_region_id: number;
+            external_region_name: string;
+            external_security: number;
+            external_system_id: number;
+            external_system_name: string;
+            external_x: number;
+            external_x2d: number;
+            external_z: number;
+            external_z2d: number;
+            internal_system_id: number;
+        }>;
+        jump_radius: number;
+        jumps: Array<{
+            from_solar_system_id: number;
+            to_solar_system_id: number;
+        }>;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_id: number | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            victim_faction_id: number | null;
+            [key: string]: unknown;
+        }>;
+        regions: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        scope: string;
+        systems: Array<{
+            constellation_id: number;
+            distance?: number;
+            is_anchor?: boolean;
+            region_id: number;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+            x: number;
+            x2d: number;
+            y: number;
+            z: number;
+            z2d: number;
+        }>;
+    };
+};
+
+export type MapAiidResponse = MapAiidResponses[keyof MapAiidResponses];
+
 export type MapRegionData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Trailing activity window in hours.
+         */
+        hours?: 1 | 6 | 24 | 168;
+    };
     url: '/map/region/{id}';
 };
 
@@ -26268,6 +26388,7 @@ export type MapRegionResponses = {
             ship_kills: number;
             system_id: number;
         }>;
+        activity_hours: number;
         celestials: Array<{
             group_id: number;
             system_id: number;
@@ -26301,6 +26422,8 @@ export type MapRegionResponses = {
         };
         systems: Array<{
             constellation_id: number;
+            distance?: number;
+            is_anchor?: boolean;
             region_id: number;
             security: number;
             solar_system_id: number;
@@ -26371,6 +26494,10 @@ export type MapScopeData = {
          * Which slice of New Eden to return.
          */
         type?: 'new-eden' | 'zarzakh' | 'wormhole' | 'abyssal' | 'proving';
+        /**
+         * Trailing activity window in hours.
+         */
+        hours?: 1 | 6 | 24 | 168;
     };
     url: '/map/scope';
 };
@@ -26387,6 +26514,7 @@ export type MapScopeResponses = {
             ship_kills: number;
             system_id: number;
         }>;
+        activity_hours: number;
         externalJumps: Array<{
             external_region_id: number;
             external_region_name: string;
@@ -26411,6 +26539,8 @@ export type MapScopeResponses = {
         scope: string;
         systems: Array<{
             constellation_id: number;
+            distance?: number;
+            is_anchor?: boolean;
             region_id: number;
             security: number;
             solar_system_id: number;
@@ -26425,6 +26555,97 @@ export type MapScopeResponses = {
 };
 
 export type MapScopeResponse = MapScopeResponses[keyof MapScopeResponses];
+
+export type MapSovereigntyData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Trailing activity window in hours.
+         */
+        hours?: 1 | 6 | 24 | 168;
+    };
+    url: '/map/sovereignty';
+};
+
+export type MapSovereigntyResponses = {
+    /**
+     * OK
+     */
+    200: {
+        activity: Array<{
+            npc_kills: number;
+            pod_kills: number;
+            ship_jumps: number;
+            ship_kills: number;
+            system_id: number;
+        }>;
+        activity_hours: number;
+        changes: Array<{
+            alliance_id: number | null;
+            alliance_name: string | null;
+            alliance_ticker: string | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_added: string;
+            system_id: number;
+        }>;
+        externalJumps: Array<{
+            external_region_id: number;
+            external_region_name: string;
+            external_security: number;
+            external_system_id: number;
+            external_system_name: string;
+            external_x: number;
+            external_x2d: number;
+            external_z: number;
+            external_z2d: number;
+            internal_system_id: number;
+        }>;
+        jumps: Array<{
+            from_solar_system_id: number;
+            to_solar_system_id: number;
+        }>;
+        regions: Array<{
+            name: string;
+            region_id: number;
+            system_count?: number;
+        }>;
+        scope: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        snapshot_at: string;
+        sovereignty: Array<{
+            alliance_id: number;
+            alliance_name: string;
+            alliance_ticker: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            date_added: string;
+            member_count: number;
+            system_id: number;
+        }>;
+        systems: Array<{
+            constellation_id: number;
+            distance?: number;
+            is_anchor?: boolean;
+            region_id: number;
+            security: number;
+            solar_system_id: number;
+            system_name: string;
+            x: number;
+            x2d: number;
+            y: number;
+            z: number;
+            z2d: number;
+        }>;
+    };
+};
+
+export type MapSovereigntyResponse = MapSovereigntyResponses[keyof MapSovereigntyResponses];
 
 export type MarketGroupItemsData = {
     body?: never;

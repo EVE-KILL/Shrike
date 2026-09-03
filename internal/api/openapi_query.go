@@ -136,6 +136,23 @@ func enumQuery(
 	return queryParam(name, description, schema)
 }
 
+// integerEnumQuery declares a numeric selector with a closed set of values.
+func integerEnumQuery(
+	name, description string,
+	fallback int,
+	values ...int,
+) *huma.Param {
+	schema := &huma.Schema{
+		Type:    huma.TypeInteger,
+		Default: fallback,
+		Enum:    make([]any, 0, len(values)),
+	}
+	for _, value := range values {
+		schema.Enum = append(schema.Enum, value)
+	}
+	return queryParam(name, description, schema)
+}
+
 // intQuery declares an unbounded integer, for identifiers and cursors.
 func intQuery(name, description string) *huma.Param {
 	return queryParam(name, description, &huma.Schema{Type: huma.TypeInteger})

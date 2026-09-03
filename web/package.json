@@ -20,16 +20,19 @@
     "@types/d3-delaunay": "^6.0.4",
     "@vueuse/core": "^14.4.0",
     "@vueuse/nuxt": "^14.4.0",
+    "d3-contour": "^4.0.2",
     "d3-delaunay": "^6.0.4",
     "isbot": "^5.2.2",
     "nuxt": "^4.5.2",
     "nuxt-umami": "^3.2.1",
+    "pixi.js": "^8.20.1",
     "tailwindcss": "^4.3.3",
     "vue": "^3.5.42",
     "vue-router": "^5.3.0"
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.127",
+    "@types/d3-contour": "^3.0.6",
     "typescript": "5.9.3",
     "vue-tsc": "^3.3.11"
   },

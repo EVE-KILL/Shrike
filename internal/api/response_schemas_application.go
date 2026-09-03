@@ -238,6 +238,10 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		return mapScopeResponseSchema()
 	case "map-region":
 		return mapRegionResponseSchema()
+	case "map-sovereignty":
+		return mapSovereigntyResponseSchema()
+	case "map-aiid":
+		return mapAIIDResponseSchema()
 	case "stats-rankings":
 		return entriesResponseSchema(statsRankingEntrySchema())
 
@@ -1609,6 +1613,7 @@ func mapSystemSchema() *huma.Schema {
 		"x": numberSchema(), "y": numberSchema(), "z": numberSchema(),
 		"x2d": numberSchema(), "z2d": numberSchema(), "security": numberSchema(),
 		"region_id": intSchema(), "constellation_id": intSchema(),
+		"distance": intSchema(), "is_anchor": boolSchema(),
 	}, "solar_system_id", "system_name", "x", "y", "z", "x2d", "z2d",
 		"security", "region_id", "constellation_id")
 }
@@ -1639,21 +1644,77 @@ func mapActivitySchema() *huma.Schema {
 	}, "system_id", "ship_kills", "npc_kills", "pod_kills", "ship_jumps")
 }
 
+func mapSovereigntyClaimSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"system_id": intSchema(), "alliance_id": intSchema(),
+		"date_added": timestampSchema(), "alliance_name": stringSchema(),
+		"alliance_ticker": stringSchema(), "member_count": intSchema(),
+	}, "system_id", "alliance_id", "date_added", "alliance_name",
+		"alliance_ticker", "member_count")
+}
+
+func mapSovereigntyChangeSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"system_id": intSchema(), "alliance_id": nullable(intSchema()),
+		"date_added": timestampSchema(), "alliance_name": nullable(stringSchema()),
+		"alliance_ticker": nullable(stringSchema()),
+	}, "system_id", "alliance_id", "date_added", "alliance_name",
+		"alliance_ticker")
+}
+
+func mapSovereigntyResponseSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"scope":          stringSchema(),
+		"activity_hours": intSchema(),
+		"snapshot_at":    timestampSchema(),
+		"regions":        arraySchema(mapRegionSummarySchema()),
+		"systems":        arraySchema(mapSystemSchema()),
+		"jumps":          arraySchema(mapJumpSchema()),
+		"externalJumps":  arraySchema(mapExternalJumpSchema()),
+		"activity":       arraySchema(mapActivitySchema()),
+		"sovereignty":    arraySchema(mapSovereigntyClaimSchema()),
+		"changes":        arraySchema(mapSovereigntyChangeSchema()),
+	}, "scope", "activity_hours", "snapshot_at", "regions", "systems",
+		"jumps", "externalJumps", "activity", "sovereignty", "changes")
+}
+
 func mapScopeResponseSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
-		"scope":         stringSchema(),
-		"regions":       arraySchema(mapRegionSummarySchema()),
-		"systems":       arraySchema(mapSystemSchema()),
-		"jumps":         arraySchema(mapJumpSchema()),
-		"externalJumps": arraySchema(mapExternalJumpSchema()),
-		"activity":      arraySchema(mapActivitySchema()),
-	}, "scope", "regions", "systems", "jumps", "externalJumps", "activity")
+		"scope":          stringSchema(),
+		"activity_hours": intSchema(),
+		"regions":        arraySchema(mapRegionSummarySchema()),
+		"systems":        arraySchema(mapSystemSchema()),
+		"jumps":          arraySchema(mapJumpSchema()),
+		"externalJumps":  arraySchema(mapExternalJumpSchema()),
+		"activity":       arraySchema(mapActivitySchema()),
+	}, "scope", "activity_hours", "regions", "systems", "jumps", "externalJumps", "activity")
+}
+
+func mapAIIDResponseSchema() *huma.Schema {
+	anchorSchema := responseSchema(map[string]*huma.Schema{
+		"solar_system_id": intSchema(), "system_name": stringSchema(),
+		"region_id": intSchema(),
+	}, "solar_system_id", "system_name", "region_id")
+	return responseSchema(map[string]*huma.Schema{
+		"scope":          stringSchema(),
+		"activity_hours": intSchema(),
+		"jump_radius":    intSchema(),
+		"anchors":        arraySchema(anchorSchema),
+		"regions":        arraySchema(mapRegionSummarySchema()),
+		"systems":        arraySchema(mapSystemSchema()),
+		"jumps":          arraySchema(mapJumpSchema()),
+		"externalJumps":  arraySchema(mapExternalJumpSchema()),
+		"activity":       arraySchema(mapActivitySchema()),
+		"kills":          arraySchema(killlistRowSchema()),
+	}, "scope", "activity_hours", "jump_radius", "anchors", "regions",
+		"systems", "jumps", "externalJumps", "activity", "kills")
 }
 
 func mapRegionResponseSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
-		"region":  mapRegionSummarySchema(),
-		"systems": arraySchema(mapSystemSchema()),
+		"region":         mapRegionSummarySchema(),
+		"activity_hours": intSchema(),
+		"systems":        arraySchema(mapSystemSchema()),
 		"constellations": arraySchema(responseSchema(map[string]*huma.Schema{
 			"constellation_id": intSchema(), "constellation_name": stringSchema(),
 		}, "constellation_id", "constellation_name")),
@@ -1664,7 +1725,7 @@ func mapRegionResponseSchema() *huma.Schema {
 			"system_id": intSchema(), "group_id": intSchema(),
 			"x": numberSchema(), "z": numberSchema(),
 		}, "system_id", "group_id", "x", "z")),
-	}, "region", "systems", "constellations", "jumps", "externalJumps",
+	}, "region", "activity_hours", "systems", "constellations", "jumps", "externalJumps",
 		"activity", "celestials")
 }
 

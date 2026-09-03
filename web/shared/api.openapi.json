@@ -78903,9 +78903,35 @@
         "x-audience": "public"
       }
     },
-    "/map/region/{id}": {
+    "/map/aiid": {
       "get": {
-        "operationId": "map-region",
+        "description": "A local danger watch around up to eight selected systems. Returns the stitched ten-jump stargate neighborhood and recent killmails within it for live client-side monitoring.",
+        "operationId": "map-aiid",
+        "parameters": [
+          {
+            "description": "One to eight comma-separated anchor solar-system IDs. The response includes every system within ten stargate jumps.",
+            "in": "query",
+            "name": "systems",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Trailing activity window in hours.",
+            "in": "query",
+            "name": "hours",
+            "schema": {
+              "default": 24,
+              "enum": [
+                1,
+                6,
+                24,
+                168
+              ],
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -78948,6 +78974,544 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "activity_hours": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "anchors": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "solar_system_id",
+                          "system_name",
+                          "region_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "externalJumps": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "external_region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "external_region_name": {
+                            "type": "string"
+                          },
+                          "external_security": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "external_system_name": {
+                            "type": "string"
+                          },
+                          "external_x": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_x2d": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_z": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_z2d": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "internal_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "internal_system_id",
+                          "external_system_id",
+                          "external_system_name",
+                          "external_region_id",
+                          "external_region_name",
+                          "external_security",
+                          "external_x",
+                          "external_z",
+                          "external_x2d",
+                          "external_z2d"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "jump_radius": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "jumps": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "from_solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "to_solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "from_solar_system_id",
+                          "to_solar_system_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "kills": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "attacker_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "final_blow_alliance_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "final_blow_alliance_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "final_blow_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_corporation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "final_blow_corporation_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_ship_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "final_blow_ship_type_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "is_npc": {
+                            "type": "boolean"
+                          },
+                          "is_solo": {
+                            "type": "boolean"
+                          },
+                          "killmail_hash": {
+                            "type": "string"
+                          },
+                          "killmail_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "killmail_time": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "meta_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "region_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "ship_group_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_market_path": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_type_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "solar_system_security": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "total_value": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "victim_alliance_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_alliance_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "victim_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "victim_corporation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_corporation_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "victim_faction_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "killmail_id",
+                          "killmail_hash",
+                          "killmail_time",
+                          "total_value",
+                          "attacker_count",
+                          "is_npc",
+                          "is_solo",
+                          "ship_type_id",
+                          "ship_name",
+                          "ship_group_id",
+                          "ship_group_name",
+                          "ship_market_path",
+                          "meta_group_id",
+                          "victim_character_id",
+                          "victim_character_name",
+                          "victim_corporation_id",
+                          "victim_corporation_name",
+                          "victim_alliance_id",
+                          "victim_alliance_name",
+                          "victim_faction_id",
+                          "final_blow_character_id",
+                          "final_blow_character_name",
+                          "final_blow_corporation_id",
+                          "final_blow_corporation_name",
+                          "final_blow_alliance_id",
+                          "final_blow_alliance_name",
+                          "final_blow_ship_type_id",
+                          "final_blow_ship_name",
+                          "solar_system_id",
+                          "solar_system_name",
+                          "solar_system_security",
+                          "region_id",
+                          "region_name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "regions": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "region_id",
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "scope": {
+                      "type": "string"
+                    },
+                    "systems": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "constellation_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "distance": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "is_anchor": {
+                            "type": "boolean"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "security": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_name": {
+                            "type": "string"
+                          },
+                          "x": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "x2d": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "y": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "z": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "z2d": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "solar_system_id",
+                          "system_name",
+                          "x",
+                          "y",
+                          "z",
+                          "x2d",
+                          "z2d",
+                          "security",
+                          "region_id",
+                          "constellation_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "scope",
+                    "activity_hours",
+                    "jump_radius",
+                    "anchors",
+                    "regions",
+                    "systems",
+                    "jumps",
+                    "externalJumps",
+                    "activity",
+                    "kills"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Am I In Danger watch map",
+        "tags": [
+          "map"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/map/region/{id}": {
+      "get": {
+        "operationId": "map-region",
+        "parameters": [
+          {
+            "description": "Trailing activity window in hours.",
+            "in": "query",
+            "name": "hours",
+            "schema": {
+              "default": 24,
+              "enum": [
+                1,
+                6,
+                24,
+                168
+              ],
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "activity": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "npc_kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "pod_kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "ship_jumps": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "ship_kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "system_id",
+                          "ship_kills",
+                          "npc_kills",
+                          "pod_kills",
+                          "ship_jumps"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "activity_hours": {
+                      "format": "int64",
+                      "type": "integer"
                     },
                     "celestials": {
                       "items": {
@@ -79109,6 +79673,13 @@
                             "format": "int64",
                             "type": "integer"
                           },
+                          "distance": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "is_anchor": {
+                            "type": "boolean"
+                          },
                           "region_id": {
                             "format": "int64",
                             "type": "integer"
@@ -79164,6 +79735,7 @@
                   },
                   "required": [
                     "region",
+                    "activity_hours",
                     "systems",
                     "constellations",
                     "jumps",
@@ -79381,6 +79953,21 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Trailing activity window in hours.",
+            "in": "query",
+            "name": "hours",
+            "schema": {
+              "default": 24,
+              "enum": [
+                1,
+                6,
+                24,
+                168
+              ],
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -79425,6 +80012,10 @@
                         "type": "object"
                       },
                       "type": "array"
+                    },
+                    "activity_hours": {
+                      "format": "int64",
+                      "type": "integer"
                     },
                     "externalJumps": {
                       "items": {
@@ -79541,6 +80132,13 @@
                             "format": "int64",
                             "type": "integer"
                           },
+                          "distance": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "is_anchor": {
+                            "type": "boolean"
+                          },
                           "region_id": {
                             "format": "int64",
                             "type": "integer"
@@ -79596,6 +80194,7 @@
                   },
                   "required": [
                     "scope",
+                    "activity_hours",
                     "regions",
                     "systems",
                     "jumps",
@@ -79610,6 +80209,364 @@
           }
         },
         "summary": "Systems and connections in a map scope",
+        "tags": [
+          "map"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/map/sovereignty": {
+      "get": {
+        "description": "Current player-alliance sovereignty across New Eden, with map geometry, activity, and recent ownership changes. NPC and empire topology is retained as unclaimed context.",
+        "operationId": "map-sovereignty",
+        "parameters": [
+          {
+            "description": "Trailing activity window in hours.",
+            "in": "query",
+            "name": "hours",
+            "schema": {
+              "default": 24,
+              "enum": [
+                1,
+                6,
+                24,
+                168
+              ],
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "activity": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "npc_kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "pod_kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "ship_jumps": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "ship_kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "system_id",
+                          "ship_kills",
+                          "npc_kills",
+                          "pod_kills",
+                          "ship_jumps"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "activity_hours": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "changes": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "alliance_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "alliance_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alliance_ticker": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "date_added": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "system_id",
+                          "alliance_id",
+                          "date_added",
+                          "alliance_name",
+                          "alliance_ticker"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "externalJumps": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "external_region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "external_region_name": {
+                            "type": "string"
+                          },
+                          "external_security": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "external_system_name": {
+                            "type": "string"
+                          },
+                          "external_x": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_x2d": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_z": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "external_z2d": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "internal_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "internal_system_id",
+                          "external_system_id",
+                          "external_system_name",
+                          "external_region_id",
+                          "external_region_name",
+                          "external_security",
+                          "external_x",
+                          "external_z",
+                          "external_x2d",
+                          "external_z2d"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "jumps": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "from_solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "to_solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "from_solar_system_id",
+                          "to_solar_system_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "regions": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "region_id",
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "scope": {
+                      "type": "string"
+                    },
+                    "snapshot_at": {
+                      "description": "UTC timestamp with millisecond precision.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "sovereignty": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "alliance_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "alliance_name": {
+                            "type": "string"
+                          },
+                          "alliance_ticker": {
+                            "type": "string"
+                          },
+                          "date_added": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "member_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "system_id",
+                          "alliance_id",
+                          "date_added",
+                          "alliance_name",
+                          "alliance_ticker",
+                          "member_count"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "systems": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "constellation_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "distance": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "is_anchor": {
+                            "type": "boolean"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "security": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_name": {
+                            "type": "string"
+                          },
+                          "x": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "x2d": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "y": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "z": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "z2d": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "solar_system_id",
+                          "system_name",
+                          "x",
+                          "y",
+                          "z",
+                          "x2d",
+                          "z2d",
+                          "security",
+                          "region_id",
+                          "constellation_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "scope",
+                    "activity_hours",
+                    "snapshot_at",
+                    "regions",
+                    "systems",
+                    "jumps",
+                    "externalJumps",
+                    "activity",
+                    "sovereignty",
+                    "changes"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Alliance sovereignty map",
         "tags": [
           "map"
         ],

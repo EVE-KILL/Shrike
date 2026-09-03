@@ -5,6 +5,27 @@ import (
 	"testing"
 )
 
+func TestParseMapActivityHours(t *testing.T) {
+	for _, test := range []struct {
+		raw  string
+		want int
+		ok   bool
+	}{
+		{"", 24, true},
+		{"1", 1, true},
+		{"6", 6, true},
+		{"24", 24, true},
+		{"168", 168, true},
+		{"12", 0, false},
+		{"nope", 0, false},
+	} {
+		got, err := parseMapActivityHours(test.raw)
+		if (err == nil) != test.ok || got != test.want {
+			t.Errorf("parseMapActivityHours(%q) = %d, %v; want %d, ok=%v", test.raw, got, err, test.want, test.ok)
+		}
+	}
+}
+
 func TestRegionInMapScopeMatchesFrontendBuckets(t *testing.T) {
 	tests := []struct {
 		scope string
@@ -45,5 +66,23 @@ func TestGroupMapRegionsKeepsStableBuckets(t *testing.T) {
 	}
 	if got := grouped["kspace"].([]map[string]any); !reflect.DeepEqual(got, rows[2:3]) {
 		t.Errorf("kspace = %#v", got)
+	}
+}
+
+func TestParseMapSystemIDs(t *testing.T) {
+	got, err := parseMapSystemIDs("30000142, 30002187,30000142")
+	if err != nil {
+		t.Fatalf("parseMapSystemIDs returned %v", err)
+	}
+	want := []int32{30000142, 30002187}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("systems = %#v, want %#v", got, want)
+	}
+	if _, err := parseMapSystemIDs("Jita"); err == nil {
+		t.Fatal("expected a non-numeric system to fail")
+	}
+	tooMany := "1,2,3,4,5,6,7,8,9"
+	if _, err := parseMapSystemIDs(tooMany); err == nil {
+		t.Fatalf("expected more than %d systems to fail", mapAIIDMaxAnchors)
 	}
 }
