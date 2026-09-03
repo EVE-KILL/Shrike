@@ -163,11 +163,10 @@ useSchemaOrg([
     },
 ])
 
-type TabId = 'dashboard' | 'kills' | 'fittings'
+type TabId = 'dashboard' | 'market' | 'kills' | 'fittings'
 
-// The fittings tab is only meaningful for ships — it's hidden entirely for
-// modules, charges, structures, etc. The tabs list is computed because
-// `isShip` only resolves after the initial /api/item/:id fetch completes.
+// Fittings only applies to ships, while Market only applies to items present
+// in the market hierarchy. Both resolve after the item payload is loaded.
 const tabs = computed<ReadonlyArray<{ id: TabId; label: string; icon: string }>>(() => {
     const base: Array<{ id: TabId; label: string; icon: string }> = [
         { id: 'dashboard', label: 'Dashboard', icon: 'lucide:layout-dashboard' },
@@ -175,6 +174,9 @@ const tabs = computed<ReadonlyArray<{ id: TabId; label: string; icon: string }>>
     ]
     if (isShip.value) {
         base.push({ id: 'fittings', label: 'Fittings', icon: 'lucide:wrench' })
+    }
+    if (marketBreadcrumb.value.length) {
+        base.push({ id: 'market', label: 'Market', icon: 'lucide:shopping-cart' })
     }
     return base
 })
@@ -732,6 +734,11 @@ const hasStats = computed(() =>
                 <div v-if="!isShip && namedAttributes.length === 0 && !priceSummary && !customSummary && !requiredSkills.length && !materials.length" class="text-center py-12 text-gray-500 text-sm">
                     No data available for this item.
                 </div>
+            </div>
+
+            <!-- MARKET TAB -->
+            <div v-if="activeTab === 'market'">
+                <MarketItemPanel :type-id="id" embedded />
             </div>
 
             <!-- KILLS TAB -->

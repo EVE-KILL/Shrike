@@ -46,10 +46,11 @@ func registerMarketRoutes(a huma.API, opts Options) {
 		Path:        "/market/groups/{id}/items",
 		Summary:     "Published items in a market group",
 		Tags:        []string{"market"},
-	}, routeJSONCache(
+	}, routeJSONCacheBy(
 		opts,
 		6*time.Hour,
 		"public, max-age=3600, s-maxage=21600, stale-while-revalidate=3600",
+		marketGroupItemsCacheKey,
 		marketGroupItemsHandler(opts),
 	))
 
@@ -66,6 +67,8 @@ func registerMarketRoutes(a huma.API, opts Options) {
 		bulkPriceCacheKey,
 		bulkPricesHandler(opts),
 	))
+
+	registerMarketExplorerRoutes(a, opts)
 }
 
 func marketTreeHandler(opts Options) legacyHandler {
@@ -176,11 +179,33 @@ func marketGroupItemsHandler(opts Options) legacyHandler {
 		if err != nil || id > pgInt4Max {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid ID")
 		}
+		// Echo the market group on every item so reactive category clients can
+		// reject a response after the user has already navigated elsewhere.
 		rows, err := queryMaps(ctx, opts.DB, `
-			SELECT t.type_id, t.name, t.group_id, g.category_id,
-			       t.meta_group_id, (g.category_id = 6) AS is_ship
+			SELECT t.type_id, t.name, t.group_id, t.market_group_id, g.category_id,
+			       t.meta_group_id, (g.category_id = 6) AS is_ship,
+			       history.universe_average, history.universe_volume,
+			       jita.jita_sell
 			FROM inv_types t
 			LEFT JOIN inv_groups g ON g.group_id = t.group_id
+			LEFT JOIN LATERAL (
+				SELECT sum(h.average * h.volume) / NULLIF(sum(h.volume), 0) AS universe_average,
+				       sum(h.volume)::bigint AS universe_volume
+				FROM market_region_history h
+				WHERE h.type_id = t.type_id
+				  AND h.date = (
+					SELECT max(latest.date)
+					FROM market_region_history latest
+					WHERE latest.type_id = t.type_id
+				  )
+			) history ON true
+			LEFT JOIN LATERAL (
+				SELECT min(orders.price) AS jita_sell
+				FROM market_orders orders
+				WHERE orders.type_id = t.type_id
+				  AND orders.region_id = 10000002
+				  AND orders.is_buy_order IS FALSE
+			) jita ON true
 			WHERE t.market_group_id = $1 AND t.published IS TRUE
 			ORDER BY t.name ASC`, id)
 		if err != nil {
@@ -188,6 +213,10 @@ func marketGroupItemsHandler(opts Options) legacyHandler {
 		}
 		return jsonPayload(map[string]any{"items": rows}), nil
 	}
+}
+
+func marketGroupItemsCacheKey(req *legacyRequest) string {
+	return "market-group-items:v2:" + req.Param("id")
 }
 
 func parseBulkPriceIDs(raw string) ([]int32, error) {

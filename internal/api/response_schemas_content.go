@@ -376,12 +376,66 @@ func marketTreeNodeSchema() *huma.Schema {
 func marketGroupItemsSchema() *huma.Schema {
 	item := responseSchema(map[string]*huma.Schema{
 		"type_id": intSchema(), "name": stringSchema(), "group_id": intSchema(),
-		"category_id": intSchema(), "meta_group_id": nullable(intSchema()),
-		"is_ship": boolSchema(),
-	}, "type_id", "name", "group_id", "category_id", "meta_group_id", "is_ship")
+		"market_group_id": intSchema(),
+		"category_id":     intSchema(), "meta_group_id": nullable(intSchema()),
+		"is_ship": boolSchema(), "universe_average": nullable(numberSchema()),
+		"universe_volume": nullable(intSchema()), "jita_sell": nullable(numberSchema()),
+	}, "type_id", "name", "group_id", "market_group_id", "category_id", "meta_group_id", "is_ship", "universe_average", "universe_volume", "jita_sell")
 	return responseSchema(map[string]*huma.Schema{
 		"items": arraySchema(item),
 	}, "items")
+}
+
+func marketItemSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"type_id": intSchema(), "name": stringSchema(),
+		"group_id": nullable(intSchema()), "market_group_id": nullable(intSchema()),
+	}, "type_id", "name", "group_id", "market_group_id")
+}
+
+func marketOrderSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"order_id": intSchema(), "duration": intSchema(), "is_buy_order": boolSchema(),
+		"issued": timestampSchema(), "location_id": intSchema(), "min_volume": intSchema(),
+		"price": numberSchema(), "order_range": stringSchema(), "system_id": intSchema(),
+		"type_id": intSchema(), "volume_remain": intSchema(), "volume_total": intSchema(),
+		"region_id": intSchema(), "constellation_id": nullable(intSchema()),
+		"snapshot_at": timestampSchema(), "system_name": nullable(stringSchema()),
+		"security": nullable(numberSchema()), "region_name": nullable(stringSchema()),
+		"location_name": stringSchema(), "expires_at": timestampSchema(),
+	}, "order_id", "duration", "is_buy_order", "issued", "location_id", "min_volume",
+		"price", "order_range", "system_id", "type_id", "volume_remain", "volume_total",
+		"region_id", "constellation_id", "snapshot_at", "system_name", "security",
+		"region_name", "location_name", "expires_at")
+}
+
+func marketRegionSummarySchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"region_id": intSchema(), "name": nullable(stringSchema()), "order_count": intSchema(),
+		"lowest_sell": nullable(numberSchema()), "highest_buy": nullable(numberSchema()),
+	}, "region_id", "name", "order_count", "lowest_sell", "highest_buy")
+}
+
+func marketItemOrdersSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"item": marketItemSchema(), "snapshot_at": nullable(timestampSchema()),
+		"region_id": intSchema(), "security": arraySchema(stringSchema()),
+		"sellers": arraySchema(marketOrderSchema()), "buyers": arraySchema(marketOrderSchema()),
+		"regions": arraySchema(marketRegionSummarySchema()),
+	}, "item", "snapshot_at", "region_id", "security", "sellers", "buyers", "regions")
+}
+
+func marketItemHistorySchema() *huma.Schema {
+	point := responseSchema(map[string]*huma.Schema{
+		"date": dateSchema(), "average": nullable(numberSchema()),
+		"highest": nullable(numberSchema()), "lowest": nullable(numberSchema()),
+		"order_count": nullable(intSchema()), "volume": nullable(intSchema()),
+		"source_updated_at": nullable(timestampSchema()),
+	}, "date", "average", "highest", "lowest", "order_count", "volume", "source_updated_at")
+	return responseSchema(map[string]*huma.Schema{
+		"type_id": intSchema(), "region_id": intSchema(), "days": intSchema(),
+		"history": arraySchema(point),
+	}, "type_id", "region_id", "days", "history")
 }
 
 func directionalScanSchema() *huma.Schema {

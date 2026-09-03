@@ -27,17 +27,23 @@ watchEffect(() => {
         const targetSlug = props.activePath[currentDepth]
         const match = props.nodes.find(n => n.slug === targetSlug)
         if (match && match.children.length > 0) {
-            expanded.value.add(match.id)
+            expanded.value = new Set([match.id])
+            return
         }
     }
+    expanded.value = new Set()
 })
 
 const toggle = (node: TreeNode) => {
     if (expanded.value.has(node.id)) {
-        expanded.value.delete(node.id)
+        expanded.value = new Set()
     } else {
-        expanded.value.add(node.id)
+        expanded.value = new Set([node.id])
     }
+}
+
+const select = (node: TreeNode) => {
+    expanded.value = node.children.length > 0 ? new Set([node.id]) : new Set()
 }
 
 const slugPath = (node: TreeNode) => {
@@ -67,7 +73,8 @@ const isActive = (node: TreeNode) => {
                 <!-- Group link -->
                 <NuxtLink :to="`/market/${slugPath(node)}`"
                     class="flex-1 py-1 pr-2 text-xs truncate transition-colors"
-                    :class="isActive(node) ? 'text-blue-400 font-medium' : 'text-gray-400 hover:text-blue-400'">
+                    :class="isActive(node) ? 'text-blue-400 font-medium' : 'text-gray-400 hover:text-blue-400'"
+                    @click="select(node)">
                     {{ node.name }}
                 </NuxtLink>
             </div>

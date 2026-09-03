@@ -36,6 +36,8 @@ var (
 	flagEverefSkipDone bool
 	flagEverefReverse  bool
 	flagEverefRedo     bool
+	flagMarketForce    bool
+	flagMarketDays     int
 )
 
 // openPool is the preamble every importer shares.
@@ -115,6 +117,61 @@ the most recent day is routinely unavailable for several hours.
 		}
 		_ = total
 		return reportResults("Market history", each)
+	},
+}
+
+var everefMarketOrdersCmd = &cobra.Command{
+	Use:   "market-orders",
+	Short: "Import the current all-region market order book",
+	Long: `Downloads EVE Ref's latest complete market-order snapshot and replaces
+the current order table atomically. The source ETag, size, and last-modified
+time are recorded; an unchanged snapshot is skipped unless --force is used.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		pool, err := openPool(cmd)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+
+		res, err := everef.ImportMarketOrders(
+			cmd.Context(), pool, everef.NewClient(userAgent()), flagMarketForce,
+		)
+		if err != nil {
+			return err
+		}
+		return reportResults("Market orders", []everef.Result{res})
+	},
+}
+
+var everefMarketHistoryCmd = &cobra.Command{
+	Use:   "market-explorer-history",
+	Short: "Reconcile corrected all-region market history",
+	Long: `Checks EVE Ref's daily market-history objects over a rolling window.
+Only new or changed files are downloaded; a changed day replaces that day's
+rows atomically. This explorer history is separate from immutable Jita prices
+used to value stored killmails.
+
+    shrike everef:market-explorer-history
+    shrike everef:market-explorer-history --days 30
+    shrike everef:market-explorer-history --days 90 --force`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		pool, err := openPool(cmd)
+		if err != nil {
+			return err
+		}
+		defer pool.Close()
+
+		var each []everef.Result
+		_, err = everef.ReconcileMarketHistory(
+			cmd.Context(), pool, everef.NewClient(userAgent()),
+			flagMarketDays, flagMarketForce,
+			func(res everef.Result) { each = append(each, res) },
+		)
+		if err != nil {
+			_ = reportResults("Market explorer history", each)
+			return err
+		}
+		return reportResults("Market explorer history", each)
 	},
 }
 
@@ -490,6 +547,9 @@ func init() {
 	everefPricesCmd.Flags().StringVar(&flagEverefFrom, "from", "", "Start date (YYYY-MM-DD)")
 	everefPricesCmd.Flags().StringVar(&flagEverefTo, "to", "", "End date (YYYY-MM-DD), defaults to today")
 	everefPricesCmd.Flags().BoolVar(&flagEverefBackfill, "backfill", false, "Fill the gap from the latest day held to today")
+	everefMarketOrdersCmd.Flags().BoolVar(&flagMarketForce, "force", false, "Import even when the source identity is unchanged")
+	everefMarketHistoryCmd.Flags().IntVar(&flagMarketDays, "days", everef.MarketHistoryDays, "Rolling number of completed UTC days to retain")
+	everefMarketHistoryCmd.Flags().BoolVar(&flagMarketForce, "force", false, "Reimport every published day in the window")
 
 	everefSovereigntyCmd.Flags().BoolVar(&flagEverefLatest, "latest", false, "Apply the current snapshot only")
 	everefSovereigntyCmd.Flags().StringVar(&flagEverefFrom, "from", "", "Start date (YYYY-MM-DD) or year (YYYY)")
@@ -510,6 +570,8 @@ func init() {
 	everefCmd.AddCommand(
 		everefInsuranceCmd,
 		everefPricesCmd,
+		everefMarketOrdersCmd,
+		everefMarketHistoryCmd,
 		everefSovereigntyCmd,
 		everefWarsCmd,
 		everefKillmailsCmd,

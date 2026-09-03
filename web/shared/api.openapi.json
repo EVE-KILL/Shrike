@@ -79641,6 +79641,17 @@
                           "is_ship": {
                             "type": "boolean"
                           },
+                          "jita_sell": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "market_group_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
                           "meta_group_id": {
                             "format": "int64",
                             "type": [
@@ -79654,15 +79665,33 @@
                           "type_id": {
                             "format": "int64",
                             "type": "integer"
+                          },
+                          "universe_average": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "universe_volume": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
                           "type_id",
                           "name",
                           "group_id",
+                          "market_group_id",
                           "category_id",
                           "meta_group_id",
-                          "is_ship"
+                          "is_ship",
+                          "universe_average",
+                          "universe_volume",
+                          "jita_sell"
                         ],
                         "type": "object"
                       },
@@ -79680,6 +79709,557 @@
           }
         },
         "summary": "Published items in a market group",
+        "tags": [
+          "market"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/market/items/{id}/history": {
+      "get": {
+        "operationId": "market-item-history",
+        "parameters": [
+          {
+            "description": "Inventory type ID.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Restrict history to one market region; omit for a volume-weighted all-region series.",
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer"
+            },
+            "x-entity": "region"
+          },
+          {
+            "description": "Size of the trailing window, in days.",
+            "in": "query",
+            "name": "days",
+            "schema": {
+              "default": 30,
+              "maximum": 90,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "days": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "history": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "average": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "date": {
+                            "format": "date",
+                            "type": "string"
+                          },
+                          "highest": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "lowest": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "order_count": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "source_updated_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "volume": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "date",
+                          "average",
+                          "highest",
+                          "lowest",
+                          "order_count",
+                          "volume",
+                          "source_updated_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "region_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "type_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "type_id",
+                    "region_id",
+                    "days",
+                    "history"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Corrected regional market history for an item",
+        "tags": [
+          "market"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/market/items/{id}/orders": {
+      "get": {
+        "operationId": "market-item-orders",
+        "parameters": [
+          {
+            "description": "Inventory type ID.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Restrict orders to one market region; omit for all regions.",
+            "in": "query",
+            "name": "region_id",
+            "schema": {
+              "type": "integer"
+            },
+            "x-entity": "region"
+          },
+          {
+            "description": "Comma-separated security bands: high, low, null. Omit for all.",
+            "in": "query",
+            "name": "security",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum results to return.",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "buyers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "constellation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "duration": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "expires_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "is_buy_order": {
+                            "type": "boolean"
+                          },
+                          "issued": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "location_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "location_name": {
+                            "type": "string"
+                          },
+                          "min_volume": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "order_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "order_range": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "region_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "security": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "snapshot_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "type_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "volume_remain": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "volume_total": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "order_id",
+                          "duration",
+                          "is_buy_order",
+                          "issued",
+                          "location_id",
+                          "min_volume",
+                          "price",
+                          "order_range",
+                          "system_id",
+                          "type_id",
+                          "volume_remain",
+                          "volume_total",
+                          "region_id",
+                          "constellation_id",
+                          "snapshot_at",
+                          "system_name",
+                          "security",
+                          "region_name",
+                          "location_name",
+                          "expires_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "item": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "group_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "market_group_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type_id": {
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "type_id",
+                        "name",
+                        "group_id",
+                        "market_group_id"
+                      ],
+                      "type": "object"
+                    },
+                    "region_id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "regions": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "highest_buy": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "lowest_sell": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "order_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "region_id",
+                          "name",
+                          "order_count",
+                          "lowest_sell",
+                          "highest_buy"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "security": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "sellers": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "constellation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "duration": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "expires_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "is_buy_order": {
+                            "type": "boolean"
+                          },
+                          "issued": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "location_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "location_name": {
+                            "type": "string"
+                          },
+                          "min_volume": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "order_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "order_range": {
+                            "type": "string"
+                          },
+                          "price": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "region_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "security": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "snapshot_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "system_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "type_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "volume_remain": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "volume_total": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "order_id",
+                          "duration",
+                          "is_buy_order",
+                          "issued",
+                          "location_id",
+                          "min_volume",
+                          "price",
+                          "order_range",
+                          "system_id",
+                          "type_id",
+                          "volume_remain",
+                          "volume_total",
+                          "region_id",
+                          "constellation_id",
+                          "snapshot_at",
+                          "system_name",
+                          "security",
+                          "region_name",
+                          "location_name",
+                          "expires_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "snapshot_at": {
+                      "description": "UTC timestamp with millisecond precision.",
+                      "format": "date-time",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "snapshot_at",
+                    "region_id",
+                    "security",
+                    "sellers",
+                    "buyers",
+                    "regions"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Current regional buy and sell orders for an item",
         "tags": [
           "market"
         ],

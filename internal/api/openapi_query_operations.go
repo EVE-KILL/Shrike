@@ -617,6 +617,15 @@ var operationQueryParameters = map[string][]*huma.Param{
 			"Comma-separated inventory type IDs. Omit for an empty price map.",
 		),
 	},
+	"market-item-orders": {
+		entityQuery("region_id", "Restrict orders to one market region; omit for all regions.", "region"),
+		textQuery("security", "Comma-separated security bands: high, low, null. Omit for all."),
+		limitQuery(marketOrdersDefaultLimit, 1, marketOrdersMaximumLimit),
+	},
+	"market-item-history": {
+		entityQuery("region_id", "Restrict history to one market region; omit for a volume-weighted all-region series.", "region"),
+		daysQuery(marketHistoryDefaultDays, 1, marketHistoryMaximumDays),
+	},
 	"ship-matchup": {
 		requiredQuery(entityQuery(
 			"attacker", "Attacking hull type ID. Required.", "ship",

@@ -523,6 +523,10 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		return responseSchema(map[string]*huma.Schema{
 			"prices": mapOfSchema(numberSchema()),
 		}, "prices")
+	case "market-item-orders":
+		return marketItemOrdersSchema()
+	case "market-item-history":
+		return marketItemHistorySchema()
 	case "dscan-analyze", "dscan-analyze-legacy",
 		"dscan-get", "dscan-get-legacy":
 		return directionalScanSchema()

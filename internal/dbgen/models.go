@@ -1009,6 +1009,49 @@ type KillsDailyCount struct {
 	Count int64       `json:"count"`
 }
 
+type MarketOrder struct {
+	OrderID          int64              `json:"order_id"`
+	Duration         int16              `json:"duration"`
+	IsBuyOrder       bool               `json:"is_buy_order"`
+	Issued           pgtype.Timestamptz `json:"issued"`
+	LocationID       int64              `json:"location_id"`
+	MinVolume        int64              `json:"min_volume"`
+	Price            float64            `json:"price"`
+	OrderRange       string             `json:"order_range"`
+	SystemID         int32              `json:"system_id"`
+	TypeID           int32              `json:"type_id"`
+	VolumeRemain     int64              `json:"volume_remain"`
+	VolumeTotal      int64              `json:"volume_total"`
+	HttpLastModified pgtype.Timestamptz `json:"http_last_modified"`
+	StationID        *int64             `json:"station_id"`
+	RegionID         int32              `json:"region_id"`
+	ConstellationID  *int32             `json:"constellation_id"`
+	SnapshotAt       pgtype.Timestamptz `json:"snapshot_at"`
+}
+
+type MarketRegionHistory struct {
+	TypeID           int32              `json:"type_id"`
+	RegionID         int32              `json:"region_id"`
+	Date             pgtype.Date        `json:"date"`
+	Average          *float64           `json:"average"`
+	Highest          *float64           `json:"highest"`
+	Lowest           *float64           `json:"lowest"`
+	OrderCount       *int32             `json:"order_count"`
+	Volume           *int64             `json:"volume"`
+	HttpLastModified pgtype.Timestamptz `json:"http_last_modified"`
+}
+
+type MarketSourceFile struct {
+	SourcePath         string             `json:"source_path"`
+	Dataset            string             `json:"dataset"`
+	Etag               *string            `json:"etag"`
+	SizeBytes          int64              `json:"size_bytes"`
+	SourceLastModified pgtype.Timestamptz `json:"source_last_modified"`
+	FileTime           pgtype.Timestamptz `json:"file_time"`
+	RowsImported       int64              `json:"rows_imported"`
+	ImportedAt         pgtype.Timestamptz `json:"imported_at"`
+}
+
 type ModerationQueue struct {
 	ID              int64              `json:"id"`
 	TargetKind      int16              `json:"target_kind"`

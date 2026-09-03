@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // EVE Ref publishes no manifest, so discovering what exists means scraping a
@@ -45,6 +46,31 @@ func TestListParsesADirectoryIndex(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("entry %d = %s, want %s", i, got[i], want[i])
 		}
+	}
+}
+
+func TestMetadataReadsPublishedFileIdentity(t *testing.T) {
+	modified := time.Date(2026, 9, 3, 13, 49, 53, 0, time.UTC)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodHead {
+			t.Errorf("method = %s, want HEAD", r.Method)
+		}
+		w.Header().Set("ETag", `"snapshot-version"`)
+		w.Header().Set("Last-Modified", modified.Format(http.TimeFormat))
+		w.Header().Set("Content-Length", "20684397")
+	}))
+	defer srv.Close()
+
+	client := &Client{BaseURL: srv.URL, UserAgent: "shrike-test", HTTP: srv.Client()}
+	meta, err := client.Metadata(context.Background(), srv.URL+"/snapshot.csv.bz2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if meta.ETag != `"snapshot-version"` || meta.Size != 20684397 {
+		t.Errorf("metadata = %#v", meta)
+	}
+	if meta.LastModified == nil || !meta.LastModified.Equal(modified) {
+		t.Errorf("last modified = %v, want %v", meta.LastModified, modified)
 	}
 }
 

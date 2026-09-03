@@ -46,6 +46,9 @@ const navItems = computed<NavbarLink[]>(() => {
 
 // Dropdown open states — one per top-level item
 const dropdownStates = ref<Record<number, boolean>>({})
+const setDropdownState = (index: number, open: boolean) => {
+    dropdownStates.value = open ? { [index]: true } : {}
+}
 
 // Convert NavbarLink children to Dropdown component props
 const toDropdownColumns = (link: NavbarLink): DropdownColumn[] | undefined => {
@@ -79,6 +82,15 @@ const toDropdownItems = (link: NavbarLink): DropdownItem[] | undefined => {
 }
 
 const hasChildren = (link: NavbarLink) => !!link.children?.length
+
+// These destinations remain visible at very wide sizes, while normal laptop
+// widths keep the primary Menu, Kills and Fits actions plus search.
+const secondaryDesktopLinks = new Set(['Wars', 'Battles', 'Campaigns', 'Stats'])
+const desktopLinkVisibility = (link: NavbarLink) => (
+    !isDomainMode.value && secondaryDesktopLinks.has(link.label)
+        ? 'hidden 2xl:flex'
+        : ''
+)
 
 // Background system
 const bgOpen = ref(false)
@@ -223,13 +235,13 @@ const pickLocal = (path: string) => {
 
 // Info items (always present on right side)
 const infoItems: DropdownItem[] = [
-    { name: 'FAQ', to: '/faq' },
-    { name: 'API Docs', to: '/docs' },
-    { name: 'MCP', to: '/mcp' },
-    { name: 'Status', to: '/status' },
-    { name: 'Wallet', to: '/wallet' },
-    { name: 'About', to: '/about' },
-    { name: 'Donate', to: '/donate' },
+    { name: 'FAQ', to: '/faq', icon: 'lucide:circle-help' },
+    { name: 'API Docs', to: '/docs', icon: 'lucide:file-text' },
+    { name: 'MCP', to: '/mcp', icon: 'lucide:plug' },
+    { name: 'Status', to: '/status', icon: 'lucide:activity' },
+    { name: 'Wallet', to: '/wallet', icon: 'lucide:wallet-cards' },
+    { name: 'About', to: '/about', icon: 'lucide:info' },
+    { name: 'Donate', to: '/donate', icon: 'lucide:heart' },
 ]
 
 // Close everything on navigation
@@ -244,9 +256,13 @@ router.afterEach(() => {
 })
 
 // Shared trigger button classes
-const navBtn = 'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-white/90 hover:bg-blue-500/10 hover:text-blue-400 transition-colors'
-const navBtnDropdown = 'flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-white/90 hover:bg-blue-500/10 hover:text-blue-400 transition-colors'
-const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/60 hover:bg-blue-500/10 hover:text-blue-400 transition-colors'
+const navBtn = 'flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium text-white/80 transition-colors hover:bg-blue-500/10 hover:text-blue-300'
+const navBtnDropdown = 'flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-white/80 transition-colors hover:bg-blue-500/10 hover:text-blue-300'
+const iconBtn = 'flex h-10 w-9 items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-blue-500/10 hover:text-blue-300'
+const dropdownRow = 'group/dropdown flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-400 transition-colors hover:bg-blue-500/[0.08] hover:text-blue-300'
+const dropdownIcon = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.035] text-blue-400/70 transition-colors group-hover/dropdown:border-blue-400/20 group-hover/dropdown:bg-blue-500/[0.08] group-hover/dropdown:text-blue-300'
+const dropdownDangerRow = 'group/dropdown flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300'
+const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-red-400/10 bg-red-500/[0.04] text-red-400/70 transition-colors group-hover/dropdown:border-red-400/20 group-hover/dropdown:bg-red-500/[0.08] group-hover/dropdown:text-red-300'
 </script>
 
 <template>
@@ -265,10 +281,10 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
         ></div>
         <div class="relative max-w-[80rem] mx-auto px-4 flex items-center justify-between w-full h-full">
             <!-- LEFT -->
-            <div class="flex items-center gap-1">
+            <div class="flex shrink-0 items-center gap-1">
                 <NuxtLink to="/" :class="navBtn">
                     <Icon name="lucide:house" class="text-lg" />
-                    <span>{{ isDomainMode && domainConfig?.siteName ? domainConfig.siteName : 'Home' }}</span>
+                    <span class="hidden lg:inline">{{ isDomainMode && domainConfig?.siteName ? domainConfig.siteName : 'Home' }}</span>
                 </NuxtLink>
 
                 <!-- Dynamic nav items from config -->
@@ -276,13 +292,14 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                     <!-- Dropdown (has children) -->
                     <Dropdown
                         v-if="hasChildren(item)"
-                        v-model="dropdownStates[idx]"
+                        :model-value="dropdownStates[idx]"
                         :columns="toDropdownColumns(item)"
                         :featured-items="toDropdownFeaturedItems(item)"
                         :items="toDropdownItems(item)"
+                        @update:model-value="setDropdownState(idx, $event)"
                     >
                         <template #trigger>
-                            <button :class="navBtnDropdown">
+                            <button :class="[navBtnDropdown, dropdownStates[idx] ? 'bg-blue-500/10 text-blue-300' : '']">
                                 <Icon v-if="item.icon" :name="item.icon" class="text-sm opacity-60" />
                                 <span>{{ item.label }}</span>
                                 <Icon name="lucide:chevron-down" class="text-xs opacity-60 transition-transform duration-200" :class="dropdownStates[idx] ? 'rotate-180' : ''" />
@@ -291,12 +308,12 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                     </Dropdown>
 
                     <!-- Plain link -->
-                    <a v-else-if="item.external" :href="item.href" target="_blank" rel="noopener" :class="navBtn">
+                    <a v-else-if="item.external" :href="item.href" target="_blank" rel="noopener" :class="[navBtn, desktopLinkVisibility(item)]">
                         <Icon v-if="item.icon" :name="item.icon" class="text-sm opacity-60" />
                         {{ item.label }}
                         <Icon name="lucide:external-link" class="text-xs opacity-40" />
                     </a>
-                    <NuxtLink v-else :to="item.href" :class="navBtn">
+                    <NuxtLink v-else :to="item.href" :class="[navBtn, desktopLinkVisibility(item)]">
                         <Icon v-if="item.icon" :name="item.icon" class="text-sm opacity-60" />
                         {{ item.label }}
                     </NuxtLink>
@@ -304,11 +321,11 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
             </div>
 
             <!-- CENTER: Search -->
-            <div class="flex-1 flex justify-center mx-6">
-                <button class="flex items-center gap-3 w-full max-w-md h-10 px-4 rounded-lg text-sm text-gray-500 bg-white/[0.04] border border-white/[0.08] hover:bg-blue-500/[0.08] hover:border-white/[0.15] hover:text-blue-400 transition-all cursor-pointer" @click="openSearch">
-                    <Icon name="lucide:search" class="text-base" />
-                    <span class="flex-1 text-left">Search...</span>
-                    <div class="flex items-center gap-0.5">
+            <div class="mx-2 flex min-w-0 flex-1 justify-center lg:mx-4 2xl:mx-6">
+                <button class="flex h-10 w-10 shrink-0 items-center justify-center gap-3 rounded-lg border border-white/[0.08] bg-white/[0.04] px-0 text-sm text-gray-500 transition-all hover:border-white/[0.15] hover:bg-blue-500/[0.08] hover:text-blue-400 lg:w-full lg:max-w-md lg:justify-start lg:px-4" aria-label="Search" @click="openSearch">
+                    <Icon name="lucide:search" class="shrink-0 text-base" />
+                    <span class="hidden flex-1 text-left lg:block">Search...</span>
+                    <div class="hidden items-center gap-0.5 xl:flex">
                         <kbd class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-sm text-fine font-medium text-gray-500 bg-white/[0.06] border border-white/[0.1]">⌘</kbd>
                         <kbd class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-sm text-fine font-medium text-gray-500 bg-white/[0.06] border border-white/[0.1]">K</kbd>
                     </div>
@@ -323,37 +340,49 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
 
                 <Dropdown v-model="bgOpen" align="right">
                     <template #trigger>
-                        <button :class="iconBtn" aria-label="Change background">
+                        <button :class="[iconBtn, bgOpen ? 'bg-blue-500/10 text-blue-300' : '']" aria-label="Change background">
                             <Icon name="lucide:image" class="text-lg" />
                         </button>
                     </template>
                     <template #default>
-                        <div class="w-64 p-3">
+                        <div class="w-72 p-1">
+                            <div class="mb-1 flex items-center gap-2.5 px-3 py-2">
+                                <span :class="dropdownIcon">
+                                    <Icon name="lucide:image" class="text-sm" />
+                                </span>
+                                <div>
+                                    <div class="text-sm font-medium text-gray-300">Background</div>
+                                    <div class="text-fine text-gray-600">Personalize the site</div>
+                                </div>
+                            </div>
+
                             <!-- Reddit info -->
-                            <div v-if="isRedditBackground && redditMeta" class="mb-3 pb-2 border-b border-white/[0.08]">
+                            <div v-if="isRedditBackground && redditMeta" class="mx-2 mb-2 border-b border-white/[0.08] px-1 pb-2">
                                 <div class="text-fine uppercase tracking-wider text-orange-400/80 mb-1">r/{{ redditMeta.subreddit }}</div>
                                 <div class="text-xs text-gray-400 line-clamp-2">{{ redditMeta.title }}</div>
                             </div>
 
                             <!-- Reddit button -->
                             <button
-                                class="w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors mb-3"
-                                :class="isRedditBackground ? 'bg-orange-500/20 text-orange-400' : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06]'"
+                                class="group/dropdown mb-3 flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors"
+                                :class="isRedditBackground ? 'bg-orange-500/10 text-orange-300' : 'text-gray-400 hover:bg-blue-500/[0.08] hover:text-blue-300'"
                                 @click="pickReddit"
                                 :disabled="bgLoading"
                             >
-                                <Icon name="lucide:shuffle" class="w-4 h-4" :class="{ 'animate-spin': bgLoading }" />
+                                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.035]">
+                                    <Icon name="lucide:shuffle" class="text-sm" :class="{ 'animate-spin': bgLoading }" />
+                                </span>
                                 Random from r/eveporn
                             </button>
 
                             <!-- Domain Backgrounds (custom subdomain only) -->
                             <template v-if="isDomainMode && domainConfig?.backgrounds?.length">
-                                <div class="text-fine uppercase tracking-wider text-gray-600 mb-2">{{ domainConfig.siteName || 'Domain' }} Backgrounds</div>
-                                <div class="grid grid-cols-2 gap-1.5 mb-3">
+                                <div class="mb-2 px-2 text-fine font-bold uppercase tracking-[0.14em] text-gray-600">{{ domainConfig.siteName || 'Domain' }} Backgrounds</div>
+                                <div class="mb-3 grid grid-cols-2 gap-2 px-2">
                                     <button
                                         v-for="bg in domainConfig.backgrounds"
                                         :key="bg"
-                                        class="relative aspect-video rounded overflow-hidden border-2 transition-all"
+                                        class="relative aspect-video overflow-hidden rounded-lg border-2 transition-all"
                                         :class="currentBackground === bg ? 'border-blue-400' : 'border-transparent hover:border-white/20'"
                                         @click="pickLocal(bg)"
                                     >
@@ -365,12 +394,12 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                                 </div>
                             </template>
 
-                            <div class="text-fine uppercase tracking-wider text-gray-600 mb-2">Local Backgrounds</div>
+                            <div class="mb-2 px-2 text-fine font-bold uppercase tracking-[0.14em] text-gray-600">Local Backgrounds</div>
 
                             <!-- Grid -->
-                            <div class="grid grid-cols-2 gap-1.5">
+                            <div class="grid grid-cols-2 gap-2 px-2 pb-2">
                                 <button v-for="bg in localBackgrounds" :key="bg.path"
-                                    class="relative aspect-video rounded overflow-hidden border-2 transition-all"
+                                    class="relative aspect-video overflow-hidden rounded-lg border-2 transition-all"
                                     :class="currentBackground === bg.path ? 'border-blue-400' : 'border-transparent hover:border-white/20'"
                                     @click="pickLocal(bg.path)">
                                     <NuxtImg :src="bg.thumb" width="128" height="72" class="w-full h-full object-cover" loading="lazy" alt="" />
@@ -386,7 +415,7 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                 <!-- Info (simple list) -->
                 <Dropdown v-model="infoOpen" :items="infoItems" align="right">
                     <template #trigger>
-                        <button :class="iconBtn" aria-label="Information">
+                        <button :class="[iconBtn, infoOpen ? 'bg-blue-500/10 text-blue-300' : '']" aria-label="Information">
                             <Icon name="lucide:info" class="text-lg" />
                         </button>
                     </template>
@@ -401,7 +430,7 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
 
                 <Dropdown v-if="isAuthenticated" v-model="userOpen" align="right">
                     <template #trigger>
-                        <button class="flex items-center justify-center w-9 h-9 rounded-md hover:bg-blue-500/10 transition-colors overflow-hidden" aria-label="Account">
+                        <button class="flex h-10 w-9 items-center justify-center overflow-hidden rounded-lg transition-colors hover:bg-blue-500/10" :class="userOpen ? 'bg-blue-500/10 ring-1 ring-blue-400/20' : ''" aria-label="Account">
                             <EveImage
                                 :src="`/images/characters/${user!.characterId}/portrait?size=64`"
                                 :size="32"
@@ -412,9 +441,9 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                         </button>
                     </template>
                     <template #default>
-                        <div class="w-64">
+                        <div class="w-72">
                             <!-- Character card — like kill info box -->
-                            <NuxtLink :to="`/character/${user!.characterId}`" class="block relative overflow-hidden rounded-t-lg" @click="userOpen = false">
+                            <NuxtLink :to="`/character/${user!.characterId}`" class="relative block overflow-hidden rounded-lg" @click="userOpen = false">
                                 <EveImage
                                     :src="`/images/characters/${user!.characterId}/portrait?size=256`"
                                     :size="256"
@@ -445,25 +474,25 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                             </NuxtLink>
 
                             <!-- Menu items -->
-                            <div class="p-1.5 border-t border-white/[0.08]">
-                                <NuxtLink v-if="user!.isAdmin" to="/admin" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors" @click="userOpen = false">
-                                    <Icon name="lucide:shield-alert" class="text-base opacity-60" />
+                            <div class="mt-1 border-t border-white/[0.08] pt-1">
+                                <NuxtLink v-if="user!.isAdmin" to="/admin" :class="dropdownDangerRow" @click="userOpen = false">
+                                    <span :class="dropdownDangerIcon"><Icon name="lucide:shield-alert" class="text-sm" /></span>
                                     Admin
                                 </NuxtLink>
-                                <NuxtLink to="/settings" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors" @click="userOpen = false">
-                                    <Icon name="lucide:settings" class="text-base opacity-60" />
+                                <NuxtLink to="/settings" :class="dropdownRow" @click="userOpen = false">
+                                    <span :class="dropdownIcon"><Icon name="lucide:settings" class="text-sm" /></span>
                                     Settings
                                 </NuxtLink>
-                                <NuxtLink to="/settings/wallet" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors" @click="userOpen = false">
-                                    <Icon name="lucide:wallet-cards" class="text-base opacity-60" />
+                                <NuxtLink to="/settings/wallet" :class="dropdownRow" @click="userOpen = false">
+                                    <span :class="dropdownIcon"><Icon name="lucide:wallet-cards" class="text-sm" /></span>
                                     Wallet
                                 </NuxtLink>
-                                <NuxtLink to="/settings/domains" class="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors" @click="userOpen = false">
-                                    <Icon name="lucide:globe" class="text-base opacity-60" />
+                                <NuxtLink to="/settings/domains" :class="dropdownRow" @click="userOpen = false">
+                                    <span :class="dropdownIcon"><Icon name="lucide:globe" class="text-sm" /></span>
                                     Domains
                                 </NuxtLink>
-                                <button class="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors" @click="logout()">
-                                    <Icon name="lucide:log-out" class="text-base opacity-60" />
+                                <button class="w-full" :class="dropdownDangerRow" @click="logout()">
+                                    <span :class="dropdownDangerIcon"><Icon name="lucide:log-out" class="text-sm" /></span>
                                     Logout
                                 </button>
                             </div>
@@ -474,7 +503,7 @@ const iconBtn = 'flex items-center justify-center w-9 h-9 rounded-md text-white/
                 <!-- User: logged out -->
                 <Dropdown v-else v-model="loginOpen" align="right">
                     <template #trigger>
-                        <button :class="iconBtn" aria-label="Login with EVE Online">
+                        <button :class="[iconBtn, loginOpen ? 'bg-blue-500/10 text-blue-300' : '']" aria-label="Login with EVE Online">
                             <Icon name="lucide:log-in" class="text-lg" />
                         </button>
                     </template>

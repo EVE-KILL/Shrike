@@ -40,6 +40,8 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 	register("sovereignty", d.cronSovereignty)
 	register("insurance", d.cronInsurance)
 	register("price_update", d.cronPriceUpdate)
+	register("market_orders_update", d.cronMarketOrdersUpdate)
+	register("market_history_reconcile", d.cronMarketHistoryReconcile)
 	register("missed_killmails", d.cronMissedKillmails)
 	register("analyze", d.cronAnalyze)
 	register("alliance_update", d.cronAllianceUpdate)
@@ -252,6 +254,30 @@ func (d *Deps) cronPriceUpdate(ctx context.Context) (string, error) {
 	}
 
 	return fmt.Sprintf("%d price rows over %d days, %d unavailable", total, days, failed), nil
+}
+
+func (d *Deps) cronMarketOrdersUpdate(ctx context.Context) (string, error) {
+	res, err := everef.ImportMarketOrders(ctx, d.Pool, d.EveRef, false)
+	if err != nil {
+		return "", err
+	}
+	if res.Skipped > 0 {
+		return "upstream snapshot unchanged", nil
+	}
+	return fmt.Sprintf("%d current market orders replaced in %s", res.Rows, res.Elapsed), nil
+}
+
+func (d *Deps) cronMarketHistoryReconcile(ctx context.Context) (string, error) {
+	res, err := everef.ReconcileMarketHistory(
+		ctx, d.Pool, d.EveRef, everef.MarketHistoryDays, false, nil,
+	)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(
+		"%d history rows refreshed, %d files unchanged, %d unavailable, %d expired rows purged",
+		res.Rows, res.Skipped, res.Failed, res.Related,
+	), nil
 }
 
 // cronAnalyze refreshes the planner statistics on the large tables.

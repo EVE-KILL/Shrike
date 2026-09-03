@@ -9,6 +9,19 @@ interface TreeNode {
     children: TreeNode[]
 }
 
+interface MarketGroupItem {
+    type_id: number
+    name: string
+    group_id: number
+    market_group_id: number
+    category_id: number
+    meta_group_id: number | null
+    is_ship: boolean
+    universe_average: number | null
+    universe_volume: number | null
+    jita_sell: number | null
+}
+
 const route = useRoute()
 const pathSegments = computed(() => {
     const raw = route.params.path
@@ -60,11 +73,27 @@ const breadcrumb = computed(() => resolvedPath.value.breadcrumb)
 const itemsUrl = computed(() =>
     activeNode.value?.has_types ? `/api/market/groups/${activeGroupId.value}/items` : '',
 )
-const { data: itemsData, pending: itemsPending } = useApiFetch<{ items: any[] }>(itemsUrl, {
+const { data: itemsData, pending: itemsPending } = await useApiFetch<{ items: MarketGroupItem[] }>(itemsUrl, {
     watch: [activeGroupId],
     immediate: true,
-}) as any
+})
 const items = computed(() => itemsData.value?.items ?? [])
+
+const singleItemTarget = (data = itemsData.value) => {
+    const item = data?.items?.length === 1 ? data.items[0] : null
+    if (!item || item.market_group_id !== activeGroupId.value) return null
+    return `/market/item/${item.type_id}`
+}
+
+const initialSingleItemTarget = singleItemTarget()
+if (initialSingleItemTarget) {
+    await navigateTo(initialSingleItemTarget, { redirectCode: 302, replace: true })
+}
+
+watch(itemsData, (data) => {
+    const target = singleItemTarget(data)
+    if (target) navigateTo(target, { replace: true })
+})
 
 // Child groups for non-leaf nodes
 const childGroups = computed(() => activeNode.value?.children ?? [])
@@ -73,6 +102,11 @@ const childGroups = computed(() => activeNode.value?.children ?? [])
 const isRoot = computed(() => pathSegments.value.length === 0)
 const showItems = computed(() => activeNode.value?.has_types ?? false)
 const showSubgroups = computed(() => !showItems.value && !isRoot.value && childGroups.value.length > 0)
+const visibleGroups = computed(() => isRoot.value ? tree.value : childGroups.value)
+const groupPageTitle = computed(() => isRoot.value ? 'Market Explorer' : activeNode.value?.name ?? 'Market Group')
+const groupPageDescription = computed(() => isRoot.value
+    ? 'Browse the regional market by category, then compare current orders and traded history.'
+    : `Choose one of ${childGroups.value.length} subcategories to narrow the market.`)
 
 definePageMeta({
     key: '/market',
@@ -88,6 +122,12 @@ useHead({ title: computed(() => {
 const breadcrumbPath = (idx: number) => {
     return `/market/${breadcrumb.value.slice(0, idx + 1).map(c => c.slug).join('/')}`
 }
+
+const groupPath = (group: TreeNode) => {
+    return isRoot.value ? `/market/${group.slug}` : `/market/${pathString.value}/${group.slug}`
+}
+
+const childGroupPath = (group: TreeNode, child: TreeNode) => `${groupPath(group)}/${child.slug}`
 
 const metaGroupColor = (mgId: number | null): string => {
     if (mgId === 2) return 'text-yellow-400'
@@ -108,6 +148,11 @@ const metaGroupLabel = (mgId: number | null): string => {
     if (mgId === 6) return 'Deadspace'
     if (mgId === 14) return 'Tech III'
     return ''
+}
+
+const formatMarketVolume = (value: number | null): string => {
+    if (value == null) return 'No recent volume'
+    return `${value.toLocaleString('en-US')} traded latest day`
 }
 
 const sidebarOpen = ref(false)
@@ -136,6 +181,7 @@ const sidebarOpen = ref(false)
             <!-- Sidebar -->
             <div :class="sidebarOpen ? 'block w-full mb-4' : 'hidden'"
                 class="glass-panel md:!block md:w-64 md:mb-0 flex-shrink-0 p-3 overflow-y-auto md:max-h-[calc(100vh-200px)] md:sticky md:top-4">
+                <MarketItemSearch class="mb-3" />
                 <div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 mb-3">Market Groups</div>
                 <MarketTreeSidebar
                     :nodes="tree"
@@ -145,46 +191,89 @@ const sidebarOpen = ref(false)
 
             <!-- Content -->
             <div class="flex-1 min-w-0">
-                <!-- Root: top-level groups -->
-                <div v-if="isRoot" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    <NuxtLink v-for="group in tree" :key="group.id"
-                        :to="`/market/${group.slug}`"
-                        class="rounded-lg border border-white/[0.08] bg-white/[0.04] p-4 hover:bg-blue-500/[0.06] hover:border-blue-500/30 transition-all">
-                        <div class="text-sm font-medium text-white mb-1">{{ group.name }}</div>
-                        <div class="text-xs text-gray-500">{{ group.children.length }} subcategories</div>
-                    </NuxtLink>
-                </div>
-
-                <!-- Subgroups -->
-                <div v-else-if="showSubgroups" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    <NuxtLink v-for="child in childGroups" :key="child.id"
-                        :to="`/market/${pathString}/${child.slug}`"
-                        class="rounded-lg border border-white/[0.08] bg-white/[0.04] p-4 hover:bg-blue-500/[0.06] hover:border-blue-500/30 transition-all">
-                        <div class="text-sm font-medium text-white mb-1">{{ child.name }}</div>
-                        <div class="text-xs text-gray-500">
-                            {{ child.has_types ? 'Items' : `${child.children.length} subcategories` }}
-                        </div>
-                    </NuxtLink>
+                <!-- Root and intermediary market groups -->
+                <div v-if="isRoot || showSubgroups">
+                    <div class="mb-4 rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+                        <div class="text-fine font-semibold uppercase tracking-[0.16em] text-blue-400/70">{{ isRoot ? 'Regional market' : 'Market group' }}</div>
+                        <h1 class="mt-1 text-2xl font-semibold text-white">{{ groupPageTitle }}</h1>
+                        <p class="mt-1 max-w-2xl text-xs leading-relaxed text-gray-500">{{ groupPageDescription }}</p>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <article v-for="group in visibleGroups" :key="group.id"
+                            class="group flex min-h-32 flex-col rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 transition-all hover:border-blue-500/30 hover:bg-blue-500/[0.04]">
+                            <NuxtLink :to="groupPath(group)" class="flex items-start gap-3">
+                                <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-black/20 text-blue-400/70">
+                                    <Icon :name="group.has_types ? 'lucide:package-search' : 'lucide:folder-tree'" class="h-5 w-5" />
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-sm font-semibold leading-snug text-white transition-colors group-hover:text-blue-300">{{ group.name }}</div>
+                                    <div class="mt-1 text-fine uppercase tracking-wider text-gray-600">
+                                        {{ group.has_types ? 'View market items' : `${group.children.length} subcategories` }}
+                                    </div>
+                                </div>
+                                <Icon name="lucide:chevron-right" class="mt-1 h-4 w-4 flex-shrink-0 text-gray-700 transition-colors group-hover:text-blue-400" />
+                            </NuxtLink>
+                            <div v-if="group.children.length" class="mt-4 flex flex-wrap gap-1.5 border-t border-white/[0.05] pt-3">
+                                <NuxtLink v-for="preview in group.children.slice(0, 4)" :key="preview.id"
+                                    :to="childGroupPath(group, preview)"
+                                    class="rounded border border-white/[0.06] bg-black/15 px-2 py-1 text-fine text-gray-500 transition-colors hover:border-blue-500/25 hover:text-blue-300">
+                                    {{ preview.name }}
+                                </NuxtLink>
+                                <NuxtLink v-if="group.children.length > 4" :to="groupPath(group)" class="px-1 py-1 text-fine text-gray-700 hover:text-blue-400">
+                                    +{{ group.children.length - 4 }} more
+                                </NuxtLink>
+                            </div>
+                            <NuxtLink v-else :to="groupPath(group)" class="mt-auto border-t border-white/[0.05] pt-3 text-xs text-gray-600 transition-colors hover:text-blue-300">Open item listing →</NuxtLink>
+                        </article>
+                    </div>
                 </div>
 
                 <!-- Items grid -->
                 <div v-else-if="showItems">
+                    <div class="mb-4 rounded-lg border border-white/[0.08] bg-white/[0.025] p-4">
+                        <div class="flex flex-wrap items-end justify-between gap-3">
+                            <div>
+                                <div class="text-fine font-semibold uppercase tracking-[0.16em] text-blue-400/70">Market group</div>
+                                <h1 class="mt-1 text-xl font-semibold text-white">{{ activeNode?.name }}</h1>
+                                <p class="mt-1 text-xs text-gray-500">Compare the latest universe-wide traded average with the current lowest sell order in Jita.</p>
+                            </div>
+                            <div v-if="!itemsPending" class="text-xs tabular-nums text-gray-500">{{ items.length.toLocaleString('en-US') }} items</div>
+                        </div>
+                    </div>
                     <div v-if="itemsPending" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                         <div v-for="i in 12" :key="i" class="h-24 rounded-lg bg-white/[0.04] animate-pulse"></div>
                     </div>
-                    <div v-else-if="items.length" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div v-else-if="items.length" class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
                         <NuxtLink v-for="item in items" :key="item.type_id"
-                            :to="`/item/${item.type_id}`"
-                            class="rounded-lg border border-white/[0.08] bg-white/[0.04] p-3 hover:bg-blue-500/[0.06] hover:border-blue-500/30 transition-all flex items-center gap-3">
-                            <img :src="item.is_ship
-                                    ? `/images/types/${item.type_id}/render?size=64`
-                                    : `/images/types/${item.type_id}/icon?size=64`"
-                                :alt="item.name"
-                                class="w-10 h-10 rounded flex-shrink-0" loading="lazy">
-                            <div class="min-w-0">
-                                <div class="text-sm text-white truncate">{{ item.name }}</div>
-                                <div v-if="metaGroupLabel(item.meta_group_id)" class="text-fine font-medium" :class="metaGroupColor(item.meta_group_id)">
-                                    {{ metaGroupLabel(item.meta_group_id) }}
+                            :to="`/market/item/${item.type_id}`"
+                            class="group rounded-lg border border-white/[0.08] bg-white/[0.035] p-4 transition-all hover:border-blue-500/30 hover:bg-blue-500/[0.06]">
+                            <div class="flex items-center gap-3">
+                                <img :src="item.is_ship
+                                        ? `/images/types/${item.type_id}/render?size=64`
+                                        : `/images/types/${item.type_id}/icon?size=64`"
+                                    :alt="item.name"
+                                    class="h-14 w-14 flex-shrink-0 rounded-md bg-black/20" loading="lazy">
+                                <div class="min-w-0 flex-1">
+                                    <div class="line-clamp-2 text-sm font-medium leading-snug text-white transition-colors group-hover:text-blue-300">{{ item.name }}</div>
+                                    <div class="mt-1 flex items-center gap-2">
+                                        <span v-if="metaGroupLabel(item.meta_group_id)" class="text-fine font-medium uppercase tracking-wider" :class="metaGroupColor(item.meta_group_id)">
+                                            {{ metaGroupLabel(item.meta_group_id) }}
+                                        </span>
+                                        <span class="font-mono text-fine text-gray-700">#{{ item.type_id }}</span>
+                                    </div>
+                                </div>
+                                <Icon name="lucide:chevron-right" class="h-4 w-4 flex-shrink-0 text-gray-700 transition-colors group-hover:text-blue-400" />
+                            </div>
+                            <div class="mt-3 grid grid-cols-2 gap-3 border-t border-white/[0.05] pt-3">
+                                <div>
+                                    <div class="text-fine font-semibold uppercase tracking-wider text-gray-600">Universe avg</div>
+                                    <div class="mt-0.5 font-mono text-sm font-semibold tabular-nums text-white">{{ item.universe_average == null ? '—' : formatIsk(item.universe_average) }}</div>
+                                    <div class="mt-0.5 text-fine text-gray-700">{{ formatMarketVolume(item.universe_volume) }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-fine font-semibold uppercase tracking-wider text-gray-600">Jita lowest sell</div>
+                                    <div class="mt-0.5 font-mono text-sm font-semibold tabular-nums text-yellow-400">{{ item.jita_sell == null ? '—' : formatIsk(item.jita_sell) }}</div>
+                                    <div class="mt-0.5 text-fine text-gray-700">Current order book</div>
                                 </div>
                             </div>
                         </NuxtLink>

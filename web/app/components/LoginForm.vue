@@ -22,8 +22,16 @@ const delayLabel = (h: number) => h === 0 ? 'No delay' : h === 1 ? '1 hour' : `$
 </script>
 
 <template>
-    <div :class="mobile ? 'p-1' : 'w-72 p-4'">
-        <div v-if="!mobile" class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-3">Login with EVE Online</div>
+    <div :class="mobile ? 'p-1' : 'w-72 p-3'">
+        <div v-if="!mobile" class="mb-3 flex items-center gap-2.5">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.035] text-blue-400/70">
+                <Icon name="lucide:log-in" class="text-sm" />
+            </span>
+            <div>
+                <div class="text-sm font-medium text-gray-300">Login with EVE Online</div>
+                <div class="text-fine text-gray-600">Choose what to synchronize</div>
+            </div>
+        </div>
 
         <!-- EVE SSO image button -->
         <button

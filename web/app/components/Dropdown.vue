@@ -72,6 +72,7 @@ watch(isOpen, (open) => {
 })
 
 const isMega = computed(() => !!props.columns?.length)
+const isLauncher = computed(() => !isMega.value && !!props.featuredItems?.length)
 
 const columnIcons: Record<string, string> = {
     Activity: 'lucide:zap',
@@ -107,25 +108,26 @@ const columnIcon = (label: string) => columnIcons[label] ?? 'lucide:circle-dot'
         >
             <div
                 v-if="isOpen"
-                class="z-50 rounded-xl border border-white/[0.10] bg-[#141414]/95 backdrop-blur-2xl shadow-2xl shadow-black/60"
+                class="z-50 rounded-xl border border-white/[0.10] bg-[#141414]/90 bg-[radial-gradient(circle_at_12%_0%,rgba(59,130,246,0.09),transparent_34%),radial-gradient(circle_at_88%_100%,rgba(99,102,241,0.07),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.012),transparent_45%)] backdrop-blur-2xl shadow-2xl shadow-black/60"
                 :class="[
                     isMega
-                        ? 'fixed left-1/2 top-16 w-[min(calc(var(--max-width-inner)-5rem),calc(100vw-6rem))] -translate-x-1/2 origin-top overflow-hidden p-5'
-                        : `absolute top-full mt-2 max-h-[70vh] min-w-[11rem] overflow-y-auto p-1.5 ${align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'}`,
+                        ? 'fixed left-1/2 top-16 max-h-[calc(100vh-5rem)] w-[min(calc(var(--max-width-inner)-5rem),calc(100vw-3rem))] -translate-x-1/2 origin-top overflow-x-hidden overflow-y-auto p-5'
+                        : `absolute top-full mt-2 max-h-[70vh] overflow-y-auto ${isLauncher ? 'w-[min(30rem,calc(100vw-2rem))] p-2' : 'min-w-[12rem] p-1.5'} ${align === 'right' ? 'right-0 origin-top-right' : 'left-0 origin-top-left'}`,
                 ]"
             >
                 <!-- ===== MEGA MENU MODE ===== -->
                 <template v-if="isMega">
-                    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(59,130,246,0.09),transparent_34%),radial-gradient(circle_at_88%_100%,rgba(99,102,241,0.07),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.012),transparent_45%)]" />
-                    <div class="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full border border-blue-400/[0.035]" />
-                    <div class="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full border border-blue-400/[0.035]" />
+                    <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+                        <div class="absolute -right-20 -top-24 h-64 w-64 rounded-full border border-blue-400/[0.035]" />
+                        <div class="absolute -right-8 -top-12 h-40 w-40 rounded-full border border-blue-400/[0.035]" />
+                    </div>
 
-                    <div v-if="featuredItems?.length" class="relative z-10 mb-4 grid grid-cols-3 gap-2 border-b border-white/[0.08] pb-4 lg:flex">
+                    <div v-if="featuredItems?.length" class="relative z-10 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" :class="columns?.length ? 'mb-4 border-b border-white/[0.08] pb-4' : ''">
                         <NuxtLink
                             v-for="item in featuredItems"
                             :key="item.to"
                             :to="item.to"
-                            class="inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-blue-400/20 bg-blue-500/[0.08] px-2.5 py-2 text-center text-xs font-semibold text-blue-300 transition-colors hover:border-blue-400/40 hover:bg-blue-500/[0.14] hover:text-blue-200 lg:min-w-max lg:flex-auto"
+                            class="inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-blue-400/20 bg-blue-500/[0.08] px-2.5 py-2 text-center text-xs font-semibold text-blue-300 transition-colors hover:border-blue-400/40 hover:bg-blue-500/[0.14] hover:text-blue-200"
                             @click="close"
                         >
                             <Icon v-if="item.icon" :name="item.icon" class="shrink-0 text-sm" />
@@ -134,11 +136,10 @@ const columnIcon = (label: string) => columnIcons[label] ?? 'lucide:circle-dot'
                     </div>
 
                     <div
-                        class="relative z-10 grid w-full grid-cols-3 gap-x-4 gap-y-4 sm:grid-cols-4 lg:grid-cols-12"
+                        v-if="columns?.length"
+                        class="relative z-10 grid w-full grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6"
                     >
-                        <div v-for="(col, columnIndex) in columns" :key="col.label"
-                            class="min-w-0 px-2"
-                            :class="columnIndex < 6 ? 'lg:col-span-2' : 'lg:col-span-3'">
+                        <div v-for="(col, columnIndex) in columns" :key="col.label" class="min-w-0 px-2">
                             <div class="mb-1 flex items-center gap-2 border-b border-white/[0.08] px-1 pb-2 text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80">
                                 <span>{{ col.label }}</span>
                                 <span class="ml-auto font-mono text-[9px] tracking-normal text-gray-700">{{ String(columnIndex + 1).padStart(2, '0') }}</span>
@@ -161,17 +162,35 @@ const columnIcon = (label: string) => columnIcons[label] ?? 'lucide:circle-dot'
                     </div>
                 </template>
 
+                <!-- ===== LAUNCHER MODE (compact icon grid) ===== -->
+                <div v-else-if="isLauncher" class="grid grid-cols-2 gap-1">
+                    <NuxtLink
+                        v-for="item in featuredItems"
+                        :key="item.to"
+                        :to="item.to"
+                        class="group/link flex min-w-0 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-400 transition-colors hover:bg-blue-500/[0.08] hover:text-blue-300"
+                        @click="close"
+                    >
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.035] text-blue-400/70 transition-colors group-hover/link:border-blue-400/20 group-hover/link:bg-blue-500/[0.08] group-hover/link:text-blue-300">
+                            <Icon v-if="item.icon" :name="item.icon" class="text-sm" />
+                        </span>
+                        <span class="truncate">{{ item.name }}</span>
+                    </NuxtLink>
+                </div>
+
                 <!-- ===== SIMPLE LIST MODE (from items prop) ===== -->
                 <template v-else-if="items?.length">
                     <NuxtLink
                         v-for="item in items"
                         :key="item.to"
                         :to="item.to"
-                        class="flex items-center gap-2.5 px-3 py-2 rounded-md text-xs text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.08] transition-colors"
+                        class="group/link flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-gray-400 transition-colors hover:bg-blue-500/[0.08] hover:text-blue-300"
                         @click="close"
                     >
-                        <Icon v-if="item.icon" :name="item.icon" class="text-sm opacity-50" />
-                        {{ item.name }}
+                        <span v-if="item.icon" class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.035] text-blue-400/70 transition-colors group-hover/link:border-blue-400/20 group-hover/link:bg-blue-500/[0.08] group-hover/link:text-blue-300">
+                            <Icon :name="item.icon" class="text-sm" />
+                        </span>
+                        <span>{{ item.name }}</span>
                     </NuxtLink>
                 </template>
 

@@ -52,6 +52,16 @@ type Client struct {
 	HTTP      *http.Client
 }
 
+// FileMetadata identifies one published object. EVE Ref may replace historical
+// files in place, so the URL alone is not a version; ETag is the primary
+// identity and size/last-modified make the comparison observable.
+type FileMetadata struct {
+	URL          string
+	ETag         string
+	Size         int64
+	LastModified *time.Time
+}
+
 // url joins a dataset path onto the client's root.
 func (c *Client) url(path string) string {
 	base := c.BaseURL
@@ -69,6 +79,41 @@ func NewClient(userAgent string) *Client {
 		UserAgent: userAgent,
 		HTTP:      &http.Client{Timeout: requestTimeout},
 	}
+}
+
+// Metadata reads an object's current identity without downloading its body.
+func (c *Client) Metadata(ctx context.Context, url string) (FileMetadata, error) {
+	meta := FileMetadata{URL: url}
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return meta, err
+	}
+	req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("Accept-Encoding", "identity")
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return meta, fmt.Errorf("HEAD %s: %w", url, err)
+	}
+	if err := resp.Body.Close(); err != nil {
+		return meta, fmt.Errorf("close HEAD %s response: %w", url, err)
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return meta, fmt.Errorf("%s: %w", url, ErrNotPublished)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return meta, fmt.Errorf("HEAD %s: HTTP %d", url, resp.StatusCode)
+	}
+
+	meta.ETag = strings.TrimSpace(resp.Header.Get("ETag"))
+	meta.Size = resp.ContentLength
+	if value := resp.Header.Get("Last-Modified"); value != "" {
+		if parsed, parseErr := http.ParseTime(value); parseErr == nil {
+			parsed = parsed.UTC()
+			meta.LastModified = &parsed
+		}
+	}
+	return meta, nil
 }
 
 // get performs a GET and hands the caller the open body.

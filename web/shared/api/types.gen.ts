@@ -26442,14 +26442,180 @@ export type MarketGroupItemsResponses = {
             category_id: number;
             group_id: number;
             is_ship: boolean;
+            jita_sell: number | null;
+            market_group_id: number;
             meta_group_id: number | null;
             name: string;
             type_id: number;
+            universe_average: number | null;
+            universe_volume: number | null;
         }>;
     };
 };
 
 export type MarketGroupItemsResponse = MarketGroupItemsResponses[keyof MarketGroupItemsResponses];
+
+export type MarketItemHistoryData = {
+    body?: never;
+    path: {
+        /**
+         * Inventory type ID.
+         */
+        id: number;
+    };
+    query?: {
+        /**
+         * Restrict history to one market region; omit for a volume-weighted all-region series.
+         */
+        region_id?: number;
+        /**
+         * Size of the trailing window, in days.
+         */
+        days?: number;
+    };
+    url: '/market/items/{id}/history';
+};
+
+export type MarketItemHistoryResponses = {
+    /**
+     * OK
+     */
+    200: {
+        days: number;
+        history: Array<{
+            average: number | null;
+            date: string;
+            highest: number | null;
+            lowest: number | null;
+            order_count: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            source_updated_at: string | null;
+            volume: number | null;
+        }>;
+        region_id: number;
+        type_id: number;
+    };
+};
+
+export type MarketItemHistoryResponse = MarketItemHistoryResponses[keyof MarketItemHistoryResponses];
+
+export type MarketItemOrdersData = {
+    body?: never;
+    path: {
+        /**
+         * Inventory type ID.
+         */
+        id: number;
+    };
+    query?: {
+        /**
+         * Restrict orders to one market region; omit for all regions.
+         */
+        region_id?: number;
+        /**
+         * Comma-separated security bands: high, low, null. Omit for all.
+         */
+        security?: string;
+        /**
+         * Maximum results to return.
+         */
+        limit?: number;
+    };
+    url: '/market/items/{id}/orders';
+};
+
+export type MarketItemOrdersResponses = {
+    /**
+     * OK
+     */
+    200: {
+        buyers: Array<{
+            constellation_id: number | null;
+            duration: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at: string;
+            is_buy_order: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            issued: string;
+            location_id: number;
+            location_name: string;
+            min_volume: number;
+            order_id: number;
+            order_range: string;
+            price: number;
+            region_id: number;
+            region_name: string | null;
+            security: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            snapshot_at: string;
+            system_id: number;
+            system_name: string | null;
+            type_id: number;
+            volume_remain: number;
+            volume_total: number;
+        }>;
+        item: {
+            group_id: number | null;
+            market_group_id: number | null;
+            name: string;
+            type_id: number;
+        };
+        region_id: number;
+        regions: Array<{
+            highest_buy: number | null;
+            lowest_sell: number | null;
+            name: string | null;
+            order_count: number;
+            region_id: number;
+        }>;
+        security: Array<string>;
+        sellers: Array<{
+            constellation_id: number | null;
+            duration: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            expires_at: string;
+            is_buy_order: boolean;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            issued: string;
+            location_id: number;
+            location_name: string;
+            min_volume: number;
+            order_id: number;
+            order_range: string;
+            price: number;
+            region_id: number;
+            region_name: string | null;
+            security: number | null;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            snapshot_at: string;
+            system_id: number;
+            system_name: string | null;
+            type_id: number;
+            volume_remain: number;
+            volume_total: number;
+        }>;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        snapshot_at: string | null;
+    };
+};
+
+export type MarketItemOrdersResponse = MarketItemOrdersResponses[keyof MarketItemOrdersResponses];
 
 export type MarketTreeData = {
     body?: never;

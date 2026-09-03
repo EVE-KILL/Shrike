@@ -25,6 +25,7 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
                 label: 'Explore',
                 items: [
                     { label: 'Categories', href: '/categories', icon: 'lucide:tags' },
+                    { label: 'Market', href: '/market', icon: 'lucide:shopping-cart' },
                     { label: 'Rankings', href: '/rankings', icon: 'lucide:trophy' },
                     { label: 'Advanced Search', href: '/advancedsearch', icon: 'lucide:search' },
                     { label: 'Battle Generator', href: '/battlegenerator', icon: 'lucide:shield' },
@@ -35,6 +36,11 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
                     { label: 'Legacy Kills', href: '/legacy', icon: 'lucide:archive' },
                 ],
             },
+        ],
+    },
+    {
+        label: 'Kills', href: '/kills/latest',
+        children: [
             {
                 label: 'Activity',
                 items: [
