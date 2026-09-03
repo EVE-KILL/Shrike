@@ -28,6 +28,7 @@ func registerRoutes(a huma.API, opts Options) *responseSchemaResolver {
 	registerKillmailSubmissionRoute(a, opts)
 	registerKillboardRoutes(a, opts)
 	registerLabelRoutes(a, opts)
+	registerCoalitionDirectoryRoutes(a, opts)
 	registerMapRoutes(a, opts)
 	registerBackgroundRoutes(a, opts)
 	registerFittingRoutes(a, opts)

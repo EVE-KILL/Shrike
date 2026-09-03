@@ -18,7 +18,7 @@ func TestSitemapKindsAreExplicitlyAllowlisted(t *testing.T) {
 	}
 
 	want := []string{
-		"alliances", "battles", "characters", "corporations", "items",
+		"alliances", "battles", "characters", "coalitions", "corporations", "items",
 		"kills", "regions", "ships", "systems", "wars",
 	}
 	got := make([]string, 0, len(sitemapSpecs))
@@ -43,6 +43,24 @@ func TestSitemapKindsAreExplicitlyAllowlisted(t *testing.T) {
 		if spec.Kind != kind {
 			t.Errorf("resolve %q returned %q", kind, spec.Kind)
 		}
+	}
+}
+
+func TestBuildSitemapEntriesSupportsCoalitionSlugs(t *testing.T) {
+	spec, err := resolveSitemapSpec("coalitions")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := buildSitemapEntries(spec, []map[string]any{
+		{"id": "the-imperium"},
+		{"id": "Winter Coalition"},
+		{"id": int64(123)},
+	})
+	want := []map[string]any{{
+		"loc": "/coalitions/the-imperium", "changefreq": "daily", "priority": 0.6,
+	}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("entries = %#v, want %#v", got, want)
 	}
 }
 

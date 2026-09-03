@@ -23,6 +23,7 @@ type sitemapSpec struct {
 	ChangeFrequency string
 	Priority        float64
 	HasLastModified bool
+	StringID        bool
 }
 
 var sitemapSpecs = []sitemapSpec{
@@ -63,6 +64,18 @@ var sitemapSpecs = []sitemapSpec{
 		ChangeFrequency: "daily",
 		Priority:        0.7,
 		HasLastModified: true,
+	},
+	{
+		Kind: "coalitions",
+		Query: `
+			SELECT slug AS id, updated_at AS lastmod
+			FROM coalitions
+			ORDER BY updated_at DESC, slug ASC`,
+		LocationPrefix:  "/coalitions/",
+		ChangeFrequency: "daily",
+		Priority:        0.6,
+		HasLastModified: true,
+		StringID:        true,
 	},
 	{
 		Kind: "corporations",
@@ -217,12 +230,22 @@ func buildSitemapEntries(
 ) []map[string]any {
 	entries := make([]map[string]any, 0, len(rows))
 	for _, row := range rows {
-		id, ok := int64Value(row["id"])
-		if !ok {
-			continue
+		var location string
+		if spec.StringID {
+			id, ok := row["id"].(string)
+			if !ok || !coalitionSlugPattern.MatchString(id) {
+				continue
+			}
+			location = spec.LocationPrefix + id
+		} else {
+			id, ok := int64Value(row["id"])
+			if !ok {
+				continue
+			}
+			location = spec.LocationPrefix + strconv.FormatInt(id, 10)
 		}
 		entry := map[string]any{
-			"loc":        spec.LocationPrefix + strconv.FormatInt(id, 10),
+			"loc":        location,
 			"changefreq": spec.ChangeFrequency,
 			"priority":   spec.Priority,
 		}

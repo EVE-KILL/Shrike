@@ -167,6 +167,10 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		}, "siblings")
 	case "killmail-submit":
 		return killmailSubmissionResponseSchema()
+	case "coalitions":
+		return coalitionDirectoryListResponseSchema()
+	case "coalition", "coalition-create", "coalition-update":
+		return coalitionDirectoryDetailResponseSchema()
 
 	// Universe page aggregates.
 	case "universe-region", "region-compat":
@@ -541,7 +545,7 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		"localscan-save", "localscan-save-legacy":
 		return responseSchema(map[string]*huma.Schema{"hash": stringSchema()}, "hash")
 	case "sitemap", "sitemap-alliances-compat", "sitemap-battles-compat",
-		"sitemap-characters-compat", "sitemap-corporations-compat",
+		"sitemap-characters-compat", "sitemap-coalitions-compat", "sitemap-corporations-compat",
 		"sitemap-items-compat", "sitemap-kills-compat",
 		"sitemap-regions-compat", "sitemap-ships-compat",
 		"sitemap-systems-compat", "sitemap-wars-compat":
@@ -620,6 +624,51 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 
 func successResponseSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{"success": boolSchema()}, "success")
+}
+
+func coalitionDirectorySummarySchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"coalition_id": intSchema(), "slug": stringSchema(), "name": stringSchema(),
+		"description": stringSchema(), "source_url": nullable(stringSchema()),
+		"revision": intSchema(), "created_at": timestampSchema(), "updated_at": timestampSchema(),
+		"created_by_character_id":   nullable(intSchema()),
+		"created_by_character_name": nullable(stringSchema()),
+		"updated_by_character_id":   nullable(intSchema()),
+		"updated_by_character_name": nullable(stringSchema()),
+		"alliance_count":            intSchema(), "member_count": intSchema(), "system_count": intSchema(),
+		"kills": intSchema(), "losses": intSchema(),
+		"isk_destroyed": numberSchema(), "isk_lost": numberSchema(),
+	}, "coalition_id", "slug", "name", "description", "source_url", "revision",
+		"created_at", "updated_at", "alliance_count", "member_count", "system_count",
+		"kills", "losses", "isk_destroyed", "isk_lost")
+}
+
+func coalitionDirectoryListResponseSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"coalitions":        arraySchema(coalitionDirectorySummarySchema()),
+		"stats_window_days": intSchema(),
+	}, "coalitions", "stats_window_days")
+}
+
+func coalitionDirectoryDetailResponseSchema() *huma.Schema {
+	alliance := responseSchema(map[string]*huma.Schema{
+		"alliance_id": intSchema(), "name": stringSchema(), "ticker": stringSchema(),
+		"member_count": intSchema(), "corporation_count": intSchema(), "system_count": intSchema(),
+		"added_at": timestampSchema(), "added_by_character_id": nullable(intSchema()),
+		"added_by_character_name": nullable(stringSchema()),
+	}, "alliance_id", "name", "ticker", "member_count", "corporation_count", "system_count", "added_at")
+	edit := responseSchema(map[string]*huma.Schema{
+		"edit_id": intSchema(), "editor_character_id": nullable(intSchema()),
+		"editor_character_name": stringSchema(), "action": stringSchema(), "summary": stringSchema(),
+		"changes":    openJSONObjectSchema("Before and after snapshots for this edit."),
+		"created_at": timestampSchema(),
+	}, "edit_id", "editor_character_id", "editor_character_name", "action", "summary", "changes", "created_at")
+	return responseSchema(map[string]*huma.Schema{
+		"coalition":         coalitionDirectorySummarySchema(),
+		"alliances":         arraySchema(alliance),
+		"edits":             arraySchema(edit),
+		"stats_window_days": intSchema(),
+	}, "coalition", "alliances", "edits", "stats_window_days")
 }
 
 func openJSONObjectSchema(description string) *huma.Schema {

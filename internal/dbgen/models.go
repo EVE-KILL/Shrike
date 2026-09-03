@@ -373,6 +373,37 @@ type CharacterIntelTargetDaily struct {
 	Appearances  int32       `json:"appearances"`
 }
 
+type Coalition struct {
+	CoalitionID          int64              `json:"coalition_id"`
+	Slug                 string             `json:"slug"`
+	Name                 string             `json:"name"`
+	Description          string             `json:"description"`
+	SourceUrl            *string            `json:"source_url"`
+	Revision             int32              `json:"revision"`
+	CreatedByCharacterID *int32             `json:"created_by_character_id"`
+	UpdatedByCharacterID *int32             `json:"updated_by_character_id"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
+type CoalitionEdit struct {
+	EditID              int64              `json:"edit_id"`
+	CoalitionID         int64              `json:"coalition_id"`
+	EditorCharacterID   *int32             `json:"editor_character_id"`
+	EditorCharacterName string             `json:"editor_character_name"`
+	Action              string             `json:"action"`
+	Summary             string             `json:"summary"`
+	Changes             []byte             `json:"changes"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+}
+
+type CoalitionMembership struct {
+	CoalitionID        int64              `json:"coalition_id"`
+	AllianceID         int32              `json:"alliance_id"`
+	AddedByCharacterID *int32             `json:"added_by_character_id"`
+	AddedAt            pgtype.Timestamptz `json:"added_at"`
+}
+
 type Comment struct {
 	ID               int64              `json:"id"`
 	TargetType       int16              `json:"target_type"`

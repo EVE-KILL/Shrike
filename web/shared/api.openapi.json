@@ -22755,6 +22755,54 @@
         "x-audience": "public"
       }
     },
+    "/__sitemap__/coalitions": {
+      "get": {
+        "operationId": "sitemap-coalitions-compat",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "changefreq": {
+                        "type": "string"
+                      },
+                      "lastmod": {
+                        "description": "UTC timestamp with millisecond precision.",
+                        "format": "date-time",
+                        "type": "string"
+                      },
+                      "loc": {
+                        "type": "string"
+                      },
+                      "priority": {
+                        "format": "double",
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "loc",
+                      "changefreq",
+                      "priority"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "URLs for the coalitions sitemap",
+        "tags": [
+          "sitemap"
+        ],
+        "x-audience": "public"
+      }
+    },
     "/__sitemap__/corporations": {
       "get": {
         "operationId": "sitemap-corporations-compat",
@@ -48178,6 +48226,465 @@
         "x-audience": "public"
       }
     },
+    "/coalitions": {
+      "get": {
+        "operationId": "coalitions",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "coalitions": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "alliance_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "coalition_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "created_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "created_by_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "created_by_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "isk_destroyed": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "isk_lost": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "losses": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "member_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "revision": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "source_url": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "system_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "updated_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "updated_by_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "updated_by_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "coalition_id",
+                          "slug",
+                          "name",
+                          "description",
+                          "source_url",
+                          "revision",
+                          "created_at",
+                          "updated_at",
+                          "alliance_count",
+                          "member_count",
+                          "system_count",
+                          "kills",
+                          "losses",
+                          "isk_destroyed",
+                          "isk_lost"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "stats_window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "coalitions",
+                    "stats_window_days"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "List community-maintained coalitions",
+        "tags": [
+          "coalitions"
+        ],
+        "x-audience": "public"
+      },
+      "post": {
+        "operationId": "coalition-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "alliance_ids": {
+                    "description": "Current member alliance IDs.",
+                    "items": {
+                      "description": "An integer. A numeric string is accepted for compatibility.",
+                      "oneOf": [
+                        {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        {
+                          "pattern": "^-?\\d+$",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "maxItems": 200,
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "description": {
+                    "description": "Short description of the coalition.",
+                    "maxLength": 2000,
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "Public coalition name.",
+                    "maxLength": 100,
+                    "minLength": 2,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source_url": {
+                    "description": "Public source used to verify the membership.",
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "alliance_ids"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "alliances": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "added_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "added_by_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "added_by_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alliance_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "corporation_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "member_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "system_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "ticker": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "alliance_id",
+                          "name",
+                          "ticker",
+                          "member_count",
+                          "corporation_count",
+                          "system_count",
+                          "added_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "coalition": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "alliance_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "coalition_id": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "created_by_character_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "created_by_character_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "isk_destroyed": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "isk_lost": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "kills": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "losses": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "member_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "source_url": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "system_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "updated_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updated_by_character_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "updated_by_character_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "coalition_id",
+                        "slug",
+                        "name",
+                        "description",
+                        "source_url",
+                        "revision",
+                        "created_at",
+                        "updated_at",
+                        "alliance_count",
+                        "member_count",
+                        "system_count",
+                        "kills",
+                        "losses",
+                        "isk_destroyed",
+                        "isk_lost"
+                      ],
+                      "type": "object"
+                    },
+                    "edits": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "action": {
+                            "type": "string"
+                          },
+                          "changes": {
+                            "additionalProperties": true,
+                            "description": "Before and after snapshots for this edit.",
+                            "type": "object"
+                          },
+                          "created_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "edit_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "editor_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "editor_character_name": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "edit_id",
+                          "editor_character_id",
+                          "editor_character_name",
+                          "action",
+                          "summary",
+                          "changes",
+                          "created_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "stats_window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "coalition",
+                    "alliances",
+                    "edits",
+                    "stats_window_days"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Create a community-maintained coalition",
+        "tags": [
+          "coalitions",
+          "account"
+        ],
+        "x-audience": "account"
+      }
+    },
     "/coalitions/stats": {
       "post": {
         "description": "Aggregated A-vs-B stats for two coalitions. Returns exact pairwise kills/losses/ISK, per-side overall activity (not opponent-filtered), and per-side top ships used plus active systems \u0026 regions — all computed from raw killmails. Also returns a daily pairwise timeseries and an intersection of 'clashed systems' where both sides were active. Corps listed inside a side that are already members of a listed alliance on that side are dropped to prevent double counting. Window capped at 90 days.",
@@ -48243,6 +48750,607 @@
           "coalitions"
         ],
         "x-audience": "public"
+      }
+    },
+    "/coalitions/{slug}": {
+      "get": {
+        "operationId": "coalition",
+        "parameters": [
+          {
+            "description": "Stable coalition slug.",
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "alliances": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "added_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "added_by_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "added_by_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alliance_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "corporation_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "member_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "system_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "ticker": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "alliance_id",
+                          "name",
+                          "ticker",
+                          "member_count",
+                          "corporation_count",
+                          "system_count",
+                          "added_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "coalition": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "alliance_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "coalition_id": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "created_by_character_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "created_by_character_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "isk_destroyed": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "isk_lost": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "kills": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "losses": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "member_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "source_url": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "system_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "updated_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updated_by_character_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "updated_by_character_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "coalition_id",
+                        "slug",
+                        "name",
+                        "description",
+                        "source_url",
+                        "revision",
+                        "created_at",
+                        "updated_at",
+                        "alliance_count",
+                        "member_count",
+                        "system_count",
+                        "kills",
+                        "losses",
+                        "isk_destroyed",
+                        "isk_lost"
+                      ],
+                      "type": "object"
+                    },
+                    "edits": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "action": {
+                            "type": "string"
+                          },
+                          "changes": {
+                            "additionalProperties": true,
+                            "description": "Before and after snapshots for this edit.",
+                            "type": "object"
+                          },
+                          "created_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "edit_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "editor_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "editor_character_name": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "edit_id",
+                          "editor_character_id",
+                          "editor_character_name",
+                          "action",
+                          "summary",
+                          "changes",
+                          "created_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "stats_window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "coalition",
+                    "alliances",
+                    "edits",
+                    "stats_window_days"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Get a coalition, its alliances, statistics, and edit history",
+        "tags": [
+          "coalitions"
+        ],
+        "x-audience": "public"
+      },
+      "patch": {
+        "operationId": "coalition-update",
+        "parameters": [
+          {
+            "description": "Stable coalition slug.",
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "alliance_ids": {
+                    "description": "Complete replacement member list.",
+                    "items": {
+                      "description": "An integer. A numeric string is accepted for compatibility.",
+                      "oneOf": [
+                        {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        {
+                          "pattern": "^-?\\d+$",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "maxItems": 200,
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "description": {
+                    "description": "Replacement description. Null clears it.",
+                    "maxLength": 2000,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "description": "Replacement public name.",
+                    "maxLength": 100,
+                    "minLength": 2,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "revision": {
+                    "description": "Current revision returned by the API. Prevents overwriting a newer edit.",
+                    "format": "int64",
+                    "minimum": 1,
+                    "type": [
+                      "integer",
+                      "null"
+                    ]
+                  },
+                  "source_url": {
+                    "description": "Replacement verification source. Null clears it.",
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "revision"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "alliances": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "added_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "added_by_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "added_by_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alliance_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "corporation_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "member_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "system_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "ticker": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "alliance_id",
+                          "name",
+                          "ticker",
+                          "member_count",
+                          "corporation_count",
+                          "system_count",
+                          "added_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "coalition": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "alliance_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "coalition_id": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "created_by_character_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "created_by_character_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "isk_destroyed": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "isk_lost": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "kills": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "losses": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "member_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "slug": {
+                          "type": "string"
+                        },
+                        "source_url": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "system_count": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "updated_at": {
+                          "description": "UTC timestamp with millisecond precision.",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updated_by_character_id": {
+                          "format": "int64",
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "updated_by_character_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "coalition_id",
+                        "slug",
+                        "name",
+                        "description",
+                        "source_url",
+                        "revision",
+                        "created_at",
+                        "updated_at",
+                        "alliance_count",
+                        "member_count",
+                        "system_count",
+                        "kills",
+                        "losses",
+                        "isk_destroyed",
+                        "isk_lost"
+                      ],
+                      "type": "object"
+                    },
+                    "edits": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "action": {
+                            "type": "string"
+                          },
+                          "changes": {
+                            "additionalProperties": true,
+                            "description": "Before and after snapshots for this edit.",
+                            "type": "object"
+                          },
+                          "created_at": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "edit_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "editor_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "editor_character_name": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "edit_id",
+                          "editor_character_id",
+                          "editor_character_name",
+                          "action",
+                          "summary",
+                          "changes",
+                          "created_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "stats_window_days": {
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "coalition",
+                    "alliances",
+                    "edits",
+                    "stats_window_days"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Update coalition metadata or replace its alliance membership",
+        "tags": [
+          "coalitions",
+          "account"
+        ],
+        "x-audience": "account"
       }
     },
     "/comments": {

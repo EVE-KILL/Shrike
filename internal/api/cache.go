@@ -294,6 +294,8 @@ func cachePolicyFor(path string) (responseCachePolicy, bool) {
 		return responseCachePolicy{TTL: 10 * time.Minute}, true
 	case path == "/stats":
 		return responseCachePolicy{TTL: 5 * time.Minute}, true
+	case path == "/coalitions" || strings.HasPrefix(path, "/coalitions/"):
+		return responseCachePolicy{TTL: time.Minute}, true
 	case path == "/search":
 		return responseCachePolicy{TTL: time.Minute}, true
 	case strings.HasPrefix(path, "/battles"):

@@ -25,6 +25,7 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
                 label: 'Explore',
                 items: [
                     { label: 'Categories', href: '/categories', icon: 'lucide:tags' },
+                    { label: 'Coalitions', href: '/coalitions', icon: 'lucide:network' },
                     { label: 'Market', href: '/market', icon: 'lucide:shopping-cart' },
                     { label: 'Rankings', href: '/rankings', icon: 'lucide:trophy' },
                     { label: 'Advanced Search', href: '/advancedsearch', icon: 'lucide:search' },

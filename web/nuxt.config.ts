@@ -65,6 +65,7 @@ export default defineNuxtConfig({
       },
       kills: { sources: ["/api/__sitemap__/kills"] },
       characters: { sources: ["/api/__sitemap__/characters"] },
+      coalitions: { sources: ["/api/__sitemap__/coalitions"] },
       corporations: { sources: ["/api/__sitemap__/corporations"] },
       alliances: { sources: ["/api/__sitemap__/alliances"] },
       systems: { sources: ["/api/__sitemap__/systems"] },
@@ -327,6 +328,18 @@ export default defineNuxtConfig({
       },
       "/campaign/**": {
         sitemap: { changefreq: "daily", priority: 0.5 },
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=60",
+        },
+      },
+      "/coalitions": {
+        sitemap: { changefreq: "daily", priority: 0.6 },
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=60",
+        },
+      },
+      "/coalitions/**": {
+        sitemap: { changefreq: "daily", priority: 0.6 },
         headers: {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=60",
         },

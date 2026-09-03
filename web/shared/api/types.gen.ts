@@ -9458,6 +9458,30 @@ export type SitemapCharactersCompatResponses = {
 
 export type SitemapCharactersCompatResponse = SitemapCharactersCompatResponses[keyof SitemapCharactersCompatResponses];
 
+export type SitemapCoalitionsCompatData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/__sitemap__/coalitions';
+};
+
+export type SitemapCoalitionsCompatResponses = {
+    /**
+     * OK
+     */
+    200: Array<{
+        changefreq: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        lastmod?: string;
+        loc: string;
+        priority: number;
+    }>;
+};
+
+export type SitemapCoalitionsCompatResponse = SitemapCoalitionsCompatResponses[keyof SitemapCoalitionsCompatResponses];
+
 export type SitemapCorporationsCompatData = {
     body?: never;
     path?: never;
@@ -16968,6 +16992,144 @@ export type CharacterStatsResponses = {
 
 export type CharacterStatsResponse2 = CharacterStatsResponses[keyof CharacterStatsResponses];
 
+export type CoalitionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/coalitions';
+};
+
+export type CoalitionsResponses = {
+    /**
+     * OK
+     */
+    200: {
+        coalitions: Array<{
+            alliance_count: number;
+            coalition_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            created_by_character_id?: number | null;
+            created_by_character_name?: string | null;
+            description: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            member_count: number;
+            name: string;
+            revision: number;
+            slug: string;
+            source_url: string | null;
+            system_count: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            updated_by_character_id?: number | null;
+            updated_by_character_name?: string | null;
+        }>;
+        stats_window_days: number;
+    };
+};
+
+export type CoalitionsResponse = CoalitionsResponses[keyof CoalitionsResponses];
+
+export type CoalitionCreateData = {
+    body: {
+        /**
+         * An integer. A numeric string is accepted for compatibility.
+         */
+        alliance_ids: Array<number | string>;
+        /**
+         * Short description of the coalition.
+         */
+        description?: string;
+        /**
+         * Public coalition name.
+         */
+        name: string | null;
+        /**
+         * Public source used to verify the membership.
+         */
+        source_url?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/coalitions';
+};
+
+export type CoalitionCreateResponses = {
+    /**
+     * Created
+     */
+    201: {
+        alliances: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            added_at: string;
+            added_by_character_id?: number | null;
+            added_by_character_name?: string | null;
+            alliance_id: number;
+            corporation_count: number;
+            member_count: number;
+            name: string;
+            system_count: number;
+            ticker: string;
+        }>;
+        coalition: {
+            alliance_count: number;
+            coalition_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            created_by_character_id?: number | null;
+            created_by_character_name?: string | null;
+            description: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            member_count: number;
+            name: string;
+            revision: number;
+            slug: string;
+            source_url: string | null;
+            system_count: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            updated_by_character_id?: number | null;
+            updated_by_character_name?: string | null;
+        };
+        edits: Array<{
+            action: string;
+            /**
+             * Before and after snapshots for this edit.
+             */
+            changes: {
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            edit_id: number;
+            editor_character_id: number | null;
+            editor_character_name: string;
+            summary: string;
+        }>;
+        stats_window_days: number;
+    };
+};
+
+export type CoalitionCreateResponse = CoalitionCreateResponses[keyof CoalitionCreateResponses];
+
 export type CoalitionStatsData = {
     body: {
         /**
@@ -17000,6 +17162,189 @@ export type CoalitionStatsResponses = {
 };
 
 export type CoalitionStatsResponse2 = CoalitionStatsResponses[keyof CoalitionStatsResponses];
+
+export type CoalitionData = {
+    body?: never;
+    path: {
+        /**
+         * Stable coalition slug.
+         */
+        slug: string;
+    };
+    query?: never;
+    url: '/coalitions/{slug}';
+};
+
+export type CoalitionResponses = {
+    /**
+     * OK
+     */
+    200: {
+        alliances: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            added_at: string;
+            added_by_character_id?: number | null;
+            added_by_character_name?: string | null;
+            alliance_id: number;
+            corporation_count: number;
+            member_count: number;
+            name: string;
+            system_count: number;
+            ticker: string;
+        }>;
+        coalition: {
+            alliance_count: number;
+            coalition_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            created_by_character_id?: number | null;
+            created_by_character_name?: string | null;
+            description: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            member_count: number;
+            name: string;
+            revision: number;
+            slug: string;
+            source_url: string | null;
+            system_count: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            updated_by_character_id?: number | null;
+            updated_by_character_name?: string | null;
+        };
+        edits: Array<{
+            action: string;
+            /**
+             * Before and after snapshots for this edit.
+             */
+            changes: {
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            edit_id: number;
+            editor_character_id: number | null;
+            editor_character_name: string;
+            summary: string;
+        }>;
+        stats_window_days: number;
+    };
+};
+
+export type CoalitionResponse = CoalitionResponses[keyof CoalitionResponses];
+
+export type CoalitionUpdateData = {
+    body: {
+        /**
+         * Complete replacement member list.
+         */
+        alliance_ids?: Array<number | string> | null;
+        /**
+         * Replacement description. Null clears it.
+         */
+        description?: string | null;
+        /**
+         * Replacement public name.
+         */
+        name?: string | null;
+        /**
+         * Current revision returned by the API. Prevents overwriting a newer edit.
+         */
+        revision: number | null;
+        /**
+         * Replacement verification source. Null clears it.
+         */
+        source_url?: string | null;
+    };
+    path: {
+        /**
+         * Stable coalition slug.
+         */
+        slug: string;
+    };
+    query?: never;
+    url: '/coalitions/{slug}';
+};
+
+export type CoalitionUpdateResponses = {
+    /**
+     * OK
+     */
+    200: {
+        alliances: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            added_at: string;
+            added_by_character_id?: number | null;
+            added_by_character_name?: string | null;
+            alliance_id: number;
+            corporation_count: number;
+            member_count: number;
+            name: string;
+            system_count: number;
+            ticker: string;
+        }>;
+        coalition: {
+            alliance_count: number;
+            coalition_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            created_by_character_id?: number | null;
+            created_by_character_name?: string | null;
+            description: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            member_count: number;
+            name: string;
+            revision: number;
+            slug: string;
+            source_url: string | null;
+            system_count: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            updated_at: string;
+            updated_by_character_id?: number | null;
+            updated_by_character_name?: string | null;
+        };
+        edits: Array<{
+            action: string;
+            /**
+             * Before and after snapshots for this edit.
+             */
+            changes: {
+                [key: string]: unknown;
+            };
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            created_at: string;
+            edit_id: number;
+            editor_character_id: number | null;
+            editor_character_name: string;
+            summary: string;
+        }>;
+        stats_window_days: number;
+    };
+};
+
+export type CoalitionUpdateResponse = CoalitionUpdateResponses[keyof CoalitionUpdateResponses];
 
 export type CommentsFeedData = {
     body?: never;
