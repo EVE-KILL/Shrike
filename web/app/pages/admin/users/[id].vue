@@ -102,7 +102,7 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 
 <template>
     <LoginGate v-if="!isAuthenticated" message="Log in with EVE Online to access the admin panel" />
-    <div v-else-if="isAdmin && u">
+    <div v-else-if="isAdmin && u" class="w-full">
         <!-- Back link -->
         <NuxtLink to="/admin/users" class="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-400 transition-colors mb-4">
             <Icon name="lucide:arrow-left" class="text-sm" />
@@ -110,7 +110,7 @@ useSeoMeta({ robots: 'noindex, nofollow' })
         </NuxtLink>
 
         <!-- Header card -->
-        <div class="glass-panel overflow-hidden mb-6">
+        <div class="hero-surface glass-panel overflow-hidden mb-6">
             <div class="relative">
                 <img
                     :src="`/images/characters/${u.character_id}/portrait?size=512`"

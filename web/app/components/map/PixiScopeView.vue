@@ -834,7 +834,7 @@ onUnmounted(() => {
 <template>
     <div ref="hostRef" class="relative h-[78vh] overflow-hidden rounded-lg border border-white/[0.08] bg-[#08090d]">
         <div ref="canvasHostRef" class="absolute inset-0" />
-        <div v-if="mode === 'map'" class="absolute left-3 top-3 z-20 w-[min(20rem,calc(100%-6rem))]">
+        <div v-if="mode === 'map'" class="absolute left-3 right-3 top-3 z-20 w-auto sm:right-auto sm:w-[min(20rem,calc(100%-6rem))]">
             <div class="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-black/70 px-3 py-2 shadow-lg backdrop-blur-md">
                 <span aria-hidden="true" class="shrink-0 text-sm text-gray-500">⌕</span>
                 <input v-model="searchQuery" type="search" placeholder="Find a region or system" class="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600" @focus="searchFocused = true" @blur="closeSearchSoon">
@@ -844,7 +844,7 @@ onUnmounted(() => {
                 <div v-if="!searchResults.length" class="px-3 py-2 text-xs text-gray-500">No matching regions or systems</div>
             </div>
         </div>
-        <aside v-else-if="mode === 'sovereignty'" class="absolute inset-y-3 left-3 z-20 flex w-[min(300px,30%)] min-w-[260px] flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md">
+        <aside v-else-if="mode === 'sovereignty'" class="absolute inset-x-3 bottom-14 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
             <div class="border-b border-white/[0.07] px-3 py-3">
                 <div class="flex items-center justify-between gap-2">
                     <div><div class="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-300">Sovereignty holders</div><div class="mt-0.5 text-[10px] text-gray-600">Ranked by claimed systems</div></div>
@@ -879,7 +879,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between border-t border-white/[0.07] px-3 py-2 text-[9px] text-gray-600"><span>{{ formatNumber(data?.sovereignty?.length) }} systems claimed</span><span>Hover to isolate</span></div>
         </aside>
-        <aside v-else-if="mode === 'aiid'" class="absolute inset-y-3 left-3 z-20 flex w-[min(300px,30%)] min-w-[260px] flex-col overflow-hidden rounded-lg border border-cyan-300/15 bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md">
+        <aside v-else-if="mode === 'aiid'" class="absolute inset-x-3 bottom-14 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-cyan-300/15 bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
             <div class="border-b border-white/[0.07] px-3 py-3">
                 <div class="flex items-center justify-between gap-2">
                     <div><div class="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-300">Am I In Danger?</div><div class="mt-0.5 text-[10px] text-gray-600">Watch everything within 10 jumps</div></div>
@@ -904,7 +904,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between border-t border-white/[0.07] px-3 py-2 text-[9px] text-gray-600"><span>{{ liveKills.length }} kills in 24h</span><span>Risk signals fade over 15m</span></div>
         </aside>
-        <aside v-else class="absolute inset-y-3 left-3 z-20 flex w-[min(300px,30%)] min-w-[260px] flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md">
+        <aside v-else class="absolute inset-x-3 bottom-14 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
             <div class="flex items-center justify-between border-b border-white/[0.07] px-3 py-3">
                 <div><div class="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-300">Live kills</div><div class="mt-0.5 text-[10px] text-gray-600">Newest activity across New Eden</div></div>
                 <span class="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-wider" :class="liveConnected ? 'text-emerald-400' : 'text-gray-600'"><span class="h-1.5 w-1.5 rounded-full" :class="liveConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.8)]' : 'bg-gray-700'" />{{ liveConnected ? 'Connected' : 'Connecting' }}</span>
@@ -919,7 +919,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between border-t border-white/[0.07] px-3 py-2 text-[9px] text-gray-600"><span>{{ liveKills.length }} recent kills</span><span>Events fade over 45s</span></div>
         </aside>
-        <div class="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-lg border border-white/[0.08] bg-black/65 px-3 py-2 text-xs text-gray-500 backdrop-blur-md">
+        <div class="absolute right-3 z-20 items-center gap-2 rounded-lg border border-white/[0.08] bg-black/65 px-3 py-2 text-xs text-gray-500 backdrop-blur-md" :class="mode === 'map' ? 'top-16 flex sm:top-3' : 'hidden sm:top-3 sm:flex'">
             <span v-if="mode === 'live'" class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full" :class="liveConnected ? 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,.9)]' : 'bg-gray-700'" />{{ liveConnected ? 'Listening live' : 'Connecting to relay' }} · {{ liveKills.length }} recent</span>
             <span v-else-if="mode === 'aiid'" class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full" :class="liveConnected ? 'bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,.9)]' : 'bg-gray-700'" />{{ liveConnected ? 'Danger watch armed' : 'Connecting to relay' }} · {{ formatNumber(scene.nodes.length) }} systems</span>
             <span v-else-if="data && mode === 'sovereignty'">{{ formatNumber(data.sovereignty?.length) }} claimed · {{ allianceSummaries.length }} alliances<span v-if="data.snapshot_at"> · {{ formatDateTime(data.snapshot_at) }}</span></span>
@@ -942,7 +942,7 @@ onUnmounted(() => {
             <div class="mt-2 grid grid-cols-4 gap-1 text-center"><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.ship_kills) }}</div><div class="text-[9px] text-gray-500">ship kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.pod_kills) }}</div><div class="text-[9px] text-gray-500">pod kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.npc_kills) }}</div><div class="text-[9px] text-gray-500">NPC kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.ship_jumps) }}</div><div class="text-[9px] text-gray-500">jumps</div></div></div>
             <div class="mt-2 flex items-center justify-between text-[10px] text-gray-500"><span><span class="text-cyan-400">{{ hoveredSummary.high }}</span> high · <span class="text-amber-400">{{ hoveredSummary.low }}</span> low · <span class="text-red-500">{{ hoveredSummary.null }}</span> null</span><span v-if="hoveredSummary.busiest">Hotspot: <span class="text-gray-300">{{ hoveredSummary.busiest.system_name }}</span></span></div>
         </div>
-        <div class="pointer-events-none absolute bottom-3 z-20 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/[0.08] bg-black/65 px-3 py-2 text-[10px] text-gray-400 shadow-lg backdrop-blur-md" :class="mode === 'sovereignty' || mode === 'live' || mode === 'aiid' ? 'left-[324px]' : 'left-3'">
+        <div class="pointer-events-none absolute bottom-3 z-20 hidden max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/[0.08] bg-black/65 px-3 py-2 text-[10px] text-gray-400 shadow-lg backdrop-blur-md sm:flex" :class="mode === 'sovereignty' || mode === 'live' || mode === 'aiid' ? 'left-[324px]' : 'left-3'">
             <span class="flex items-center gap-1.5">
                 <span v-if="baseLayer === 'live'" class="h-2.5 w-2.5 rounded-full bg-rose-400 shadow-[0_0_9px_rgba(251,113,133,.9)]" />
                 <span v-else-if="baseLayer === 'aiid'" class="h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_9px_rgba(103,232,249,.9)]" />
@@ -959,6 +959,6 @@ onUnmounted(() => {
                 <span class="text-gray-600">last {{ activityWindowLabel }} · log scale</span>
             </template>
         </div>
-        <div class="pointer-events-none absolute bottom-3 right-3 z-20 rounded bg-black/45 px-2 py-1 text-[10px] text-gray-600 backdrop-blur-sm">{{ mode === 'live' ? 'Watching New Eden · scroll to zoom · drag to pan' : mode === 'aiid' ? 'Ten-jump watch area · scroll to zoom · drag to pan' : `Scroll to zoom · drag to pan · click ${mode === 'sovereignty' ? 'an alliance' : 'a region'}` }}</div>
+        <div class="pointer-events-none absolute bottom-3 right-3 z-20 hidden rounded bg-black/45 px-2 py-1 text-[10px] text-gray-600 backdrop-blur-sm sm:block">{{ mode === 'live' ? 'Watching New Eden · scroll to zoom · drag to pan' : mode === 'aiid' ? 'Ten-jump watch area · scroll to zoom · drag to pan' : `Scroll to zoom · drag to pan · click ${mode === 'sovereignty' ? 'an alliance' : 'a region'}` }}</div>
     </div>
 </template>

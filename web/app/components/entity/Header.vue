@@ -26,7 +26,7 @@ const accentStyle = computed(() =>
 
   <header
     v-else
-    class="entity-header glass-panel relative overflow-hidden mb-6"
+    class="entity-header hero-surface glass-panel relative overflow-hidden mb-6"
     :style="accentStyle"
   >
     <img
@@ -40,13 +40,6 @@ const accentStyle = computed(() =>
       v-if="backgroundImage"
       class="entity-header__shade pointer-events-none absolute inset-0"
     />
-    <div
-      class="entity-header__contours pointer-events-none absolute -right-20 -top-28 h-72 w-72 rounded-full border border-white/[0.035]"
-    />
-    <div
-      class="entity-header__contours pointer-events-none absolute -right-8 -top-16 h-52 w-52 rounded-full border border-white/[0.035]"
-    />
-
     <div class="relative p-6">
       <div class="flex flex-col md:flex-row gap-6">
         <!-- Image slot -->

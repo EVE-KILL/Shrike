@@ -101,7 +101,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <main class="max-w-6xl mx-auto px-4 py-6 space-y-5">
+  <main class="w-full space-y-5">
     <PageHeader
       title="EVE-KILL Rankings"
       eyebrow="The combat ladder"
@@ -126,7 +126,7 @@ useSeoMeta({
           {{ item[1] }}
         </button>
       </div>
-      <div class="flex gap-1.5">
+      <div class="flex flex-wrap gap-1.5">
         <button
           v-for="item in windows"
           :key="item[0]"

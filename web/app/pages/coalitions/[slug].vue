@@ -170,7 +170,7 @@ const reloadAfterConflict = async () => {
 </script>
 
 <template>
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="w-full">
         <div v-if="pending" class="glass-panel p-10 text-center text-sm text-gray-500">Loading coalition...</div>
         <div v-else-if="error || !coalition" class="glass-panel p-10 text-center">
             <Icon name="lucide:circle-alert" class="mb-3 text-2xl text-red-400" />

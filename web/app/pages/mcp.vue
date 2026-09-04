@@ -172,7 +172,7 @@ async function copy(text: string, key: string) {
 </script>
 
 <template>
-    <div class="max-w-6xl mx-auto py-4 px-2">
+    <div class="w-full">
         <PageHeader class="mb-6" title="MCP Server" eyebrow="Model Context Protocol" icon="lucide:bot">
             <template #description>
                         Plug any MCP-compatible AI client (Claude, ChatGPT's MCP integrations, custom agents) into

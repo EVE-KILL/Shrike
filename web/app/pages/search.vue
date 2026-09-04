@@ -164,7 +164,7 @@ useSchemaOrg([
 </script>
 
 <template>
-    <div class="max-w-5xl mx-auto py-4 px-2 md:px-0">
+    <div class="w-full">
         <h1 class="sr-only">Search — EVE-KILL</h1>
         <!-- Search header -->
         <div class="mb-6">

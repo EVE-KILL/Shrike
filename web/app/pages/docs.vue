@@ -89,7 +89,7 @@ const tagSlug = (name: string) => name.replace(/\s+/g, '-')
 </script>
 
 <template>
-    <div class="max-w-7xl mx-auto py-4 px-2">
+    <div class="w-full">
         <PageHeader class="mb-6" title="API Documentation" eyebrow="Build with EVE-KILL" icon="lucide:braces">
             <template #description>
                         The API powering eve-kill.com. JSON, CORS-open, and read endpoints need no

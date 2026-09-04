@@ -106,7 +106,7 @@ function lastActivity(value: string | null | undefined): string {
             title="Tracker"
             eyebrow="Your private killboard"
             icon="lucide:scan-eye"
-            description="A personal EVE-KILL homepage built from the entities and locations you choose to track."
+            description="A personal EVE-KILL dashboard built from the entities and locations you choose to track."
         >
             <template v-if="isAuthenticated && dashboardConfig?.configured" #actions>
                 <div class="flex items-center gap-2">

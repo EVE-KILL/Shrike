@@ -127,7 +127,7 @@ const formatCount = (count: number) =>
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto px-4 py-8">
+  <div class="w-full">
     <PageHeader
       class="mb-6"
       title="Killmail Categories"

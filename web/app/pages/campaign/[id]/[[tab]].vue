@@ -914,7 +914,7 @@ const deleteCampaign = async () => {
 <template>
     <div v-if="campaign">
         <!-- Header -->
-        <div class="glass-panel p-5 mb-4">
+        <div class="hero-surface glass-panel p-5 mb-4">
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
                     <div class="flex items-center gap-2.5 flex-wrap">

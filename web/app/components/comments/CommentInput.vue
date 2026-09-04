@@ -285,17 +285,17 @@ function cancel() {
                  @mousedown.prevent stops the textarea from losing focus when
                  the button is clicked, so the live selection is preserved. -->
             <div v-if="tab === 'write'" class="flex items-center gap-0.5 flex-wrap">
-                <button type="button" class="toolbar-btn" v-tooltip="'Bold'" @mousedown.prevent @click="insert('**', '**')"><Icon name="lucide:bold" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn" v-tooltip="'Italic'" @mousedown.prevent @click="insert('_', '_')"><Icon name="lucide:italic" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn" v-tooltip="'Strikethrough'" @mousedown.prevent @click="insert('~~', '~~')"><Icon name="lucide:strikethrough" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn" v-tooltip="'Code'" @mousedown.prevent @click="insert('`', '`')"><Icon name="lucide:code" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn" v-tooltip="'Quote'" @mousedown.prevent @click="insert('\n> ', '')"><Icon name="lucide:quote" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn" v-tooltip="'Link'" @mousedown.prevent @click="insert('[', '](https://)')"><Icon name="lucide:link" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn" aria-label="Bold" v-tooltip="'Bold'" @mousedown.prevent @click="insert('**', '**')"><Icon name="lucide:bold" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn" aria-label="Italic" v-tooltip="'Italic'" @mousedown.prevent @click="insert('_', '_')"><Icon name="lucide:italic" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn" aria-label="Strikethrough" v-tooltip="'Strikethrough'" @mousedown.prevent @click="insert('~~', '~~')"><Icon name="lucide:strikethrough" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn" aria-label="Code" v-tooltip="'Code'" @mousedown.prevent @click="insert('`', '`')"><Icon name="lucide:code" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn" aria-label="Quote" v-tooltip="'Quote'" @mousedown.prevent @click="insert('\n> ', '')"><Icon name="lucide:quote" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn" aria-label="Insert link" v-tooltip="'Link'" @mousedown.prevent @click="insert('[', '](https://)')"><Icon name="lucide:link" class="text-xs" /></button>
                 <span class="toolbar-divider" />
-                <button type="button" class="toolbar-btn" v-tooltip="'Insert image'" @mousedown.prevent @click="openEmbedModal('image')"><Icon name="lucide:image" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn hover:!text-red-400" v-tooltip="'Insert YouTube video'" @mousedown.prevent @click="openEmbedModal('youtube')"><Icon name="lucide:youtube" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn hover:!text-green-400" v-tooltip="'Insert Imgur'" @mousedown.prevent @click="openEmbedModal('imgur')"><Icon name="simple-icons:imgur" class="text-xs" /></button>
-                <button type="button" class="toolbar-btn hover:!text-purple-400" v-tooltip="'Pick a GIF'" @mousedown.prevent @click="klipyOpen = true"><Icon name="lucide:image-play" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn" aria-label="Insert image" v-tooltip="'Insert image'" @mousedown.prevent @click="openEmbedModal('image')"><Icon name="lucide:image" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn hover:!text-red-400" aria-label="Insert YouTube video" v-tooltip="'Insert YouTube video'" @mousedown.prevent @click="openEmbedModal('youtube')"><Icon name="lucide:youtube" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn hover:!text-green-400" aria-label="Insert Imgur image" v-tooltip="'Insert Imgur'" @mousedown.prevent @click="openEmbedModal('imgur')"><Icon name="simple-icons:imgur" class="text-xs" /></button>
+                <button type="button" class="toolbar-btn hover:!text-purple-400" aria-label="Pick a GIF" v-tooltip="'Pick a GIF'" @mousedown.prevent @click="klipyOpen = true"><Icon name="lucide:image-play" class="text-xs" /></button>
             </div>
         </div>
 

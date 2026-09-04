@@ -58,7 +58,8 @@ function fmtDateLong(iso: string | null): string {
 </script>
 
 <template>
-    <article class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div class="w-full">
+    <article class="max-w-3xl mx-auto space-y-6">
         <!-- Preview banner -->
         <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-center justify-between gap-4">
             <div class="flex items-center gap-3 text-sm">
@@ -138,6 +139,7 @@ function fmtDateLong(iso: string | null): string {
             />
         </section>
     </article>
+    </div>
 </template>
 
 <style scoped>

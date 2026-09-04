@@ -92,7 +92,7 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 
 <template>
     <LoginGate v-if="!isAuthenticated" message="Log in with EVE Online to access the admin panel" />
-    <div v-else-if="isAdmin && domain">
+    <div v-else-if="isAdmin && domain" class="w-full">
         <!-- Back link + header -->
         <div class="mb-6">
             <NuxtLink to="/admin/domains" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-400 transition-colors mb-3">
@@ -100,7 +100,7 @@ useSeoMeta({ robots: 'noindex, nofollow' })
                 Back to Domains
             </NuxtLink>
 
-            <div class="glass-panel p-5">
+            <div class="hero-surface glass-panel p-5">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h1 class="text-lg font-bold text-white">{{ domain.site_name || domain.subdomain }}</h1>

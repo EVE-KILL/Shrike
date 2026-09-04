@@ -65,6 +65,8 @@ const isActive = (node: TreeNode) => {
                 <!-- Expand/collapse toggle -->
                 <button v-if="node.children.length > 0"
                     class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-600 hover:text-gray-400"
+                    :aria-label="`${expanded.has(node.id) ? 'Collapse' : 'Expand'} ${node.name}`"
+                    :aria-expanded="expanded.has(node.id)"
                     @click.stop="toggle(node)">
                     <Icon :name="expanded.has(node.id) ? 'lucide:chevron-down' : 'lucide:chevron-right'" class="text-fine" />
                 </button>

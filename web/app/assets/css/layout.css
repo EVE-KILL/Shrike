@@ -147,6 +147,42 @@
     box-sizing: border-box;
 }
 
+/* Shared hero atmosphere. Route headers have different content needs (plain
+   page title, entity identity, killmail summary, account banner), but they all
+   sit on the same subtle brand wash and contour motif. */
+.hero-surface {
+    position: relative;
+    isolation: isolate;
+}
+
+.hero-surface::before,
+.hero-surface::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+}
+
+.hero-surface::before {
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(circle at 0 0, color-mix(in srgb, var(--color-brand-primary) 10%, transparent), transparent 44%),
+        radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--color-brand-secondary) 6%, transparent), transparent 40%);
+}
+
+.hero-surface::after {
+    right: 1rem;
+    top: -6rem;
+    z-index: 0;
+    width: 16rem;
+    height: 16rem;
+    border: 1px solid rgba(255, 255, 255, 0.035);
+    border-radius: 9999px;
+    box-shadow:
+        0 0 0 2.75rem rgba(255, 255, 255, 0.018),
+        0 0 0 5.5rem rgba(255, 255, 255, 0.012);
+}
+
 /* Responsive */
 @media (min-width: 768px) {
     .inner-content {

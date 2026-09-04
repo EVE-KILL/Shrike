@@ -201,7 +201,7 @@ async function deleteOwn(id: number) {
 </script>
 
 <template>
-    <div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="w-full">
         <PageHeader class="mb-4" title="Comments" eyebrow="Community activity" icon="lucide:message-square"
             description="Latest activity across killmails, entities, systems, and battles.">
             <template #actions>

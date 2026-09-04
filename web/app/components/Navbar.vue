@@ -582,12 +582,12 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
             leave-from-class="opacity-100"
             leave-to-class="opacity-0"
         >
-            <div v-if="isMobileMenuOpen" class="fixed inset-0 z-[9999] bg-black/50" @click.self="isMobileMenuOpen = false">
+            <div v-if="isMobileMenuOpen" class="fixed inset-0 z-[10001] bg-black/50" @click.self="isMobileMenuOpen = false">
                 <div class="absolute inset-0 bg-gray-950 overflow-y-auto pointer-events-auto">
                     <!-- Header -->
                     <div class="flex items-center justify-between h-16 px-6 border-b border-white/[0.08]">
                         <h2 class="text-xl font-bold text-white">Menu</h2>
-                        <button class="flex items-center justify-center w-10 h-10 rounded-lg text-white hover:bg-blue-500/10" @click="isMobileMenuOpen = false">
+                        <button class="flex items-center justify-center w-10 h-10 rounded-lg text-white hover:bg-blue-500/10" aria-label="Close menu" @click="isMobileMenuOpen = false">
                             <Icon name="lucide:x" class="text-xl" />
                         </button>
                     </div>
@@ -652,7 +652,8 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
                         <section>
                             <h3 class="text-lg font-bold text-white mb-3">Information</h3>
                             <div class="space-y-1">
-                                <NuxtLink v-for="item in infoItems" :key="item.to" :to="item.to" class="flex items-center px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
+                                <NuxtLink v-for="item in infoItems" :key="item.to" :to="item.to" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
+                                    <Icon v-if="item.icon" :name="item.icon" class="text-lg opacity-60" />
                                     {{ item.name }}
                                 </NuxtLink>
                             </div>

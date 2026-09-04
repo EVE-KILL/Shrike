@@ -132,7 +132,7 @@ const allianceHistoryWithDuration = computed(() => {
 
         <div v-else-if="corp">
             <!-- ===== CORPORATION HEADER — MOBILE ===== -->
-            <div class="glass-panel md:hidden overflow-hidden mb-6"
+            <div class="hero-surface glass-panel md:hidden overflow-hidden mb-6"
                 :style="accent ? { backgroundImage: `linear-gradient(to bottom, ${accent.soft}, transparent 60%)`, boxShadow: `inset 0 2px 0 0 ${accent.accent}` } : undefined">
                 <div class="p-4">
                     <div class="flex gap-3">

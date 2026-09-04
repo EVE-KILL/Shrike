@@ -198,7 +198,7 @@ const currentCorps = computed(() => {
         <div v-else-if="side1 && side2">
             <h1 class="sr-only">{{ side1.name }} vs {{ side2.name }} — Faction War</h1>
             <!-- Header -->
-            <div class="glass-panel p-6 mb-6">
+            <div class="hero-surface glass-panel p-6 mb-6">
                 <div class="text-fine font-bold uppercase tracking-[0.15em] text-amber-400/80 mb-4 text-center">Faction Warfare — Last 30 Days</div>
 
                 <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 items-center">

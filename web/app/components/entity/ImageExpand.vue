@@ -35,6 +35,7 @@ const activeSrc = computed(() => showAlt.value && props.altSrc ? props.altSrc : 
         <!-- Expand button — visible on hover -->
         <button
             class="absolute top-1.5 left-1.5 w-7 h-7 rounded-lg flex items-center justify-center bg-black/50 text-gray-400 hover:text-blue-400 hover:bg-black/70 opacity-0 group-hover/expand:opacity-100 transition-all cursor-pointer z-30"
+            :aria-label="`View ${props.alt || 'image'} full size`"
             v-tooltip="'View full size'"
             @click.stop.prevent="open = true"
         >
@@ -46,7 +47,7 @@ const activeSrc = computed(() => showAlt.value && props.altSrc ? props.altSrc : 
             <Transition name="fade">
                 <div v-if="open" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm" @click.self="open = false">
                     <!-- Close button -->
-                    <button class="absolute top-4 right-4 w-9 h-9 rounded-lg flex items-center justify-center bg-black/50 text-gray-400 hover:text-blue-400 hover:bg-black/70 transition-all cursor-pointer z-10" @click="open = false">
+                    <button class="absolute top-4 right-4 w-9 h-9 rounded-lg flex items-center justify-center bg-black/50 text-gray-400 hover:text-blue-400 hover:bg-black/70 transition-all cursor-pointer z-10" aria-label="Close full-size image" @click="open = false">
                         <Icon name="lucide:x" class="w-6 h-6" />
                     </button>
 

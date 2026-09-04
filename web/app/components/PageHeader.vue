@@ -10,7 +10,7 @@ defineProps<{
 </script>
 
 <template>
-  <header class="page-header glass-panel relative overflow-hidden p-5">
+  <header class="page-header hero-surface glass-panel relative overflow-hidden p-5">
     <img
       v-if="imageSrc && imageMode === 'background'"
       :src="imageSrc"

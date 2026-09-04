@@ -649,7 +649,7 @@ const hoverCardStyle = computed(() => {
 <template>
     <div>
         <!-- Header -->
-        <div class="glass-panel overflow-hidden mb-4">
+        <div class="hero-surface glass-panel overflow-hidden mb-4">
             <div class="p-4 flex items-center justify-between gap-4 flex-wrap">
                 <div class="flex items-center gap-2 text-sm">
                     <NuxtLink :to="{ path: '/map', query: sharedMapQuery }" class="text-gray-400 hover:text-blue-400 transition-colors">

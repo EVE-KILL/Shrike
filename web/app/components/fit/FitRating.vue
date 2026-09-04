@@ -144,6 +144,7 @@ async function onClearClick() {
                 :key="i"
                 type="button"
                 :disabled="!interactive || saving"
+                :aria-label="interactive ? `Rate ${i} star${i === 1 ? '' : 's'}` : `Rating star ${i} of 5`"
                 v-tooltip="interactive ? `Rate ${i} star${i === 1 ? '' : 's'}` : ''"
                 class="flex items-center justify-center rounded transition-colors"
                 :class="[
@@ -181,6 +182,7 @@ async function onClearClick() {
         <button
             v-if="interactive && viewerRating !== null"
             type="button"
+            aria-label="Clear your rating"
             v-tooltip="'Clear your rating'"
             class="flex items-center justify-center w-5 h-5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             @click="onClearClick"

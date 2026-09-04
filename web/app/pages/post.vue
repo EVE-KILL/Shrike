@@ -81,7 +81,7 @@ async function submit(payload: string) {
         <!-- The instruction itself is the page subtitle now; only the example
              belongs in the body. -->
         <p class="text-fine text-gray-600 mb-6">
-            Example: <code class="text-blue-400/70">https://esi.evetech.net/killmails/134199691/b6b969654468cefe5891b40b054d20fad8787f64/</code>
+            Example: <code class="break-all text-blue-400/70">https://esi.evetech.net/killmails/134199691/b6b969654468cefe5891b40b054d20fad8787f64/</code>
         </p>
 
         <!-- Big blue button: post from clipboard -->

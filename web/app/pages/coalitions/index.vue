@@ -122,7 +122,7 @@ const createCoalition = async () => {
 </script>
 
 <template>
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="w-full">
         <PageHeader class="mb-6" title="Coalitions" eyebrow="Community-maintained politics" icon="lucide:network"
             description="Coalitions are player-created political blocs rather than official EVE entities. This directory is maintained by signed-in pilots, with every change recorded publicly.">
             <template #meta>

@@ -194,7 +194,7 @@ const activityLevel = computed(() => {
 
         <div v-else-if="char">
             <!-- ===== CHARACTER HEADER — MOBILE ===== -->
-            <div class="glass-panel md:hidden overflow-hidden mb-6"
+            <div class="hero-surface glass-panel md:hidden overflow-hidden mb-6"
                 :style="accent ? { backgroundImage: `linear-gradient(to bottom, ${accent.soft}, transparent 60%)`, boxShadow: `inset 0 2px 0 0 ${accent.accent}` } : undefined">
                 <div class="p-4">
                     <!-- Portrait + name + meta in one compact row -->

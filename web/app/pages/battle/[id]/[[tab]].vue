@@ -366,7 +366,7 @@ const timelineEndpoint = computed(() => {
             </div>
 
             <!-- Header: System + Stats -->
-            <div class="glass-panel p-5 mb-4">
+            <div class="hero-surface glass-panel p-5 mb-4">
                 <div class="flex items-center gap-3 mb-4 pb-3 border-b border-white/[0.06]">
                     <img :src="`/images/systems/${battle.solar_system_id}?size=64`" alt="" class="w-10 h-10 rounded-lg flex-shrink-0" loading="eager">
                     <div>

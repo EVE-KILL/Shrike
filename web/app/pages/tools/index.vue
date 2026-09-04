@@ -70,7 +70,7 @@ const tools: Tool[] = [
 </script>
 
 <template>
-    <div class="max-w-5xl mx-auto px-4 py-8">
+    <div class="w-full">
         <PageHeader class="mb-6" title="Tools" eyebrow="Pilot utilities" icon="lucide:wrench"
             description="Utilities for EVE Online pilots — scan analyzers, battle tooling, and search helpers." />
 

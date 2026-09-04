@@ -291,7 +291,7 @@ const memberEntityOptions = computed(() => {
 
         <div v-else-if="war">
             <!-- Header -->
-            <div class="glass-panel p-6 mb-6">
+            <div class="hero-surface glass-panel p-6 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center gap-3">
                         <h1 class="text-2xl font-bold text-white">War #{{ war.war_id }}</h1>

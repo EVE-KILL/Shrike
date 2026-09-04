@@ -106,7 +106,7 @@ const lossTotal = computed(() => props.kill.destroyed_value + props.kill.dropped
 </script>
 
 <template>
-    <div class="glass-panel p-4 mb-4">
+    <div class="hero-surface glass-panel p-4 mb-4">
         <div class="flex items-start justify-between gap-4 flex-wrap">
             <div class="min-w-0">
                 <div class="min-w-0">

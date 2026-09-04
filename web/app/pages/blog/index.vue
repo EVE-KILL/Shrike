@@ -74,18 +74,23 @@ function fmtDate(iso: string | null): string {
 </script>
 
 <template>
-    <div class="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        <header class="space-y-2">
-            <h1 class="text-3xl font-bold text-white">Blog</h1>
-            <p class="text-sm text-gray-400">News, updates, and long-form posts.</p>
-            <div v-if="activeTag" class="flex items-center gap-2 pt-1">
+    <div class="w-full space-y-6">
+        <PageHeader
+            title="Blog"
+            eyebrow="From EVE-KILL"
+            icon="lucide:newspaper"
+            description="News, updates, and long-form posts."
+        >
+            <template v-if="activeTag" #actions>
+                <div class="flex items-center gap-2">
                 <span class="text-xs text-gray-500">Filtering by tag:</span>
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">
                     #{{ activeTag }}
                 </span>
                 <NuxtLink to="/blog" class="text-xs text-gray-500 hover:text-gray-300 underline">Clear</NuxtLink>
-            </div>
-        </header>
+                </div>
+            </template>
+        </PageHeader>
 
         <div v-if="!posts.length" class="text-center py-16 text-gray-500 text-sm">
             No posts yet.

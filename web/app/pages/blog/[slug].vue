@@ -49,7 +49,8 @@ function fmtDateLong(iso: string | null): string {
 </script>
 
 <template>
-    <article class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <div class="w-full">
+    <article class="max-w-3xl mx-auto space-y-6">
         <nav class="text-xs text-gray-500">
             <NuxtLink to="/blog" class="hover:text-gray-300">← Blog</NuxtLink>
         </nav>
@@ -111,6 +112,7 @@ function fmtDateLong(iso: string | null): string {
             />
         </section>
     </article>
+    </div>
 </template>
 
 <style scoped>

@@ -8,15 +8,15 @@
  * Several also centred their heading while the rest of the site (campaigns,
  * battles, stats) leads with a left-aligned icon badge.
  *
- * Two widths only, chosen by what the page holds rather than by whoever wrote
- * it: prose and short forms at 1024px, reference and tabular content at 1152px
- * — the width /docs and /mcp already used for their two-column layouts.
+ * The outer shell follows the same full-width content boundary as every other
+ * route. Individual prose blocks can still constrain their own line length,
+ * but page headers, panels, and controls all start and end on the same rails.
  */
 withDefaults(defineProps<{
     title: string
     subtitle?: string
     icon?: string
-    /** Reference or tabular content — docs, status, wallet — rather than prose. */
+    /** Retained for callers that identify reference-heavy pages. */
     wide?: boolean
 }>(), {
     wide: false,
@@ -24,7 +24,7 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-    <div class="mx-auto py-4" :class="wide ? 'max-w-6xl' : 'max-w-5xl'">
+    <div class="w-full">
         <PageHeader class="mb-4" :title="title" :description="subtitle" :icon="icon || 'lucide:info'">
             <template v-if="$slots.actions" #actions>
                 <div>

@@ -121,9 +121,9 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 </script>
 
 <template>
-    <div v-if="isAuthenticated && isAdmin">
+    <div v-if="isAuthenticated && isAdmin" class="w-full">
         <!-- Header -->
-        <div class="glass-panel p-5 mb-6">
+        <div class="hero-surface glass-panel p-5 mb-6">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
                     <Icon name="lucide:shield-alert" class="text-lg text-red-400" />

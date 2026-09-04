@@ -62,9 +62,9 @@ useSeoMeta({ robots: 'noindex, nofollow' })
 </script>
 
 <template>
-    <div v-if="isAuthenticated && user">
+    <div v-if="isAuthenticated && user" class="w-full">
         <!-- Header card -->
-        <div class="glass-panel overflow-hidden mb-6">
+        <div class="hero-surface glass-panel overflow-hidden mb-6">
             <NuxtLink :to="`/character/${user.characterId}`" class="block relative">
                 <img
                     :src="`/images/characters/${user.characterId}/portrait?size=512`"

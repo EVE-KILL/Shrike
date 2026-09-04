@@ -77,7 +77,7 @@ const formatReferenceType = (value: string) =>
 </script>
 
 <template>
-    <div class="max-w-6xl mx-auto py-4 space-y-4">
+    <div class="w-full space-y-4">
         <PageHeader :title="`${data?.corporation.name || 'EVE-KILL.com'} wallet`" eyebrow="Public corporation wallet"
             icon="lucide:wallet-cards" description="The corporation wallet used for campaign prizes and other EVE-KILL.com activity. Its balance and journal are public.">
             <template #actions>
