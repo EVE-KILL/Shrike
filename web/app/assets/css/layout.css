@@ -171,16 +171,15 @@
 }
 
 .hero-surface::after {
-    right: 1rem;
-    top: -6rem;
+    inset: 0;
     z-index: 0;
-    width: 16rem;
-    height: 16rem;
-    border: 1px solid rgba(255, 255, 255, 0.035);
-    border-radius: 9999px;
-    box-shadow:
-        0 0 0 2.75rem rgba(255, 255, 255, 0.018),
-        0 0 0 5.5rem rgba(255, 255, 255, 0.012);
+    border-radius: inherit;
+    background: radial-gradient(circle at calc(100% - 9rem) 2rem,
+        transparent 0, transparent calc(8rem - 1px),
+        rgba(255, 255, 255, 0.035) 8rem, transparent calc(8rem + 1px),
+        transparent calc(10.75rem - 1px), rgba(255, 255, 255, 0.025) 10.75rem,
+        transparent calc(10.75rem + 1px), transparent calc(13.5rem - 1px),
+        rgba(255, 255, 255, 0.018) 13.5rem, transparent calc(13.5rem + 1px));
 }
 
 /* Responsive */

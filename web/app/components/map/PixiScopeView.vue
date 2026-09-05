@@ -473,11 +473,20 @@ function worldPoint(point: { x: number; y: number }) {
 function resetView() {
     if (!app || !world) return
     const bounds = scene.value.bounds
-    const leftInset = props.mode === 'sovereignty' || props.mode === 'live' || props.mode === 'aiid' ? Math.min(328, app.screen.width * 0.32) : 0
+    const hasPanel = props.mode !== 'map'
+    const mobile = window.matchMedia('(max-width: 639px)').matches
+    const panel = hostRef.value?.querySelector('aside')?.getBoundingClientRect()
+    const host = hostRef.value?.getBoundingClientRect()
+    // Fit the camera to the visible space, using the actual panel geometry so
+    // sidebar and bottom-sheet layouts cannot drift apart from the camera.
+    const leftInset = hasPanel && !mobile && panel && host ? panel.right - host.left + 12 : 0
+    const topInset = mobile ? (hasPanel ? 52 : 108) : 0
+    const bottomEdge = hasPanel && mobile && panel && host ? panel.top - host.top - 12 : app.screen.height - (mobile ? 56 : 0)
+    const availableHeight = Math.max(1, bottomEdge - topInset)
     const availableWidth = app.screen.width - leftInset
-    const scale = Math.min(availableWidth / bounds.width, app.screen.height / bounds.height) * 0.96
+    const scale = Math.min(availableWidth / bounds.width, availableHeight / bounds.height) * 0.96
     world.scale.set(scale)
-    world.position.set(leftInset + availableWidth / 2 - (bounds.x + bounds.width / 2) * scale, app.screen.height / 2 - (bounds.y + bounds.height / 2) * scale)
+    world.position.set(leftInset + availableWidth / 2 - (bounds.x + bounds.width / 2) * scale, topInset + availableHeight / 2 - (bounds.y + bounds.height / 2) * scale)
 }
 function focusAllianceFromList(allianceId: number) {
     hoverCardVisible.value = false
@@ -834,7 +843,7 @@ onUnmounted(() => {
 <template>
     <div ref="hostRef" class="relative h-[78vh] overflow-hidden rounded-lg border border-white/[0.08] bg-[#08090d]">
         <div ref="canvasHostRef" class="absolute inset-0" />
-        <div v-if="mode === 'map'" class="absolute left-3 right-3 top-3 z-20 w-auto sm:right-auto sm:w-[min(20rem,calc(100%-6rem))]">
+        <div v-if="mode === 'map'" class="absolute left-3 right-3 top-3 z-30 w-auto sm:right-auto sm:w-[min(20rem,calc(100%-6rem))]">
             <div class="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-black/70 px-3 py-2 shadow-lg backdrop-blur-md">
                 <span aria-hidden="true" class="shrink-0 text-sm text-gray-500">⌕</span>
                 <input v-model="searchQuery" type="search" placeholder="Find a region or system" class="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600" @focus="searchFocused = true" @blur="closeSearchSoon">
@@ -844,7 +853,7 @@ onUnmounted(() => {
                 <div v-if="!searchResults.length" class="px-3 py-2 text-xs text-gray-500">No matching regions or systems</div>
             </div>
         </div>
-        <aside v-else-if="mode === 'sovereignty'" class="absolute inset-x-3 bottom-14 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
+        <aside v-else-if="mode === 'sovereignty'" class="absolute inset-x-3 bottom-28 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
             <div class="border-b border-white/[0.07] px-3 py-3">
                 <div class="flex items-center justify-between gap-2">
                     <div><div class="text-[10px] font-bold uppercase tracking-[0.15em] text-blue-300">Sovereignty holders</div><div class="mt-0.5 text-[10px] text-gray-600">Ranked by claimed systems</div></div>
@@ -879,7 +888,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between border-t border-white/[0.07] px-3 py-2 text-[9px] text-gray-600"><span>{{ formatNumber(data?.sovereignty?.length) }} systems claimed</span><span>Hover to isolate</span></div>
         </aside>
-        <aside v-else-if="mode === 'aiid'" class="absolute inset-x-3 bottom-14 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-cyan-300/15 bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
+        <aside v-else-if="mode === 'aiid'" class="absolute inset-x-3 bottom-28 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-cyan-300/15 bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
             <div class="border-b border-white/[0.07] px-3 py-3">
                 <div class="flex items-center justify-between gap-2">
                     <div><div class="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-300">Am I In Danger?</div><div class="mt-0.5 text-[10px] text-gray-600">Watch everything within 10 jumps</div></div>
@@ -904,7 +913,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between border-t border-white/[0.07] px-3 py-2 text-[9px] text-gray-600"><span>{{ liveKills.length }} kills in 24h</span><span>Risk signals fade over 15m</span></div>
         </aside>
-        <aside v-else class="absolute inset-x-3 bottom-14 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
+        <aside v-else class="absolute inset-x-3 bottom-28 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
             <div class="flex items-center justify-between border-b border-white/[0.07] px-3 py-3">
                 <div><div class="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-300">Live kills</div><div class="mt-0.5 text-[10px] text-gray-600">Newest activity across New Eden</div></div>
                 <span class="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-wider" :class="liveConnected ? 'text-emerald-400' : 'text-gray-600'"><span class="h-1.5 w-1.5 rounded-full" :class="liveConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.8)]' : 'bg-gray-700'" />{{ liveConnected ? 'Connected' : 'Connecting' }}</span>
@@ -927,6 +936,7 @@ onUnmounted(() => {
             <span v-if="activityLayer !== 'none'" class="flex items-center gap-1.5 text-emerald-400/80"><span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />Hourly data · {{ activityWindowLabel }}</span>
             <button type="button" class="text-blue-400 hover:text-blue-300" @click="resetView">Reset view</button>
         </div>
+        <button v-if="mode !== 'map'" type="button" class="absolute right-3 top-3 z-20 rounded-lg border border-white/10 bg-black/65 px-3 py-2 text-xs text-blue-400 sm:hidden" @click="resetView">Reset view</button>
         <div v-if="pending || !ready" class="absolute inset-0 z-10 flex items-center justify-center text-sm text-gray-500 animate-pulse">{{ pending ? 'Loading map data' : initStage }}...</div>
         <div v-if="error || initError" class="absolute inset-0 z-30 flex items-center justify-center p-6 text-center text-sm text-red-300">{{ initError || 'Unable to load map data' }}</div>
 
@@ -942,7 +952,7 @@ onUnmounted(() => {
             <div class="mt-2 grid grid-cols-4 gap-1 text-center"><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.ship_kills) }}</div><div class="text-[9px] text-gray-500">ship kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.pod_kills) }}</div><div class="text-[9px] text-gray-500">pod kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.npc_kills) }}</div><div class="text-[9px] text-gray-500">NPC kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.ship_jumps) }}</div><div class="text-[9px] text-gray-500">jumps</div></div></div>
             <div class="mt-2 flex items-center justify-between text-[10px] text-gray-500"><span><span class="text-cyan-400">{{ hoveredSummary.high }}</span> high · <span class="text-amber-400">{{ hoveredSummary.low }}</span> low · <span class="text-red-500">{{ hoveredSummary.null }}</span> null</span><span v-if="hoveredSummary.busiest">Hotspot: <span class="text-gray-300">{{ hoveredSummary.busiest.system_name }}</span></span></div>
         </div>
-        <div class="pointer-events-none absolute bottom-3 z-20 hidden max-w-[calc(100%-1rem)] flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/[0.08] bg-black/65 px-3 py-2 text-[10px] text-gray-400 shadow-lg backdrop-blur-md sm:flex" :class="mode === 'sovereignty' || mode === 'live' || mode === 'aiid' ? 'left-[324px]' : 'left-3'">
+        <div class="pointer-events-auto absolute bottom-3 z-20 flex max-h-24 max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-x-3 gap-y-1 overflow-y-auto rounded-lg border border-white/[0.08] bg-black/65 px-3 py-2 text-[10px] text-gray-400 shadow-lg backdrop-blur-md sm:pointer-events-none sm:max-h-none" :class="mode === 'sovereignty' || mode === 'live' || mode === 'aiid' ? 'left-3 sm:left-[324px]' : 'left-3'">
             <span class="flex items-center gap-1.5">
                 <span v-if="baseLayer === 'live'" class="h-2.5 w-2.5 rounded-full bg-rose-400 shadow-[0_0_9px_rgba(251,113,133,.9)]" />
                 <span v-else-if="baseLayer === 'aiid'" class="h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_9px_rgba(103,232,249,.9)]" />

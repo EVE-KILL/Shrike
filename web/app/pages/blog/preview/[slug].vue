@@ -58,8 +58,7 @@ function fmtDateLong(iso: string | null): string {
 </script>
 
 <template>
-    <div class="w-full">
-    <article class="max-w-3xl mx-auto space-y-6">
+    <article class="w-full space-y-6">
         <!-- Preview banner -->
         <div class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-center justify-between gap-4">
             <div class="flex items-center gap-3 text-sm">
@@ -85,7 +84,8 @@ function fmtDateLong(iso: string | null): string {
             <NuxtLink to="/blog" class="hover:text-gray-300">← Blog</NuxtLink>
         </nav>
 
-        <header class="space-y-4">
+        <PageHeader :title="post.title" :description="post.excerpt || undefined" eyebrow="From EVE-KILL" icon="lucide:newspaper">
+            <template #meta>
             <div class="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
                 <time v-if="post.published_at" :datetime="post.published_at" class="font-medium text-gray-400">
                     {{ fmtDateLong(post.published_at) }}
@@ -103,10 +103,10 @@ function fmtDateLong(iso: string | null): string {
                     </div>
                 </template>
             </div>
-            <h1 class="text-3xl sm:text-4xl font-bold text-white leading-tight">{{ post.title }}</h1>
-            <p v-if="post.excerpt" class="text-lg text-gray-400 leading-relaxed">{{ post.excerpt }}</p>
-        </header>
+            </template>
+        </PageHeader>
 
+        <div class="mx-auto max-w-3xl space-y-6">
         <img
             v-if="post.cover_image_url"
             :src="post.cover_image_url"
@@ -138,8 +138,8 @@ function fmtDateLong(iso: string | null): string {
                 :show-header="false"
             />
         </section>
+        </div>
     </article>
-    </div>
 </template>
 
 <style scoped>

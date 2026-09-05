@@ -17,7 +17,6 @@ defineProps<{
       alt=""
       class="page-header__background pointer-events-none absolute inset-0 h-full w-full object-cover"
     />
-    <div class="page-header__wash pointer-events-none absolute inset-0" />
     <div
       v-if="imageSrc && imageMode === 'background'"
       class="page-header__background-shade pointer-events-none absolute inset-0"
@@ -65,27 +64,16 @@ defineProps<{
 </template>
 
 <style scoped>
-.page-header__wash {
-  background:
-    radial-gradient(
-      circle at 0 0,
-      color-mix(in srgb, var(--color-brand-primary) 10%, transparent),
-      transparent 42%
-    ),
-    radial-gradient(
-      circle at 100% 100%,
-      color-mix(in srgb, var(--color-brand-secondary) 5%, transparent),
-      transparent 38%
-    );
-}
 
 .page-header__background {
+  z-index: -3;
   filter: blur(12px) saturate(0.9);
   opacity: 0.46;
   transform: scale(1.06);
 }
 
 .page-header__background-shade {
+  z-index: -2;
   background:
     linear-gradient(
       90deg,

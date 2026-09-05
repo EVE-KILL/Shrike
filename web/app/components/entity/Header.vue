@@ -35,7 +35,6 @@ const accentStyle = computed(() =>
       alt=""
       class="entity-header__background pointer-events-none absolute inset-0 h-full w-full object-cover"
     />
-    <div class="entity-header__wash pointer-events-none absolute inset-0" />
     <div
       v-if="backgroundImage"
       class="entity-header__shade pointer-events-none absolute inset-0"
@@ -73,27 +72,16 @@ const accentStyle = computed(() =>
 </template>
 
 <style scoped>
-.entity-header__wash {
-  background:
-    radial-gradient(
-      circle at 0 0,
-      color-mix(in srgb, var(--color-brand-primary) 12%, transparent),
-      transparent 45%
-    ),
-    radial-gradient(
-      circle at 100% 100%,
-      color-mix(in srgb, var(--color-brand-secondary) 7%, transparent),
-      transparent 42%
-    );
-}
 
 .entity-header__background {
+  z-index: -3;
   filter: blur(14px) saturate(0.9);
   opacity: 0.5;
   transform: scale(1.08);
 }
 
 .entity-header__shade {
+  z-index: -2;
   background:
     linear-gradient(
       90deg,
