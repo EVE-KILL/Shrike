@@ -17,9 +17,21 @@ const (
 )
 
 const (
-	RetentionDays = 365
-	RepairDays    = 3
+	RetentionDays          = 365
+	RepairDays             = 3
+	RecentRefreshDelay     = 5 * time.Minute
+	HistoricalRefreshDelay = 6 * time.Hour
 )
+
+// RefreshDelay batches arrivals by UTC activity day. Historical corrections
+// remain durable in dirty_days, but need not rebuild a whole day every five
+// minutes. Keep yesterday responsive for kills posted across UTC midnight.
+func RefreshDelay(day, now time.Time) time.Duration {
+	if day.UTC().Truncate(24 * time.Hour).Before(now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -1)) {
+		return HistoricalRefreshDelay
+	}
+	return RecentRefreshDelay
+}
 
 // Result describes a bounded reconciliation run.
 type Result struct {
@@ -218,8 +230,11 @@ func reconcileDayTx(ctx context.Context, tx pgx.Tx, day time.Time) (int64, int64
 	return characterTag.RowsAffected(), shipTag.RowsAffected(), targetTag.RowsAffected(), nil
 }
 
+// Inline the multiply-referenced bounds: materializing them hides the date
+// constants from selectivity estimation and can turn the cyno EXISTS into a
+// scan of every cyno item in the database instead of a per-kill lookup.
 const characterDailySQL = `
-WITH bounds AS (SELECT $1::date AS d, $1::date + 1 AS e),
+WITH bounds AS NOT MATERIALIZED (SELECT $1::date AS d, $1::date + 1 AS e),
 attacker AS MATERIALIZED (
  SELECT a.character_id,
   count(*)::int AS appearances,
