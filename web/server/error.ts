@@ -1,4 +1,5 @@
 import {
+    getRequestHost,
     getRequestURL,
     send,
     setResponseHeaders,
@@ -6,6 +7,7 @@ import {
 } from 'h3'
 import { defineNitroErrorHandler } from 'nitropack/runtime'
 import { logRequestError } from './utils/errorLogging'
+import { isCanonicalSeoHost } from './utils/seoHost'
 
 export default defineNitroErrorHandler(async (error, event, options) => {
     const url = getRequestURL(event, {
@@ -20,6 +22,9 @@ export default defineNitroErrorHandler(async (error, event, options) => {
     const response = await options.defaultHandler(error, event, { silent: true })
     if (!event.node?.res.headersSent) {
         setResponseHeaders(event, response.headers)
+        if (!isCanonicalSeoHost(getRequestHost(event))) {
+            setResponseHeaders(event, { 'x-robots-tag': 'noindex, nofollow' })
+        }
     }
     setResponseStatus(event, response.status, response.statusText)
 
