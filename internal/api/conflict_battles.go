@@ -825,7 +825,6 @@ func buildBattleDetail(
 ) (map[string]any, error) {
 	kills := window.Kills
 	attackers := window.Attackers
-	var participants map[string]any
 	loaders, loaderCtx := errgroup.WithContext(ctx)
 	if kills == nil {
 		loaders.Go(func() (err error) {
@@ -849,17 +848,10 @@ func buildBattleDetail(
 			return err
 		})
 	}
-	loaders.Go(func() (err error) {
-		var loaded map[string]any
-		loaded, err = loadBattleParticipantCounts(
-			loaderCtx, opts.DB, window.SystemIDs, window.Start, window.End,
-		)
-		participants = loaded
-		return err
-	})
 	if err := loaders.Wait(); err != nil {
 		return nil, err
 	}
+	participants := battleParticipantCounts(kills, attackers)
 	teams := battle.ComputeTeamStats(kills, attackers, window.Assignment)
 	ensureBattleAssignmentEntries(&teams, window.Assignment)
 	restrictBattleTeamEntries(&teams, window.Assignment)
@@ -921,40 +913,33 @@ func buildBattleDetail(
 	return result, nil
 }
 
-func loadBattleParticipantCounts(
-	ctx context.Context,
-	db Database,
-	systemIDs []int32,
-	start, end time.Time,
-) (map[string]any, error) {
-	row, err := queryMap(ctx, db, `
-		WITH battle_kills AS MATERIALIZED (
-			SELECT killmail_id
-			FROM killmails
-			WHERE solar_system_id = ANY($1::int[])
-			  AND killmail_time >= $2 AND killmail_time <= $3
-		)
-		SELECT
-			COUNT(DISTINCT attacker.character_id)
-			  FILTER (WHERE attacker.character_id IS NOT NULL)::int AS characters,
-			COUNT(DISTINCT attacker.corporation_id)
-			  FILTER (WHERE attacker.corporation_id IS NOT NULL)::int AS corporations,
-			COUNT(DISTINCT attacker.alliance_id)
-			  FILTER (WHERE attacker.alliance_id IS NOT NULL)::int AS alliances,
-			COALESCE(SUM(attacker.damage_done), 0)::bigint AS total_damage
-		FROM killmail_attackers attacker
-		JOIN battle_kills kill ON kill.killmail_id = attacker.killmail_id
-		WHERE attacker.killmail_time >= $2
-		  AND attacker.killmail_time <= $3`,
-		systemIDs, start, end,
-	)
-	if err != nil {
-		return nil, err
+// Count the exact kills shown in the battle, not the wider candidate window
+// retained by on-the-fly detection. All attackers, including unsided/NPC
+// participants, contribute damage; missing entity IDs use the domain's zero sentinel.
+func battleParticipantCounts(kills []battle.Killmail, attackers map[int64][]battle.Attacker) map[string]any {
+	characters, corporations, alliances := map[int32]struct{}{}, map[int32]struct{}{}, map[int32]struct{}{}
+	seen := map[int64]struct{}{}
+	var damage int64
+	for _, kill := range kills {
+		if _, ok := seen[kill.KillmailID]; ok {
+			continue
+		}
+		seen[kill.KillmailID] = struct{}{}
+		for _, a := range attackers[kill.KillmailID] {
+			if a.CharacterID != 0 {
+				characters[a.CharacterID] = struct{}{}
+			}
+			if a.CorporationID != 0 {
+				corporations[a.CorporationID] = struct{}{}
+			}
+			if a.AllianceID != 0 {
+				alliances[a.AllianceID] = struct{}{}
+			}
+			damage += a.DamageDone
+		}
 	}
-	if row == nil {
-		row = map[string]any{}
-	}
-	return row, nil
+	return map[string]any{"characters": len(characters), "corporations": len(corporations),
+		"alliances": len(alliances), "total_damage": damage}
 }
 
 func loadBattleNames(

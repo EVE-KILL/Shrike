@@ -390,12 +390,7 @@ func battleGeneratorPreviewHandler(opts Options) bodyHandler[conflictBattleGener
 				formatted[index]["name"] = fmt.Sprintf("Team %d", index+1)
 			}
 		}
-		participants, err := loadBattleParticipantCounts(
-			ctx, opts.DB, systemIDs, start, end,
-		)
-		if err != nil {
-			return legacyPayload{}, err
-		}
+		participants := battleParticipantCounts(kills, attackers)
 		teamEntities := make([]map[string]any, 0, len(formatted))
 		for _, team := range formatted {
 			corps, alliances := battleTeamEntities(team)

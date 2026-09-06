@@ -99,15 +99,7 @@ func affiliationCandidates(
 		activityPredicate = `last_active IS NOT NULL AND last_active >= $1`
 	}
 
-	rows, err := d.Pool.Query(ctx, `
-        SELECT character_id
-        FROM characters
-        WHERE deleted IS NOT TRUE
-          AND character_id > 0
-          AND (`+activityPredicate+`)
-          AND (updated_at IS NULL OR updated_at < $2)
-        ORDER BY updated_at ASC NULLS FIRST, character_id
-        LIMIT $3`,
+	rows, err := d.Pool.Query(ctx, affiliationCandidateQuery(activityPredicate),
 		activeSince,
 		staleBefore,
 		limit,
@@ -126,6 +118,22 @@ func affiliationCandidates(
 		out = append(out, id)
 	}
 	return out, rows.Err()
+}
+
+// Split never-checked and stale rows into ordered, bounded index walks. The
+// previous OR forced a bitmap scan and sort of millions of candidate rows.
+func affiliationCandidateQuery(activityPredicate string) string {
+	return `SELECT character_id FROM (
+		(SELECT character_id, updated_at FROM characters
+		 WHERE deleted IS NOT TRUE AND character_id > 0
+		 AND (` + activityPredicate + `) AND updated_at IS NULL
+		 ORDER BY updated_at ASC NULLS FIRST, character_id LIMIT $3)
+		UNION ALL
+		(SELECT character_id, updated_at FROM characters
+		 WHERE deleted IS NOT TRUE AND character_id > 0
+		 AND (` + activityPredicate + `) AND updated_at < $2
+		 ORDER BY updated_at ASC NULLS FIRST, character_id LIMIT $3)
+	) candidates ORDER BY updated_at ASC NULLS FIRST, character_id LIMIT $3`
 }
 
 func (d *Deps) processAffiliationBatch(ctx context.Context, ids []int32) (int, error) {

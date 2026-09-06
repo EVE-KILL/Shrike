@@ -821,12 +821,7 @@ func loadTypePrices(
 	if !ok {
 		return result, nil
 	}
-	rows, err := queryMaps(ctx, db, `
-		SELECT DISTINCT ON (type_id) type_id, average
-		FROM prices
-		WHERE type_id = ANY($1::int[])
-		  AND region_id = 10000002
-		ORDER BY type_id, ABS(date - $2::date), date DESC`, typeIDs, killTime)
+	rows, err := queryMaps(ctx, db, nearestTypePricesSQL("prices", "average", "AND region_id = 10000002"), typeIDs, killTime)
 	if err != nil {
 		return nil, err
 	}
@@ -835,11 +830,7 @@ func loadTypePrices(
 		price, _ := float64Value(row["average"])
 		result[typeID] = price
 	}
-	custom, err := queryMaps(ctx, db, `
-		SELECT DISTINCT ON (type_id) type_id, price
-		FROM custom_prices
-		WHERE type_id = ANY($1::int[])
-		ORDER BY type_id, ABS(date - $2::date), date DESC`, typeIDs, killTime)
+	custom, err := queryMaps(ctx, db, nearestTypePricesSQL("custom_prices", "price", ""), typeIDs, killTime)
 	if err != nil {
 		return nil, err
 	}
@@ -849,4 +840,25 @@ func loadTypePrices(
 		result[typeID] = price
 	}
 	return result, nil
+}
+
+// These identifiers are fixed at the two internal call sites, never request
+// input. Two index seeks per type preserve nearest-date semantics, including
+// preferring the later date on ties, without sorting the entire price history.
+func nearestTypePricesSQL(table, value, region string) string {
+	return fmt.Sprintf(`
+		SELECT requested.type_id, nearest.%[2]s
+		FROM (SELECT DISTINCT unnest($1::int[]) AS type_id) requested
+		CROSS JOIN LATERAL (
+			SELECT candidate.%[2]s FROM (
+				(SELECT date, %[2]s FROM %[1]s
+				 WHERE type_id=requested.type_id %[3]s AND date <= $2::date
+				 ORDER BY date DESC LIMIT 1)
+				UNION ALL
+				(SELECT date, %[2]s FROM %[1]s
+				 WHERE type_id=requested.type_id %[3]s AND date > $2::date
+				 ORDER BY date ASC LIMIT 1)
+			) candidate
+			ORDER BY ABS(candidate.date - $2::date), candidate.date DESC LIMIT 1
+		) nearest`, table, value, region)
 }
