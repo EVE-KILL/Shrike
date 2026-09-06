@@ -2,7 +2,7 @@
 import type { BattleMapSystem } from '~/utils/map/battles'
 const { isDomainMode } = useDomainConfig()
 
-useHead({ title: 'Battles' })
+useHead({ title: 'EVE Online Battles & Battle Reports' })
 useSeoMeta({
     description: 'Browse major battles in EVE Online — fleet engagements, battle reports, timelines, and ISK destroyed across New Eden on EVE-KILL.',
     ogTitle: 'Battles — EVE-KILL',
@@ -249,7 +249,13 @@ const teamName = (entry: any): string => {
 <template>
     <div>
         <PageHeader class="mb-4" title="Battles" eyebrow="Fleet engagements" icon="lucide:swords"
-            description="Fleet engagements detected across New Eden, with sides, timelines and ISK destroyed. Explore the map, browse by time, or filter down to an alliance, corporation, system or region.">
+            >
+            <template #description>
+                Explore EVE Online fleet engagements, battle reports, maps, timelines and ISK destroyed.
+                Filter by alliance, corporation, system or region. For longer conflicts, browse
+                <NuxtLink to="/wars" class="text-blue-400 hover:underline">declared wars</NuxtLink> or
+                <NuxtLink to="/campaigns" class="text-blue-400 hover:underline">campaign scoreboards</NuxtLink>.
+            </template>
             <template #actions>
                 <div class="flex flex-wrap items-center justify-end gap-2">
                 <span v-if="isDomainMode"

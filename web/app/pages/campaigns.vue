@@ -177,7 +177,12 @@ const lastPage = computed(() => Math.max(1, Math.ceil((campaignData.value.total 
 <template>
     <div>
         <PageHeader class="mb-4" title="Campaigns" eyebrow="Tracked conflicts" icon="lucide:flag"
-            description="Long-running trackers for a war between sides, one group's war effort, or every kill across a stretch of space. Scoreboards refresh hourly.">
+            >
+            <template #description>
+                Track EVE Online conflicts across multiple battles: kills, losses and ISK destroyed for opposing sides,
+                one group's war effort, or a stretch of space. Scoreboards refresh hourly. For individual engagements,
+                browse <NuxtLink to="/battles" class="text-blue-400 hover:underline">battle reports</NuxtLink>.
+            </template>
             <template #actions>
                 <div class="flex flex-wrap items-center justify-end gap-2">
                 <span v-if="isDomainMode"

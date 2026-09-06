@@ -1,5 +1,5 @@
 <script setup lang="ts">
-useHead({ title: "FAQ" });
+useHead({ title: "Frequently Asked Questions" });
 useSeoMeta({
   description:
     "Frequently asked questions about EVE-KILL — killmails, combat points, rankings, item pricing, accounts, and the API.",
@@ -35,7 +35,14 @@ const items = [
     label: "How do rankings and EVE-KILL Rating work?",
     icon: "lucide:trophy",
     content:
-      "<p>Rankings total combat points within the selected period. The available views cover the last hour, 7, 14, 30, 90, 180, and 365 days, plus all time. Characters, corporations, alliances, ships, systems, and regions are ranked separately.</p><p>Characters also earn achievement points. A corporation receives the combined achievement points of its current members, and an alliance receives the combined total of its current member characters. Achievement standing can add up to 3/7 of combat points, producing a 70/30 combat-to-achievement weighting at the top of the achievement distribution.</p><p>EVE-KILL Rating is open-ended: it is not capped at 1,000. Ships, systems, and regions use combat points directly because achievements belong to pilots and their organisations. The hourly view is calculated live; longer periods are generated from the statistics rollups.</p>",
+      "<p>Rankings total combat points within the selected period. The available views cover the last hour, 7, 14, 30, 90, 180, and 365 days, plus all time. Characters, corporations, alliances, ships, systems, and regions are ranked separately.</p><p>Characters also earn achievement points. A corporation receives the combined achievement points of its current members, and an alliance receives the combined total of its current member characters. Achievement standing can add up to 3/7 of combat points, producing a 70/30 combat-to-achievement weighting at the top of the achievement distribution.</p><p>EVE-KILL Rating is open-ended: it is not capped at 1,000. Ships, systems, and regions use combat points directly because achievements belong to pilots and their organisations. The hourly view is calculated live; longer periods are generated from the statistics rollups.</p><p>Explore the <a href='/stats'>PvP statistics and leaderboards</a> to compare pilots, corporations and alliances.</p>",
+  },
+  {
+    key: "fittings",
+    label: "Where can I find ship fittings?",
+    icon: "lucide:wrench",
+    content:
+      '<p>Browse <a href="/fits">EVE Online ship fittings</a> recovered from killmails, alliance doctrines and community-shared builds. Use <a href="/fits/search">fitting search</a> to find examples by hull and fitted modules, or <a href="/fits/create">create a fit</a> with the fitting tool.</p>',
   },
   {
     key: "pricing",

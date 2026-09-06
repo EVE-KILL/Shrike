@@ -2,7 +2,7 @@
 const { domainConfig, isDomainMode } = useDomainConfig()
 const siteName = computed(() => domainConfig.value?.siteName || 'EVE-KILL')
 
-useHead({ title: 'Wars' })
+useHead({ title: 'EVE Online Wars' })
 useSeoMeta({
     description: 'Browse active and historical wars in EVE Online — war declarations, faction warfare statistics, and conflict tracking on EVE-KILL.',
     ogTitle: 'Wars — EVE-KILL',
@@ -149,9 +149,12 @@ const efficiencyWidth = (w: any): string => {
                             and what it has cost so far.
                         </template>
                         <template v-else>
-                            Every declared war in New Eden — aggressors, defenders, allies and the ISK burned. Pick a
+                            Declared wars in EVE Online — aggressors, defenders, allies and the ISK burned. Pick a
                             card below to switch between active, finished and upcoming wars.
                         </template>
+                Explore individual engagements in
+                <NuxtLink to="/battles" class="text-blue-400 hover:underline">battle reports</NuxtLink>, or follow a wider conflict through
+                <NuxtLink to="/campaigns" class="text-blue-400 hover:underline">campaign scoreboards</NuxtLink>.
             </template>
             <template v-if="isDomainMode" #actions>
                 <span v-if="isDomainMode"

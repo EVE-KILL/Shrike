@@ -53,7 +53,7 @@ const showPeriod = computed(() => activeFilter.value === 'all' || periodSections
 const showNonPeriod = computed(() =>
     !isDomainMode.value && (activeFilter.value === 'all' || !periodSections.has(activeFilter.value)))
 
-useHead({ title: () => isDomainMode.value ? `Statistics — ${siteName.value}` : 'Statistics' })
+useHead({ title: () => isDomainMode.value ? `Statistics — ${siteName.value}` : 'EVE Online PvP Statistics' })
 useSeoMeta({
     description: () => isDomainMode.value
         ? `Kill statistics for ${siteName.value} — top pilots, corporations, ships, systems and regions by kills and ISK destroyed.`
@@ -278,9 +278,11 @@ const secColor = (sec: number): string => {
                             corporations and alliances over the period you pick.
                         </template>
                         <template v-else>
-                            Leaderboards across New Eden — who kills the most, who loses the most, and where. Period
+                            EVE Online PvP leaderboards — who kills the most, who loses the most, and where. Period
                             tables refresh with the stats rollups; population rankings track the whole cluster.
                         </template>
+                Read the <NuxtLink to="/faq" class="text-blue-400 hover:underline">FAQ on combat points and rankings</NuxtLink>
+                for how scores are calculated.
             </template>
             <template v-if="isDomainMode" #actions>
                 <span v-if="isDomainMode"

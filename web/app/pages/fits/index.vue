@@ -22,7 +22,7 @@
 import { killmailFitToEditorUrl } from "~/composables/fit/killmailToFit";
 import FitRating from "~/components/fit/FitRating.vue";
 
-useHead({ title: "Ship Fittings" });
+useHead({ title: "EVE Online Ship Fittings" });
 useSeoMeta({
   description:
     "Browse popular ship fittings from EVE Online killmails, share your own fits, and build new ones with the in-browser fitting tool.",
@@ -313,7 +313,7 @@ async function loadDoctrine(d: EntityDoctrine) {
       icon="lucide:wrench"
       image-src="/images/types/24694/render?size=1024"
       image-mode="background"
-      description="Discover fittings recovered from real losses, explore alliance doctrines, or build and share your own with live dogma calculations."
+      description="Discover EVE Online ship fittings recovered from real losses, explore alliance doctrines, or build and share your own fits with calculated ship and module stats."
     >
       <template #actions>
         <div class="flex flex-wrap items-center gap-2">

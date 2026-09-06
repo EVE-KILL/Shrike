@@ -14,7 +14,7 @@
 
 import { killmailFitToEditorUrl } from '~/composables/fit/killmailToFit'
 
-useHead({ title: 'Search Fits' })
+useHead({ title: 'Search EVE Online Ship Fits' })
 useSeoMeta({
     description:
         'Search EVE Online ship fittings by hull and modules. Filter by armor reps, missile launchers, tackle and more — see real fits flown over the last 90 days.',
