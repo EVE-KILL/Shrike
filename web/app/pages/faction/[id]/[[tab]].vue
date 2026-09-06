@@ -158,12 +158,12 @@ const factionLogo = computed(() => faction.value
 
             <!-- ===== DASHBOARD ===== -->
             <div v-if="activeTab === 'dashboard'">
-                <FactionDashboard :faction="faction" />
+                <LazyFactionDashboard :faction="faction" />
             </div>
 
             <!-- ===== KILL TABS ===== -->
             <div v-else>
-                <KillList :entity-endpoint="`/api/entity/faction/${id}/killlist`"
+                <LazyKillList :entity-endpoint="`/api/entity/faction/${id}/killlist`"
                     victim-entity-type="faction" :victim-entity-id="id"
                     :entity-role="killlistRole"
                     :stream-topics="[`victim.${id}`, `attacker.${id}`]" />

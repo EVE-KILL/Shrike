@@ -15,6 +15,8 @@ export interface DropdownColumn {
 const props = defineProps<{
     /** v-model open state */
     modelValue?: boolean
+    /** Keep public navigation links in SSR HTML while the panel is closed. */
+    persistent?: boolean
     /** Horizontal alignment of the panel */
     align?: 'left' | 'right'
     /**
@@ -107,7 +109,9 @@ const columnIcon = (label: string) => columnIcons[label] ?? 'lucide:circle-dot'
             :leave-to-class="isMega ? 'opacity-0' : 'opacity-0 translate-y-1 scale-[0.98]'"
         >
             <div
-                v-if="isOpen"
+                v-if="persistent || isOpen"
+                v-show="isOpen"
+                :inert="!isOpen"
                 class="z-50 rounded-xl border border-white/[0.10] bg-[#141414]/90 bg-[radial-gradient(circle_at_12%_0%,rgba(59,130,246,0.09),transparent_34%),radial-gradient(circle_at_88%_100%,rgba(99,102,241,0.07),transparent_38%),linear-gradient(135deg,rgba(255,255,255,0.012),transparent_45%)] backdrop-blur-2xl shadow-2xl shadow-black/60"
                 :class="[
                     isMega

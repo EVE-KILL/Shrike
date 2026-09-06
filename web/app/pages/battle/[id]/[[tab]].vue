@@ -367,7 +367,7 @@ const timelineEndpoint = computed(() => {
 
             <!-- Header: System + Stats -->
             <div class="hero-surface glass-panel p-5 mb-4">
-                <div class="flex items-center gap-3 mb-4 pb-3 border-b border-white/[0.06]">
+                <div class="flex flex-wrap items-center gap-3 mb-4 pb-3 border-b border-white/[0.06]">
                     <img :src="`/images/systems/${battle.solar_system_id}?size=64`" alt="" class="w-10 h-10 rounded-lg flex-shrink-0" loading="eager">
                     <div>
                         <span class="text-lg font-bold text-white" :class="pochvenClass(battle.region_id)">{{ battle.solar_system_name }}</span>
@@ -376,7 +376,7 @@ const timelineEndpoint = computed(() => {
                         </span>
                         <span class="ml-2 text-sm text-gray-500" :class="pochvenClass(battle.region_id)">{{ battle.region_name }}</span>
                     </div>
-                    <div class="ml-auto flex items-center gap-2">
+                    <div class="ml-auto flex flex-wrap items-center gap-2">
                         <span v-if="battle.is_multi_party" class="px-2 py-0.5 text-fine rounded bg-amber-500/20 text-amber-400 font-medium">Multi-party</span>
                         <span v-if="battle.is_custom" class="px-2 py-0.5 text-fine rounded bg-purple-500/20 text-purple-400 font-medium">Custom</span>
                         <!-- Killmail reports carry this up in the Generated row
@@ -543,10 +543,10 @@ const timelineEndpoint = computed(() => {
             </div>
 
             <!-- Tab Content -->
-            <BattleSummary v-if="activeTab === 'summary'" :teams="battle.teams" :unsided="battle.unsided" />
+            <LazyBattleSummary v-if="activeTab === 'summary'" :teams="battle.teams" :unsided="battle.unsided" />
 
             <Suspense v-if="activeTab === 'kills'">
-                <KillList
+                <LazyKillList
                     :api-endpoint="killlistEndpoint"
                     :extra-params="{
                         systemId: battle.solar_system_id,
@@ -567,11 +567,11 @@ const timelineEndpoint = computed(() => {
             </Suspense>
 
             <div v-if="activeTab === 'comments'" class="mt-2">
-                <CommentsCommentList :target-type="7" :target-id="id" />
+                <LazyCommentsCommentList :target-type="7" :target-id="id" />
             </div>
 
             <Suspense v-if="activeTab === 'composition'">
-                <BattleComposition
+                <LazyBattleComposition
                     :api-endpoint="compositionEndpoint"
                     :extra-params="compositionParams"
                     :key="`battle-comp-${isKillmailBattle ? `km-${killmailId}` : id}`"
@@ -584,7 +584,7 @@ const timelineEndpoint = computed(() => {
             </Suspense>
 
             <Suspense v-if="activeTab === 'intel'">
-                <BattleIntel
+                <LazyBattleIntel
                     :api-endpoint="intelEndpoint"
                     :extra-params="intelParams"
                     :key="`battle-intel-${isKillmailBattle ? `km-${killmailId}` : id}`"
@@ -597,7 +597,7 @@ const timelineEndpoint = computed(() => {
             </Suspense>
 
             <Suspense v-if="activeTab === 'timeline'">
-                <BattleTimeline
+                <LazyBattleTimeline
                     :battle-id="isKillmailBattle ? null : id"
                     :solar-system-id="battle.solar_system_id"
                     :start-time="battle.start_time"

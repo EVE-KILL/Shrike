@@ -45,6 +45,8 @@ import { eveTools } from '#shared/utils/eveTools'
                     alt=""
                     width="18"
                     height="18"
+                    loading="lazy"
+                    decoding="async"
                     class="w-[18px] h-[18px] flex-shrink-0 object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                 />
                 <Icon

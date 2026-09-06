@@ -143,15 +143,29 @@ export function useEntityPage<T extends EntityPageTab>(
         return sg ? { ship_group: Number(sg) } : undefined
     })
 
-    // Top lists for kill tab sidebars — no await, loads client-side only (don't block SSR).
-    // Skipped entirely for kinds without a top-lists sidebar (withTopLists: false).
-    const topLists = opts.withTopLists === false
-        ? ref<any>(null)
-        : useApiFetch<any>(`/api/entity/${kind}/${id}/top-lists`, {
+    // These lists are visible only beside a desktop kill tab. Don't query them
+    // on mobile, dashboard, history, etc. Resizing or opening a kill tab loads
+    // them once, without blocking the entity page's SSR/navigation.
+    const topLists = ref<any>(null)
+    if (opts.withTopLists !== false) {
+        const isDesktop = useIsDesktop()
+        const request = useApiFetch<any>(`/api/entity/${kind}/${id}/top-lists`, {
             lazy: true,
             server: false,
+            immediate: false,
             getCachedData: cachedPayload,
-        }).data
+        })
+        watch(request.data, value => { topLists.value = value }, { immediate: true })
+        watch(
+            () => isDesktop.value === true && ['combined', 'kills', 'losses'].includes(activeTab.value),
+            visible => {
+                if (visible && !request.data.value && request.status.value !== 'pending') {
+                    void request.execute()
+                }
+            },
+            { immediate: true },
+        )
+    }
 
     // Format date
     const formatDate = (iso: string | null): string => {

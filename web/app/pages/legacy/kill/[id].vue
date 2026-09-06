@@ -87,18 +87,18 @@ const isLit = (idx: number, cell: string) => hoveredCell.value?.idx === idx && h
     <div v-if="kill">
         <h1 class="sr-only">{{ killTitle }}</h1>
 
-        <!-- ===== DESKTOP ===== -->
-        <div class="hidden md:grid grid-cols-[1fr_minmax(0,374px)] gap-4">
+        <!-- Shared responsive detail layout -->
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,374px)] gap-4">
             <!-- LEFT: Fitting wheel + Info + Items -->
             <div class="space-y-4">
-                <div class="flex gap-4 items-start">
+                <div class="flex flex-col md:flex-row gap-4 items-start">
                     <!-- Fitting wheel (empty — just ship render) -->
-                    <div class="flex-1 min-w-[350px] max-w-[650px]">
+                    <div class="hidden md:block flex-1 min-w-0 max-w-[650px]">
                         <KillFittingWheel :ship-type-id="kill.victim_ship_type_id || 670" :ship-name="kill.victim_ship" :items="[]" />
                     </div>
 
                     <!-- Info box -->
-                    <div class="flex-shrink-0 w-[252px]">
+                    <div class="flex-shrink-0 w-full md:w-[252px]">
                         <div class="rounded-xl border border-white/[0.08] overflow-hidden">
                             <!-- Portrait -->
                             <div class="relative">
@@ -141,14 +141,14 @@ const isLit = (idx: number, cell: string) => hoveredCell.value?.idx === idx && h
 
                 <!-- Items table -->
                 <div v-if="items.length > 0" class="glass-panel p-2">
-                    <div class="grid grid-cols-[28px_1fr_50px] gap-2 px-2 py-1.5 text-fine font-bold uppercase tracking-wider text-gray-600 border-b border-white/[0.08]">
+                    <div class="grid grid-cols-[28px_minmax(0,1fr)_50px] gap-2 px-2 py-1.5 text-fine font-bold uppercase tracking-wider text-gray-600 border-b border-white/[0.08]">
                         <div></div>
                         <div>Item</div>
                         <div class="text-center">Qty</div>
                     </div>
 
                     <!-- Ship hull -->
-                    <div class="grid grid-cols-[28px_1fr_50px] gap-2 px-2 py-1.5 items-center bg-red-500/[0.05] border-b border-white/[0.04]">
+                    <div class="grid grid-cols-[28px_minmax(0,1fr)_50px] gap-2 px-2 py-1.5 items-center bg-red-500/[0.05] border-b border-white/[0.04]">
                         <div class="w-6 h-6 rounded overflow-hidden bg-white/[0.04]">
                             <img :src="img('types', kill.victim_ship_type_id, 'icon', 64)" :alt="kill.victim_ship" class="w-full h-full object-cover">
                         </div>
@@ -157,7 +157,7 @@ const isLit = (idx: number, cell: string) => hoveredCell.value?.idx === idx && h
                     </div>
 
                     <template v-for="group in slotGroups" :key="group.label">
-                        <div class="grid grid-cols-[28px_1fr_50px] gap-2 px-2 py-1.5 mt-1 bg-white/[0.03] border-b border-white/[0.04]">
+                        <div class="grid grid-cols-[28px_minmax(0,1fr)_50px] gap-2 px-2 py-1.5 mt-1 bg-white/[0.03] border-b border-white/[0.04]">
                             <div></div>
                             <div class="text-xs font-bold uppercase tracking-wider text-gray-400">
                                 {{ group.label }} <span class="text-gray-600 font-normal normal-case ml-1">({{ group.items.length }})</span>
@@ -165,7 +165,7 @@ const isLit = (idx: number, cell: string) => hoveredCell.value?.idx === idx && h
                             <div></div>
                         </div>
                         <div v-for="item in group.items" :key="item.id"
-                            class="grid grid-cols-[28px_1fr_50px] gap-2 px-2 py-1 items-center bg-red-500/[0.05] border-b border-white/[0.02]">
+                            class="grid grid-cols-[28px_minmax(0,1fr)_50px] gap-2 px-2 py-1 items-center bg-red-500/[0.05] border-b border-white/[0.02]">
                             <div class="w-6 h-6 rounded overflow-hidden bg-white/[0.04]">
                                 <img :src="img('types', item.type_id, 'icon', 64)" :alt="item.name" class="w-full h-full object-cover" loading="lazy">
                             </div>
@@ -273,56 +273,5 @@ const isLit = (idx: number, cell: string) => hoveredCell.value?.idx === idx && h
             </div>
         </div>
 
-        <!-- ===== MOBILE ===== -->
-        <div class="md:hidden space-y-4">
-            <!-- Ship render + info -->
-            <div class="rounded-xl border border-white/[0.08] overflow-hidden">
-                <div class="relative">
-                    <div class="w-full aspect-square bg-white/[0.04]">
-                        <img :src="img('characters', kill.victim_character_id, 'portrait', 512)" :alt="kill.victim_name" class="w-full h-full object-cover">
-                    </div>
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent"></div>
-                    <div class="absolute inset-x-0 bottom-0 p-3 space-y-0.5">
-                        <div class="text-lg text-white font-semibold drop-shadow-lg truncate">{{ kill.victim_name || 'Unknown' }}</div>
-                        <div class="text-sm text-gray-300/80 drop-shadow truncate">{{ kill.victim_ship || 'Unknown Ship' }}</div>
-                        <div v-if="kill.victim_corp" class="text-xs text-gray-400/80 drop-shadow truncate">{{ kill.victim_corp }}</div>
-                    </div>
-                </div>
-                <div class="bg-white/[0.04] px-4 py-3 space-y-2 text-xs">
-                    <div class="flex justify-between"><span class="text-gray-500">System</span><span><span :class="secColor(kill.security)" class="tabular-nums">{{ kill.security?.toFixed(1) }}</span> {{ kill.system_name }}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Time</span><span class="text-gray-300">{{ formatTimestamp(kill.killmail_time) }}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Attackers</span><span class="text-gray-300">{{ attackers.length }}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-400 font-medium">Total Value</span><span class="text-white font-semibold tabular-nums">{{ formatIsk(kill.total_value || 0) }} ISK</span></div>
-                </div>
-            </div>
-
-            <!-- Attackers -->
-            <div class="glass-panel p-3">
-                <div class="text-fine font-bold uppercase tracking-wider text-blue-400/80 border-b border-white/[0.08] pb-2 mb-2">Attackers ({{ attackers.length }})</div>
-                <div v-for="atk in attackers" :key="atk.id" class="flex items-center gap-2 py-1.5 border-b border-white/[0.03]" :class="atk.final_blow ? 'bg-amber-500/[0.05]' : ''">
-                    <img :src="img('characters', atk.character_id, 'portrait', 64)" class="w-8 h-8 rounded flex-shrink-0">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs text-gray-300 truncate">{{ atk.name || 'Unknown' }} <span v-if="atk.final_blow" class="text-amber-400">(FB)</span></div>
-                        <div class="text-fine text-gray-500 truncate">{{ atk.ship || '' }} — {{ atk.weapon || '' }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Items -->
-            <div v-if="items.length" class="glass-panel p-3">
-                <div class="text-fine font-bold uppercase tracking-wider text-blue-400/80 border-b border-white/[0.08] pb-2 mb-2">Destroyed Items ({{ items.length }})</div>
-                <div v-for="item in items" :key="item.id" class="flex items-center gap-2 py-1 border-b border-white/[0.03]">
-                    <img :src="img('types', item.type_id, 'icon', 64)" class="w-6 h-6 rounded flex-shrink-0" loading="lazy">
-                    <span class="text-xs text-gray-300 truncate flex-1">{{ item.name }}</span>
-                    <span v-if="item.quantity > 1" class="text-fine text-gray-500 tabular-nums">x{{ item.quantity }}</span>
-                </div>
-            </div>
-
-            <!-- Raw text -->
-            <details>
-                <summary class="text-sm text-gray-500 hover:text-blue-400 cursor-pointer">View original killmail text</summary>
-                <pre class="mt-2 p-3 rounded-lg bg-white/[0.02] border border-white/[0.06] text-xs text-gray-400 whitespace-pre-wrap font-mono overflow-x-auto">{{ kill.raw_text }}</pre>
-            </details>
-        </div>
     </div>
 </template>

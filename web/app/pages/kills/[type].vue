@@ -65,9 +65,7 @@ const mobileTabFromHash = (hash: string) => {
     const t = hash.replace('#', '')
     return validMobileTabs.has(t) ? t as 'kills' | 'top' | 'valuable' : 'kills'
 }
-const mobileTab = ref<'kills' | 'top' | 'valuable'>(
-    import.meta.client ? mobileTabFromHash(window.location.hash) : 'kills',
-)
+const mobileTab = ref<'kills' | 'top' | 'valuable'>('kills')
 
 const mobileTabLabels: Record<string, string> = { kills: '', top: 'Top Lists', valuable: 'Valuable' }
 useHead({ title: computed(() => {
@@ -80,11 +78,10 @@ const setMobileTab = (tab: typeof mobileTab.value) => {
     const hash = tab === 'kills' ? '' : `#${tab}`
     window.history.pushState(null, '', hash || window.location.pathname)
 }
-if (import.meta.client) {
-    window.addEventListener('popstate', () => {
-        mobileTab.value = mobileTabFromHash(window.location.hash)
-    })
-}
+const syncMobileTab = () => { mobileTab.value = mobileTabFromHash(window.location.hash) }
+onMounted(syncMobileTab)
+if (import.meta.client) useEventListener(window, 'popstate', syncMobileTab)
+
 </script>
 
 <template>
@@ -92,20 +89,7 @@ if (import.meta.client) {
         <!-- Page title -->
         <h1 class="text-xl font-bold text-white mb-4">{{ title }}</h1>
 
-        <!-- Most Valuable — desktop only (mobile gets it as a tab) -->
-        <MostValuableFiltered :kill-type="type" :api-endpoint="customMvEndpoint" class="mb-6 hidden md:block" />
-
-        <!-- ===== DESKTOP: sidebar + killlist ===== -->
-        <div class="hidden md:grid grid-cols-[250px_1fr] gap-4">
-            <div>
-                <TopBox :title="topCharLabel" dataType="characters" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
-                <TopBox :title="topCorpLabel" dataType="corporations" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
-                <TopBox :title="topAllyLabel" dataType="alliances" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
-            </div>
-            <KillList :killlist-type="type" :key="type" :api-endpoint="customKilllistEndpoint" :stream-topics="[type]" />
-        </div>
-
-        <!-- ===== MOBILE: tabs ===== -->
+        <!-- One set of widgets for both viewports; CSS controls mobile tabs. -->
         <div class="md:hidden">
             <div class="flex border-b border-white/[0.08] mb-4">
                 <button
@@ -134,18 +118,18 @@ if (import.meta.client) {
                 </button>
             </div>
 
-            <div v-show="mobileTab === 'kills'">
+        </div>
+        <div :class="mobileTab === 'valuable' ? 'block' : 'hidden md:block'">
+            <MostValuableFiltered :key="type" :kill-type="type" :api-endpoint="customMvEndpoint" />
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-[250px_minmax(0,1fr)] gap-4">
+            <div :class="mobileTab === 'top' ? 'block' : 'hidden md:block'">
+                <DeferredTopBox :title="topCharLabel" dataType="characters" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
+                <DeferredTopBox :title="topCorpLabel" dataType="corporations" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
+                <DeferredTopBox :title="topAllyLabel" dataType="alliances" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
+            </div>
+            <div class="min-w-0" :class="mobileTab === 'kills' ? 'block' : 'hidden md:block'">
                 <KillList :killlist-type="type" :key="type" :api-endpoint="customKilllistEndpoint" :stream-topics="[type]" />
-            </div>
-
-            <div v-show="mobileTab === 'top'" class="space-y-4">
-                <TopBox :title="topCharLabel" dataType="characters" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
-                <TopBox :title="topCorpLabel" dataType="corporations" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
-                <TopBox :title="topAllyLabel" dataType="alliances" :limit="10" :apiEndpoint="customTopEndpoint" :killType="type" />
-            </div>
-
-            <div v-show="mobileTab === 'valuable'">
-                <MostValuableFiltered :kill-type="type" :api-endpoint="customMvEndpoint" />
             </div>
         </div>
     </div>

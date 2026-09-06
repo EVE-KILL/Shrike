@@ -2,14 +2,9 @@
 const { domainConfig, isDomainMode } = useDomainConfig()
 const siteName = computed(() => domainConfig.value?.siteName || 'EVE-KILL')
 
-// SSR renders both the desktop and mobile trees (CSS hides one); after
-// hydration the inactive one unmounts — see useIsDesktop.
-const isDesktop = useIsDesktop()
-
 // API endpoints — swap to /api/custom/* when in domain mode
 const killlistEndpoint = computed(() => isDomainMode.value ? '/api/custom/killlist' : undefined)
 const statsEndpoint = computed(() => isDomainMode.value ? '/api/custom/stats' : undefined)
-const topEndpoint = computed(() => isDomainMode.value ? '/api/custom/kills/top' : undefined)
 
 // Homepage meta description carries two target phrases ("EVE killboard" and
 // "EVE Online killboard") in the first 160 chars — the slice Google/Bing use
@@ -78,90 +73,56 @@ const columnGridTemplate = computed(() => {
     <h1 class="sr-only">{{ siteName }} — EVE Online Killboard</h1>
     <h2 v-if="!isDomainMode" class="sr-only">The EVE Killboard: real-time killmail feed, top pilots, corporations, alliances, battle reports, and ship fitting analysis for EVE Online.</h2>
 
-    <!-- ═══════════════ DOMAIN MODE ═══════════════ -->
-    <template v-if="isDomainMode">
-        <!-- Desktop -->
-        <div v-if="isDesktop !== false" class="hidden md:block">
-            <!-- Top section: full width -->
-            <div v-if="enabledWidgets('top').length" class="space-y-4 mb-4">
-                <HomepageWidget
-                    v-for="(w, i) in enabledWidgets('top')" :key="'top-' + i"
-                    :widget="w"
-                    :stats-endpoint="statsEndpoint!"
-                    :killlist-endpoint="killlistEndpoint!"
-                    :entities="domainConfig!.entities"
-                />
-            </div>
-
-            <!-- Two-column split (collapses to single column if one side is empty) -->
-            <div v-if="hasColumns" class="grid gap-4" :style="{ gridTemplateColumns: columnGridTemplate }">
-                <div v-if="hasLeft" class="space-y-0">
-                    <HomepageWidget
-                        v-for="(w, i) in enabledWidgets('left')" :key="'left-' + i"
-                        :widget="w"
-                        :stats-endpoint="statsEndpoint!"
-                        :killlist-endpoint="killlistEndpoint!"
-                        :entities="domainConfig!.entities"
-                    />
-                </div>
-                <div v-if="hasRight" class="space-y-4">
-                    <HomepageWidget
-                        v-for="(w, i) in enabledWidgets('right')" :key="'right-' + i"
-                        :widget="w"
-                        :stats-endpoint="statsEndpoint!"
-                        :killlist-endpoint="killlistEndpoint!"
-                        :entities="domainConfig!.entities"
-                    />
-                </div>
-            </div>
-        </div>
-
-        <!-- Mobile: stack all widgets vertically -->
-        <div v-if="isDesktop !== true" class="md:hidden space-y-4">
+    <!-- One widget tree for both breakpoints; CSS handles column placement. -->
+    <div v-if="isDomainMode" class="space-y-4">
+        <div v-if="enabledWidgets('top').length" class="space-y-4">
             <HomepageWidget
-                v-for="(w, i) in [...enabledWidgets('top'), ...enabledWidgets('right'), ...enabledWidgets('left')]"
-                :key="'mobile-' + i"
+                v-for="(w, i) in enabledWidgets('top')" :key="'top-' + i"
                 :widget="w"
                 :stats-endpoint="statsEndpoint!"
                 :killlist-endpoint="killlistEndpoint!"
                 :entities="domainConfig!.entities"
             />
         </div>
-    </template>
-
-    <!-- ═══════════════ DEFAULT (EVE-KILL.COM) ═══════════════ -->
-    <template v-else>
-        <!-- Desktop -->
-        <div v-if="isDesktop !== false" class="hidden md:block space-y-4">
-            <MostValuable :api-endpoint="statsEndpoint" />
-
-            <div class="grid grid-cols-[250px_1fr] gap-4">
-                <div>
-                    <TopBox title="Top Characters" dataType="characters" :limit="10" :days="7" :api-endpoint="statsEndpoint" eager />
-                    <TopBox title="Top Corporations" dataType="corporations" :limit="10" :days="7" :api-endpoint="statsEndpoint" eager />
-                    <TopBox title="Top Alliances" dataType="alliances" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-                    <TopBox title="Top Factions" dataType="factions" :limit="6" :days="7" :api-endpoint="statsEndpoint" />
-                    <TopBox title="Top Ships" dataType="ships" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-                    <TopBox title="Top Systems" dataType="systems" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-                    <TopBox title="Top Regions" dataType="regions" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-                </div>
-                <div>
-                    <KillList killlist-type="latest" :api-endpoint="killlistEndpoint" :stream-topics="['all']" :quick-filter="true" />
-                </div>
+        <div v-if="hasColumns" class="grid grid-cols-1 gap-4 md:grid-cols-[var(--widget-columns)]"
+            :style="{ '--widget-columns': columnGridTemplate }">
+            <div v-if="hasRight" class="min-w-0 space-y-4" :class="hasLeft ? 'md:col-start-2 md:row-start-1' : ''">
+                <HomepageWidget
+                    v-for="(w, i) in enabledWidgets('right')" :key="'right-' + i"
+                    :widget="w"
+                    :stats-endpoint="statsEndpoint!"
+                    :killlist-endpoint="killlistEndpoint!"
+                    :entities="domainConfig!.entities"
+                />
+            </div>
+            <div v-if="hasLeft" class="min-w-0 space-y-4 md:col-start-1 md:row-start-1 md:space-y-0">
+                <HomepageWidget
+                    v-for="(w, i) in enabledWidgets('left')" :key="'left-' + i"
+                    :widget="w"
+                    :stats-endpoint="statsEndpoint!"
+                    :killlist-endpoint="killlistEndpoint!"
+                    :entities="domainConfig!.entities"
+                />
             </div>
         </div>
+    </div>
 
-        <!-- Mobile: one long scrollable list -->
-        <div v-if="isDesktop !== true" class="md:hidden space-y-4">
-            <MostValuable :api-endpoint="statsEndpoint" />
-            <KillList killlist-type="latest" :api-endpoint="killlistEndpoint" :stream-topics="['all']" :quick-filter="true" />
-            <TopBox title="Top Characters" dataType="characters" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-            <TopBox title="Top Corporations" dataType="corporations" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-            <TopBox title="Top Alliances" dataType="alliances" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-            <TopBox title="Top Factions" dataType="factions" :limit="6" :days="7" :api-endpoint="statsEndpoint" />
-            <TopBox title="Top Ships" dataType="ships" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-            <TopBox title="Top Systems" dataType="systems" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
-            <TopBox title="Top Regions" dataType="regions" :limit="10" :days="7" :api-endpoint="statsEndpoint" />
+    <div v-else class="space-y-4">
+        <MostValuable :api-endpoint="statsEndpoint" />
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-[250px_minmax(0,1fr)]">
+            <div class="min-w-0 md:col-start-2 md:row-start-1">
+                <KillList killlist-type="latest" :api-endpoint="killlistEndpoint" :stream-topics="['all']" :quick-filter="true" />
+            </div>
+            <!-- SSR keeps the links and content; interactivity starts near the viewport. -->
+            <div class="min-w-0 md:col-start-1 md:row-start-1">
+                <DeferredTopBox title="Top Characters" dataType="characters" :limit="10" />
+                <DeferredTopBox title="Top Corporations" dataType="corporations" :limit="10" />
+                <DeferredTopBox title="Top Alliances" dataType="alliances" :limit="10" />
+                <DeferredTopBox title="Top Factions" dataType="factions" :limit="6" />
+                <DeferredTopBox title="Top Ships" dataType="ships" :limit="10" />
+                <DeferredTopBox title="Top Systems" dataType="systems" :limit="10" />
+                <DeferredTopBox title="Top Regions" dataType="regions" :limit="10" />
+            </div>
         </div>
-    </template>
+    </div>
 </template>

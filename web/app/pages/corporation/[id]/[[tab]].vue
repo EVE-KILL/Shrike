@@ -363,7 +363,7 @@ const allianceHistoryWithDuration = computed(() => {
 
             <!-- ===== DASHBOARD TAB ===== -->
             <div v-if="activeTab === 'dashboard'">
-                <CorporationDashboard
+                <LazyCorporationDashboard
                     :corporation-id="id"
                     :description="corp.description"
                     :custom-description-html="corp.custom_description_html"
@@ -372,12 +372,12 @@ const allianceHistoryWithDuration = computed(() => {
 
             <!-- ===== TOP TAB ===== -->
             <div v-if="activeTab === 'top'">
-                <EntityTop entity-type="corporation" :entity-id="id" />
+                <LazyEntityTop entity-type="corporation" :entity-id="id" />
             </div>
 
             <!-- ===== MEMBERS TAB ===== -->
             <div v-if="activeTab === 'members'">
-                <CorporationMembers :corporation-id="id" />
+                <LazyCorporationMembers :corporation-id="id" />
             </div>
 
             <!-- ===== ALLIANCE HISTORY TAB ===== -->
@@ -413,20 +413,20 @@ const allianceHistoryWithDuration = computed(() => {
             </div>
 
             <!-- ===== KILL TABS (Combined / Kills / Losses) ===== -->
-            <EntityKillTabsLayout v-if="['combined', 'kills', 'losses'].includes(activeTab)"
+            <LazyEntityKillTabsLayout v-if="['combined', 'kills', 'losses'].includes(activeTab)"
                 kind="corporation" :entity-id="id" :active-tab="activeTab"
                 :top-lists="topLists" :killlist-role="killlistRole" :extra-params="killlistExtraParams" />
 
             <div v-if="activeTab === 'battles'">
-                <EntityBattles :corporation-id="id" />
+                <LazyEntityBattles :corporation-id="id" />
             </div>
 
             <div v-if="activeTab === 'wars'">
-                <EntityWars :corporation-id="id" />
+                <LazyEntityWars :corporation-id="id" />
             </div>
 
             <div v-if="activeTab === 'campaigns'">
-                <EntityCampaigns :corporation-id="id" />
+                <LazyEntityCampaigns :corporation-id="id" />
             </div>
         </div>
     </div>

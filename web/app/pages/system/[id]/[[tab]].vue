@@ -353,7 +353,7 @@ const entityLink = (type: string | null, entityId: number | null): string | null
                     <!-- LEFT column -->
                     <div class="space-y-4">
                         <!-- Hourly Activity Breakdown -->
-                        <SystemActivityChart v-if="activityHistory.length > 1"
+                        <LazySystemActivityChart v-if="activityHistory.length > 1"
                             :history="activityHistory" :summary="activity24h" />
 
                         <!-- Sovereignty History -->
@@ -481,11 +481,11 @@ const entityLink = (type: string | null, entityId: number | null): string | null
 
             <!-- KILLS TAB -->
             <div v-if="activeTab === 'kills'">
-                <KillList :entity-endpoint="killlistEndpoint" />
+                <LazyKillList :entity-endpoint="killlistEndpoint" />
             </div>
 
             <div v-if="activeTab === 'battles'">
-                <EntityBattles :system-id="id" />
+                <LazyEntityBattles :system-id="id" />
             </div>
         </div>
     </div>

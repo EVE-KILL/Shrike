@@ -293,11 +293,11 @@ const dotlanUrl = computed(() => {
 
             <!-- KILLS TAB -->
             <div v-if="activeTab === 'kills'">
-                <KillList :entity-endpoint="killlistEndpoint" />
+                <LazyKillList :entity-endpoint="killlistEndpoint" />
             </div>
 
             <div v-if="activeTab === 'battles'">
-                <EntityBattles :constellation-id="id" />
+                <LazyEntityBattles :constellation-id="id" />
             </div>
         </div>
     </div>

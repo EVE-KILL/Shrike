@@ -292,6 +292,7 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
                     <!-- Dropdown (has children) -->
                     <Dropdown
                         v-if="hasChildren(item)"
+                        persistent
                         :model-value="dropdownStates[idx]"
                         :columns="toDropdownColumns(item)"
                         :featured-items="toDropdownFeaturedItems(item)"
@@ -299,7 +300,7 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
                         @update:model-value="setDropdownState(idx, $event)"
                     >
                         <template #trigger>
-                            <button :class="[navBtnDropdown, dropdownStates[idx] ? 'bg-blue-500/10 text-blue-300' : '']">
+                            <button :aria-expanded="!!dropdownStates[idx]" :class="[navBtnDropdown, dropdownStates[idx] ? 'bg-blue-500/10 text-blue-300' : '']">
                                 <Icon v-if="item.icon" :name="item.icon" class="text-sm opacity-60" />
                                 <span>{{ item.label }}</span>
                                 <Icon name="lucide:chevron-down" class="text-xs opacity-60 transition-transform duration-200" :class="dropdownStates[idx] ? 'rotate-180' : ''" />
@@ -413,7 +414,7 @@ const dropdownDangerIcon = 'flex h-7 w-7 shrink-0 items-center justify-center ro
                 </Dropdown>
 
                 <!-- Info (simple list) -->
-                <Dropdown v-model="infoOpen" :items="infoItems" align="right">
+                <Dropdown v-model="infoOpen" :items="infoItems" align="right" persistent>
                     <template #trigger>
                         <button :class="[iconBtn, infoOpen ? 'bg-blue-500/10 text-blue-300' : '']" aria-label="Information">
                             <Icon name="lucide:info" class="text-lg" />

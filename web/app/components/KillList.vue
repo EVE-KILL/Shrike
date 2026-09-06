@@ -358,11 +358,6 @@ const setLimit = (n: number) => {
 
 const stream = useKillStream(props.streamTopics ?? null)
 
-// Every row renders in a desktop AND a mobile variant (CSS hides one).
-// Post-hydration, unmount the inactive variant — with 50 rows × 2 layouts
-// × ~6 imgs each, that halves this component's DOM weight.
-const isDesktop = useIsDesktop()
-
 // Pause stream inserts when not on page 1
 watch(pageIndex, (idx) => {
     if (idx === 0) stream.resume()
@@ -747,13 +742,11 @@ const secLabel = (sec: number | null): string => {
                 <div class="text-right">Details</div>
             </div>
 
-            <!-- Desktop rows — day divider separates kills across UTC date boundaries.
-                 isDesktop unmounts the inactive variant post-hydration (see useIsDesktop);
-                 the hidden/md: classes still handle SSR and pre-hydration. -->
-            <template v-for="(row, rIdx) in (isDesktop !== false ? rows : [])" :key="row.type === 'kill' ? row.kill.killmail_id : `d-${row.utcDate}-${rIdx}`">
+            <!-- A single responsive row preserves identity across breakpoints. -->
+            <template v-for="(row, rIdx) in rows" :key="row.type === 'kill' ? row.kill.killmail_id : `d-${row.utcDate}-${rIdx}`">
                 <div
                     v-if="row.type === 'divider'"
-                    class="hidden md:flex items-center gap-3 px-2 py-2 text-fine uppercase tracking-wider text-gray-400"
+                    class="flex items-center gap-3 px-2 py-2 text-fine uppercase tracking-wider text-gray-400"
                 >
                     <div class="flex-1 h-px bg-white/[0.08]"></div>
                     <span class="tabular-nums">{{ row.label }}</span>
@@ -761,7 +754,7 @@ const secLabel = (sec: number | null): string => {
                 </div>
                 <div
                     v-else
-                    class="relative hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 items-center border-b border-white/[0.03] hover:bg-blue-500/[0.06] transition-colors group"
+                    class="relative grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-2.5 md:gap-3 px-2 py-2 md:py-1.5 items-center border-b border-white/[0.03] hover:bg-blue-500/[0.06] transition-colors group"
                     :class="sideRowClass(row.kill) || (isLoss(row.kill) ? 'loss-row loss-row-hover' : warRowClass(row.kill) || (row.visualIdx % 2 === 0 ? 'bg-white/[0.02]' : ''))"
                     :style="sideRowStyle(row.kill)"
                 >
@@ -777,7 +770,7 @@ const secLabel = (sec: number | null): string => {
                     <!-- Ship -->
                     <div class="relative z-10 flex items-center gap-2.5 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
                         <NuxtLink v-if="row.kill.ship_type_id" :to="`/kill/${row.kill.killmail_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
-                            <EveImage :src="`/images/types/${row.kill.ship_type_id}/icon?size=64`" :alt="row.kill.ship_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
+                            <EveImage :src="`/images/types/${row.kill.ship_type_id}/icon?size=64`" :alt="row.kill.ship_name || ''" class="w-full h-full object-cover" loading="lazy" />
                         </NuxtLink>
                         <div v-else class="flex-shrink-0 w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">
                             <Icon name="lucide:box" class="text-sm text-gray-500" />
@@ -785,88 +778,30 @@ const secLabel = (sec: number | null): string => {
                         <div class="min-w-0">
                             <NuxtLink v-if="row.kill.ship_type_id" :to="`/item/${row.kill.ship_type_id}`" class="block w-fit max-w-full text-xs text-gray-300 group-hover:text-blue-400 hover:text-blue-400 truncate">{{ row.kill.ship_name || 'Unknown' }}</NuxtLink>
                             <div v-else class="text-xs text-gray-300 truncate">{{ row.kill.ship_name || 'Unknown' }}</div>
-                            <NuxtLink v-if="row.kill.ship_group_id && row.kill.ship_group_name" :to="`/group/${row.kill.ship_group_id}`" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.ship_group_name }}</NuxtLink>
-                            <div v-else class="text-fine text-gray-400 truncate">{{ row.kill.ship_group_name }}</div>
-                            <div class="text-fine text-isk/70 tabular-nums">{{ formatIsk(row.kill.total_value) }} ISK</div>
-                        </div>
-                    </div>
-
-                    <!-- Victim -->
-                    <div class="relative z-10 flex items-center gap-2 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-                        <NuxtLink v-if="row.kill.victim_character_id" :to="`/character/${row.kill.victim_character_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
-                            <EveImage :src="`/images/characters/${row.kill.victim_character_id}/portrait?size=64`" :alt="row.kill.victim_character_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                        </NuxtLink>
-                        <div v-else class="flex-shrink-0 w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">
-                            <Icon name="lucide:building" class="text-sm text-gray-500" />
-                        </div>
-                        <div v-if="row.kill.victim_corporation_id || row.kill.victim_alliance_id" class="flex-shrink-0 flex flex-col gap-[2px]">
-                            <NuxtLink v-if="row.kill.victim_corporation_id" :to="`/corporation/${row.kill.victim_corporation_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.victim_corporation_name || row.kill.victim_corporation_id}`">
-                                <EveImage :src="`/images/corporations/${row.kill.victim_corporation_id}/logo?size=32`" :alt="row.kill.victim_corporation_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                            </NuxtLink>
-                            <NuxtLink v-if="row.kill.victim_alliance_id" :to="`/alliance/${row.kill.victim_alliance_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.victim_alliance_name || row.kill.victim_alliance_id}`">
-                                <EveImage :src="`/images/alliances/${row.kill.victim_alliance_id}/logo?size=32`" :alt="row.kill.victim_alliance_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                            </NuxtLink>
-                        </div>
-                        <div class="min-w-0">
-                            <NuxtLink v-if="row.kill.victim_character_id" :to="`/character/${row.kill.victim_character_id}`" class="block w-fit max-w-full text-xs text-gray-300 hover:text-blue-400 truncate">{{ row.kill.victim_character_name || 'Unknown' }}</NuxtLink>
-                            <NuxtLink v-else-if="row.kill.victim_corporation_id" :to="`/corporation/${row.kill.victim_corporation_id}`" class="block w-fit max-w-full text-xs text-gray-300 hover:text-blue-400 truncate">{{ row.kill.victim_corporation_name || 'Unknown' }}</NuxtLink>
-                            <div v-else class="text-xs text-gray-300 truncate">Unknown</div>
-                            <NuxtLink v-if="row.kill.victim_character_name && row.kill.victim_corporation_id" :to="`/corporation/${row.kill.victim_corporation_id}`" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.victim_corporation_name }}</NuxtLink>
-                            <NuxtLink v-if="row.kill.victim_alliance_id" :to="`/alliance/${row.kill.victim_alliance_id}`" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.victim_alliance_name }}</NuxtLink>
-                        </div>
-                    </div>
-
-                    <!-- Final Blow -->
-                    <div class="relative z-10 flex items-center gap-2 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-                        <NuxtLink v-if="row.kill.final_blow_character_id" :to="`/character/${row.kill.final_blow_character_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
-                            <EveImage :src="`/images/characters/${row.kill.final_blow_character_id}/portrait?size=64`" :alt="row.kill.final_blow_character_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                        </NuxtLink>
-                        <NuxtLink v-else-if="row.kill.final_blow_ship_type_id" :to="`/item/${row.kill.final_blow_ship_type_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
-                            <EveImage :src="`/images/types/${row.kill.final_blow_ship_type_id}/icon?size=64`" :alt="row.kill.final_blow_ship_name || 'NPC'" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                        </NuxtLink>
-                        <div v-else class="flex-shrink-0 w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">
-                            <Icon name="lucide:crosshair" class="text-sm text-gray-500" />
-                        </div>
-                        <div v-if="row.kill.final_blow_corporation_id || row.kill.final_blow_alliance_id" class="flex-shrink-0 flex flex-col gap-[2px]">
-                            <NuxtLink v-if="row.kill.final_blow_corporation_id" :to="`/corporation/${row.kill.final_blow_corporation_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Corporation: ${row.kill.final_blow_corporation_name || row.kill.final_blow_corporation_id}`">
-                                <EveImage :src="`/images/corporations/${row.kill.final_blow_corporation_id}/logo?size=32`" :alt="row.kill.final_blow_corporation_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                            </NuxtLink>
-                            <NuxtLink v-if="row.kill.final_blow_alliance_id" :to="`/alliance/${row.kill.final_blow_alliance_id}`" class="w-[19px] h-[19px] rounded-sm overflow-hidden bg-white/[0.04]" :aria-label="`Alliance: ${row.kill.final_blow_alliance_name || row.kill.final_blow_alliance_id}`">
-                                <EveImage :src="`/images/alliances/${row.kill.final_blow_alliance_id}/logo?size=32`" :alt="row.kill.final_blow_alliance_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                            </NuxtLink>
-                        </div>
-                        <div class="min-w-0">
-                            <NuxtLink v-if="row.kill.final_blow_character_id" :to="`/character/${row.kill.final_blow_character_id}`" class="block w-fit max-w-full text-xs text-gray-300 hover:text-blue-400 truncate">{{ row.kill.final_blow_character_name || 'Unknown' }}</NuxtLink>
-                            <NuxtLink v-else-if="row.kill.final_blow_corporation_id" :to="`/corporation/${row.kill.final_blow_corporation_id}`" class="block w-fit max-w-full text-xs text-gray-300 hover:text-blue-400 truncate">{{ row.kill.final_blow_corporation_name || 'Unknown' }}</NuxtLink>
-                            <NuxtLink v-else-if="row.kill.final_blow_ship_type_id" :to="`/item/${row.kill.final_blow_ship_type_id}`" class="block w-fit max-w-full text-xs text-npc/80 hover:text-blue-400 truncate">{{ row.kill.final_blow_ship_name || 'NPC' }}</NuxtLink>
-                            <div v-else class="text-xs text-npc/80 truncate">NPC</div>
-                            <NuxtLink v-if="row.kill.final_blow_character_name && row.kill.final_blow_corporation_id" :to="`/corporation/${row.kill.final_blow_corporation_id}`" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.final_blow_corporation_name }}</NuxtLink>
-                            <NuxtLink v-if="row.kill.final_blow_alliance_id" :to="`/alliance/${row.kill.final_blow_alliance_id}`" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.final_blow_alliance_name }}</NuxtLink>
-                        </div>
-                    </div>
-
-                    <!-- Location -->
-                    <div class="relative z-10 flex items-center gap-2 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-                        <NuxtLink :to="`/system/${row.kill.solar_system_id}`" class="flex-shrink-0" :aria-label="`System: ${row.kill.solar_system_name}`">
-                            <EveImage :src="`/images/systems/${row.kill.solar_system_id}?size=32`" alt="" class="w-6 h-6 rounded" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                        </NuxtLink>
-                        <div class="min-w-0">
-                            <div class="text-fine truncate">
-                                <span :class="secColor(row.kill.solar_system_security)" class="font-medium tabular-nums">{{ secLabel(row.kill.solar_system_security) }}</span>
-                                <NuxtLink :to="`/system/${row.kill.solar_system_id}`" class="text-gray-300 hover:text-blue-400 ml-1" :class="pochvenClass(row.kill.region_id)">{{ row.kill.solar_system_name }}</NuxtLink>
+                            <NuxtLink v-if="row.kill.ship_group_id && row.kill.ship_group_name" :to="`/group/${row.kill.ship_group_id}`" class="hidden md:block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.ship_group_name }}</NuxtLink>
+                            <div v-else class="hidden md:block text-fine text-gray-400 truncate">{{ row.kill.ship_group_name }}</div>
+                            <div class="hidden md:block text-fine text-isk/70 tabular-nums">{{ formatIsk(row.kill.total_value) }} ISK</div>
+                            <div class="md:hidden text-fine text-gray-400 truncate">
+                                {{ row.kill.victim_character_name || row.kill.victim_corporation_name || 'Unknown' }}
+                                <span v-if="row.kill.victim_character_name && row.kill.victim_corporation_name"> · {{ row.kill.victim_corporation_name }}</span>
                             </div>
-                            <NuxtLink v-if="row.kill.region_id" :to="`/region/${row.kill.region_id}`" class="block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate" :class="pochvenClass(row.kill.region_id)">{{ row.kill.region_name }}</NuxtLink>
-                            <div v-else class="text-fine text-gray-400 truncate">{{ row.kill.region_name }}</div>
+                            <div class="md:hidden text-fine truncate">
+                                <span :class="secColor(row.kill.solar_system_security)" class="tabular-nums">{{ secLabel(row.kill.solar_system_security) }}</span>
+                                <span class="text-gray-400 ml-0.5" :class="pochvenClass(row.kill.region_id)">{{ row.kill.solar_system_name }}</span>
+                            </div>
                         </div>
                     </div>
+
+                    <LazyKillRowDesktopDetails :kill="row.kill" hydrate-on-media-query="(min-width: 768px)" />
 
                     <!-- Details -->
                     <div class="relative z-10 text-right min-w-0 pointer-events-none [&_a]:pointer-events-auto">
+                        <div class="md:hidden text-fine text-isk/80 tabular-nums mb-4">{{ formatIsk(row.kill.total_value) }}</div>
                         <div
                             class="text-xs text-gray-300 truncate tabular-nums"
                             data-allow-mismatch="text"
                         >{{ killTime(row.kill.killmail_time) }}</div>
-                        <div class="flex items-center justify-end gap-1 text-fine text-gray-400">
+                        <div class="hidden md:flex items-center justify-end gap-1 text-fine text-gray-400">
                             <Icon name="lucide:users" class="text-fine" />
                             <span class="tabular-nums">{{ row.kill.attacker_count }}</span>
                         </div>
@@ -874,53 +809,6 @@ const secLabel = (sec: number | null): string => {
                 </div>
             </template>
 
-            <!-- Mobile rows — day divider separates kills across UTC date boundaries -->
-            <template v-for="(row, rIdx) in (isDesktop !== true ? rows : [])" :key="row.type === 'kill' ? `m-${row.kill.killmail_id}` : `md-${row.utcDate}-${rIdx}`">
-                <div
-                    v-if="row.type === 'divider'"
-                    class="md:hidden flex items-center gap-2 px-2 py-1.5 text-fine uppercase tracking-wider text-gray-400"
-                >
-                    <div class="flex-1 h-px bg-white/[0.08]"></div>
-                    <span class="tabular-nums">{{ row.label }}</span>
-                    <div class="flex-1 h-px bg-white/[0.08]"></div>
-                </div>
-                <NuxtLink
-                    v-else
-                    :to="`/kill/${row.kill.killmail_id}`"
-                    class="md:hidden flex gap-2.5 px-2 py-2 border-b border-white/[0.03] hover:bg-blue-500/[0.06] transition-colors"
-                    :class="sideRowClass(row.kill) || (isLoss(row.kill) ? 'loss-row loss-row-hover' : row.visualIdx % 2 === 0 ? 'bg-white/[0.02]' : '')"
-                    :style="sideRowStyle(row.kill)"
-                >
-                    <!-- Images stack -->
-                    <div class="flex-shrink-0 flex flex-col gap-1">
-                        <div v-if="row.kill.ship_type_id" class="w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
-                            <EveImage :src="`/images/types/${row.kill.ship_type_id}/icon?size=64`" :alt="row.kill.ship_name || ''" class="w-full h-full object-cover" :loading="row.visualIdx < 20 ? 'eager' : 'lazy'" />
-                        </div>
-                        <div v-else class="w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">
-                            <Icon name="lucide:box" class="text-sm text-gray-500" />
-                        </div>
-                    </div>
-
-                    <!-- Info -->
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-2 mb-0.5">
-                            <span class="text-xs text-gray-200 font-medium truncate">{{ row.kill.ship_name || 'Unknown' }}</span>
-                            <span class="flex-shrink-0 text-fine text-isk/80 tabular-nums">{{ formatIsk(row.kill.total_value) }}</span>
-                        </div>
-                        <div class="text-fine text-gray-400 truncate">
-                            {{ row.kill.victim_character_name || row.kill.victim_corporation_name || 'Unknown' }}
-                            <span v-if="row.kill.victim_character_name && row.kill.victim_corporation_name" class="text-gray-400"> &middot; {{ row.kill.victim_corporation_name }}</span>
-                        </div>
-                        <div class="flex items-center justify-between mt-0.5">
-                            <span class="text-fine">
-                                <span :class="secColor(row.kill.solar_system_security)" class="tabular-nums">{{ secLabel(row.kill.solar_system_security) }}</span>
-                                <span class="text-gray-400 ml-0.5" :class="pochvenClass(row.kill.region_id)">{{ row.kill.solar_system_name }}</span>
-                            </span>
-                            <span class="text-fine text-gray-400 tabular-nums" data-allow-mismatch="text">{{ killTime(row.kill.killmail_time) }}</span>
-                        </div>
-                    </div>
-                </NuxtLink>
-            </template>
         </div>
 
         <!-- Bottom pagination -->

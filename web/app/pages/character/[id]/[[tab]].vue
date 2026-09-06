@@ -402,39 +402,39 @@ const activityLevel = computed(() => {
 
             <!-- Dashboard -->
             <div v-if="activeTab === 'dashboard'">
-                <CharacterDashboard :character-id="id" :description="char.description" :custom-description-html="char.custom_description_html"
+                <LazyCharacterDashboard :character-id="id" :description="char.description" :custom-description-html="char.custom_description_html"
                     :last-active="char.last_active" :lifetime-events="(stats?.kills ?? 0) + (stats?.losses ?? 0)" />
             </div>
 
             <!-- Top -->
             <div v-if="activeTab === 'top'">
-                <EntityTop entity-type="character" :entity-id="id" />
+                <LazyEntityTop entity-type="character" :entity-id="id" />
             </div>
 
             <!-- Corporation History -->
             <div v-if="activeTab === 'history'">
-                <CharacterCorporationHistory :history="corpHistory" :queued="corpHistoryQueued" />
+                <LazyCharacterCorporationHistory :history="corpHistory" :queued="corpHistoryQueued" />
             </div>
 
             <!-- Achievements -->
             <div v-if="activeTab === 'achievements'">
-                <CharacterAchievements :character-id="id" />
+                <LazyCharacterAchievements :character-id="id" />
             </div>
 
             <div v-if="activeTab === 'battles'">
-                <EntityBattles :character-id="id" />
+                <LazyEntityBattles :character-id="id" />
             </div>
 
             <div v-if="activeTab === 'wars'">
-                <EntityWars :character-id="id" />
+                <LazyEntityWars :character-id="id" />
             </div>
 
             <div v-if="activeTab === 'campaigns'">
-                <EntityCampaigns :character-id="id" />
+                <LazyEntityCampaigns :character-id="id" />
             </div>
 
             <!-- Kill tabs (combined/kills/losses) -->
-            <EntityKillTabsLayout v-if="['combined', 'kills', 'losses'].includes(activeTab)"
+            <LazyEntityKillTabsLayout v-if="['combined', 'kills', 'losses'].includes(activeTab)"
                 kind="character" :entity-id="id" :active-tab="activeTab"
                 :top-lists="topLists" :killlist-role="killlistRole" :extra-params="killlistExtraParams" />
         </div>

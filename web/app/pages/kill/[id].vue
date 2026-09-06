@@ -90,9 +90,6 @@ interface Sibling {
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
 
-// SSR renders both the desktop and mobile trees (CSS hides one); after
-// hydration the inactive one unmounts — see useIsDesktop.
-const isDesktop = useIsDesktop()
 
 // Legacy killmail IDs are < 7,500,000 — redirect to the legacy kill page
 if (id.value > 0 && id.value < 7_500_000) {
@@ -473,19 +470,17 @@ const mobileTabFromHash = (hash: string) => {
     const t = hash.replace('#', '')
     return validMobileTabs.has(t) ? t as 'kill' | 'tools' : 'kill'
 }
-const mobileTab = ref<'kill' | 'tools'>(
-    import.meta.client ? mobileTabFromHash(window.location.hash) : 'kill',
-)
+const mobileTab = ref<'kill' | 'tools'>('kill')
 const setMobileTab = (tab: typeof mobileTab.value) => {
     mobileTab.value = tab
     const hash = tab === 'kill' ? '' : `#${tab}`
     window.history.pushState(null, '', hash || window.location.pathname + window.location.search)
 }
-if (import.meta.client) {
-    window.addEventListener('popstate', () => {
-        mobileTab.value = mobileTabFromHash(window.location.hash)
-    })
-}
+onMounted(() => {
+    const syncMobileTab = () => { mobileTab.value = mobileTabFromHash(window.location.hash) }
+    syncMobileTab()
+    useEventListener(window, 'popstate', syncMobileTab)
+})
 
 // Update page title with active mobile tab
 const mobileTabLabels: Record<string, string> = { kill: '', tools: 'Tools' }
@@ -547,14 +542,43 @@ const toolContext = computed(() => ({
             :tool-context="toolContext"
         />
 
-        <!-- ===== DESKTOP: two columns, right spans full height ===== -->
-        <div v-if="isDesktop !== false" class="hidden md:grid grid-cols-[1fr_minmax(0,374px)] gap-4">
+        <div class="md:hidden -mt-2">
+            <div class="flex overflow-x-auto border-b border-white/[0.08] mb-4 scrollbar-hide">
+                <button
+                    v-for="tab in [
+                        { key: 'kill', label: 'Kill', icon: 'lucide:swords' },
+                        { key: 'tools', label: 'Tools', icon: 'lucide:external-link' },
+                    ] as const"
+                    :key="tab.key"
+                    :aria-label="tab.label"
+                    class="flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap"
+                    :class="mobileTab === tab.key ? 'text-white border-blue-400' : 'text-gray-500 border-transparent'"
+                    @click="setMobileTab(tab.key)"
+                >
+                    <Icon :name="tab.icon" class="text-base" />
+                    <span :class="mobileTab === tab.key ? '' : 'hidden'">{{ tab.label }}</span>
+                </button>
+
+                <!-- Battle Report link in tab bar -->
+                <NuxtLink
+                    v-if="battleLink"
+                    :to="battleLink"
+                    class="flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap text-amber-400/70 border-transparent ml-auto"
+                >
+                    <Icon name="lucide:swords" class="text-base" />
+                    <span>Battle</span>
+                </NuxtLink>
+            </div>
+
+        </div>
+        <!-- One responsive content tree: fitting, items, attackers and comments. -->
+        <div :class="mobileTab === 'tools' ? 'hidden md:grid' : 'grid'" class="grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,374px)] gap-4">
             <!-- LEFT COLUMN: Fitting + Info + Items -->
-            <div class="space-y-4">
+            <div class="min-w-0 space-y-4">
                 <!-- Fitting Wheel + Info Box -->
-                <div class="flex gap-4 items-start">
+                <div class="flex flex-col md:flex-row gap-4 items-start">
                     <KillFittingPanel
-                        class="flex-1 min-w-[350px] max-w-[650px]"
+                        class="w-full md:flex-1 min-w-0 max-w-[650px]"
                         :killmail-id="kill.killmail_id"
                         :ship-type-id="kill.victim.ship_type_id!"
                         :ship-name="kill.victim.ship_name"
@@ -562,7 +586,7 @@ const toolContext = computed(() => ({
                     />
 
                     <!-- Info Box -->
-                    <div class="flex-shrink-0 w-[252px]">
+                    <div class="hidden md:block flex-shrink-0 w-[252px]">
                         <div class="rounded-xl border border-white/[0.08] overflow-hidden"
                             :style="victimAccent ? { borderColor: victimAccent.border } : undefined">
                             <!-- Character portrait with overlay -->
@@ -609,261 +633,8 @@ const toolContext = computed(() => ({
                     </div>
                 </div>
 
-                <!-- Items table -->
-            <div class="rounded-lg bg-white/[0.04] border border-white/[0.08] p-2">
-                <!-- Table header. Dropped and destroyed get named columns: the
-                     split used to live only in the tint of a quantity pill, so
-                     the reader had to already know the code to read the table. -->
-                <div class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-1.5 text-fine font-bold uppercase tracking-wider border-b border-white/[0.08] select-none">
-                    <div></div>
-                    <div class="text-gray-600 cursor-pointer hover:text-gray-400 transition-colors" @click="toggleSort('name')">
-                        Item <Icon v-if="sortState?.col === 'name'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
-                    </div>
-                    <div class="text-center text-green-500/70 cursor-pointer hover:text-green-400 transition-colors" @click="toggleSort('dropped')">
-                        Dropped <Icon v-if="sortState?.col === 'dropped'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
-                    </div>
-                    <div class="text-center text-red-500/70 cursor-pointer hover:text-red-400 transition-colors" @click="toggleSort('destroyed')">
-                        Destroyed <Icon v-if="sortState?.col === 'destroyed'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
-                    </div>
-                    <div class="text-right text-gray-600 cursor-pointer hover:text-gray-400 transition-colors" @click="toggleSort('value')">
-                        Value <Icon v-if="sortState?.col === 'value'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
-                    </div>
-                </div>
-
-                <!-- Ship hull row -->
-                <div class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-1.5 items-center bg-red-500/[0.05] border-b border-white/[0.04] hover:bg-red-500/[0.08] transition-colors">
-                    <div class="flex items-center">
-                        <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" class="w-6 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
-                            <img :src="`/images/types/${kill.victim.ship_type_id}/icon?size=64`" :alt="kill.victim.ship_name || 'Ship'" class="w-full h-full object-cover" loading="lazy">
-                        </NuxtLink>
-                    </div>
-                    <div class="text-xs text-red-300/80 font-medium truncate">
-                        <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" class="hover:text-blue-400 transition-colors">{{ kill.victim.ship_name }}</NuxtLink>
-                        <NuxtLink v-if="kill.victim.ship_group_id" :to="`/group/${kill.victim.ship_group_id}`" class="text-gray-500 hover:text-blue-400 font-normal transition-colors">({{ kill.victim.ship_group_name }})</NuxtLink>
-                        <span v-else class="text-gray-500 font-normal">({{ kill.victim.ship_group_name }})</span>
-                    </div>
-                    <div></div>
-                    <div class="text-center">
-                        <span class="px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/10 text-red-400">1</span>
-                    </div>
-                    <div class="text-right text-xs text-red-400/60 tabular-nums">
-                        {{ formatIsk(kill.victim.ship_price) }}
-                    </div>
-                </div>
-
-                <template v-for="slot in slotOrder" :key="slot">
-                    <template v-if="itemsBySlot[slot]?.length">
-                        <!-- Section header. Carries its own totals, which used
-                             to be a separate row at the foot of every section. -->
-                        <div
-                            class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-1.5 mt-1 bg-white/[0.03] border-b border-white/[0.04] cursor-pointer select-none hover:bg-blue-500/[0.05]"
-                            @click="toggleSlot(slot)"
-                        >
-                            <div class="flex items-center justify-center">
-                                <Icon :name="collapsedSlots.has(slot) ? 'lucide:chevron-right' : 'lucide:chevron-down'" class="text-fine text-gray-500" />
-                            </div>
-                            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">
-                                {{ slotLabels[slot] }}
-                                <span class="text-gray-600 font-normal normal-case tracking-normal ml-1">({{ itemsBySlot[slot]!.length }})</span>
-                            </div>
-                            <!-- Right-aligned, unpilled: these are ISK subtotals
-                                 sitting in columns whose item rows hold unit
-                                 counts, so they must not read as quantities. -->
-                            <div class="text-right text-fine tabular-nums text-green-400/60">
-                                <template v-if="slotSplit(slot).dropped">{{ formatIsk(slotSplit(slot).dropped) }}</template>
-                            </div>
-                            <div class="text-right text-fine tabular-nums text-red-400/60">
-                                <template v-if="slotSplit(slot).destroyed">{{ formatIsk(slotSplit(slot).destroyed) }}</template>
-                            </div>
-                            <div class="text-right text-xs text-gray-400 font-medium tabular-nums">{{ formatIsk(slotTotal(slot)) }}</div>
-                        </div>
-
-                        <!-- Items (collapsible) -->
-                        <template v-if="!collapsedSlots.has(slot)">
-                            <template v-for="(item, idx) in sortedItems(slot)" :key="`${item.type_id}-${idx}`">
-                            <NuxtLink :to="itemLink(item)"
-                                class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-1 items-center border-b border-white/[0.02] transition-colors cursor-pointer"
-                                :class="[
-                                    item._status === 'destroyed' ? 'bg-red-500/[0.05] hover:bg-red-500/[0.08]' : 'hover:bg-blue-500/[0.05]',
-                                    item._status === 'dropped' ? 'bg-green-500/[0.02]' : '',
-                                    item._status === 'container' ? 'bg-blue-500/[0.03]' : '',
-                                ]"
-                            >
-                                <div class="flex items-center">
-                                    <div class="w-6 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
-                                        <img :src="`/images/types/${item.type_id}/icon?size=64`" :alt="item.type_name || 'Item'" class="w-full h-full object-cover" loading="lazy">
-                                    </div>
-                                </div>
-                                <div class="text-xs truncate" :class="
-                                    item._status === 'container' ? 'text-blue-300 font-medium'
-                                    : item._status === 'destroyed' ? 'text-red-300/80'
-                                    : 'text-gray-300'
-                                ">
-                                    {{ item.type_name || `Type ${item.type_id}` }}
-                                    <span v-if="item._status === 'container' && childrenByParent.get(item.item_index)?.length" class="text-fine text-gray-500 ml-1">({{ childrenByParent.get(item.item_index)!.length }} items)</span>
-                                </div>
-                                <div class="text-center">
-                                    <span v-if="item.quantity_dropped" class="px-1.5 py-0.5 rounded text-fine font-medium bg-green-500/10 text-green-400 tabular-nums">
-                                        {{ item.quantity_dropped }}
-                                    </span>
-                                </div>
-                                <div class="text-center">
-                                    <span v-if="item.quantity_destroyed" class="px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/10 text-red-400 tabular-nums">
-                                        {{ item.quantity_destroyed }}
-                                    </span>
-                                </div>
-                                <div class="text-right text-xs tabular-nums" :class="item._status === 'destroyed' ? 'text-red-400/60' : 'text-gray-500'">
-                                    <template v-if="rowValue(item)">{{ formatIsk(rowValue(item)) }}</template>
-                                </div>
-                            </NuxtLink>
-                            <!-- Nested children of containers -->
-                            <template v-if="item._status === 'container' && childrenByParent.get(item.item_index)?.length">
-                                <NuxtLink v-for="(child, ci) in childrenByParent.get(item.item_index)!" :key="`child-${child.type_id}-${ci}`"
-                                    :to="itemLink(child)"
-                                    class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-0.5 items-center border-b border-white/[0.02] cursor-pointer hover:bg-blue-500/[0.05] transition-colors bg-blue-500/[0.01]">
-                                    <div class="flex items-center pl-3">
-                                        <Icon name="lucide:corner-down-right" class="text-fine text-gray-600 mr-1" />
-                                        <div class="w-5 h-5 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
-                                            <img :src="`/images/types/${child.type_id}/icon?size=64`" :alt="child.type_name || 'Item'" class="w-full h-full object-cover" loading="lazy">
-                                        </div>
-                                    </div>
-                                    <div class="text-xs truncate text-gray-400">{{ child.type_name || `Type ${child.type_id}` }}</div>
-                                    <div class="text-center">
-                                        <span v-if="child.quantity_dropped" class="px-1 py-0.5 rounded text-fine font-medium bg-green-500/10 text-green-400 tabular-nums">
-                                            {{ child.quantity_dropped }}
-                                        </span>
-                                    </div>
-                                    <div class="text-center">
-                                        <span v-if="child.quantity_destroyed" class="px-1 py-0.5 rounded text-fine font-medium bg-red-500/10 text-red-400 tabular-nums">
-                                            {{ child.quantity_destroyed }}
-                                        </span>
-                                    </div>
-                                    <div class="text-right text-fine tabular-nums text-gray-500">
-                                        <template v-if="child.total_value">{{ formatIsk(child.total_value) }}</template>
-                                    </div>
-                                </NuxtLink>
-                            </template>
-                            </template>
-                        </template>
-                    </template>
-                </template>
-
-                <!-- Grand total. Ship and fitting are called out because they
-                     are the two figures people quote; the remainder keeps the
-                     column honest so Total is the sum of what is above it. -->
-                <div class="mt-1 pt-1.5 border-t border-white/[0.08]">
-                    <div v-if="fittedItemsValue" class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-0.5">
-                        <div></div>
-                        <div class="text-xs text-gray-500 text-right">Fitted</div>
-                        <div></div>
-                        <div></div>
-                        <div class="text-right text-xs text-gray-400 tabular-nums">{{ formatIsk(fittedItemsValue) }}</div>
-                    </div>
-                    <div v-if="kill.victim.ship_price" class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-0.5">
-                        <div></div>
-                        <div class="text-xs text-gray-500 text-right">Ship</div>
-                        <div></div>
-                        <div></div>
-                        <div class="text-right text-xs text-gray-400 tabular-nums">{{ formatIsk(kill.victim.ship_price) }}</div>
-                    </div>
-                    <div v-if="otherItemsValue" class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-0.5">
-                        <div></div>
-                        <div class="text-xs text-gray-500 text-right">Cargo &amp; other</div>
-                        <div></div>
-                        <div></div>
-                        <div class="text-right text-xs text-gray-400 tabular-nums">{{ formatIsk(otherItemsValue) }}</div>
-                    </div>
-                    <div class="grid grid-cols-[28px_1fr_64px_72px_90px] gap-2 px-2 py-1.5 mt-1 bg-white/[0.03] border-t border-white/[0.08]">
-                        <div></div>
-                        <div class="text-xs text-gray-300 font-medium text-right">Total</div>
-                        <div></div>
-                        <div></div>
-                        <div class="text-right text-xs text-white font-semibold tabular-nums">{{ formatIsk(itemsGrandTotal) }}</div>
-                    </div>
-                </div>
-            </div>
-            </div>
-
-            <!-- RIGHT COLUMN: Featured Attackers + All Attackers + Comments (spans full height) -->
-            <div class="space-y-4">
-            <!-- Solo 1v1 matchup stats — only for solo player kills with real hulls (no pods) -->
-            <KillMatchupBox
-                v-if="kill.is_solo && finalBlow?.character_id && finalBlow.ship_type_id && kill.victim.ship_type_id && kill.victim.ship_group_id !== 29"
-                :attacker-ship-type-id="finalBlow.ship_type_id"
-                :attacker-ship-name="finalBlow.ship_name"
-                :victim-ship-type-id="kill.victim.ship_type_id"
-                :victim-ship-name="kill.victim.ship_name"
-            />
-            <div class="rounded-lg bg-white/[0.04] border border-white/[0.08] p-3">
-                <KillFeaturedAttackers
-                    :final-blow="finalBlow"
-                    :top-damage="topDamage"
-                    :total-damage="kill.total_damage"
-                    interactive
-                />
-
-                <KillAttackerList
-                    :attackers="visibleAttackers"
-                    :attacker-count="kill.attacker_count"
-                    :total-damage="kill.total_damage"
-                    :has-more="hasMoreAttackers"
-                    :remaining="kill.attacker_count - attackerLimit"
-                    interactive
-                    @show-more="showMoreAttackers"
-                />
-            </div>
-
-            <!-- Comments (desktop: sits below attackers in the right column) -->
-            <div class="hidden md:block rounded-lg bg-white/[0.04] border border-white/[0.08] p-3">
-                <CommentsCommentList
-                    :target-type="1"
-                    :target-id="kill.killmail_id"
-                />
-            </div>
-            </div>
-        </div>
-
-        <!-- ===== MOBILE ===== -->
-        <div v-if="isDesktop !== true" class="md:hidden -mt-2">
-            <div class="flex overflow-x-auto border-b border-white/[0.08] mb-4 scrollbar-hide">
-                <button
-                    v-for="tab in [
-                        { key: 'kill', label: 'Kill', icon: 'lucide:swords' },
-                        { key: 'tools', label: 'Tools', icon: 'lucide:external-link' },
-                    ] as const"
-                    :key="tab.key"
-                    class="flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap"
-                    :class="mobileTab === tab.key ? 'text-white border-blue-400' : 'text-gray-500 border-transparent'"
-                    @click="setMobileTab(tab.key)"
-                >
-                    <Icon :name="tab.icon" class="text-base" />
-                    <span :class="mobileTab === tab.key ? '' : 'hidden'">{{ tab.label }}</span>
-                </button>
-
-                <!-- Battle Report link in tab bar -->
-                <NuxtLink
-                    v-if="battleLink"
-                    :to="battleLink"
-                    class="flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap text-amber-400/70 border-transparent ml-auto"
-                >
-                    <Icon name="lucide:swords" class="text-base" />
-                    <span>Battle</span>
-                </NuxtLink>
-            </div>
-
-            <!-- Kill tab: Fitting Wheel -->
-            <div v-show="mobileTab === 'kill'" class="mb-6">
-                <KillFittingPanel
-                    :killmail-id="kill.killmail_id"
-                    :ship-type-id="kill.victim.ship_type_id!"
-                    :ship-name="kill.victim.ship_name"
-                    :items="fittedItems"
-                    wheel-class="mb-4"
-                />
-            </div>
-
             <!-- Kill tab: Character information -->
-            <div v-show="mobileTab === 'kill'" class="mb-6">
+            <div class="md:hidden w-full">
                 <div class="rounded-xl border border-white/[0.08] overflow-hidden mb-4">
                     <!-- Compact header: portrait + names + corp/alliance logos -->
                     <div class="flex items-center gap-3 p-3 bg-white/[0.04]">
@@ -906,70 +677,204 @@ const toolContext = computed(() => ({
                 </div>
             </div>
 
-            <!-- Kill tab: Items -->
-            <div v-show="mobileTab === 'kill'" class="mb-6">
-                <!-- Mobile items table -->
+
+                <!-- Items table -->
+            <div class="rounded-lg bg-white/[0.04] border border-white/[0.08] p-2">
+                <!-- Table header. Dropped and destroyed get named columns: the
+                     split used to live only in the tint of a quantity pill, so
+                     the reader had to already know the code to read the table. -->
+                <div class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-1.5 text-fine font-bold uppercase tracking-wider border-b border-white/[0.08] select-none">
+                    <div></div>
+                    <div class="text-gray-600 cursor-pointer hover:text-gray-400 transition-colors" @click="toggleSort('name')">
+                        Item <Icon v-if="sortState?.col === 'name'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
+                    </div>
+                    <div class="text-center text-green-500/70 cursor-pointer hover:text-green-400 transition-colors" @click="toggleSort('dropped')">
+                        <span class="md:hidden">Drop</span><span class="hidden md:inline">Dropped</span> <Icon v-if="sortState?.col === 'dropped'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
+                    </div>
+                    <div class="text-center text-red-500/70 cursor-pointer hover:text-red-400 transition-colors" @click="toggleSort('destroyed')">
+                        <span class="md:hidden">Lost</span><span class="hidden md:inline">Destroyed</span> <Icon v-if="sortState?.col === 'destroyed'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
+                    </div>
+                    <div class="text-right text-gray-600 cursor-pointer hover:text-gray-400 transition-colors" @click="toggleSort('value')">
+                        Value <Icon v-if="sortState?.col === 'value'" :name="sortState.dir === 'asc' ? 'lucide:arrow-up' : 'lucide:arrow-down'" class="inline text-fine" />
+                    </div>
+                </div>
+
+                <!-- Ship hull row -->
+                <div class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-1.5 items-center bg-red-500/[0.05] border-b border-white/[0.04] hover:bg-red-500/[0.08] transition-colors">
+                    <div class="flex items-center">
+                        <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" class="w-6 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
+                            <img :src="`/images/types/${kill.victim.ship_type_id}/icon?size=64`" :alt="kill.victim.ship_name || 'Ship'" class="w-full h-full object-cover" loading="lazy">
+                        </NuxtLink>
+                    </div>
+                    <div class="text-xs text-red-300/80 font-medium truncate">
+                        <NuxtLink :to="`/item/${kill.victim.ship_type_id}`" class="hover:text-blue-400 transition-colors">{{ kill.victim.ship_name }}</NuxtLink>
+                        <NuxtLink v-if="kill.victim.ship_group_id" :to="`/group/${kill.victim.ship_group_id}`" class="text-gray-500 hover:text-blue-400 font-normal transition-colors">({{ kill.victim.ship_group_name }})</NuxtLink>
+                        <span v-else class="text-gray-500 font-normal">({{ kill.victim.ship_group_name }})</span>
+                    </div>
+                    <div></div>
+                    <div class="text-center">
+                        <span class="px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/10 text-red-400">1</span>
+                    </div>
+                    <div class="text-right text-xs text-red-400/60 tabular-nums">
+                        {{ formatIsk(kill.victim.ship_price) }}
+                    </div>
+                </div>
+
                 <template v-for="slot in slotOrder" :key="slot">
                     <template v-if="itemsBySlot[slot]?.length">
-                        <div class="px-2 py-1.5 mt-2 bg-white/[0.02] border-b border-white/[0.04]">
-                            <span class="text-xs font-bold uppercase tracking-wider text-gray-400">{{ slotLabels[slot] }}</span>
-                            <span class="text-fine text-gray-600 ml-1">({{ itemsBySlot[slot]!.length }})</span>
-                        </div>
+                        <!-- Section header. Carries its own totals, which used
+                             to be a separate row at the foot of every section. -->
                         <div
-                            v-for="(item, idx) in itemsBySlot[slot]"
-                            :key="`m-${item.type_id}-${item.flag_id}-${idx}`"
-                            class="flex items-center gap-2 px-2 py-1.5 border-b border-white/[0.02]"
-                            :class="item.parent_index != null ? 'pl-8' : ''"
+                            class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-1.5 mt-1 bg-white/[0.03] border-b border-white/[0.04] cursor-pointer select-none hover:bg-blue-500/[0.05]"
+                            role="button"
+                            tabindex="0"
+                            :aria-label="slotLabels[slot]"
+                            :aria-expanded="!collapsedSlots.has(slot)"
+                            @keydown.enter.prevent="toggleSlot(slot)"
+                            @keydown.space.prevent="toggleSlot(slot)"
+                            @click="toggleSlot(slot)"
                         >
-                            <div v-if="item.parent_index != null" class="text-gray-500"><Icon name="lucide:corner-down-right" class="text-fine" /></div>
-                            <div class="w-6 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
-                                <img :src="`/images/types/${item.type_id}/icon?size=64`" class="w-full h-full" loading="lazy">
+                            <div class="flex items-center justify-center">
+                                <Icon :name="collapsedSlots.has(slot) ? 'lucide:chevron-right' : 'lucide:chevron-down'" class="text-fine text-gray-500" />
                             </div>
-                            <span class="flex-1 text-xs text-gray-300 truncate">{{ item.type_name || `Type ${item.type_id}` }}</span>
-                            <span v-if="item.quantity_dropped" class="px-1.5 py-0.5 rounded text-fine bg-green-500/10 text-green-400">{{ item.quantity_dropped }}</span>
-                            <span v-if="item.quantity_destroyed" class="px-1.5 py-0.5 rounded text-fine bg-red-500/10 text-red-400">{{ item.quantity_destroyed }}</span>
+                            <div class="text-xs font-bold uppercase tracking-wider text-gray-400">
+                                {{ slotLabels[slot] }}
+                                <span class="text-gray-600 font-normal normal-case tracking-normal ml-1">({{ itemsBySlot[slot]!.length }})</span>
+                            </div>
+                            <!-- Right-aligned, unpilled: these are ISK subtotals
+                                 sitting in columns whose item rows hold unit
+                                 counts, so they must not read as quantities. -->
+                            <div class="text-right text-fine tabular-nums text-green-400/60">
+                                <template v-if="slotSplit(slot).dropped">{{ formatIsk(slotSplit(slot).dropped) }}</template>
+                            </div>
+                            <div class="text-right text-fine tabular-nums text-red-400/60">
+                                <template v-if="slotSplit(slot).destroyed">{{ formatIsk(slotSplit(slot).destroyed) }}</template>
+                            </div>
+                            <div class="text-right text-xs text-gray-400 font-medium tabular-nums">{{ formatIsk(slotTotal(slot)) }}</div>
                         </div>
+
+                        <!-- Items (collapsible) -->
+                        <template v-if="!collapsedSlots.has(slot)">
+                            <template v-for="(item, idx) in sortedItems(slot)" :key="`${item.type_id}-${idx}`">
+                            <NuxtLink :to="itemLink(item)"
+                                class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-1 items-center border-b border-white/[0.02] transition-colors cursor-pointer"
+                                :class="[
+                                    item._status === 'destroyed' ? 'bg-red-500/[0.05] hover:bg-red-500/[0.08]' : 'hover:bg-blue-500/[0.05]',
+                                    item._status === 'dropped' ? 'bg-green-500/[0.02]' : '',
+                                    item._status === 'container' ? 'bg-blue-500/[0.03]' : '',
+                                ]"
+                            >
+                                <div class="flex items-center">
+                                    <div class="w-6 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
+                                        <img :src="`/images/types/${item.type_id}/icon?size=64`" :alt="item.type_name || 'Item'" class="w-full h-full object-cover" loading="lazy">
+                                    </div>
+                                </div>
+                                <div class="text-xs truncate" :class="
+                                    item._status === 'container' ? 'text-blue-300 font-medium'
+                                    : item._status === 'destroyed' ? 'text-red-300/80'
+                                    : 'text-gray-300'
+                                ">
+                                    {{ item.type_name || `Type ${item.type_id}` }}
+                                    <span v-if="item._status === 'container' && childrenByParent.get(item.item_index)?.length" class="text-fine text-gray-500 ml-1">({{ childrenByParent.get(item.item_index)!.length }} items)</span>
+                                </div>
+                                <div class="text-center">
+                                    <span v-if="item.quantity_dropped" class="px-1.5 py-0.5 rounded text-fine font-medium bg-green-500/10 text-green-400 tabular-nums">
+                                        {{ item.quantity_dropped }}
+                                    </span>
+                                </div>
+                                <div class="text-center">
+                                    <span v-if="item.quantity_destroyed" class="px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/10 text-red-400 tabular-nums">
+                                        {{ item.quantity_destroyed }}
+                                    </span>
+                                </div>
+                                <div class="text-right text-xs tabular-nums" :class="item._status === 'destroyed' ? 'text-red-400/60' : 'text-gray-500'">
+                                    <template v-if="rowValue(item)">{{ formatIsk(rowValue(item)) }}</template>
+                                </div>
+                            </NuxtLink>
+                            <!-- Nested children of containers -->
+                            <template v-if="item._status === 'container' && childrenByParent.get(item.item_index)?.length">
+                                <NuxtLink v-for="(child, ci) in childrenByParent.get(item.item_index)!" :key="`child-${child.type_id}-${ci}`"
+                                    :to="itemLink(child)"
+                                    class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-0.5 items-center border-b border-white/[0.02] cursor-pointer hover:bg-blue-500/[0.05] transition-colors bg-blue-500/[0.01]">
+                                    <div class="flex items-center pl-3">
+                                        <Icon name="lucide:corner-down-right" class="text-fine text-gray-600 mr-1" />
+                                        <div class="w-5 h-5 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
+                                            <img :src="`/images/types/${child.type_id}/icon?size=64`" :alt="child.type_name || 'Item'" class="w-full h-full object-cover" loading="lazy">
+                                        </div>
+                                    </div>
+                                    <div class="text-xs truncate text-gray-400">{{ child.type_name || `Type ${child.type_id}` }}</div>
+                                    <div class="text-center">
+                                        <span v-if="child.quantity_dropped" class="px-1 py-0.5 rounded text-fine font-medium bg-green-500/10 text-green-400 tabular-nums">
+                                            {{ child.quantity_dropped }}
+                                        </span>
+                                    </div>
+                                    <div class="text-center">
+                                        <span v-if="child.quantity_destroyed" class="px-1 py-0.5 rounded text-fine font-medium bg-red-500/10 text-red-400 tabular-nums">
+                                            {{ child.quantity_destroyed }}
+                                        </span>
+                                    </div>
+                                    <div class="text-right text-fine tabular-nums text-gray-500">
+                                        <template v-if="child.total_value">{{ formatIsk(child.total_value) }}</template>
+                                    </div>
+                                </NuxtLink>
+                            </template>
+                            </template>
+                        </template>
                     </template>
                 </template>
 
-                <!-- Same footer as the desktop table -->
-                <div class="mt-2 pt-1.5 border-t border-white/[0.08] space-y-0.5">
-                    <div v-if="fittedItemsValue" class="flex justify-between px-2">
-                        <span class="text-xs text-gray-500">Fitted</span>
-                        <span class="text-xs text-gray-400 tabular-nums">{{ formatIsk(fittedItemsValue) }}</span>
+                <!-- Grand total. Ship and fitting are called out because they
+                     are the two figures people quote; the remainder keeps the
+                     column honest so Total is the sum of what is above it. -->
+                <div class="mt-1 pt-1.5 border-t border-white/[0.08]">
+                    <div v-if="fittedItemsValue" class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-0.5">
+                        <div></div>
+                        <div class="text-xs text-gray-500 text-right">Fitted</div>
+                        <div></div>
+                        <div></div>
+                        <div class="text-right text-xs text-gray-400 tabular-nums">{{ formatIsk(fittedItemsValue) }}</div>
                     </div>
-                    <div v-if="kill.victim.ship_price" class="flex justify-between px-2">
-                        <span class="text-xs text-gray-500">Ship</span>
-                        <span class="text-xs text-gray-400 tabular-nums">{{ formatIsk(kill.victim.ship_price) }}</span>
+                    <div v-if="kill.victim.ship_price" class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-0.5">
+                        <div></div>
+                        <div class="text-xs text-gray-500 text-right">Ship</div>
+                        <div></div>
+                        <div></div>
+                        <div class="text-right text-xs text-gray-400 tabular-nums">{{ formatIsk(kill.victim.ship_price) }}</div>
                     </div>
-                    <div v-if="otherItemsValue" class="flex justify-between px-2">
-                        <span class="text-xs text-gray-500">Cargo &amp; other</span>
-                        <span class="text-xs text-gray-400 tabular-nums">{{ formatIsk(otherItemsValue) }}</span>
+                    <div v-if="otherItemsValue" class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-0.5">
+                        <div></div>
+                        <div class="text-xs text-gray-500 text-right">Cargo &amp; other</div>
+                        <div></div>
+                        <div></div>
+                        <div class="text-right text-xs text-gray-400 tabular-nums">{{ formatIsk(otherItemsValue) }}</div>
                     </div>
-                    <div class="flex justify-between px-2 py-1.5 mt-1 bg-white/[0.03] border-t border-white/[0.08]">
-                        <span class="text-xs text-gray-300 font-medium">Total</span>
-                        <span class="text-xs text-white font-semibold tabular-nums">{{ formatIsk(itemsGrandTotal) }}</span>
+                    <div class="grid grid-cols-[24px_minmax(0,1fr)_40px_40px_52px] md:grid-cols-[28px_minmax(0,1fr)_64px_72px_90px] gap-2 px-2 py-1.5 mt-1 bg-white/[0.03] border-t border-white/[0.08]">
+                        <div></div>
+                        <div class="text-xs text-gray-300 font-medium text-right">Total</div>
+                        <div></div>
+                        <div></div>
+                        <div class="text-right text-xs text-white font-semibold tabular-nums">{{ formatIsk(itemsGrandTotal) }}</div>
                     </div>
                 </div>
             </div>
-
-            <!-- Kill tab: Solo 1v1 matchup stats (solo player kills, real hulls only) -->
-            <div v-show="mobileTab === 'kill'" class="mb-3">
-                <KillMatchupBox
-                    v-if="kill.is_solo && finalBlow?.character_id && finalBlow.ship_type_id && kill.victim.ship_type_id && kill.victim.ship_group_id !== 29"
-                    :attacker-ship-type-id="finalBlow.ship_type_id"
-                    :attacker-ship-name="finalBlow.ship_name"
-                    :victim-ship-type-id="kill.victim.ship_type_id"
-                    :victim-ship-name="kill.victim.ship_name"
-                />
             </div>
 
-            <!-- Kill tab: Attackers -->
-            <div v-show="mobileTab === 'kill'">
+            <!-- RIGHT COLUMN: Featured Attackers + All Attackers + Comments (spans full height) -->
+            <div class="min-w-0 space-y-4">
+            <!-- Solo 1v1 matchup stats — only for solo player kills with real hulls (no pods) -->
+            <KillMatchupBox
+                v-if="kill.is_solo && finalBlow?.character_id && finalBlow.ship_type_id && kill.victim.ship_type_id && kill.victim.ship_group_id !== 29"
+                :attacker-ship-type-id="finalBlow.ship_type_id"
+                :attacker-ship-name="finalBlow.ship_name"
+                :victim-ship-type-id="kill.victim.ship_type_id"
+                :victim-ship-name="kill.victim.ship_name"
+            />
+            <div class="rounded-lg bg-white/[0.04] border border-white/[0.08] p-3">
                 <KillFeaturedAttackers
                     :final-blow="finalBlow"
                     :top-damage="topDamage"
                     :total-damage="kill.total_damage"
+                    interactive
                 />
 
                 <KillAttackerList
@@ -978,10 +883,22 @@ const toolContext = computed(() => ({
                     :total-damage="kill.total_damage"
                     :has-more="hasMoreAttackers"
                     :remaining="kill.attacker_count - attackerLimit"
+                    interactive
                     @show-more="showMoreAttackers"
                 />
             </div>
 
+            <!-- Comments (desktop: sits below attackers in the right column) -->
+            <div class="rounded-lg bg-white/[0.04] border border-white/[0.08] p-3">
+                <CommentsCommentList
+                    :target-type="1"
+                    :target-id="kill.killmail_id"
+                />
+            </div>
+            </div>
+        </div>
+
+        <div class="md:hidden">
             <!-- Tools tab -->
             <div v-show="mobileTab === 'tools'">
                 <!-- Battle Report + Siblings -->
@@ -1078,12 +995,5 @@ const toolContext = computed(() => ({
             </div>
         </div>
 
-        <!-- Comments (mobile only — desktop shows them in the right column) -->
-        <div v-if="isDesktop !== true" class="md:hidden mt-6 px-3">
-            <CommentsCommentList
-                :target-type="1"
-                :target-id="kill.killmail_id"
-            />
-        </div>
     </div>
 </template>

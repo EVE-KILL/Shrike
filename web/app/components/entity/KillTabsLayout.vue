@@ -17,18 +17,18 @@ defineProps<{
 </script>
 
 <template>
-    <div class="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-[250px_minmax(0,1fr)] gap-4">
         <!-- Sidebar — context-aware top lists (hidden on mobile) -->
         <div v-if="topLists" class="hidden md:block space-y-0">
             <template v-if="activeTab === 'combined' || activeTab === 'kills'">
-                <TopBox v-if="topLists.killed?.characters?.length" title="Most Killed Characters" data-type="characters" :entries="topLists.killed.characters" count-color="text-isk/70" />
-                <TopBox v-if="topLists.killed?.corporations?.length" title="Most Killed Corps" data-type="corporations" :entries="topLists.killed.corporations" count-color="text-isk/70" />
-                <TopBox v-if="topLists.killed?.alliances?.length" title="Most Killed Alliances" data-type="alliances" :entries="topLists.killed.alliances" count-color="text-isk/70" />
+                <LazyTopBox hydrate-on-media-query="(min-width: 768px)" v-if="topLists.killed?.characters?.length" title="Most Killed Characters" data-type="characters" :entries="topLists.killed.characters" count-color="text-isk/70" />
+                <LazyTopBox hydrate-on-media-query="(min-width: 768px)" v-if="topLists.killed?.corporations?.length" title="Most Killed Corps" data-type="corporations" :entries="topLists.killed.corporations" count-color="text-isk/70" />
+                <LazyTopBox hydrate-on-media-query="(min-width: 768px)" v-if="topLists.killed?.alliances?.length" title="Most Killed Alliances" data-type="alliances" :entries="topLists.killed.alliances" count-color="text-isk/70" />
             </template>
             <template v-if="activeTab === 'combined' || activeTab === 'losses'">
-                <TopBox v-if="topLists.killedBy?.characters?.length" title="Most Killed By (Characters)" data-type="characters" :entries="topLists.killedBy.characters" count-color="text-red-400/70" />
-                <TopBox v-if="topLists.killedBy?.corporations?.length" title="Most Killed By (Corps)" data-type="corporations" :entries="topLists.killedBy.corporations" count-color="text-red-400/70" />
-                <TopBox v-if="topLists.killedBy?.alliances?.length" title="Most Killed By (Alliances)" data-type="alliances" :entries="topLists.killedBy.alliances" count-color="text-red-400/70" />
+                <LazyTopBox hydrate-on-media-query="(min-width: 768px)" v-if="topLists.killedBy?.characters?.length" title="Most Killed By (Characters)" data-type="characters" :entries="topLists.killedBy.characters" count-color="text-red-400/70" />
+                <LazyTopBox hydrate-on-media-query="(min-width: 768px)" v-if="topLists.killedBy?.corporations?.length" title="Most Killed By (Corps)" data-type="corporations" :entries="topLists.killedBy.corporations" count-color="text-red-400/70" />
+                <LazyTopBox hydrate-on-media-query="(min-width: 768px)" v-if="topLists.killedBy?.alliances?.length" title="Most Killed By (Alliances)" data-type="alliances" :entries="topLists.killedBy.alliances" count-color="text-red-400/70" />
             </template>
         </div>
         <div v-else class="hidden md:block space-y-4">

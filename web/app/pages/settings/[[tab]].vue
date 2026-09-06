@@ -124,15 +124,15 @@ useSeoMeta({ robots: 'noindex, nofollow' })
                      this page), and each section's fetches fire on first visit
                      (mount) — matching the old immediate/watch lazy-loading. -->
                 <KeepAlive>
-                    <SettingsOverview v-if="activeSection === 'overview'" :overview="overview" />
-                    <SettingsWallet v-else-if="activeSection === 'wallet'" />
-                    <SettingsSessions v-else-if="activeSection === 'sessions'" />
-                    <SettingsEsi v-else-if="activeSection === 'esi'" :token-info="tokenInfo" />
-                    <SettingsDescription v-else-if="activeSection === 'description'" />
-                    <SettingsPreferences v-else-if="activeSection === 'preferences'" />
-                    <SettingsAppearance v-else-if="activeSection === 'appearance'" />
-                    <SettingsDomains v-else-if="activeSection === 'domains'" />
-                    <SettingsComments v-else-if="activeSection === 'comments'" />
+                    <LazySettingsOverview v-if="activeSection === 'overview'" :overview="overview" />
+                    <LazySettingsWallet v-else-if="activeSection === 'wallet'" />
+                    <LazySettingsSessions v-else-if="activeSection === 'sessions'" />
+                    <LazySettingsEsi v-else-if="activeSection === 'esi'" :token-info="tokenInfo" />
+                    <LazySettingsDescription v-else-if="activeSection === 'description'" />
+                    <LazySettingsPreferences v-else-if="activeSection === 'preferences'" />
+                    <LazySettingsAppearance v-else-if="activeSection === 'appearance'" />
+                    <LazySettingsDomains v-else-if="activeSection === 'domains'" />
+                    <LazySettingsComments v-else-if="activeSection === 'comments'" />
                 </KeepAlive>
             </div>
         </div>

@@ -274,7 +274,7 @@ useSchemaOrg([
 
             <!-- Dashboard tab -->
             <div v-if="activeTab === 'dashboard'">
-                <AllianceDashboard
+                <LazyAllianceDashboard
                     :alliance-id="id"
                     :custom-description-html="ally.custom_description_html"
                 />
@@ -282,34 +282,34 @@ useSchemaOrg([
 
             <!-- Top tab -->
             <div v-if="activeTab === 'top'">
-                <EntityTop entity-type="alliance" :entity-id="id" />
+                <LazyEntityTop entity-type="alliance" :entity-id="id" />
             </div>
 
             <!-- Corporations tab -->
             <div v-if="activeTab === 'corporations'">
-                <AllianceCorporations :alliance-id="id" />
+                <LazyAllianceCorporations :alliance-id="id" />
             </div>
 
             <!-- Members tab -->
             <div v-if="activeTab === 'members'">
-                <AllianceMembers :alliance-id="id" />
+                <LazyAllianceMembers :alliance-id="id" />
             </div>
 
             <!-- Kill tabs -->
-            <EntityKillTabsLayout v-if="['combined', 'kills', 'losses'].includes(activeTab)"
+            <LazyEntityKillTabsLayout v-if="['combined', 'kills', 'losses'].includes(activeTab)"
                 kind="alliance" :entity-id="id" :active-tab="activeTab"
                 :top-lists="topLists" :killlist-role="killlistRole" :extra-params="killlistExtraParams" />
 
             <div v-if="activeTab === 'battles'">
-                <EntityBattles :alliance-id="id" />
+                <LazyEntityBattles :alliance-id="id" />
             </div>
 
             <div v-if="activeTab === 'wars'">
-                <EntityWars :alliance-id="id" />
+                <LazyEntityWars :alliance-id="id" />
             </div>
 
             <div v-if="activeTab === 'campaigns'">
-                <EntityCampaigns :alliance-id="id" />
+                <LazyEntityCampaigns :alliance-id="id" />
             </div>
         </div>
     </div>

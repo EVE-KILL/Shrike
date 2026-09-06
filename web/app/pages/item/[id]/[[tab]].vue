@@ -738,17 +738,17 @@ const hasStats = computed(() =>
 
             <!-- MARKET TAB -->
             <div v-if="activeTab === 'market'">
-                <MarketItemPanel :type-id="id" embedded />
+                <LazyMarketItemPanel :type-id="id" embedded />
             </div>
 
             <!-- KILLS TAB -->
             <div v-if="activeTab === 'kills'">
-                <KillList :entity-endpoint="isShip ? `/api/ship/${id}/killlist` : `/api/item/${id}/killlist`" />
+                <LazyKillList :entity-endpoint="isShip ? `/api/ship/${id}/killlist` : `/api/item/${id}/killlist`" />
             </div>
 
             <!-- FITTINGS TAB (ships only — gated by the computed tabs list) -->
             <div v-if="activeTab === 'fittings' && isShip">
-                <ItemFittings :ship-type-id="id" :hull-group-name="item?.group_name" />
+                <LazyItemFittings :ship-type-id="id" :hull-group-name="item?.group_name" />
             </div>
         </div>
     </div>

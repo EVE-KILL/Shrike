@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import AdminOverview from '~/components/admin/Overview.vue'
-import AdminUsers from '~/components/admin/Users.vue'
-import AdminDomains from '~/components/admin/Domains.vue'
-import AdminCampaigns from '~/components/admin/Campaigns.vue'
-import AdminModeration from '~/components/admin/Moderation.vue'
-import AdminComments from '~/components/admin/Comments.vue'
-import AdminEsi from '~/components/admin/Esi.vue'
-import AdminWallet from '~/components/admin/CorporationWallet.vue'
-import AdminAnnouncements from '~/components/admin/Announcements.vue'
-import AdminBlog from '~/components/admin/Blog.vue'
-import AdminRiver from '~/components/admin/River.vue'
+const AdminOverview = defineAsyncComponent(() => import('~/components/admin/Overview.vue'))
+const AdminUsers = defineAsyncComponent(() => import('~/components/admin/Users.vue'))
+const AdminDomains = defineAsyncComponent(() => import('~/components/admin/Domains.vue'))
+const AdminCampaigns = defineAsyncComponent(() => import('~/components/admin/Campaigns.vue'))
+const AdminModeration = defineAsyncComponent(() => import('~/components/admin/Moderation.vue'))
+const AdminComments = defineAsyncComponent(() => import('~/components/admin/Comments.vue'))
+const AdminEsi = defineAsyncComponent(() => import('~/components/admin/Esi.vue'))
+const AdminWallet = defineAsyncComponent(() => import('~/components/admin/CorporationWallet.vue'))
+const AdminAnnouncements = defineAsyncComponent(() => import('~/components/admin/Announcements.vue'))
+const AdminBlog = defineAsyncComponent(() => import('~/components/admin/Blog.vue'))
+const AdminRiver = defineAsyncComponent(() => import('~/components/admin/River.vue'))
 
 const route = useRoute()
 const router = useRouter()

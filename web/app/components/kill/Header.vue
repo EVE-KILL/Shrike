@@ -127,6 +127,16 @@ const lossTotal = computed(() => props.kill.destroyed_value + props.kill.dropped
                             {{ absoluteTime }}
                             <span class="text-gray-600">({{ relativeTime }})</span>
                         </span>
+                        <!-- Spell out the unit: a bare star and a number reads as a rating
+                             or a favourite, and a tooltip is not an explanation. -->
+                        <Tooltip v-if="kill.points" inline-flex
+                            text="Killboard points — how much this kill is worth, scaled by ship class and the odds faced">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-fine font-medium bg-purple-500/15 text-purple-300 cursor-help">
+                                <Icon name="lucide:star" class="text-fine" />
+                                {{ formatNumber(kill.points) }} {{ kill.points === 1 ? 'pt' : 'pts' }}
+                            </span>
+                        </Tooltip>
+
                     </div>
                 </div>
             </div>
@@ -138,15 +148,6 @@ const lossTotal = computed(() => props.kill.destroyed_value + props.kill.dropped
                 <span v-if="kill.is_npc" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-fine font-medium bg-white/[0.06] text-gray-400">
                     <Icon name="lucide:bot" class="text-fine" /> NPC
                 </span>
-                <!-- Spell out the unit: a bare star and a number reads as a rating
-                     or a favourite, and a tooltip is not an explanation. -->
-                <Tooltip v-if="kill.points" inline-flex
-                    text="Killboard points — how much this kill is worth, scaled by ship class and the odds faced">
-                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-fine font-medium bg-purple-500/15 text-purple-300 cursor-help">
-                        <Icon name="lucide:star" class="text-fine" />
-                        {{ formatNumber(kill.points) }} {{ kill.points === 1 ? 'pt' : 'pts' }}
-                    </span>
-                </Tooltip>
                 <NuxtLink v-if="battleLink" :to="battleLink"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-fine font-medium text-gray-400 bg-white/[0.04] border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors">
                     <Icon name="lucide:swords" class="text-fine" /> Battle report

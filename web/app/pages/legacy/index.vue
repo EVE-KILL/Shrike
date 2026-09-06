@@ -175,13 +175,9 @@ const setMobileTab = (tab: typeof mobileTab.value) => {
     const hash = tab === 'kills' ? '' : `#${tab}`
     window.history.pushState(null, '', hash || window.location.pathname)
 }
-if (import.meta.client) {
-    const fromHash = window.location.hash.replace('#', '')
-    if (fromHash === 'top') mobileTab.value = 'top'
-    window.addEventListener('popstate', () => {
-        mobileTab.value = window.location.hash === '#top' ? 'top' : 'kills'
-    })
-}
+const syncMobileTab = () => { mobileTab.value = window.location.hash === '#top' ? 'top' : 'kills' }
+onMounted(syncMobileTab)
+if (import.meta.client) useEventListener(window, 'popstate', syncMobileTab)
 
 const inputClass = 'w-full rounded border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-400/50'
 </script>
@@ -321,40 +317,6 @@ const inputClass = 'w-full rounded border border-white/[0.08] bg-white/[0.03] px
             </form>
         </div>
 
-        <!-- Desktop: sidebar + killlist -->
-        <div class="hidden md:grid grid-cols-[250px_1fr] gap-4">
-            <div>
-                <!-- Year selector -->
-                <div class="glass-panel flex gap-1 p-1 mb-4">
-                    <button v-for="y in years" :key="y ?? 'all'"
-                        class="flex-1 px-1.5 py-1 text-fine rounded-md font-medium transition-colors"
-                        :class="selectedYear === y ? 'bg-blue-500/15 text-blue-400' : 'text-gray-500 hover:text-gray-300'"
-                        @click="selectedYear = y">
-                        {{ yearLabel(y) }}
-                    </button>
-                </div>
-
-                <TopBox title="Top Victims" dataType="characters" :entries="topChars?.entries" hideFooter />
-                <TopBox title="Top Corporations" dataType="corporations" :entries="topCorps?.entries" hideFooter />
-                <TopBox title="Top Alliances" dataType="alliances" :entries="topAllis?.entries" hideFooter />
-                <TopBox title="Top Ships Lost" dataType="ships" :entries="topShips?.entries" hideFooter />
-                <TopBox title="Top Systems" dataType="systems" :entries="topSystems?.entries" hideFooter />
-            </div>
-            <div>
-                <!-- Sort -->
-                <div class="flex items-center gap-1 mb-3">
-                    <span class="text-fine text-gray-600 font-medium uppercase mr-1">Sort</span>
-                    <button v-for="opt in sortOptions" :key="opt.value" @click="activeSort = opt.value"
-                        class="px-2 py-0.5 text-fine font-medium rounded border transition-colors"
-                        :class="activeSort === opt.value ? 'bg-blue-500/15 text-blue-400 border-blue-500/20' : 'bg-white/[0.04] text-gray-500 border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400'">
-                        {{ opt.label }}
-                    </button>
-                </div>
-                <KillList api-endpoint="/api/legacy/kills" :stream-topics="null" :extra-params="killListParams" />
-            </div>
-        </div>
-
-        <!-- Mobile: tabs -->
         <div class="md:hidden">
             <div class="flex border-b border-white/[0.08] mb-4">
                 <button
@@ -375,10 +337,29 @@ const inputClass = 'w-full rounded border border-white/[0.08] bg-white/[0.03] px
                 </button>
             </div>
 
-            <div v-show="mobileTab === 'kills'">
-                <div>
+        </div>
+        <!-- Desktop: sidebar + killlist -->
+        <div class="grid grid-cols-1 md:grid-cols-[250px_minmax(0,1fr)] gap-4">
+            <div :class="mobileTab === 'top' ? 'block' : 'hidden md:block'">
+                <!-- Year selector -->
+                <div class="glass-panel flex gap-1 p-1 mb-4">
+                    <button v-for="y in years" :key="y ?? 'all'"
+                        class="flex-1 px-1.5 py-1 text-fine rounded-md font-medium transition-colors"
+                        :class="selectedYear === y ? 'bg-blue-500/15 text-blue-400' : 'text-gray-500 hover:text-gray-300'"
+                        @click="selectedYear = y">
+                        {{ yearLabel(y) }}
+                    </button>
+                </div>
+
+                <LazyTopBox :hydrate-on-visible="{ rootMargin: '200px' }" title="Top Victims" dataType="characters" :entries="topChars?.entries || []" hideFooter />
+                <LazyTopBox :hydrate-on-visible="{ rootMargin: '200px' }" title="Top Corporations" dataType="corporations" :entries="topCorps?.entries || []" hideFooter />
+                <LazyTopBox :hydrate-on-visible="{ rootMargin: '200px' }" title="Top Alliances" dataType="alliances" :entries="topAllis?.entries || []" hideFooter />
+                <LazyTopBox :hydrate-on-visible="{ rootMargin: '200px' }" title="Top Ships Lost" dataType="ships" :entries="topShips?.entries || []" hideFooter />
+                <LazyTopBox :hydrate-on-visible="{ rootMargin: '200px' }" title="Top Systems" dataType="systems" :entries="topSystems?.entries || []" hideFooter />
+            </div>
+            <div class="min-w-0" :class="mobileTab === 'kills' ? 'block' : 'hidden md:block'">
                 <!-- Sort -->
-                <div class="flex items-center gap-1 mb-3">
+                <div class="flex flex-wrap items-center gap-1 mb-3">
                     <span class="text-fine text-gray-600 font-medium uppercase mr-1">Sort</span>
                     <button v-for="opt in sortOptions" :key="opt.value" @click="activeSort = opt.value"
                         class="px-2 py-0.5 text-fine font-medium rounded border transition-colors"
@@ -388,25 +369,7 @@ const inputClass = 'w-full rounded border border-white/[0.08] bg-white/[0.03] px
                 </div>
                 <KillList api-endpoint="/api/legacy/kills" :stream-topics="null" :extra-params="killListParams" />
             </div>
-            </div>
-
-            <div v-show="mobileTab === 'top'" class="space-y-4">
-                <!-- Year selector (mobile) -->
-                <div class="glass-panel flex gap-1 p-1">
-                    <button v-for="y in years" :key="y ?? 'all'"
-                        class="flex-1 px-1.5 py-1 text-fine rounded-md font-medium transition-colors"
-                        :class="selectedYear === y ? 'bg-blue-500/15 text-blue-400' : 'text-gray-500 hover:text-gray-300'"
-                        @click="selectedYear = y">
-                        {{ yearLabel(y) }}
-                    </button>
-                </div>
-
-                <TopBox title="Top Victims" dataType="characters" :entries="topChars?.entries" hideFooter />
-                <TopBox title="Top Corporations" dataType="corporations" :entries="topCorps?.entries" hideFooter />
-                <TopBox title="Top Alliances" dataType="alliances" :entries="topAllis?.entries" hideFooter />
-                <TopBox title="Top Ships Lost" dataType="ships" :entries="topShips?.entries" hideFooter />
-                <TopBox title="Top Systems" dataType="systems" :entries="topSystems?.entries" hideFooter />
-            </div>
         </div>
+
     </div>
 </template>

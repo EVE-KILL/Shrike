@@ -35,7 +35,7 @@ const items = computed(() => data.value?.entries || [])
 
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
         <NuxtLink
-            v-for="(kill, idx) in items"
+            v-for="kill in items"
             :key="kill.killmail_id"
             :to="`/kill/${kill.killmail_id}`"
             class="group relative aspect-square rounded-lg overflow-hidden bg-black/40 border border-white/[0.04] hover:border-blue-500/30 transition-all"
@@ -44,8 +44,7 @@ const items = computed(() => data.value?.entries || [])
                 :src="`/images/types/${kill.ship_type_id}/overlayrender?size=256`"
                 :alt="kill.ship_name"
                 class="absolute inset-0 w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-110"
-                :loading="idx < 7 ? 'eager' : 'lazy'"
-                :fetchpriority="idx === 0 ? 'high' : undefined"
+                loading="lazy"
             />
             <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none"></div>
             <div class="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm text-fine font-semibold text-green-400">

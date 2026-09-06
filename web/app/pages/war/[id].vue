@@ -406,13 +406,13 @@ const memberEntityOptions = computed(() => {
             </div>
 
             <!-- Members view -->
-            <WarMembers v-if="activeTab === 'members'"
+            <LazyWarMembers v-if="activeTab === 'members'"
                 :endpoint="`/api/war/${id}/members`"
                 :entity-options="memberEntityOptions"
                 :key="`war-members-${id}`" />
 
             <!-- Intel view -->
-            <WarIntel v-else-if="activeTab === 'intel'"
+            <LazyWarIntel v-else-if="activeTab === 'intel'"
                 :endpoint="`/api/war/${id}/intel`"
                 :key="`war-intel-${id}`" />
 
@@ -493,7 +493,7 @@ const memberEntityOptions = computed(() => {
                 </div>
 
                 <!-- Kill list — filtered by tab, colored by side -->
-                <KillList
+                <LazyKillList
                     :api-endpoint="`/api/war/${id}/killlist`"
                     :extra-params="{
                         warStart: war.started || war.declared,

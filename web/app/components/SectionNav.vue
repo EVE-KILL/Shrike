@@ -36,28 +36,11 @@ const itemClass = (isActive: boolean) => isActive
 
 <template>
     <nav class="md:w-48 flex-shrink-0">
-        <!-- Mobile: horizontal strip -->
-        <div class="flex md:hidden overflow-x-auto gap-1 pb-2 -mx-1 px-1 scrollbar-hide">
-            <button
-                v-for="s in sections" :key="s.id"
-                class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer"
-                :class="itemClass(active === s.id)"
-                @click="emit('select', s.id)"
-            >
-                <Icon :name="s.icon" class="text-base" />
-                {{ s.label }}
-                <span
-                    v-if="s.badge"
-                    class="px-1.5 rounded-full bg-yellow-500/20 text-yellow-400 text-fine font-bold tabular-nums"
-                >{{ s.badge }}</span>
-            </button>
-        </div>
-
         <!-- Desktop: vertical list -->
-        <div class="hidden md:flex flex-col gap-0.5">
+        <div class="flex md:flex-col overflow-x-auto gap-1 md:gap-0.5 pb-2 md:pb-0 scrollbar-hide">
             <button
                 v-for="s in sections" :key="s.id"
-                class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left cursor-pointer"
+                class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left cursor-pointer whitespace-nowrap flex-shrink-0"
                 :class="itemClass(active === s.id)"
                 @click="emit('select', s.id)"
             >
@@ -69,7 +52,7 @@ const itemClass = (isActive: boolean) => isActive
                 >{{ s.badge }}</span>
             </button>
 
-            <div v-if="$slots.footer" class="mt-4 pt-4 border-t border-white/[0.06]">
+            <div v-if="$slots.footer" class="hidden md:block mt-4 pt-4 border-t border-white/[0.06]">
                 <slot name="footer" />
             </div>
         </div>

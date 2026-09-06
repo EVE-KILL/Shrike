@@ -224,7 +224,7 @@ useSchemaOrg([defineBreadcrumb(computed(() => ({
             </div>
 
             <div v-if="activeTab === 'kills'">
-                <KillList entity-endpoint="/api/killlist/advanced" :extra-params="{ filters: groupKillFilters }" />
+                <LazyKillList entity-endpoint="/api/killlist/advanced" :extra-params="{ filters: groupKillFilters }" />
             </div>
         </div>
     </div>

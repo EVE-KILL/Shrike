@@ -1658,7 +1658,7 @@ const deleteCampaign = async () => {
                     </span>
                 </div>
             </div>
-            <KillList
+            <LazyKillList
                 :key="`killfeed-${killfeedTab ?? 'all'}`"
                 :api-endpoint="`/api/campaign/${campaignId}/killlist`"
                 :extra-params="killfeedTab !== null ? { side: killfeedTab } : undefined"
@@ -1713,7 +1713,7 @@ const deleteCampaign = async () => {
 
         <!-- ── Comments tab ─────────────────────────────────────────────── -->
         <div v-else-if="activeTab === 'comments'" class="glass-panel p-4">
-            <CommentsCommentList
+            <LazyCommentsCommentList
                 :target-type="COMMENT_TARGET_CAMPAIGN"
                 :target-id="0"
                 :target-slug="campaignId"

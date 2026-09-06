@@ -163,59 +163,59 @@ const cardGroups = computed(() => PERIOD_SECTIONS
     }))
     .filter(group => group.cards.length > 0))
 
-const activityData = ref<Record<string, any[]>>({})
-const activityLoading = ref(true)
+// Start every request during setup so SSR can await it and hydration can reuse
+// its payload. Template reads stay pure; they never start network requests.
+const activityRequests = statCards.map(card => ({
+    key: card.key,
+    request: useApiFetch<{ entries: any[] }>(statsApi, {
+        params: computed(() => ({ dataType: card.key, limit: 10, days: activityPeriod.value })),
+        lazy: true,
+    }),
+}))
 
-const loadActivity = async () => {
-    activityLoading.value = true
-    // One request per card, in parallel. Domain mode hits the same rollups
-    // filtered by the board's entity ids — each of these lands in double-digit
-    // milliseconds, so there's no need to stagger them.
-    const results = await Promise.allSettled(
-        statCards.map(t => apiFetch<any>(statsApi.value, { params: { dataType: t.key, limit: 10, days: activityPeriod.value } }))
-    )
-    const d: Record<string, any[]> = {}
-    statCards.forEach((t, i) => {
-        const r = results[i]
-        d[t.key] = r?.status === 'fulfilled' ? (r.value?.entries || []) : []
-    })
-    activityData.value = d
-    activityLoading.value = false
-}
+const securityRequests = isDomainMode.value ? [] : ['pirate', 'carebear'].map(rank => ({
+    key: rank,
+    request: useApiFetch<{ entries: any[] }>('/api/stats', {
+        params: { dataType: `${rank}_characters`, limit: 10 },
+        lazy: true,
+    }),
+}))
 
-// Pirate/carebear are sec-status rankings over all characters — global only.
-const securityChars = ref<Record<string, any[]>>({})
-const loadSecurityChars = async () => {
-    if (isDomainMode.value) return
-    const [pirates, carebears] = await Promise.all([
-        apiFetch<any>('/api/stats', { params: { dataType: 'pirate_characters', limit: 10 } }),
-        apiFetch<any>('/api/stats', { params: { dataType: 'carebear_characters', limit: 10 } }),
-    ])
-    securityChars.value = { pirate: pirates?.entries || [], carebear: carebears?.entries || [] }
-}
-
-onMounted(() => { loadActivity(); loadSecurityChars() })
-watch(activityPeriod, () => loadActivity())
-
-// ─── Rankings section (lazy loaded) ───
-const rankingsData = ref<Record<string, any[]>>({})
-const rankingsLoaded = ref<Set<string>>(new Set())
-
-const loadRankings = async (cacheKey: string, section: string, entityType: string, extra: Record<string, string> = {}) => {
-    if (isDomainMode.value) return
-    if (rankingsLoaded.value.has(cacheKey)) return
-    rankingsLoaded.value.add(cacheKey)
-    const data = await apiFetch<any>('/api/stats/rankings', { params: { section, entityType, limit: 10, ...extra } })
-    rankingsData.value = { ...rankingsData.value, [cacheKey]: data?.entries || [] }
-}
-
-const rankings = (section: string, entityType: string, extra: Record<string, string> = {}) => {
-    const cacheKey = `${section}-${entityType}-${JSON.stringify(extra)}`
-    if (!rankingsLoaded.value.has(cacheKey)) {
-        loadRankings(cacheKey, section, entityType, extra)
+const rankingSpecs: { section: string; entityType: string; extra: Record<string, string> }[] = []
+if (!isDomainMode.value) {
+    for (const entityType of ['alliance', 'corporation']) {
+        rankingSpecs.push({ section: 'largest', entityType, extra: {} })
+        for (const rank of ['pirate', 'carebear']) rankingSpecs.push({ section: 'security', entityType, extra: { rank } })
+        for (const direction of ['growing', 'shrinking']) rankingSpecs.push({ section: 'growth', entityType, extra: { direction } })
     }
-    return rankingsData.value[cacheKey]
+    for (const entityType of ['alliance', 'corporation', 'character']) {
+        for (const section of ['newest', 'achievements']) rankingSpecs.push({ section, entityType, extra: {} })
+    }
 }
+const rankingKey = (section: string, entityType: string, extra: Record<string, string>) =>
+    `${section}-${entityType}-${JSON.stringify(extra)}`
+const rankingRequests = rankingSpecs.map(({ section, entityType, extra }) => ({
+    key: rankingKey(section, entityType, extra),
+    request: useApiFetch<{ entries: any[] }>('/api/stats/rankings', {
+        params: { section, entityType, limit: 10, ...extra },
+        lazy: true,
+    }),
+}))
+
+await Promise.all([...activityRequests, ...securityRequests, ...rankingRequests].map(({ request }) => request))
+
+const activityData = computed<Record<string, any[]>>(() => Object.fromEntries(
+    activityRequests.map(({ key, request }) => [key, request.data.value?.entries || []]),
+))
+const activityLoading = computed(() => activityRequests.some(({ request }) => request.pending.value))
+const securityChars = computed<Record<string, any[] | undefined>>(() => Object.fromEntries(
+    securityRequests.map(({ key, request }) => [key, request.pending.value ? undefined : request.data.value?.entries || []]),
+))
+const rankingsData = computed<Record<string, any[] | undefined>>(() => Object.fromEntries(
+    rankingRequests.map(({ key, request }) => [key, request.pending.value ? undefined : request.data.value?.entries || []]),
+))
+const rankings = (section: string, entityType: string, extra: Record<string, string> = {}) =>
+    rankingsData.value[rankingKey(section, entityType, extra)]
 
 // ─── Formatting ───
 

@@ -27,12 +27,12 @@
 import ShipFit from "~/components/fit/ring/ShipFit.vue";
 import FitTable from "~/components/fit/table/FitTable.vue";
 import ShipStatistics from "~/components/fit/stats/ShipStatistics.vue";
-import HullListing from "~/components/fit/sidebar/HullListing.vue";
-import HardwareListing from "~/components/fit/sidebar/HardwareListing.vue";
+const HullListing = defineAsyncComponent(() => import("~/components/fit/sidebar/HullListing.vue"));
+const HardwareListing = defineAsyncComponent(() => import("~/components/fit/sidebar/HardwareListing.vue"));
 import FitNavbar from "~/components/fit/FitNavbar.vue";
 import ResourceBar from "~/components/fit/widgets/ResourceBar.vue";
-import DroneBay from "~/components/fit/widgets/DroneBay.vue";
-import CargoBay from "~/components/fit/widgets/CargoBay.vue";
+const DroneBay = defineAsyncComponent(() => import("~/components/fit/widgets/DroneBay.vue"));
+const CargoBay = defineAsyncComponent(() => import("~/components/fit/widgets/CargoBay.vue"));
 import type { BayKey } from "~/components/fit/widgets/bayKey";
 import { encodeFitV3 } from "~/composables/fit/encode";
 
