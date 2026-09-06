@@ -30,7 +30,7 @@ const props = defineProps<{
     extraParams?: Record<string, any>
 }>()
 
-const { data, pending } = await useApiFetch<{ teams: IntelTeam[] }>(
+const { data, pending, error, refresh } = await useApiFetch<{ teams: IntelTeam[] }>(
     props.apiEndpoint,
     {
         params: props.extraParams,
@@ -38,6 +38,8 @@ const { data, pending } = await useApiFetch<{ teams: IntelTeam[] }>(
     },
 )
 
+const route = useRoute()
+const lossLink = (group: number, side: number) => ({ path: `/battle/${route.params.id}/kills`, query: { ...route.query, group: String(group), side: String(side), from: undefined, to: undefined } })
 const teams = computed(() => data.value?.teams ?? [])
 const teamA = computed(() => teams.value[0])
 const teamB = computed(() => teams.value[1])
@@ -80,7 +82,9 @@ const statsB = computed(() => teamStats(teamB.value))
 
 <template>
     <div>
-        <div v-if="pending" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <p class="mb-4 text-xs text-gray-500">Full-battle killmail observations. FC candidates come from command hulls or prior identification. Pilot loss flags include losses in other hulls or capsules; inspect class losses for destroyed ships.</p>
+        <div v-if="error" role="alert" class="glass-panel p-5 text-red-300">Unable to load intelligence. <button class="underline" @click="refresh()">Retry</button></div>
+        <div v-else-if="pending" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div v-for="i in 2" :key="i" class="h-96 rounded-lg bg-white/[0.04] animate-pulse"></div>
         </div>
 
@@ -107,20 +111,20 @@ const statsB = computed(() => teamStats(teamB.value))
                                 <Icon name="lucide:heart-pulse" class="text-fine text-green-400" />
                                 <span class="text-gray-400">Logi</span>
                                 <span class="text-green-400 font-medium tabular-nums">{{ stats.logiSurvived }}</span>
-                                <span v-if="stats.logiDied > 0" class="text-red-400/80 tabular-nums">/ {{ stats.logiDied }} lost</span>
+                                <span v-if="stats.logiDied > 0" class="text-red-400/80 tabular-nums">/ {{ stats.logiDied }} with losses</span>
                             </div>
                             <!-- Capitals -->
                             <div class="flex items-center gap-1.5">
                                 <Icon name="lucide:shield" class="text-fine text-orange-400" />
                                 <span class="text-gray-400">Caps</span>
                                 <span class="text-orange-400 font-medium tabular-nums">{{ stats.capTotal }}</span>
-                                <span v-if="stats.capDied > 0" class="text-red-400/80 tabular-nums">/ {{ stats.capDied }} lost</span>
+                                <span v-if="stats.capDied > 0" class="text-red-400/80 tabular-nums">/ {{ stats.capDied }} with losses</span>
                             </div>
                         </div>
                         <!-- Capital breakdown by type -->
                         <div v-if="stats.capGroups.length > 0" class="flex flex-wrap gap-x-3 gap-y-0.5 text-fine text-gray-500 pl-0.5">
                             <span v-for="g in stats.capGroups" :key="g.name">
-                                {{ g.count }}x <NuxtLink v-if="g.id" :to="`/group/${g.id}`" class="hover:text-blue-400">{{ g.name }}</NuxtLink><span v-else>{{ g.name }}</span><span v-if="g.died > 0" class="text-red-400/60 ml-0.5">({{ g.died }} lost)</span>
+                                {{ g.count }}x <NuxtLink v-if="g.id" :to="lossLink(g.id,sIdx)" class="hover:text-blue-400" title="Inspect this class’s losses">{{ g.name }}</NuxtLink><span v-else>{{ g.name }}</span><span v-if="g.died > 0" class="text-red-400/60 ml-0.5">({{ g.died }} pilots with losses)</span>
                             </span>
                         </div>
                     </div>
@@ -182,11 +186,11 @@ const statsB = computed(() => teamStats(teamB.value))
                                         <div class="flex flex-col items-end gap-0.5">
                                             <span v-if="fc.confirmed"
                                                 class="inline-block px-1.5 py-0.5 rounded text-fine font-medium bg-yellow-500/20 text-yellow-400">
-                                                Confirmed
+                                                Command hull
                                             </span>
                                             <span v-else
                                                 class="inline-block px-1.5 py-0.5 rounded text-fine font-medium bg-gray-500/20 text-gray-400">
-                                                Possible
+                                                Prior FC signal
                                             </span>
                                             <span v-if="fc.died"
                                                 class="inline-block px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/20 text-red-400">
@@ -254,7 +258,7 @@ const statsB = computed(() => teamStats(teamB.value))
                                             class="inline-block px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/20 text-red-400">
                                             Died
                                         </span>
-                                        <span v-else class="text-fine text-green-400">Survived</span>
+                                        <span v-else class="text-fine text-green-400">No recorded loss</span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -316,7 +320,7 @@ const statsB = computed(() => teamStats(teamB.value))
                                             class="inline-block px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/20 text-red-400">
                                             Died
                                         </span>
-                                        <span v-else class="text-fine text-green-400">Survived</span>
+                                        <span v-else class="text-fine text-green-400">No recorded loss</span>
                                     </td>
                                 </tr>
                             </tbody>

@@ -52,6 +52,7 @@ const tabs = computed(() => {
         { id: 'summary', label: 'Summary', icon: 'lucide:layout-list' },
         { id: 'kills', label: 'Kills', icon: 'lucide:target' },
         { id: 'timeline', label: 'Timeline', icon: 'lucide:clock' },
+        { id: 'replay', label: 'Map replay', icon: 'lucide:play' },
         { id: 'composition', label: 'Composition', icon: 'lucide:users' },
         { id: 'intel', label: 'Intel', icon: 'lucide:scan-eye' },
     ]
@@ -61,7 +62,7 @@ const tabs = computed(() => {
     }
     return base
 })
-type TabId = 'summary' | 'kills' | 'timeline' | 'composition' | 'intel' | 'comments'
+type TabId = 'replay' | 'summary' | 'kills' | 'timeline' | 'composition' | 'intel' | 'comments'
 const tabIds = computed(() => new Set(tabs.value.map(t => t.id as TabId)))
 
 // Unknown tab segments 404 rather than falling back to the summary tab, which
@@ -87,9 +88,8 @@ const activeTab = computed<TabId>(() => {
 const setTab = (tabId: string) => {
     if (!tabIds.value.has(tabId as TabId)) return
     const basePath = tabId === 'summary' ? `/battle/${id}` : `/battle/${id}/${tabId}`
-    const query = isKillmailBattle ? `?killmail=${killmailId}` : ''
     useAnalytics().track('tab.change', { entity: 'battle', tab: tabId })
-    router.push(basePath + query)
+    router.push({ path: basePath, query: { ...route.query } })
 }
 
 // Formatting
@@ -505,30 +505,6 @@ const timelineEndpoint = computed(() => {
                 </div>
             </div>
 
-            <!-- Most Valuable: per-team kills inflicted on the other side -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <div class="text-fine font-bold uppercase tracking-[0.15em] text-red-400/80 mb-1.5 px-1">
-                        Team A's most valuable kills
-                    </div>
-                    <MostValuable
-                        compact
-                        :api-endpoint="mostValuableEndpoint"
-                        :extra-params="{ ...mostValuableParams, team: 0 }"
-                    />
-                </div>
-                <div>
-                    <div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 mb-1.5 px-1">
-                        Team B's most valuable kills
-                    </div>
-                    <MostValuable
-                        compact
-                        :api-endpoint="mostValuableEndpoint"
-                        :extra-params="{ ...mostValuableParams, team: 1 }"
-                    />
-                </div>
-            </div>
-
             <!-- Tab Bar -->
             <div class="flex overflow-x-auto border-b border-white/[0.08] mb-4 scrollbar-hide">
                 <button v-for="t in tabs" :key="t.id"
@@ -543,28 +519,24 @@ const timelineEndpoint = computed(() => {
             </div>
 
             <!-- Tab Content -->
-            <LazyBattleSummary v-if="activeTab === 'summary'" :teams="battle.teams" :unsided="battle.unsided" />
-
-            <Suspense v-if="activeTab === 'kills'">
-                <LazyKillList
-                    :api-endpoint="killlistEndpoint"
-                    :extra-params="{
-                        systemId: battle.solar_system_id,
-                        start: battle.start_time,
-                        end: battle.end_time,
-                    }"
-                    :war-aggressor-corps="team0Corps"
-                    :war-aggressor-alliances="team0Alliances"
-                    :war-defender-corps="team1Corps"
-                    :war-defender-alliances="team1Alliances"
-                    :key="`battle-kills-${id}`"
-                />
-                <template #fallback>
-                    <div class="flex items-center justify-center py-12">
-                        <Icon name="lucide:loader-2" class="w-5 h-5 text-gray-500 animate-spin" />
-                    </div>
-                </template>
+            <Suspense v-if="['summary', 'kills', 'timeline'].includes(activeTab)">
+                <BattleLossExplorer :key="activeTab" :mode="activeTab as 'summary' | 'kills' | 'timeline'"
+                    :endpoint="`${apiUrl}/replay`" :start-time="battle.start_time" :end-time="battle.end_time"
+                    :team-entities="battle.team_entities">
+                    <template #killlist="{ filters }">
+                        <Suspense>
+                            <LazyKillList :api-endpoint="killlistEndpoint"
+                                :extra-params="Object.fromEntries(Object.entries(filters).filter(([, value]) => value != null))"
+                                :war-aggressor-corps="team0Corps" :war-aggressor-alliances="team0Alliances"
+                                :war-defender-corps="team1Corps" :war-defender-alliances="team1Alliances"
+                                :key="`battle-kills-${id}`" />
+                            <template #fallback><div role="status" class="glass-panel p-8 text-center text-gray-400">Loading killlist…</div></template>
+                        </Suspense>
+                    </template>
+                </BattleLossExplorer>
+                <template #fallback><div role="status" class="glass-panel p-10 text-center text-gray-400">Loading battle losses…</div></template>
             </Suspense>
+            <LazyBattleSummary v-if="activeTab === 'summary'" class="mt-5" :teams="battle.teams" :unsided="battle.unsided" />
 
             <div v-if="activeTab === 'comments'" class="mt-2">
                 <LazyCommentsCommentList :target-type="7" :target-id="id" />
@@ -596,22 +568,16 @@ const timelineEndpoint = computed(() => {
                 </template>
             </Suspense>
 
-            <Suspense v-if="activeTab === 'timeline'">
-                <LazyBattleTimeline
-                    :battle-id="isKillmailBattle ? null : id"
-                    :solar-system-id="battle.solar_system_id"
-                    :start-time="battle.start_time"
-                    :end-time="battle.end_time"
-                    :teams="battle.teams"
-                    :team-entities="battle.team_entities"
-                    :timeline-endpoint="isKillmailBattle ? timelineEndpoint : undefined"
-                />
+            <Suspense v-if="activeTab === 'replay'">
+                <LazyBattleReplay
+                    :endpoint="`${apiUrl}/replay`" :start-time="battle.start_time" :end-time="battle.end_time"
+                    :team-entities="battle.team_entities" :teams="battle.teams" />
                 <template #fallback>
-                    <div class="flex items-center justify-center py-12">
-                        <Icon name="lucide:loader-2" class="w-5 h-5 text-gray-500 animate-spin" />
-                    </div>
+                    <div role="status" class="glass-panel p-10 text-center text-gray-400">Loading kill positions…</div>
                 </template>
             </Suspense>
+
+
         </div>
     </div>
 </template>

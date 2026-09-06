@@ -390,11 +390,21 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"alliance-battles":    battleListParams(),
 	"corporation-battles": battleListParams(),
 	"battle-report-killlist": {
+		intQuery("side", "Victim side: 0 for Team A, 1 for Team B, -1 for unassigned."),
+		intQuery("group", "Victim ship group ID."),
+		intQuery("from", "Inclusive replay window start in Unix milliseconds."),
+		intQuery("to", "Exclusive replay window end in Unix milliseconds."),
+		numberQuery("minIsk", "Minimum adjusted loss value in ISK."),
 		limitQuery(conflictDefaultLimit, 10, conflictMaximumLimit),
 		afterQuery(),
 		offsetPageQuery(conflictMaximumPage),
 	},
 	"killmail-battle-killlist": {
+		intQuery("side", "Victim side: 0 for Team A, 1 for Team B, -1 for unassigned."),
+		intQuery("group", "Victim ship group ID."),
+		intQuery("from", "Inclusive replay window start in Unix milliseconds."),
+		intQuery("to", "Exclusive replay window end in Unix milliseconds."),
+		numberQuery("minIsk", "Minimum adjusted loss value in ISK."),
 		limitQuery(conflictDefaultLimit, 10, conflictMaximumLimit),
 		afterQuery(),
 		offsetPageQuery(conflictMaximumPage),
@@ -406,6 +416,8 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"conflict-battles": append(
 		conflictListParams(50, 10, 50),
 		intQuery("year", "Restrict to battles that started in this year."),
+		intQuery("hours", "Restrict to battles started within the last 1 to 8760 hours."),
+		flagQuery("map", "Return system aggregates for all matching battles instead of paginated cards."),
 		intQuery("minKills", "Minimum killmail count in the battle."),
 		numberQuery("minIsk", "Minimum ISK destroyed in the battle."),
 		flagQuery(

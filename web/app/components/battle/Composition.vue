@@ -57,7 +57,7 @@ const views = [
     { id: 'by_group' as const, label: 'By Group', icon: 'lucide:layers' },
 ]
 
-const { data, pending } = await useApiFetch<{ teams: Team[] }>(
+const { data, pending, error, refresh } = await useApiFetch<{ teams: Team[] }>(
     props.apiEndpoint,
     {
         params: props.extraParams,
@@ -66,6 +66,20 @@ const { data, pending } = await useApiFetch<{ teams: Team[] }>(
 )
 
 const teams = computed(() => data.value?.teams ?? [])
+const search = ref('')
+const groupFilter = ref<number | null>(Number(useRoute().query.group) || null)
+const lossOnly = ref(false)
+const groups = computed(() => [...new Map(teams.value.flatMap(team => team.by_group.map(group => [group.ship_group_id ?? Number(group.key), group.name] as const))).entries()].sort((a,b) => a[1].localeCompare(b[1])))
+const stats = computed(() => teams.value.map(team => ({
+    pilots: new Set(team.individuals.map(pilot => pilot.character_id).filter(Boolean)).size,
+    hulls: team.by_ship.length,
+    losses: team.by_ship.reduce((sum, ship) => sum + ship.losses, 0),
+    isk: team.by_ship.reduce((sum, ship) => sum + ship.isk_lost, 0),
+})))
+const matches = (name: string | null | undefined) => !search.value || (name ?? '').toLowerCase().includes(search.value.toLowerCase())
+function resetFilters() { search.value = ''; groupFilter.value = null; lossOnly.value = false }
+watch([search, groupFilter, lossOnly], () => { visibleCounts.value = {0: PAGE_SIZE, 1: PAGE_SIZE} })
+
 
 // Sorting state per view. key='default' uses the server-side rank-based sort.
 type SortDir = 'asc' | 'desc'
@@ -150,11 +164,11 @@ const teamA = computed(() => teams.value[0])
 const teamB = computed(() => teams.value[1])
 
 const sortedIndividuals = (team: Team | undefined) =>
-    team ? sortIndividuals(team.individuals, sortInd.value) : []
+    team ? sortIndividuals(team.individuals.filter(row => (!groupFilter.value || row.ship_group_id === groupFilter.value) && (!lossOnly.value || row.deaths > 0) && (matches(row.ship_name) || matches(row.character_name) || matches(row.corporation_name))), sortInd.value) : []
 const sortedByShip = (team: Team | undefined) =>
-    team ? sortAggs(team.by_ship, sortShip.value) : []
+    team ? sortAggs(team.by_ship.filter(row => (!groupFilter.value || row.ship_group_id === groupFilter.value) && (!lossOnly.value || row.losses > 0) && matches(row.name)), sortShip.value) : []
 const sortedByGroup = (team: Team | undefined) =>
-    team ? sortAggs(team.by_group, sortGroup.value) : []
+    team ? sortAggs(team.by_group.filter(row => (!groupFilter.value || row.ship_group_id === groupFilter.value) && (!lossOnly.value || row.losses > 0) && matches(row.name)), sortGroup.value) : []
 
 const fmtNum = (v: number) => (v ?? 0).toLocaleString('en-US')
 
@@ -172,6 +186,16 @@ const shipRender = (typeId: number | null) =>
 
 <template>
     <div>
+        <div class="mb-4 grid gap-3 sm:grid-cols-2">
+            <div v-for="(team,index) in stats" :key="index" class="glass-panel border-l-2 p-4" :class="teamBorder(index)"><div class="mb-2 text-xs font-semibold" :class="teamAccent(index)">{{ teamLabel(index) }} · full-battle observations</div><div class="grid grid-cols-2 gap-3 lg:grid-cols-4"><div><div class="font-mono text-lg text-gray-200">{{ fmtNum(team.pilots) }}</div><div class="text-[10px] text-gray-500">Observed pilots</div></div><div><div class="font-mono text-lg text-gray-200">{{ fmtNum(team.hulls) }}</div><div class="text-[10px] text-gray-500">Hull types</div></div><div><div class="font-mono text-lg text-gray-200">{{ fmtNum(team.losses) }}</div><div class="text-[10px] text-gray-500">Recorded losses</div></div><div><div class="font-mono text-lg text-amber-200">{{ formatIsk(team.isk) }}</div><div class="text-[10px] text-gray-500">ISK lost</div></div></div></div>
+        </div>
+        <p class="mb-3 text-xs text-gray-500">Observed ships and pilots from the full battle’s killmails, not a complete fleet roster. Pilots can appear in multiple hulls.</p>
+        <div class="glass-panel mb-4 flex flex-wrap items-center gap-3 p-3">
+            <label class="text-xs text-gray-400">Find <input v-model="search" type="search" placeholder="Ship, pilot or corporation" class="ml-2 rounded border border-white/10 bg-black/30 px-3 py-2"></label>
+            <label class="text-xs text-gray-400">Ship class <select v-model="groupFilter" class="ml-2 max-w-52 rounded bg-[#141414] p-2"><option :value="null">All classes</option><option v-for="[id,name] in groups" :key="id" :value="id">{{ name }}</option></select></label>
+            <label class="flex items-center gap-2 text-xs text-gray-400"><input v-model="lossOnly" type="checkbox">With recorded losses</label>
+            <button class="ml-auto text-xs text-sky-300" @click="resetFilters">Reset filters</button>
+        </div>
         <!-- View switcher -->
         <div class="flex gap-1 mb-4">
             <button v-for="v in views" :key="v.id"
@@ -183,7 +207,8 @@ const shipRender = (typeId: number | null) =>
             </button>
         </div>
 
-        <div v-if="pending" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-if="error" role="alert" class="glass-panel p-5 text-red-300">Unable to load composition. <button class="underline" @click="refresh()">Retry</button></div>
+        <div v-else-if="pending" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div v-for="i in 2" :key="i" class="h-96 rounded-lg bg-white/[0.04] animate-pulse"></div>
         </div>
 
@@ -197,9 +222,9 @@ const shipRender = (typeId: number | null) =>
                     <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.06]">
                         <div class="text-sm font-bold" :class="teamAccent(tIdx)">{{ teamLabel(tIdx) }}</div>
                         <div class="text-fine text-gray-500">
-                            <template v-if="view === 'individuals'">{{ fmtNum(team?.individuals?.length || 0) }} pilots</template>
-                            <template v-else-if="view === 'by_ship'">{{ fmtNum(team?.by_ship?.length || 0) }} ship types</template>
-                            <template v-else>{{ fmtNum(team?.by_group?.length || 0) }} ship groups</template>
+                            <template v-if="view === 'individuals'">{{ fmtNum(sortedIndividuals(team).length) }} pilots</template>
+                            <template v-else-if="view === 'by_ship'">{{ fmtNum(sortedByShip(team).length) }} ship types</template>
+                            <template v-else>{{ fmtNum(sortedByGroup(team).length) }} ship groups</template>
                         </div>
                     </div>
 
@@ -270,15 +295,15 @@ const shipRender = (typeId: number | null) =>
                                         <div class="text-red-400 text-fine">{{ fmtNum(ind.damage_taken) }}</div>
                                     </td>
                                 </tr>
-                                <tr v-if="(team?.individuals?.length || 0) === 0">
+                                <tr v-if="(sortedIndividuals(team).length) === 0">
                                     <td colspan="4" class="py-4 text-center text-gray-600">No pilots</td>
                                 </tr>
                             </tbody>
                         </table>
-                        <button v-if="(team?.individuals?.length || 0) > (visibleCounts[tIdx] || 500)"
+                        <button v-if="(sortedIndividuals(team).length) > (visibleCounts[tIdx] || 500)"
                             @click="showMore(tIdx)"
                             class="w-full py-2.5 mt-2 rounded-lg text-xs font-medium text-gray-400 bg-white/[0.04] border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors">
-                            Show more ({{ fmtNum((team?.individuals?.length || 0) - (visibleCounts[tIdx] || 500)) }} remaining)
+                            Show more ({{ fmtNum((sortedIndividuals(team).length) - (visibleCounts[tIdx] || 500)) }} remaining)
                         </button>
                     </div>
 
@@ -339,7 +364,7 @@ const shipRender = (typeId: number | null) =>
                                     <td class="py-1 px-2 text-right tabular-nums">{{ fmtNum(row.damage_done) }}</td>
                                     <td class="py-1 pl-2 text-right tabular-nums text-gray-500">{{ fmtNum(row.damage_taken) }}</td>
                                 </tr>
-                                <tr v-if="(team?.by_ship?.length || 0) === 0">
+                                <tr v-if="(sortedByShip(team).length) === 0">
                                     <td colspan="6" class="py-4 text-center text-gray-600">No ships</td>
                                 </tr>
                             </tbody>
@@ -397,7 +422,7 @@ const shipRender = (typeId: number | null) =>
                                     <td class="py-1 px-2 text-right tabular-nums">{{ fmtNum(row.damage_done) }}</td>
                                     <td class="py-1 pl-2 text-right tabular-nums text-gray-500">{{ fmtNum(row.damage_taken) }}</td>
                                 </tr>
-                                <tr v-if="(team?.by_group?.length || 0) === 0">
+                                <tr v-if="(sortedByGroup(team).length) === 0">
                                     <td colspan="6" class="py-4 text-center text-gray-600">No ship groups</td>
                                 </tr>
                             </tbody>

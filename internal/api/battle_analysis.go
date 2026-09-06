@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -47,6 +49,7 @@ func registerBattleAnalysisRoutes(a huma.API, opts Options) {
 		{"killlist", "killlist", "Battle killmails", 2 * time.Minute, battleKilllistHandler},
 		{"most-valuable", "most-valuable", "Most valuable battle losses", 5 * time.Minute, battleMostValuableHandler},
 		{"timeline", "timeline", "Complete battle timeline", 2 * time.Minute, battleTimelineHandler},
+		{"replay", "replay", "Battle kill positions for spatial replay", 2 * time.Minute, battleReplayHandler},
 	}
 	for _, route := range routes {
 		registerConflictCachedGET(a, opts, huma.Operation{
@@ -112,6 +115,9 @@ func battleKilllistHandler(opts Options, killmailMode bool) legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
+		if req.Query.Has("side") || req.Query.Has("group") || req.Query.Has("minIsk") || req.Query.Has("from") || req.Query.Has("to") {
+			return filteredBattleKilllist(ctx, opts, req.Query, window)
+		}
 		return loadConflictKilllist(
 			ctx, opts.DB, req.Query,
 			[]string{
@@ -122,6 +128,151 @@ func battleKilllistHandler(opts Options, killmailMode bool) legacyHandler {
 			[]any{window.SystemIDs, window.Start, window.End},
 		)
 	}
+}
+
+// Filter the complete adjusted loss set before regular killlist pagination.
+// This keeps timeline selections and price thresholds identical across tabs.
+func filteredBattleKilllist(ctx context.Context, opts Options, query url.Values, window *conflictBattleWindow) (legacyPayload, error) {
+	values := map[string]int64{}
+	for _, key := range []string{"side", "group", "from", "to"} {
+		if raw := query.Get(key); raw != "" {
+			value, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || (key == "side" && (value < -1 || value > 1)) || (key != "side" && value <= 0) {
+				return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid "+key)
+			}
+			values[key] = value
+		}
+	}
+	minIsk := float64(0)
+	if raw := query.Get("minIsk"); raw != "" {
+		var err error
+		minIsk, err = strconv.ParseFloat(raw, 64)
+		if err != nil || minIsk < 0 || math.IsNaN(minIsk) || math.IsInf(minIsk, 0) {
+			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid minIsk")
+		}
+	}
+	replay, err := loadBattleReplay(ctx, opts, window)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	rows := replay.Body.(map[string]any)["kills"].([]map[string]any)
+	ids := make([]int64, 0, len(rows))
+	prices := map[int64]float64{}
+	allianceTeams := battleAllianceTeams(window.Assignment)
+	for _, row := range rows {
+		at, ok := row["killmail_time"].(time.Time)
+		if !ok {
+			continue
+		}
+		if from, ok := values["from"]; ok && at.UnixMilli() < from {
+			continue
+		}
+		if to, ok := values["to"]; ok && at.UnixMilli() >= to {
+			continue
+		}
+		if group, ok := values["group"]; ok && conflictInt(row, "ship_group_id") != group {
+			continue
+		}
+		price := conflictFloat(row, "total_value")
+		if price < minIsk {
+			continue
+		}
+		if wanted, ok := values["side"]; ok {
+			side, assigned := window.Assignment.CorpTeam[int32(conflictInt(row, "victim_corporation_id"))]
+			if !assigned {
+				side, assigned = allianceTeams[int32(conflictInt(row, "victim_alliance_id"))]
+			}
+			if !assigned {
+				side = -1
+			}
+			if int64(side) != wanted {
+				continue
+			}
+		}
+		id := conflictInt(row, "killmail_id")
+		ids = append(ids, id)
+		prices[id] = price
+	}
+	result, err := loadConflictKilllist(ctx, opts.DB, query,
+		[]string{"k.solar_system_id = ANY($1::int[])", "k.killmail_time >= $2", "k.killmail_time <= $3", "k.killmail_id = ANY($4::bigint[])"},
+		[]any{window.SystemIDs, window.Start, window.End, ids})
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	for _, row := range result.Body.(map[string]any)["kills"].([]map[string]any) {
+		row["total_value"] = prices[conflictInt(row, "killmail_id")]
+	}
+	return result, nil
+}
+
+// Replay uses the same system/time membership as the complete battle timeline.
+// Positions are the victim's location at destruction, not ship trajectories.
+func battleReplayHandler(opts Options, killmailMode bool) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		window, err := resolveConflictBattleWindow(ctx, opts.DB, req, killmailMode)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		return loadBattleReplay(ctx, opts, window)
+	}
+}
+
+func loadBattleReplay(ctx context.Context, opts Options, window *conflictBattleWindow) (legacyPayload, error) {
+	rows, err := queryMaps(ctx, opts.DB, `
+            SELECT k.killmail_id, k.killmail_time, k.solar_system_id,
+                   system.system_name AS solar_system_name,
+                   k.position_x, k.position_y, k.position_z,
+                   k.victim_character_id, character.name AS victim_character_name,
+                   k.victim_corporation_id, k.victim_alliance_id,
+                   k.victim_ship_type_id AS ship_type_id, ship.name AS ship_name, ship.group_id AS ship_group_id, ship_group.name AS ship_group_name,
+                   COALESCE(k.total_value, 0)::double precision AS total_value
+            FROM killmails k
+            LEFT JOIN solar_systems system ON system.solar_system_id = k.solar_system_id
+            LEFT JOIN characters character ON character.character_id = k.victim_character_id
+            LEFT JOIN inv_types ship ON ship.type_id = k.victim_ship_type_id
+            LEFT JOIN inv_groups ship_group ON ship_group.group_id = ship.group_id
+            WHERE k.solar_system_id = ANY($1::int[])
+              AND k.killmail_time >= $2 AND k.killmail_time <= $3
+            ORDER BY k.killmail_time, k.killmail_id`, window.SystemIDs, window.Start, window.End)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	// Saved reports apply configured historical ship-price adjustments.
+	// Use the same values in every loss explorer and in replay totals.
+	if window.BattleID != 0 {
+		typeIDs := make([]int32, 0, len(rows))
+		for _, row := range rows {
+			typeIDs = append(typeIDs, int32(conflictInt(row, "ship_type_id")))
+		}
+		deltas, priceErr := loadConflictPriceDeltas(ctx, opts.DB, typeIDs, window.End)
+		if priceErr != nil {
+			return legacyPayload{}, priceErr
+		}
+		for _, row := range rows {
+			row["total_value"] = conflictFloat(row, "total_value") + deltas[int32(conflictInt(row, "ship_type_id"))]
+		}
+	}
+	if rows == nil {
+		rows = []map[string]any{}
+	}
+	landmarks, err := queryMaps(ctx, opts.DB, `
+            SELECT item_id AS id, item_name AS name, solar_system_id, group_id, x, y, z
+            FROM celestials
+            WHERE solar_system_id = ANY($1::int[]) AND group_id IN (6, 7, 8, 9, 10)
+              AND x IS NOT NULL AND y IS NOT NULL AND z IS NOT NULL
+            UNION ALL
+            SELECT station_id AS id, station_name AS name, solar_system_id, 15 AS group_id, x, y, z
+            FROM stations
+            WHERE solar_system_id = ANY($1::int[])
+              AND x IS NOT NULL AND y IS NOT NULL AND z IS NOT NULL
+            ORDER BY solar_system_id, group_id, id`, window.SystemIDs)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	if landmarks == nil {
+		landmarks = []map[string]any{}
+	}
+	return jsonPayload(map[string]any{"kills": rows, "landmarks": landmarks}), nil
 }
 
 func battleTimelineHandler(opts Options, killmailMode bool) legacyHandler {
@@ -346,6 +497,8 @@ func conflictBattleAssignmentEntities(
 	return corporations, alliances
 }
 
+// Attacker lateral lookups below deliberately retain OFFSET 0; see
+// loadConflictBattleAttackers for the repeated time-bitmap planner regression.
 func battleCompositionHandler(
 	opts Options,
 	killmailMode bool,
@@ -373,9 +526,14 @@ func battleCompositionHandler(
 				       attacker.ship_group_id,
 				       SUM(COALESCE(attacker.damage_done, 0))::bigint
 				           AS damage_done
-				FROM killmail_attackers attacker
-				JOIN battle_kills kill
-				  ON kill.killmail_id = attacker.killmail_id
+                FROM battle_kills kill
+                CROSS JOIN LATERAL (
+                    SELECT character_id, corporation_id, alliance_id,
+                           ship_type_id, ship_group_id, damage_done, killmail_time
+                    FROM killmail_attackers
+                    WHERE killmail_id = kill.killmail_id
+                    OFFSET 0
+                ) attacker
 				WHERE attacker.character_id IS NOT NULL
 				  AND attacker.ship_type_id IS NOT NULL
 				  AND attacker.killmail_time >= $2
@@ -439,6 +597,19 @@ func battleCompositionHandler(
 		)
 		if err != nil {
 			return legacyPayload{}, err
+		}
+		if window.BattleID != 0 {
+			typeIDs := make([]int32, 0, len(rows))
+			for _, row := range rows {
+				typeIDs = append(typeIDs, int32(conflictInt(row, "ship_type_id")))
+			}
+			deltas, priceErr := loadConflictPriceDeltas(ctx, opts.DB, typeIDs, window.End)
+			if priceErr != nil {
+				return legacyPayload{}, priceErr
+			}
+			for _, row := range rows {
+				row["isk_lost"] = conflictFloat(row, "isk_lost") + float64(conflictInt(row, "deaths"))*deltas[int32(conflictInt(row, "ship_type_id"))]
+			}
 		}
 		return jsonPayload(buildBattleComposition(
 			rows, window.Assignment, window.TeamIndices,
@@ -617,8 +788,14 @@ func loadBattleIntelPilots(
 			       attacker.ship_group_id,
 			       SUM(COALESCE(attacker.damage_done, 0))::bigint
 			           AS ship_damage
-			FROM killmail_attackers attacker
-			JOIN battle_kills kill ON kill.killmail_id = attacker.killmail_id
+            FROM battle_kills kill
+            CROSS JOIN LATERAL (
+                SELECT character_id, corporation_id, alliance_id,
+                       ship_type_id, ship_group_id, damage_done, killmail_time
+                FROM killmail_attackers
+                WHERE killmail_id = kill.killmail_id
+                OFFSET 0
+            ) attacker
 			WHERE attacker.character_id IS NOT NULL
 			  AND attacker.ship_type_id IS NOT NULL
 			  AND attacker.killmail_time >= $2

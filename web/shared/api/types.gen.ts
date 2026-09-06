@@ -14045,6 +14045,26 @@ export type KillmailBattleKilllistData = {
     path?: never;
     query?: {
         /**
+         * Victim side: 0 for Team A, 1 for Team B, -1 for unassigned.
+         */
+        side?: number;
+        /**
+         * Victim ship group ID.
+         */
+        group?: number;
+        /**
+         * Inclusive replay window start in Unix milliseconds.
+         */
+        from?: number;
+        /**
+         * Exclusive replay window end in Unix milliseconds.
+         */
+        to?: number;
+        /**
+         * Minimum adjusted loss value in ISK.
+         */
+        minIsk?: number;
+        /**
          * Maximum results to return.
          */
         limit?: number;
@@ -14153,6 +14173,53 @@ export type KillmailBattleMostValuableResponses = {
 };
 
 export type KillmailBattleMostValuableResponse = KillmailBattleMostValuableResponses[keyof KillmailBattleMostValuableResponses];
+
+export type KillmailBattleReplayData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/battle/killmail/{id}/replay';
+};
+
+export type KillmailBattleReplayResponses = {
+    /**
+     * OK
+     */
+    200: {
+        kills: Array<{
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            position_x: number | null;
+            position_y: number | null;
+            position_z: number | null;
+            ship_group_id?: number | null;
+            ship_group_name?: string | null;
+            ship_name?: string | null;
+            ship_type_id?: number | null;
+            solar_system_id: number;
+            solar_system_name?: string | null;
+            total_value: number;
+            victim_alliance_id?: number | null;
+            victim_character_id?: number | null;
+            victim_character_name?: string | null;
+            victim_corporation_id?: number | null;
+        }>;
+        landmarks?: Array<{
+            group_id: number;
+            id: number;
+            name?: string | null;
+            solar_system_id: number;
+            x: number;
+            y: number;
+            z: number;
+        }>;
+    };
+};
+
+export type KillmailBattleReplayResponse = KillmailBattleReplayResponses[keyof KillmailBattleReplayResponses];
 
 export type KillmailBattleTimelineData = {
     body?: never;
@@ -14438,6 +14505,26 @@ export type BattleReportKilllistData = {
     path?: never;
     query?: {
         /**
+         * Victim side: 0 for Team A, 1 for Team B, -1 for unassigned.
+         */
+        side?: number;
+        /**
+         * Victim ship group ID.
+         */
+        group?: number;
+        /**
+         * Inclusive replay window start in Unix milliseconds.
+         */
+        from?: number;
+        /**
+         * Exclusive replay window end in Unix milliseconds.
+         */
+        to?: number;
+        /**
+         * Minimum adjusted loss value in ISK.
+         */
+        minIsk?: number;
+        /**
          * Maximum results to return.
          */
         limit?: number;
@@ -14546,6 +14633,53 @@ export type BattleReportMostValuableResponses = {
 };
 
 export type BattleReportMostValuableResponse = BattleReportMostValuableResponses[keyof BattleReportMostValuableResponses];
+
+export type BattleReportReplayData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/battle/{id}/replay';
+};
+
+export type BattleReportReplayResponses = {
+    /**
+     * OK
+     */
+    200: {
+        kills: Array<{
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            position_x: number | null;
+            position_y: number | null;
+            position_z: number | null;
+            ship_group_id?: number | null;
+            ship_group_name?: string | null;
+            ship_name?: string | null;
+            ship_type_id?: number | null;
+            solar_system_id: number;
+            solar_system_name?: string | null;
+            total_value: number;
+            victim_alliance_id?: number | null;
+            victim_character_id?: number | null;
+            victim_character_name?: string | null;
+            victim_corporation_id?: number | null;
+        }>;
+        landmarks?: Array<{
+            group_id: number;
+            id: number;
+            name?: string | null;
+            solar_system_id: number;
+            x: number;
+            y: number;
+            z: number;
+        }>;
+    };
+};
+
+export type BattleReportReplayResponse = BattleReportReplayResponses[keyof BattleReportReplayResponses];
 
 export type BattleReportTimelineData = {
     body?: never;
@@ -17889,6 +18023,14 @@ export type ConflictBattlesData = {
          */
         year?: number;
         /**
+         * Restrict to battles started within the last 1 to 8760 hours.
+         */
+        hours?: number;
+        /**
+         * Return system aggregates for all matching battles instead of paginated cards.
+         */
+        map?: boolean;
+        /**
          * Minimum killmail count in the battle.
          */
         minKills?: number;
@@ -17955,6 +18097,15 @@ export type ConflictBattlesResponses = {
         }>;
         limit: number;
         page: number;
+        systems?: Array<{
+            battle_count: number;
+            kill_count: number;
+            region_id?: number | null;
+            region_name?: string | null;
+            solar_system_id: number;
+            solar_system_name?: string | null;
+            total_isk_destroyed: number;
+        }>;
         years: Array<{
             count: number;
             year: number;

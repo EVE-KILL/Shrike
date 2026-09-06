@@ -389,6 +389,21 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 		return responseSchema(map[string]*huma.Schema{
 			"kills": arraySchema(killlistRowSchema()),
 		}, "kills")
+	case "killmail-battle-replay", "battle-report-replay":
+		return responseSchema(map[string]*huma.Schema{
+			"landmarks": arraySchema(responseSchema(map[string]*huma.Schema{
+				"id": intSchema(), "name": nullable(stringSchema()), "solar_system_id": intSchema(),
+				"group_id": intSchema(), "x": numberSchema(), "y": numberSchema(), "z": numberSchema(),
+			}, "id", "solar_system_id", "group_id", "x", "y", "z")),
+			"kills": arraySchema(responseSchema(map[string]*huma.Schema{
+				"killmail_id": intSchema(), "killmail_time": timestampSchema(),
+				"solar_system_id": intSchema(), "solar_system_name": nullable(stringSchema()),
+				"position_x": nullable(numberSchema()), "position_y": nullable(numberSchema()), "position_z": nullable(numberSchema()),
+				"victim_character_id": nullable(intSchema()), "victim_character_name": nullable(stringSchema()),
+				"victim_corporation_id": nullable(intSchema()), "victim_alliance_id": nullable(intSchema()),
+				"ship_group_name": nullable(stringSchema()), "ship_group_id": nullable(intSchema()), "ship_type_id": nullable(intSchema()), "ship_name": nullable(stringSchema()), "total_value": numberSchema(),
+			}, "killmail_id", "killmail_time", "solar_system_id", "position_x", "position_y", "position_z", "total_value")),
+		}, "kills")
 	case "killmail-battle-most-valuable", "battle-report-most-valuable":
 		return entriesResponseSchema(battleMostValuableKillSchema())
 	case "killmail-battle-composition", "battle-report-composition":
@@ -2359,6 +2374,11 @@ func conflictBattlesSchema() *huma.Schema {
 		"year": intSchema(), "count": intSchema(),
 	}, "year", "count")
 	return responseSchema(map[string]*huma.Schema{
+		"systems": arraySchema(responseSchema(map[string]*huma.Schema{
+			"solar_system_id": intSchema(), "region_id": nullable(intSchema()),
+			"solar_system_name": nullable(stringSchema()), "region_name": nullable(stringSchema()),
+			"battle_count": intSchema(), "kill_count": intSchema(), "total_isk_destroyed": numberSchema(),
+		}, "solar_system_id", "battle_count", "kill_count", "total_isk_destroyed")),
 		"battles": arraySchema(battle), "years": arraySchema(year),
 		"page": intSchema(), "limit": intSchema(),
 	}, "battles", "years", "page", "limit")

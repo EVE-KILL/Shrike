@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { BattleMapSystem } from '~/utils/map/battles'
+import { battleRegionTotals } from '~/utils/map/battles'
 import { Delaunay } from 'd3-delaunay'
 import type { Application, Container, Graphics as PixiGraphics, Text as PixiText, Ticker } from 'pixi.js'
 import type { KilllistRow } from '#shared/utils/killlistRow'
@@ -10,6 +12,8 @@ import { playAIIDAlarm } from '~/utils/map/aiidAudio'
 import { createKillFreshnessGate } from '~/utils/killStreamPolicy'
 
 const props = withDefaults(defineProps<{
+    battleSystems?: BattleMapSystem[]
+    battleRegionId?: number | null
     type: string
     baseLayer: MapRenderBaseLayer
     activityLayer: MapActivityLayer
@@ -25,6 +29,8 @@ const props = withDefaults(defineProps<{
 }>(), { mode: 'map', showChanges: false })
 
 const emit = defineEmits<{
+    (event: 'battleRegion', id: number): void
+    (event: 'battleSystem', system: BattleMapSystem): void
     (event: 'update:watchedSystemIds', value: number[]): void
 }>()
 
@@ -103,7 +109,7 @@ interface RegionSummary {
 }
 
 const scene = computed(() => {
-    const systems = data.value?.systems ?? []
+    const systems = (data.value?.systems ?? []).filter((system: any) => !props.battleRegionId || system.region_id === props.battleRegionId)
     if (!systems.length) return { nodes: [] as MapNode[], links: [] as MapLink[], cells: [] as MapCell[], bounds: { x: 0, y: 0, width: 1600, height: 1200 }, delaunay: null as Delaunay<MapNode> | null }
 
     const regionNames = new Map<number, string>()
@@ -430,6 +436,26 @@ let baseAlphaTarget = 1
 let liveClockTimer: ReturnType<typeof setInterval> | null = null
 const livePulses = new Map<number, { startedAt: number; value: number }>()
 
+const battleCamera = ref({ x: 0, y: 0, scale: 1 })
+const battleMarkers = computed(() => {
+    if (!props.battleSystems) return []
+    const camera = battleCamera.value
+    const project = (x: number, y: number) => ({ left: `${camera.x + x * camera.scale}px`, top: `${camera.y + y * camera.scale}px` })
+    if (props.battleRegionId) return props.battleSystems.flatMap(system => {
+        const node = nodeById.value.get(system.solar_system_id)
+        return node ? [{ id: system.solar_system_id, name: node.system_name, count: system.battle_count, isk: system.total_isk_destroyed, system, style: project(node.x, node.y) }] : []
+    })
+    const totals = battleRegionTotals(props.battleSystems)
+    return regionSummaries.value.flatMap(region => {
+        const total = totals.get(region.id)
+        return total ? [{ id: region.id, name: region.name, count: total.battle_count, isk: total.total_isk_destroyed, system: null as BattleMapSystem | null, style: project(region.x, region.y) }] : []
+    })
+})
+function selectBattleMarker(marker: typeof battleMarkers.value[number]) {
+    if (marker.system) emit('battleSystem', marker.system)
+    else emit('battleRegion', marker.id)
+}
+
 function requestRender() {
     renderPending = true
     if (app && !document.hidden && !disposed) app.start()
@@ -441,6 +467,7 @@ if (import.meta.client) useEventListener(document, 'visibilitychange', () => {
 })
 
 function updateBaseAlpha(ticker: Ticker) {
+    if (props.battleSystems && world) battleCamera.value = { x: world.x, y: world.y, scale: world.scale.x }
     if (!baseSceneLayer) return
     const blend = Math.min(1, ticker.deltaMS / 90)
     baseSceneLayer.alpha += (baseAlphaTarget - baseSceneLayer.alpha) * blend
@@ -764,6 +791,7 @@ function onPointerUp(event: PointerEvent) {
     app?.canvas.releasePointerCapture(event.pointerId)
     if (dragMoved) return
     if (props.mode === 'sovereignty' && hoveredAllianceId.value != null) navigateTo(`/alliance/${hoveredAllianceId.value}`)
+    else if (props.battleSystems && hoveredRegionId.value != null) emit('battleRegion', hoveredRegionId.value)
     else if (hoveredRegionId.value != null) navigateTo(mapRegionLocation(hoveredRegionId.value))
 }
 function onPointerLeave() {
@@ -862,6 +890,8 @@ watch(
     () => [props.baseLayer, props.activityLayer, props.showConnections, props.showSystems, props.showLabels, props.showChanges, props.mode],
     () => { if (app) drawScene() },
 )
+watch(() => props.battleRegionId, () => { hoveredRegionId.value = null; if (app) { drawScene(); resetView() } })
+watch(() => props.battleSystems, requestRender)
 watch(data, () => { if (app) { drawScene(); resetView() } })
 onUnmounted(() => {
     disposed = true
@@ -887,7 +917,17 @@ onUnmounted(() => {
 <template>
     <div ref="hostRef" class="relative h-[78vh] overflow-hidden rounded-lg border border-white/[0.08] bg-[#08090d]">
         <div ref="canvasHostRef" class="absolute inset-0" />
-        <div v-if="mode === 'map'" class="absolute left-3 right-3 top-3 z-30 w-auto sm:right-auto sm:w-[min(20rem,calc(100%-6rem))]">
+        <div v-if="battleSystems && ready && !pending && !error" class="pointer-events-none absolute inset-0 z-10">
+            <button v-for="marker in battleMarkers" :key="marker.id" type="button"
+                :style="marker.style" :aria-label="`${marker.name}: ${marker.count} battles, ${formatIsk(marker.isk)} ISK destroyed`"
+                :title="`${marker.name} · ${marker.count} battles · ${formatIsk(marker.isk)} ISK`"
+                class="pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-md border border-rose-300/40 bg-[#251018]/95 px-1.5 py-1 text-xs font-semibold text-rose-100 shadow-lg transition-colors hover:z-20 hover:border-rose-200 hover:bg-rose-900 focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-rose-200"
+                @click="selectBattleMarker(marker)">
+                <Icon name="lucide:swords" class="h-4 w-4" /><span>{{ marker.count }}</span>
+                <span v-if="battleRegionId" class="ml-1 text-[10px]">{{ marker.name }}</span>
+            </button>
+        </div>
+        <div v-if="mode === 'map' && !battleSystems" class="absolute left-3 right-3 top-3 z-30 w-auto sm:right-auto sm:w-[min(20rem,calc(100%-6rem))]">
             <div class="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-black/70 px-3 py-2 shadow-lg backdrop-blur-md">
                 <span aria-hidden="true" class="shrink-0 text-sm text-gray-500">⌕</span>
                 <input v-model="searchQuery" type="search" placeholder="Find a region or system" class="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600" @focus="searchFocused = true" @blur="closeSearchSoon">
@@ -957,7 +997,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between border-t border-white/[0.07] px-3 py-2 text-[9px] text-gray-600"><span>{{ liveKills.length }} kills in 24h</span><span>Risk signals fade over 15m</span></div>
         </aside>
-        <aside v-else class="absolute inset-x-3 bottom-28 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
+        <aside v-else-if="mode === 'live'" class="absolute inset-x-3 bottom-28 z-20 flex h-[44%] min-w-0 flex-col overflow-hidden rounded-lg border border-white/[0.1] bg-[#0b0c11]/94 shadow-2xl backdrop-blur-md sm:inset-y-3 sm:left-3 sm:right-auto sm:h-auto sm:w-[min(300px,30%)] sm:min-w-[260px]">
             <div class="flex items-center justify-between border-b border-white/[0.07] px-3 py-3">
                 <div><div class="text-[10px] font-bold uppercase tracking-[0.15em] text-rose-300">Live kills</div><div class="mt-0.5 text-[10px] text-gray-600">Newest activity across New Eden</div></div>
                 <span class="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-wider" :class="liveConnected ? 'text-emerald-400' : 'text-gray-600'"><span class="h-1.5 w-1.5 rounded-full" :class="liveConnected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.8)]' : 'bg-gray-700'" />{{ liveConnected ? 'Connected' : 'Connecting' }}</span>
@@ -976,7 +1016,7 @@ onUnmounted(() => {
             <span v-if="mode === 'live'" class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full" :class="liveConnected ? 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,.9)]' : 'bg-gray-700'" />{{ liveConnected ? 'Listening live' : 'Connecting to relay' }} · {{ liveKills.length }} recent</span>
             <span v-else-if="mode === 'aiid'" class="flex items-center gap-1.5"><span class="h-1.5 w-1.5 rounded-full" :class="liveConnected ? 'bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,.9)]' : 'bg-gray-700'" />{{ liveConnected ? 'Danger watch armed' : 'Connecting to relay' }} · {{ formatNumber(scene.nodes.length) }} systems</span>
             <span v-else-if="data && mode === 'sovereignty'">{{ formatNumber(data.sovereignty?.length) }} claimed · {{ allianceSummaries.length }} alliances<span v-if="data.snapshot_at"> · {{ formatDateTime(data.snapshot_at) }}</span></span>
-            <span v-else-if="data">{{ formatNumber(data.systems?.length) }} systems · {{ data.regions?.length ?? 0 }} regions</span>
+            <span v-else-if="data">{{ formatNumber(scene.nodes.length) }} systems · {{ regionSummaries.length }} regions</span>
             <span v-if="activityLayer !== 'none'" class="flex items-center gap-1.5 text-emerald-400/80"><span class="h-1.5 w-1.5 rounded-full bg-emerald-400" />Hourly data · {{ activityWindowLabel }}</span>
             <button type="button" class="text-blue-400 hover:text-blue-300" @click="resetView">Reset view</button>
         </div>
@@ -991,7 +1031,7 @@ onUnmounted(() => {
             </div>
             <div class="mt-2 flex items-center justify-between border-t border-white/[0.06] pt-2 text-[10px] text-gray-500"><span v-if="hoveredAlliance.memberCount > 0">{{ formatNumber(hoveredAlliance.memberCount) }} members</span><span v-else>Current sovereignty</span><span v-if="hoveredAlliance.recentChanges" class="text-amber-300">{{ hoveredAlliance.recentChanges }} changed in 7d</span><span v-else>No recent changes</span></div>
         </div>
-        <div v-else-if="hoveredSummary" :style="hoverCardStyle" class="pointer-events-none absolute z-20 w-[280px] rounded-lg border border-white/[0.12] bg-[#101116]/95 p-3 text-xs shadow-2xl backdrop-blur-md">
+        <div v-else-if="hoveredSummary && !battleSystems" :style="hoverCardStyle" class="pointer-events-none absolute z-20 w-[280px] rounded-lg border border-white/[0.12] bg-[#101116]/95 p-3 text-xs shadow-2xl backdrop-blur-md">
             <div class="flex items-start justify-between gap-3"><div><div class="text-sm font-semibold text-white">{{ hoveredSummary.name }}</div><div class="mt-0.5 text-[10px] text-gray-500">Click to open the SVG region map</div></div><div class="text-right text-gray-400"><div>{{ hoveredSummary.systems }} systems</div><div class="mt-0.5 text-[9px] text-gray-600">last {{ activityWindowLabel }}</div></div></div>
             <div class="mt-2 grid grid-cols-4 gap-1 text-center"><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.ship_kills) }}</div><div class="text-[9px] text-gray-500">ship kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.pod_kills) }}</div><div class="text-[9px] text-gray-500">pod kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.npc_kills) }}</div><div class="text-[9px] text-gray-500">NPC kills</div></div><div class="rounded bg-white/[0.04] p-1"><div class="font-mono text-white">{{ formatNumber(hoveredSummary.ship_jumps) }}</div><div class="text-[9px] text-gray-500">jumps</div></div></div>
             <div class="mt-2 flex items-center justify-between text-[10px] text-gray-500"><span><span class="text-cyan-400">{{ hoveredSummary.high }}</span> high · <span class="text-amber-400">{{ hoveredSummary.low }}</span> low · <span class="text-red-500">{{ hoveredSummary.null }}</span> null</span><span v-if="hoveredSummary.busiest">Hotspot: <span class="text-gray-300">{{ hoveredSummary.busiest.system_name }}</span></span></div>
@@ -1013,6 +1053,6 @@ onUnmounted(() => {
                 <span class="text-gray-600">last {{ activityWindowLabel }} · log scale</span>
             </template>
         </div>
-        <div class="pointer-events-none absolute bottom-3 right-3 z-20 hidden rounded bg-black/45 px-2 py-1 text-[10px] text-gray-600 backdrop-blur-sm sm:block">{{ mode === 'live' ? 'Watching New Eden · scroll to zoom · drag to pan' : mode === 'aiid' ? 'Ten-jump watch area · scroll to zoom · drag to pan' : `Scroll to zoom · drag to pan · click ${mode === 'sovereignty' ? 'an alliance' : 'a region'}` }}</div>
+        <div class="pointer-events-none absolute bottom-3 right-3 z-20 hidden rounded bg-black/45 px-2 py-1 text-[10px] text-gray-600 backdrop-blur-sm sm:block">{{ mode === 'live' ? 'Watching New Eden · scroll to zoom · drag to pan' : mode === 'aiid' ? 'Ten-jump watch area · scroll to zoom · drag to pan' : battleSystems ? 'Scroll to zoom · drag to pan · select crossed swords' : `Scroll to zoom · drag to pan · click ${mode === 'sovereignty' ? 'an alliance' : 'a region'}` }}</div>
     </div>
 </template>

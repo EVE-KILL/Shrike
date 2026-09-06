@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"slices"
@@ -117,6 +118,14 @@ func conflictBattlesHandler(opts Options) legacyHandler {
 			args = append(args, time.Date(year+1, 1, 1, 0, 0, 0, 0, time.UTC))
 			where = append(where, fmt.Sprintf("b.start_time < $%d", len(args)))
 		}
+		if raw := strings.TrimSpace(req.Query.Get("hours")); raw != "" {
+			hours, parseErr := strconv.Atoi(raw)
+			if parseErr != nil || hours < 1 || hours > 24*365 {
+				return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid hours")
+			}
+			args = append(args, time.Now().UTC().Add(-time.Duration(hours)*time.Hour))
+			where = append(where, fmt.Sprintf("b.start_time >= $%d", len(args)))
+		}
 		for _, filter := range []struct {
 			query  string
 			column string
@@ -141,7 +150,7 @@ func conflictBattlesHandler(opts Options) legacyHandler {
 		}
 		if raw := strings.TrimSpace(req.Query.Get("minIsk")); raw != "" {
 			value, parseErr := strconv.ParseFloat(raw, 64)
-			if parseErr != nil || value < 0 {
+			if parseErr != nil || value < 0 || math.IsNaN(value) || math.IsInf(value, 0) {
 				return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid minIsk")
 			}
 			args = append(args, value)
@@ -226,6 +235,33 @@ func conflictBattlesHandler(opts Options) legacyHandler {
 			)`)
 		}
 
+		// Aggregate the complete filtered set before pagination. Map and cards
+		// deliberately share every predicate, including custom-domain scope.
+		if req.Query.Get("map") == "true" {
+			systems, queryErr := queryMaps(ctx, opts.DB, `
+                SELECT b.solar_system_id, b.region_id,
+                       system.system_name AS solar_system_name,
+                       region.name AS region_name,
+                       COUNT(*)::int AS battle_count,
+                       COALESCE(SUM(b.kill_count), 0)::bigint AS kill_count,
+                       COALESCE(SUM(b.total_isk_destroyed), 0)::double precision AS total_isk_destroyed
+                FROM battles b
+                LEFT JOIN solar_systems system ON system.solar_system_id = b.solar_system_id
+                LEFT JOIN regions region ON region.region_id = b.region_id
+                WHERE `+strings.Join(where, " AND ")+`
+                GROUP BY b.solar_system_id, b.region_id, system.system_name, region.name
+                ORDER BY battle_count DESC, b.solar_system_id`, args...)
+			if queryErr != nil {
+				return legacyPayload{}, queryErr
+			}
+			if systems == nil {
+				systems = []map[string]any{}
+			}
+			return jsonPayload(map[string]any{
+				"battles": []map[string]any{}, "years": []map[string]any{},
+				"page": page, "limit": limit, "systems": systems,
+			}), nil
+		}
 		args = append(args, limit, (page-1)*limit)
 		rows, err := queryMaps(ctx, opts.DB, `
 			SELECT b.battle_id, b.solar_system_id,
@@ -766,6 +802,10 @@ func loadConflictBattleAttackers(
 	systemIDs []int32,
 	start, end time.Time,
 ) (map[int64][]battle.Attacker, error) {
+	// Keep the time predicate outside the lateral lookup. OFFSET 0 prevents
+	// flattening: with skewed battle sizes PostgreSQL can otherwise BitmapAnd
+	// the entire time window once per killmail (7,034 repeated scans at Atioth).
+	// The primary-key prefix retrieves just this killmail's attackers first.
 	rows, err := queryMaps(ctx, db, `
 		WITH battle_kills AS MATERIALIZED (
 			SELECT killmail_id
@@ -778,8 +818,14 @@ func loadConflictBattleAttackers(
 		       attacker.faction_id, COALESCE(attacker.damage_done, 0)::bigint
 		           AS damage_done,
 		       COALESCE(attacker.final_blow, false) AS final_blow
-		FROM killmail_attackers attacker
-		JOIN battle_kills kill ON kill.killmail_id = attacker.killmail_id
+        FROM battle_kills kill
+        CROSS JOIN LATERAL (
+            SELECT killmail_id, killmail_time, character_id, corporation_id,
+                   alliance_id, faction_id, damage_done, final_blow
+            FROM killmail_attackers
+            WHERE killmail_id = kill.killmail_id
+            OFFSET 0
+        ) attacker
 		WHERE attacker.killmail_time >= $2
 		  AND attacker.killmail_time <= $3`,
 		systemIDs, start, end,

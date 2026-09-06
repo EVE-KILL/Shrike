@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { BattleMapSystem } from '~/utils/map/battles'
 const { isDomainMode } = useDomainConfig()
 
 useHead({ title: 'Battles' })
@@ -18,6 +19,19 @@ const qNum = (v: unknown): number | null => {
 }
 const qStr = (v: unknown): string | null => (typeof v === 'string' && v ? v : null)
 
+const activeView = ref(route.query.view === 'map' ? 'map' : 'list')
+const recentHours = ref<number | null>(qNum(route.query.hours))
+const timeWindows = [{ hours: 24, label: '24 hours' }, { hours: 48, label: '2 days' }, { hours: 168, label: '7 days' }, { hours: 720, label: '30 days' }]
+const setTimeWindow = (hours: number | null) => {
+    recentHours.value = hours
+    selectedYear.value = null
+    page.value = 1
+}
+const selectMapSystem = (system: BattleMapSystem) => {
+    entityFilter.value = { type: 'system', id: system.solar_system_id, name: system.solar_system_name ?? `System ${system.solar_system_id}` }
+    page.value = 1
+    activeView.value = 'list'
+}
 const page = ref(qNum(route.query.page) ?? 1)
 const selectedYear = ref<number | null>(qNum(route.query.year))
 const minKills = ref<number | null>(qNum(route.query.minKills))
@@ -124,8 +138,9 @@ const entityTypeLabel = (type: string): string => {
 }
 
 // Build fetch params
-const fetchParams = computed(() => {
-    const p: Record<string, any> = { page: page.value, limit: 50 }
+const filterParams = computed(() => {
+    const p: Record<string, any> = {}
+    if (recentHours.value) p.hours = recentHours.value
     if (selectedYear.value) p.year = selectedYear.value
     if (minKills.value) p.minKills = minKills.value
     if (minIsk.value) p.minIsk = parseIskFilter(minIsk.value)
@@ -142,15 +157,19 @@ const fetchParams = computed(() => {
     return p
 })
 
-const { data, pending } = await useApiFetch<any>('/api/conflicts/battles', {
+const fetchParams = computed(() => ({ ...filterParams.value, page: page.value, limit: 50 }))
+
+const { data, pending, error, refresh } = await useApiFetch<any>('/api/conflicts/battles', {
     params: fetchParams,
-    watch: [page, selectedYear, minKills, minIsk, showCustom, entityFilter],
+    watch: [page, selectedYear, recentHours, minKills, minIsk, showCustom, entityFilter],
 })
 
 // Mirror filter state into the URL so it survives back-button navigation.
 // router.replace (not push) avoids polluting history on every filter tweak.
-watch([page, selectedYear, minKills, minIsk, showCustom, entityFilter], () => {
+watch([page, selectedYear, recentHours, minKills, minIsk, showCustom, entityFilter, activeView], () => {
     const q: Record<string, string> = {}
+    if (activeView.value === 'map') q.view = 'map'
+    if (recentHours.value) q.hours = String(recentHours.value)
     if (page.value > 1) q.page = String(page.value)
     if (selectedYear.value) q.year = String(selectedYear.value)
     if (minKills.value) q.minKills = String(minKills.value)
@@ -167,6 +186,7 @@ const battles = computed(() => data.value?.battles || [])
 const years = computed(() => data.value?.years || [])
 
 const selectYear = (year: number | null) => {
+    recentHours.value = null
     selectedYear.value = selectedYear.value === year ? null : year
     page.value = 1
 }
@@ -182,10 +202,11 @@ const setMinIsk = (v: string | null) => {
 }
 
 const hasAnyFilter = computed(() =>
-    selectedYear.value || minKills.value || minIsk.value || showCustom.value || entityFilter.value
+    recentHours.value || selectedYear.value || minKills.value || minIsk.value || showCustom.value || entityFilter.value
 )
 
 const resetFilters = () => {
+    recentHours.value = null
     selectedYear.value = null
     minKills.value = null
     minIsk.value = null
@@ -228,7 +249,7 @@ const teamName = (entry: any): string => {
 <template>
     <div>
         <PageHeader class="mb-4" title="Battles" eyebrow="Fleet engagements" icon="lucide:swords"
-            description="Fleet engagements detected across New Eden, with sides, timelines and ISK destroyed. Browse by year, or filter down to an alliance, corporation, system or region.">
+            description="Fleet engagements detected across New Eden, with sides, timelines and ISK destroyed. Explore the map, browse by time, or filter down to an alliance, corporation, system or region.">
             <template #actions>
                 <div class="flex flex-wrap items-center justify-end gap-2">
                 <span v-if="isDomainMode"
@@ -246,6 +267,13 @@ const teamName = (entry: any): string => {
             </template>
         </PageHeader>
 
+        <div class="mb-4 flex flex-wrap items-center gap-2" aria-label="Battle time window">
+            <span class="mr-1 text-fine uppercase tracking-wider text-gray-500">Started within</span>
+            <button v-for="window in timeWindows" :key="window.hours" class="rounded-md border px-3 py-1.5 text-xs transition-colors"
+                :class="recentHours === window.hours ? 'border-blue-500/40 bg-blue-500/20 text-blue-300' : 'border-white/10 text-gray-400 hover:bg-white/5'"
+                :aria-pressed="recentHours === window.hours" @click="setTimeWindow(window.hours)">{{ window.label }}</button>
+            <button class="rounded-md border px-3 py-1.5 text-xs" :class="!recentHours && !selectedYear ? 'border-blue-500/40 bg-blue-500/20 text-blue-300' : 'border-white/10 text-gray-400'" @click="setTimeWindow(null)">All time</button>
+        </div>
         <!-- Year browser -->
         <div class="glass-panel p-4 mb-4">
             <div class="flex items-center justify-between gap-3 mb-3">
@@ -370,8 +398,21 @@ const teamName = (entry: any): string => {
             </button>
         </div>
 
+        <div class="mb-4 flex gap-1 border-b border-white/[0.08]" role="tablist" aria-label="Battle view">
+            <button v-for="view in [{ id: 'list', label: 'Battles', icon: 'lucide:list' }, { id: 'map', label: 'Map', icon: 'lucide:map' }]" :id="`battle-tab-${view.id}`" :key="view.id"
+                role="tab" :aria-selected="activeView === view.id" :aria-controls="`battle-panel-${view.id}`"
+                class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors"
+                :class="activeView === view.id ? 'border-blue-400 text-blue-300' : 'border-transparent text-gray-500 hover:text-gray-200'"
+                @keydown.left.prevent="activeView = activeView === 'map' ? 'list' : 'map'" @keydown.right.prevent="activeView = activeView === 'map' ? 'list' : 'map'"
+                @click="activeView = view.id"><Icon :name="view.icon" class="h-4 w-4" />{{ view.label }}</button>
+        </div>
+        <div v-if="activeView === 'map'" id="battle-panel-map" role="tabpanel" aria-labelledby="battle-tab-map">
+            <BattleMap :filters="filterParams" @select-system="selectMapSystem" />
+        </div>
+        <div v-else id="battle-panel-list" role="tabpanel" aria-labelledby="battle-tab-list">
+        <div v-if="error" role="alert" class="glass-panel p-6 text-sm text-red-300">Unable to load battles. <button class="underline" @click="refresh()">Retry</button></div>
         <!-- Loading -->
-        <div v-if="pending && battles.length === 0" class="flex items-center justify-center py-20">
+        <div v-else-if="pending && battles.length === 0" class="flex items-center justify-center py-20">
             <Icon name="lucide:loader-2" class="w-5 h-5 text-gray-500 animate-spin" />
         </div>
 
@@ -489,6 +530,7 @@ const teamName = (entry: any): string => {
                 class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] text-gray-400 border border-white/[0.08] disabled:opacity-40 hover:bg-blue-500/[0.08] transition-colors cursor-pointer disabled:cursor-default">
                 Next
             </button>
+        </div>
         </div>
     </div>
 </template>

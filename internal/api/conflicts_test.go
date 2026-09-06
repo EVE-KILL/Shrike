@@ -62,11 +62,13 @@ func TestConflictRoutesRegisterBattleWarAndGeneratorSurface(t *testing.T) {
 		"/battle/{id}/killlist",
 		"/battle/{id}/most-valuable",
 		"/battle/{id}/timeline",
+		"/battle/{id}/replay",
 		"/battle/killmail/{id}/composition",
 		"/battle/killmail/{id}/intel",
 		"/battle/killmail/{id}/killlist",
 		"/battle/killmail/{id}/most-valuable",
 		"/battle/killmail/{id}/timeline",
+		"/battle/killmail/{id}/replay",
 	}
 	for _, path := range gets {
 		item := a.OpenAPI().Paths[path]

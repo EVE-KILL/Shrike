@@ -36922,6 +36922,46 @@
         "operationId": "killmail-battle-killlist",
         "parameters": [
           {
+            "description": "Victim side: 0 for Team A, 1 for Team B, -1 for unassigned.",
+            "in": "query",
+            "name": "side",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Victim ship group ID.",
+            "in": "query",
+            "name": "group",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Inclusive replay window start in Unix milliseconds.",
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Exclusive replay window end in Unix milliseconds.",
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Minimum adjusted loss value in ISK.",
+            "in": "query",
+            "name": "minIsk",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "description": "Maximum results to return.",
             "in": "query",
             "name": "limit",
@@ -37339,6 +37379,196 @@
           }
         },
         "summary": "Most valuable battle losses detected around a killmail",
+        "tags": [
+          "battles"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/battle/killmail/{id}/replay": {
+      "get": {
+        "operationId": "killmail-battle-replay",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kills": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "killmail_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "killmail_time": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "position_x": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "position_y": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "position_z": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "ship_group_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_type_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "total_value": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "victim_alliance_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "victim_corporation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "killmail_id",
+                          "killmail_time",
+                          "solar_system_id",
+                          "position_x",
+                          "position_y",
+                          "position_z",
+                          "total_value"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "landmarks": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "group_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "x": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "y": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "z": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "solar_system_id",
+                          "group_id",
+                          "x",
+                          "y",
+                          "z"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "kills"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Battle kill positions for spatial replay detected around a killmail",
         "tags": [
           "battles"
         ],
@@ -38653,6 +38883,46 @@
         "operationId": "battle-report-killlist",
         "parameters": [
           {
+            "description": "Victim side: 0 for Team A, 1 for Team B, -1 for unassigned.",
+            "in": "query",
+            "name": "side",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Victim ship group ID.",
+            "in": "query",
+            "name": "group",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Inclusive replay window start in Unix milliseconds.",
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Exclusive replay window end in Unix milliseconds.",
+            "in": "query",
+            "name": "to",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Minimum adjusted loss value in ISK.",
+            "in": "query",
+            "name": "minIsk",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "description": "Maximum results to return.",
             "in": "query",
             "name": "limit",
@@ -39070,6 +39340,196 @@
           }
         },
         "summary": "Most valuable battle losses",
+        "tags": [
+          "battles"
+        ],
+        "x-audience": "public"
+      }
+    },
+    "/battle/{id}/replay": {
+      "get": {
+        "operationId": "battle-report-replay",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "kills": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "killmail_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "killmail_time": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "position_x": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "position_y": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "position_z": {
+                            "format": "double",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "ship_group_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "ship_group_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ship_type_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "total_value": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "victim_alliance_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_character_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "victim_character_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "victim_corporation_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "killmail_id",
+                          "killmail_time",
+                          "solar_system_id",
+                          "position_x",
+                          "position_y",
+                          "position_z",
+                          "total_value"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "landmarks": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "group_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "x": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "y": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "z": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "solar_system_id",
+                          "group_id",
+                          "x",
+                          "y",
+                          "z"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "kills"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Battle kill positions for spatial replay",
         "tags": [
           "battles"
         ],
@@ -51092,6 +51552,22 @@
             }
           },
           {
+            "description": "Restrict to battles started within the last 1 to 8760 hours.",
+            "in": "query",
+            "name": "hours",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Return system aggregates for all matching battles instead of paginated cards.",
+            "in": "query",
+            "name": "map",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "description": "Minimum killmail count in the battle.",
             "in": "query",
             "name": "minKills",
@@ -51248,6 +51724,56 @@
                     "page": {
                       "format": "int64",
                       "type": "integer"
+                    },
+                    "systems": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "battle_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "kill_count": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "region_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "total_isk_destroyed": {
+                            "format": "double",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "solar_system_id",
+                          "battle_count",
+                          "kill_count",
+                          "total_isk_destroyed"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
                     },
                     "years": {
                       "items": {
