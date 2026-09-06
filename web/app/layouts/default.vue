@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { THEME_PRESETS } from '~/utils/themeData'
+import { siteBackgroundCSS } from '#shared/utils/siteBackground'
 
 const { currentBackground, viewerMode } = useSiteBackground()
 const { CSS_VAR_MAP } = useTheme()
 const { domainConfig, isDomainMode, isUnknownDomain } = useDomainConfig()
 
 // Initialize global keyboard shortcuts
-useSpotlightSearch()
-useKeyboardShortcuts()
+const { isOpen: searchOpen } = useSpotlightSearch()
+const { showHelp } = useKeyboardShortcuts()
 
 const siteName = computed(() => domainConfig.value?.siteName || 'EVE-KILL')
 
@@ -117,7 +118,7 @@ const domainBackgroundScript = computed(() => {
     if (!isDomainMode.value) return ''
     const first = domainConfig.value?.backgrounds?.[0]
     if (!first) return ''
-    return `(function(){try{if(document.cookie.match(/siteBackground=([^;]+)/))return;document.documentElement.style.setProperty('--site-bg','url('+${JSON.stringify(first)}+')')}catch(e){}})()`
+    return `(function(){try{if(document.cookie.match(/siteBackground=([^;]+)/))return;document.documentElement.style.setProperty('--site-bg',${JSON.stringify(siteBackgroundCSS(first))})}catch(e){}})()`
 })
 
 useHead({
@@ -185,8 +186,8 @@ useSeoMeta({
                 <Navbar />
             </div>
 
-            <SpotlightSearch />
-            <KeyboardShortcutsModal />
+            <LazySpotlightSearch v-if="searchOpen" />
+            <LazyKeyboardShortcutsModal v-if="showHelp" />
             <Toaster />
             <KillWatcherToasts />
             <AnnouncementModal />

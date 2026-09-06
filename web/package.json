@@ -9,7 +9,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "bun test test",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "optimize:backgrounds": "bun scripts/optimize-backgrounds.mjs"
   },
   "dependencies": {
     "@evekill/dogma": "file:packages/dogma",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.127",
     "@types/d3-contour": "^3.0.6",
+    "sharp": "0.35.4",
     "typescript": "5.9.3",
     "vue-tsc": "^3.3.11"
   },

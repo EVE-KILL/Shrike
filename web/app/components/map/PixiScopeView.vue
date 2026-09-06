@@ -420,6 +420,9 @@ let liveLeaderLayer: PixiGraphics | null = null
 let labels: PixiText[] = []
 let pixiClasses: Pick<typeof import('pixi.js'), 'Graphics' | 'Container' | 'Text' | 'BlurFilter'> | null = null
 let resizeObserver: ResizeObserver | null = null
+let resizeFrame: number | null = null
+let disposed = false
+let renderPending = false
 let dragging = false
 let dragMoved = false
 let dragPoint = { x: 0, y: 0 }
@@ -427,11 +430,25 @@ let baseAlphaTarget = 1
 let liveClockTimer: ReturnType<typeof setInterval> | null = null
 const livePulses = new Map<number, { startedAt: number; value: number }>()
 
+function requestRender() {
+    renderPending = true
+    if (app && !document.hidden && !disposed) app.start()
+}
+
+if (import.meta.client) useEventListener(document, 'visibilitychange', () => {
+    if (document.hidden) app?.stop()
+    else requestRender()
+})
+
 function updateBaseAlpha(ticker: Ticker) {
     if (!baseSceneLayer) return
     const blend = Math.min(1, ticker.deltaMS / 90)
     baseSceneLayer.alpha += (baseAlphaTarget - baseSceneLayer.alpha) * blend
     if (Math.abs(baseAlphaTarget - baseSceneLayer.alpha) < 0.002) baseSceneLayer.alpha = baseAlphaTarget
+    // Static maps need frames only for input, data changes and hover fades.
+    // Live/AIID pulse animation keeps its ticker while the tab is visible.
+    if (!renderPending && baseSceneLayer.alpha === baseAlphaTarget && props.mode !== 'live' && props.mode !== 'aiid') app?.stop()
+    renderPending = false
 }
 
 function updateLivePulses() {
@@ -476,6 +493,7 @@ function worldPoint(point: { x: number; y: number }) {
     return { x: (point.x - world.x) / world.scale.x, y: (point.y - world.y) / world.scale.y }
 }
 function resetView() {
+    requestRender()
     if (!app || !world) return
     const bounds = scene.value.bounds
     const hasPanel = props.mode !== 'map'
@@ -565,6 +583,7 @@ function drawAllianceTerritory(target: Container, allianceId: number, options: {
     }
 }
 function drawHover() {
+    requestRender()
     if (!hoverLayer || !pixiClasses) return
     const removed = hoverLayer.removeChildren()
     for (const child of removed) child.destroy()
@@ -753,6 +772,7 @@ function onPointerLeave() {
 }
 function onWheel(event: WheelEvent) {
     if (!world) return
+    requestRender()
     event.preventDefault()
     const point = canvasPoint(event), before = worldPoint(point)
     const next = Math.min(10, Math.max(0.25, world.scale.x * (event.deltaY < 0 ? 1.15 : 1 / 1.15)))
@@ -792,10 +812,24 @@ onMounted(async () => {
     try {
         initStage.value = 'Loading map renderer'
         const pixi = await import('pixi.js')
+        if (disposed) return
         initStage.value = 'Creating renderer'
         pixiClasses = { Graphics: pixi.Graphics, Container: pixi.Container, Text: pixi.Text, BlurFilter: pixi.BlurFilter }
-        app = new pixi.Application()
-        await app.init({ resizeTo: hostRef.value, backgroundAlpha: 0, antialias: true, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2), preference: 'webgl' })
+        const renderer = new pixi.Application()
+        await renderer.init({
+            resizeTo: hostRef.value, backgroundAlpha: 0, antialias: true,
+            autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2), preference: 'webgl',
+            // Native canvas listeners below already handle all input and spatial
+            // hit testing; Pixi's parallel scene traversal adds unnecessary work.
+            eventFeatures: { move: false, globalMove: false, click: false, wheel: false },
+        })
+        if (disposed) {
+            renderer.destroy(true, { children: true })
+            return
+        }
+        app = renderer
+        app.stage.eventMode = 'none'
+        app.ticker.maxFPS = 60
         initStage.value = 'Drawing New Eden'
         app.canvas.className = 'absolute inset-0 h-full w-full touch-none'
         canvasHostRef.value.appendChild(app.canvas)
@@ -813,8 +847,12 @@ onMounted(async () => {
         app.canvas.addEventListener('pointercancel', onPointerUp)
         app.canvas.addEventListener('pointerleave', onPointerLeave)
         app.canvas.addEventListener('wheel', onWheel, { passive: false })
-        resizeObserver = new ResizeObserver(() => window.requestAnimationFrame(resetView))
+        resizeObserver = new ResizeObserver(() => {
+            if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
+            resizeFrame = requestAnimationFrame(() => { resizeFrame = null; resetView() })
+        })
         resizeObserver.observe(hostRef.value)
+        if (document.hidden) app.stop()
     } catch (cause) {
         initError.value = cause instanceof Error ? cause.message : 'Unable to initialise the GPU renderer'
     }
@@ -826,6 +864,8 @@ watch(
 )
 watch(data, () => { if (app) { drawScene(); resetView() } })
 onUnmounted(() => {
+    disposed = true
+    if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
     resizeObserver?.disconnect()
     if (app) {
         app.ticker.remove(updateBaseAlpha)

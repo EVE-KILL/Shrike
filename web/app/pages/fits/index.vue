@@ -162,13 +162,13 @@ interface CommunityFit {
   module_count: number;
 }
 
-// ---------- fetches (all lazy, none block first paint) ----------
+// ---------- parallel fetches with hydration payload reuse ----------
 
-const { data: statsData } = await useApiFetch<QuickStats>(
+const statsRequest = useApiFetch<QuickStats>(
   "/api/fits/quick-stats",
   { lazy: true },
 );
-const { data: flavorsData, pending: flavorsPending } = await useApiFetch<{
+const flavorsRequest = useApiFetch<{
   window_days: number;
   ranking_mode: FlavorMode;
   families: FlavorFamily[];
@@ -176,7 +176,7 @@ const { data: flavorsData, pending: flavorsPending } = await useApiFetch<{
   lazy: true,
   query: computed(() => ({ mode: flavorMode.value })),
 });
-const { data: doctrinesData, pending: doctrinesPending } = await useApiFetch<{
+const doctrinesRequest = useApiFetch<{
   window_days: number;
   entity_type: DoctrineEntityType;
   doctrines: EntityDoctrine[];
@@ -184,19 +184,28 @@ const { data: doctrinesData, pending: doctrinesPending } = await useApiFetch<{
   lazy: true,
   query: computed(() => ({ entity_type: doctrineEntityType.value })),
 });
-const { data: popularData, pending: popularPending } = await useApiFetch<{
+const popularRequest = useApiFetch<{
   window_days: number;
   ships: PopularShip[];
 }>("/api/fits/popular-ships", {
   lazy: true,
   query: { mode: "kills" },
 });
-const { data: communityData, pending: communityPending } = await useApiFetch<{
+const communityRequest = useApiFetch<{
   fits: CommunityFit[];
 }>("/api/fits/community-latest", { lazy: true });
-const { data: topRatedData } = await useApiFetch<{
+const topRatedRequest = useApiFetch<{
   fits: CommunityFit[];
 }>("/api/fits/top-rated", { lazy: true });
+
+// Start independent SSR requests together, then render from the shared payload.
+await Promise.all([statsRequest, flavorsRequest, doctrinesRequest, popularRequest, communityRequest, topRatedRequest]);
+const { data: statsData } = statsRequest;
+const { data: flavorsData, pending: flavorsPending } = flavorsRequest;
+const { data: doctrinesData, pending: doctrinesPending } = doctrinesRequest;
+const { data: popularData, pending: popularPending } = popularRequest;
+const { data: communityData, pending: communityPending } = communityRequest;
+const { data: topRatedData } = topRatedRequest;
 
 const stats = computed(() => statsData.value);
 const flavors = computed(() => flavorsData.value?.families ?? []);

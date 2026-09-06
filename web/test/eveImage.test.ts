@@ -3,9 +3,19 @@ import {
     eveImageSizeFromURL,
     eveImageSrcset,
     eveImageURL,
+    eveImageWidthSrcset,
 } from '../shared/utils/eveImage'
 
 describe('EVE image URLs', () => {
+    test('fluid candidates retain format and extra parameters without exceeding backend sizes', () => {
+        const candidates = eveImageWidthSrcset('/images/oldcharacters/7?size=64&foo=bar', 'webp')!
+        expect(candidates).toContain('/images/oldcharacters/7?size=128&foo=bar&format=webp 128w')
+        expect(candidates).toContain('/images/oldcharacters/7?size=256&foo=bar&format=webp 256w')
+        expect(candidates).not.toContain('512w')
+        expect(candidates).not.toContain(' 2x')
+        expect(eveImageWidthSrcset('https://example.com/photo.png')).toBeUndefined()
+    })
+
     test('sets a supported size without losing existing query parameters', () => {
         expect(eveImageURL(
             '/images/characters/7/portrait?foo=bar',

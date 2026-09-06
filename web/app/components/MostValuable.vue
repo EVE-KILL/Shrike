@@ -47,6 +47,11 @@ const { data, pending, refresh } = await useApiFetch<{ entries: MostValuableKill
 
 const items = computed(() => data.value?.entries || [])
 
+// Match the grid's slot widths rather than treating every card as a 256px image.
+const imageSizes = computed(() => props.compact
+    ? '(min-width: 1360px) 144px, (min-width: 1024px) calc((100vw - 188px) / 8), (min-width: 768px) calc((100vw - 166px) / 4), (min-width: 640px) calc((100vw - 66px) / 4), calc((100vw - 50px) / 2)'
+    : '(min-width: 1360px) 144px, (min-width: 1024px) calc((100vw - 198px) / 8), (min-width: 768px) calc((100vw - 166px) / 4), calc((100vw - 58px) / 3)')
+
 /**
  * The window this widget covers, for the empty state only. "No data available"
  * and "nothing in the last 7 days" are very different claims, and an entity
@@ -92,8 +97,9 @@ const windowLabel = computed(() => `${mvParams.value.days}d`)
                 <EveImage
                     :src="`/images/types/${kill.ship_type_id}/overlayrender?size=256`"
                     :alt="kill.ship_name"
+                    :sizes="imageSizes"
                     class="absolute inset-0 w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-110"
-                    :loading="idx < 7 ? 'eager' : 'lazy'"
+                    :loading="idx < 6 ? 'eager' : 'lazy'"
                     :fetchpriority="idx === 0 ? 'high' : undefined"
                 />
                 <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none"></div>

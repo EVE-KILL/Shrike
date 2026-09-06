@@ -207,8 +207,8 @@ const activityLevel = computed(() => {
                             alt-label="Legacy"
                         >
                             <div class="relative group/portrait w-20 h-20 flex-shrink-0">
-                                <EveImage v-if="hasOldPortrait" :src="`/images/oldcharacters/${char.character_id}`" :size="128" :alt="`${char.name} — legacy portrait`" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[1]" />
-                                <EveImage :src="`/images/characters/${char.character_id}/portrait?size=256`" :size="128" :alt="char.name" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[2]" loading="eager" />
+                                <EveImage v-if="hasOldPortrait" :src="`/images/oldcharacters/${char.character_id}`" :size="128" :alt="`${char.name} — legacy portrait`" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[1]" sizes="80px" />
+                                <EveImage :src="`/images/characters/${char.character_id}/portrait?size=256`" :size="128" :alt="char.name" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[2]" loading="eager" sizes="80px" fetchpriority="high" />
                                 <div class="absolute bottom-0.5 right-0.5 px-1 py-0.5 rounded text-fine font-mono font-bold border text-center z-10" :class="[secColor(char.security_status), secBg(char.security_status)]">{{ char.security_status.toFixed(2) }}</div>
                             </div>
                         </EntityImageExpand>
@@ -295,8 +295,8 @@ const activityLevel = computed(() => {
                         alt-label="Legacy"
                     >
                         <div class="relative group/portrait w-40 h-40">
-                            <EveImage v-if="hasOldPortrait" :src="`/images/oldcharacters/${char.character_id}`" :size="256" :alt="`${char.name} — legacy portrait`" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[1]" />
-                            <EveImage :src="`/images/characters/${char.character_id}/portrait?size=256`" :size="256" :alt="char.name" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[2] transition-opacity duration-300" :class="hasOldPortrait ? 'group-hover/portrait:opacity-0' : ''" loading="eager" />
+                            <EveImage v-if="hasOldPortrait" :src="`/images/oldcharacters/${char.character_id}`" :size="256" :alt="`${char.name} — legacy portrait`" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[1]" sizes="160px" />
+                            <EveImage :src="`/images/characters/${char.character_id}/portrait?size=256`" :size="256" :alt="char.name" class="absolute inset-0 w-full h-full rounded-lg shadow-lg object-cover z-[2] transition-opacity duration-300" :class="hasOldPortrait ? 'group-hover/portrait:opacity-0' : ''" loading="lazy" sizes="160px" />
                             <div v-if="char.race_name" class="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded text-fine font-medium bg-black/80 border border-white/10 text-gray-300 z-10">{{ char.race_name }}</div>
                             <div v-if="char.bloodline_name" class="absolute bottom-8 left-1.5 px-2 py-0.5 rounded text-fine font-medium bg-black/80 border border-white/10 text-gray-300 z-10">{{ char.bloodline_name }}</div>
                             <div class="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded text-xs font-mono font-bold border min-w-[52px] text-center z-10" :class="[secColor(char.security_status), secBg(char.security_status)]">{{ char.security_status.toFixed(2) }}</div>
@@ -350,13 +350,13 @@ const activityLevel = computed(() => {
                     <div class="flex flex-col gap-2 items-end">
                         <EntityRankingBadge :ranking="allTimeRanking" />
                         <NuxtLink v-if="char.corporation_id" :to="`/corporation/${char.corporation_id}`" class="block hover:opacity-80 transition-opacity">
-                            <EveImage :src="`/images/corporations/${char.corporation_id}/logo?size=128`" :alt="char.corporation_name ?? ''" class="w-20 h-20 rounded-lg shadow-md" />
+                            <EveImage :src="`/images/corporations/${char.corporation_id}/logo?size=128`" :alt="char.corporation_name ?? ''" class="w-20 h-20 rounded-lg shadow-md" sizes="80px" />
                         </NuxtLink>
                         <NuxtLink v-if="char.alliance_id" :to="`/alliance/${char.alliance_id}`" class="block hover:opacity-80 transition-opacity">
-                            <EveImage :src="`/images/alliances/${char.alliance_id}/logo?size=128`" :alt="char.alliance_name ?? ''" class="w-20 h-20 rounded-lg shadow-md" />
+                            <EveImage :src="`/images/alliances/${char.alliance_id}/logo?size=128`" :alt="char.alliance_name ?? ''" class="w-20 h-20 rounded-lg shadow-md" sizes="80px" />
                         </NuxtLink>
                         <NuxtLink v-if="char.faction_id" :to="`/faction/${char.faction_id}`" class="block hover:opacity-80 transition-opacity">
-                            <EveImage :src="`/images/corporations/${char.faction_id}/logo?size=128`" :alt="char.faction_name ?? ''" class="w-20 h-20 rounded-lg shadow-md" />
+                            <EveImage :src="`/images/corporations/${char.faction_id}/logo?size=128`" :alt="char.faction_name ?? ''" class="w-20 h-20 rounded-lg shadow-md" sizes="80px" />
                         </NuxtLink>
                     </div>
                 </template>

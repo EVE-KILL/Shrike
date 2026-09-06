@@ -29,9 +29,13 @@ const accentStyle = computed(() =>
     class="entity-header hero-surface glass-panel relative overflow-hidden mb-6"
     :style="accentStyle"
   >
-    <img
+    <EveImage
       v-if="backgroundImage"
       :src="backgroundImage"
+      :size="256"
+      :responsive="false"
+      loading="lazy"
+      fetchpriority="low"
       alt=""
       class="entity-header__background pointer-events-none absolute inset-0 h-full w-full object-cover"
     />

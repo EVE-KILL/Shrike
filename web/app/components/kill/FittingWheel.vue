@@ -130,6 +130,11 @@ const slotColors: Record<string, string> = {
                 <img
                     :src="`/images/types/${shipTypeId}/overlayrender?size=512`"
                     :alt="shipName || ''"
+                    width="512"
+                    height="512"
+                    loading="eager"
+                    decoding="async"
+                    fetchpriority="high"
                     class="w-full h-full object-cover rounded-full transition-all duration-200"
                 >
             </div>

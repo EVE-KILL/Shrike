@@ -10,8 +10,8 @@ useSeoMeta({
 })
 
 // Faction warfare stats
-const { data: fwData } = await useApiFetch<any>('/api/faction-wars', { lazy: true })
-const { data: warStats } = await useApiFetch<any>('/api/wars/stats', { lazy: true })
+const fwRequest = useApiFetch<any>('/api/faction-wars', { lazy: true })
+const warStatsRequest = useApiFetch<any>('/api/wars/stats', { lazy: true })
 
 type WarsTab = 'wars' | 'finished' | 'upcoming' | 'eligible-corps' | 'eligible-alliances'
 
@@ -46,10 +46,15 @@ const fetchParams = computed(() => {
     }
 })
 
-const { data, pending } = await useApiFetch<any>('/api/conflicts/wars', {
+const warsRequest = useApiFetch<any>('/api/conflicts/wars', {
     params: fetchParams,
     watch: [page, activeTab, mutual, hasActivity, hasKills, hasAllies, sortBy],
 })
+
+await Promise.all([fwRequest, warStatsRequest, warsRequest])
+const { data: fwData } = fwRequest
+const { data: warStats } = warStatsRequest
+const { data, pending } = warsRequest
 
 const wars = computed(() => data.value?.wars || [])
 

@@ -72,7 +72,7 @@ const factionLogo = computed(() => faction.value
                 <div class="p-4">
                     <div class="flex gap-3">
                         <EntityImageExpand :full-src="factionLogo" :alt="faction.name">
-                            <img :src="factionLogo" :alt="faction.name" class="w-20 h-20 flex-shrink-0 rounded-lg shadow-lg" loading="eager">
+                            <EveImage :src="factionLogo" :alt="faction.name" class="w-20 h-20 flex-shrink-0 rounded-lg shadow-lg" loading="eager" sizes="80px" fetchpriority="high" />
                         </EntityImageExpand>
                         <div class="flex-1 min-w-0">
                             <h1 class="text-lg font-bold text-white leading-tight mb-1">{{ faction.name }}</h1>
@@ -108,7 +108,7 @@ const factionLogo = computed(() => faction.value
                 <EntityHeader :background-image="`/images/corporations/${faction.corporation_id || faction.faction_id}/logo?size=1024`">
                     <template #image>
                         <EntityImageExpand :full-src="factionLogo" :alt="faction.name">
-                            <img :src="factionLogo" :alt="faction.name" class="w-40 h-40 rounded-lg shadow-lg" loading="eager">
+                            <EveImage :src="factionLogo" :alt="faction.name" class="w-40 h-40 rounded-lg shadow-lg" loading="lazy" sizes="160px" />
                         </EntityImageExpand>
                     </template>
 

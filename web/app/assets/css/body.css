@@ -13,7 +13,7 @@ body {
 html {
     background-color: black !important;
     /* Set via style.setProperty by the background picker / domain scripts */
-    --site-bg: url(/backgrounds/bg2.webp);
+    --site-bg: image-set(url('/backgrounds/optimized-v1/bg2.avif') type('image/avif'), url('/backgrounds/optimized-v1/bg2.webp') type('image/webp'));
     position: relative;
     min-height: 100%;
     overflow-y: auto;

@@ -147,26 +147,33 @@ const topParams = computed(() => {
     return p
 })
 
-const { data: topChars } = await useApiFetch<{ entries: any[] }>('/api/legacy/top', {
+const topCharsRequest = useApiFetch<{ entries: any[] }>('/api/legacy/top', {
     params: computed(() => ({ ...topParams.value, dataType: 'characters' })),
     watch: [selectedYear], default: () => ({ entries: [] }), lazy: true,
 })
-const { data: topCorps } = await useApiFetch<{ entries: any[] }>('/api/legacy/top', {
+const topCorpsRequest = useApiFetch<{ entries: any[] }>('/api/legacy/top', {
     params: computed(() => ({ ...topParams.value, dataType: 'corporations' })),
     watch: [selectedYear], default: () => ({ entries: [] }), lazy: true,
 })
-const { data: topAllis } = await useApiFetch<{ entries: any[] }>('/api/legacy/top', {
+const topAllisRequest = useApiFetch<{ entries: any[] }>('/api/legacy/top', {
     params: computed(() => ({ ...topParams.value, dataType: 'alliances' })),
     watch: [selectedYear], default: () => ({ entries: [] }), lazy: true,
 })
-const { data: topShips } = await useApiFetch<{ entries: any[] }>('/api/legacy/top', {
+const topShipsRequest = useApiFetch<{ entries: any[] }>('/api/legacy/top', {
     params: computed(() => ({ ...topParams.value, dataType: 'ships' })),
     watch: [selectedYear], default: () => ({ entries: [] }), lazy: true,
 })
-const { data: topSystems } = await useApiFetch<{ entries: any[] }>('/api/legacy/top', {
+const topSystemsRequest = useApiFetch<{ entries: any[] }>('/api/legacy/top', {
     params: computed(() => ({ ...topParams.value, dataType: 'systems' })),
     watch: [selectedYear], default: () => ({ entries: [] }), lazy: true,
 })
+
+await Promise.all([topCharsRequest, topCorpsRequest, topAllisRequest, topShipsRequest, topSystemsRequest])
+const { data: topChars } = topCharsRequest
+const { data: topCorps } = topCorpsRequest
+const { data: topAllis } = topAllisRequest
+const { data: topShips } = topShipsRequest
+const { data: topSystems } = topSystemsRequest
 
 // Mobile tab state
 const mobileTab = ref<'kills' | 'top'>('kills')

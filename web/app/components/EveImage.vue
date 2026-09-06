@@ -7,6 +7,7 @@ import {
     eveImageSizeFromURL,
     eveImageSrcset,
     eveImageURL,
+    eveImageWidthSrcset,
 } from '#shared/utils/eveImage'
 
 defineOptions({ inheritAttrs: false })
@@ -19,6 +20,8 @@ const props = withDefaults(defineProps<{
     height?: string | number
     format?: EveImageFormat
     responsive?: boolean
+    /** CSS slot widths for fluid images; omitted keeps the existing 1x/2x mode. */
+    sizes?: string
     fallbackSrc?: string
     loading?: 'eager' | 'lazy'
     decoding?: 'async' | 'sync' | 'auto'
@@ -59,6 +62,7 @@ const resolvedSource = computed(() => eveImageURL(activeSource.value, {
 }))
 const resolvedSrcset = computed(() => {
     if (!props.responsive) return undefined
+    if (props.sizes) return eveImageWidthSrcset(activeSource.value, props.format)
     return eveImageSrcset(
         activeSource.value,
         requestedSize.value,
@@ -82,6 +86,7 @@ function handleError(event: Event) {
         v-bind="$attrs"
         :src="resolvedSource"
         :srcset="resolvedSrcset"
+        :sizes="props.responsive ? sizes : undefined"
         :alt="alt"
         :width="intrinsicWidth"
         :height="intrinsicHeight"

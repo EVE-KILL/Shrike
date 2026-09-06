@@ -1,3 +1,5 @@
+import { siteBackgroundCSS } from '#shared/utils/siteBackground'
+
 export function useSiteBackground() {
     const cookie = useCookie('siteBackground', { maxAge: 365 * 86400 })
     const { domainConfig } = useDomainConfig()
@@ -44,9 +46,9 @@ export function useSiteBackground() {
     // ref's Dep and retain the whole request's component graph. The side
     // effects (cookie + DOM style) are client-only anyway.
     if (import.meta.client) {
-        watch(currentBackground, (v) => {
+        watch([currentBackground, viewerMode], ([v, original]) => {
             cookie.value = v
-            document.documentElement.style.setProperty('--site-bg', `url(${v})`)
+            document.documentElement.style.setProperty('--site-bg', siteBackgroundCSS(v, original))
         })
     }
 

@@ -43,6 +43,7 @@ const items = computed(() => data.value?.entries || [])
             <EveImage
                 :src="`/images/types/${kill.ship_type_id}/overlayrender?size=256`"
                 :alt="kill.ship_name"
+                sizes="(min-width: 1360px) 144px, (min-width: 1024px) calc((100vw - 198px) / 8), (min-width: 768px) calc((100vw - 166px) / 4), (min-width: 640px) calc((100vw - 58px) / 3), calc((100vw - 50px) / 2)"
                 class="absolute inset-0 w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-110"
                 loading="lazy"
             />

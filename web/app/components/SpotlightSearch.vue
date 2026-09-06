@@ -27,9 +27,18 @@ interface SearchResponse {
 const searchQuery = ref('')
 const isLoading = ref(false)
 const searchInput = ref<HTMLInputElement>()
+const mobileSearchInput = ref<HTMLInputElement>()
 const results = ref<SearchHit[]>([])
 const entityCounts = ref<Record<string, number>>({})
 const selectedIndex = ref(-1)
+
+// An asynchronously opened dialog may mount its input after the open watcher.
+const focusSearchInput = () => {
+    if (!isOpen.value) return
+    const input = [mobileSearchInput.value, searchInput.value].find(input => input?.getClientRects().length)
+    input?.focus()
+}
+watch([searchInput, mobileSearchInput], focusSearchInput, { flush: 'post' })
 
 // Recent searches
 const recentSearches = ref<string[]>([])
@@ -85,31 +94,48 @@ const quickActions = [
 
 // Search
 let searchTimeout: ReturnType<typeof setTimeout>
+let searchController: AbortController | null = null
+
+const cancelSearch = () => {
+    clearTimeout(searchTimeout)
+    searchController?.abort()
+    searchController = null
+    isLoading.value = false
+}
+onScopeDispose(cancelSearch)
 
 const handleSearch = () => {
+    cancelSearch()
     const query = searchQuery.value.trim()
     if (!query || query.length < 3) {
         results.value = []
         entityCounts.value = {}
         return
     }
-    clearTimeout(searchTimeout)
     searchTimeout = setTimeout(async () => {
+        const controller = new AbortController()
+        searchController = controller
         isLoading.value = true
         selectedIndex.value = -1
         try {
             const response = await apiFetch<SearchResponse>('/api/search', {
                 params: { q: query },
+                signal: controller.signal,
             })
+            if (searchController !== controller) return
             results.value = response.hits || []
             entityCounts.value = response.entityCounts || {}
             addToRecentSearches(query)
             track('search.submit', { length: query.length, results: results.value.length })
         } catch {
+            if (searchController !== controller) return
             results.value = []
             entityCounts.value = {}
         } finally {
-            isLoading.value = false
+            if (searchController === controller) {
+                searchController = null
+                isLoading.value = false
+            }
         }
     }, 300)
 }
@@ -159,14 +185,14 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 watch(() => isOpen.value, (open) => {
     if (open) {
-        nextTick(() => searchInput.value?.focus())
+        nextTick(focusSearchInput)
     } else {
         searchQuery.value = ''
         results.value = []
         entityCounts.value = {}
         selectedIndex.value = -1
     }
-})
+}, { immediate: true })
 
 const closeAndReset = () => { closeSearch() }
 
@@ -252,14 +278,15 @@ const spotlightContentProps = computed(() => ({
                     <div class="glass-panel flex-1 flex items-center gap-2 px-3 py-2">
                         <Icon name="lucide:search" class="text-base text-gray-500 flex-shrink-0" />
                         <input
+                            ref="mobileSearchInput"
                             v-model="searchQuery"
                             type="text"
                             placeholder="Search..."
                             class="flex-1 bg-transparent text-white text-sm outline-none placeholder-gray-600"
-                            autofocus
                             @input="handleSearch"
+                            @keydown="handleKeydown"
                         >
-                        <button v-if="searchQuery" class="text-gray-500" @click="searchQuery = ''; results = []; entityCounts = {}">
+                        <button v-if="searchQuery" class="text-gray-500" aria-label="Clear search" @click="searchQuery = ''; handleSearch()">
                             <Icon name="lucide:x" class="text-sm" />
                         </button>
                     </div>

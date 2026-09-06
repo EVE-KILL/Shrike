@@ -16,7 +16,6 @@ if (error.value) {
     })
 }
 
-const { data: statsData, pending: statsPending } = await useApiFetch<any>(`/api/faction-war/${matchup}`, { lazy: true })
 const lbPeriod = ref<'yesterday' | 'last_week' | 'active_total'>('last_week')
 const overviewParams = computed(() => ({ period: lbPeriod.value }))
 const { data: overviewData } = await useApiFetch<any>(`/api/faction-war/${matchup}/overview`, {
@@ -27,7 +26,7 @@ const { data: overviewData } = await useApiFetch<any>(`/api/faction-war/${matchu
 
 const side1 = computed(() => data.value?.side1)
 const side2 = computed(() => data.value?.side2)
-const topShips = computed(() => statsData.value?.topShips || [])
+const topShips = computed(() => data.value?.topShips || [])
 
 // Overview data
 const fwStats1 = computed(() => overviewData.value?.factionStats?.side1)

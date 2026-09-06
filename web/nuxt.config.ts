@@ -1,6 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 import { KILL_LIST_TYPES } from "./shared/utils/killListTypes";
+import { siteBackgroundCSS } from "./shared/utils/siteBackground";
 
 // The port Caddy listens on when `make dev` puts it in front of this server.
 // Unset for a bare `nuxt dev`, which the browser reaches directly.
@@ -420,6 +421,11 @@ export default defineNuxtConfig({
 
   // Experimental performance features
   experimental: {
+    // Dense feeds link to many page families. Prefetch on hover/focus rather
+    // than downloading every visible destination while the current page loads.
+    defaults: {
+      nuxtLink: { prefetchOn: { visibility: false, interaction: true } },
+    },
     renderJsonPayloads: true, // Faster SSR JSON payloads via native JSON.parse
     writeEarlyHints: false, // No-op on nitro's bun preset (node-only feature)
     viewTransition: true, // Smooth page transitions via View Transitions API
@@ -526,7 +532,7 @@ export default defineNuxtConfig({
             // Auth hint: parse ek_auth cookie, set class + CSS variable on <html>
             `(function(){try{var m=document.cookie.match(/ek_auth=([^;]+)/);if(m){var p=decodeURIComponent(m[1]).split(':');var id=+p[0];var name=p.slice(1).join(':');window.__AUTH_HINT__={characterId:id,characterName:name};document.documentElement.classList.add('is-authed');document.documentElement.style.setProperty('--auth-portrait','url(/images/characters/'+id+'/portrait?size=64)')}}catch(e){}})()`,
             // Background: override html background-image from cookie
-            `(function(){try{var m=document.cookie.match(/siteBackground=([^;]+)/);if(m){document.documentElement.style.setProperty('--site-bg','url('+decodeURIComponent(m[1])+')')}}catch(e){}})()`,
+            `(function(){try{var m=document.cookie.match(/siteBackground=([^;]+)/);if(m){document.documentElement.style.setProperty('--site-bg',(${siteBackgroundCSS.toString()})(decodeURIComponent(m[1])))}}catch(e){}})()`,
             // Theme: apply CSS variable overrides from ek_theme cookie
             `(function(){try{var m=document.cookie.match(/ek_theme=([^;]+)/);if(m){var t=JSON.parse(decodeURIComponent(m[1]));var map={brandPrimary:'--color-brand-primary',brandPrimaryHover:'--color-brand-primary-hover',brandSecondary:'--color-brand-secondary',brandAccent:'--color-brand-accent',bgPrimary:'--color-bg-primary',bgSecondary:'--color-bg-secondary',bgTertiary:'--color-bg-tertiary',bgHover:'--color-bg-hover',textPrimary:'--color-text-primary',textSecondary:'--color-text-secondary',textTertiary:'--color-text-tertiary',borderLight:'--color-border-light',borderMedium:'--color-border-medium',borderFocus:'--color-border-focus',surfaceAlpha:'--color-surface-alpha',surfaceHover:'--color-surface-hover',colorSuccess:'--color-success',colorWarning:'--color-warning',colorError:'--color-error',colorInfo:'--color-info',lossBg:'--color-loss-bg',lossHover:'--color-loss-hover',lossBorder:'--color-loss-border',colorHighsec:'--color-highsec',colorLowsec:'--color-lowsec',colorNullsec:'--color-nullsec',scrollbarThumb:'--scrollbar-thumb-color',iskColor:'--color-isk-value',npcColor:'--color-npc-text',selectionBg:'--color-selection-bg',selectionText:'--color-selection-text'};var r=document.documentElement;for(var k in t){if(map[k])r.style.setProperty(map[k],t[k])}}}catch(e){}})()`,
           ].join(";"),

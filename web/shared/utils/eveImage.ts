@@ -112,3 +112,13 @@ export function eveImageSrcset(
     if (!retina) return base
     return `${base} 1x, ${eveImageURL(src, { size: retina, format })} 2x`
 }
+
+/** Width candidates for fluid artwork. Pair with the image's CSS slot sizes. */
+export function eveImageWidthSrcset(
+    src: string,
+    format: EveImageFormat = 'auto',
+): string | undefined {
+    return allowedSizes(src)?.map(size =>
+        `${eveImageURL(src, { size, format })} ${size}w`,
+    ).join(', ')
+}

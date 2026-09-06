@@ -137,8 +137,8 @@ const allianceHistoryWithDuration = computed(() => {
                 <div class="p-4">
                     <div class="flex gap-3">
                         <EntityImageExpand :full-src="`/images/corporations/${corp.corporation_id}/logo?size=256`" :alt="corp.name">
-                            <img :src="`/images/corporations/${corp.corporation_id}/logo?size=256`"
-                                :alt="corp.name" class="w-20 h-20 flex-shrink-0 rounded-lg shadow-lg" loading="eager">
+                            <EveImage :src="`/images/corporations/${corp.corporation_id}/logo?size=256`"
+                                :alt="corp.name" class="w-20 h-20 flex-shrink-0 rounded-lg shadow-lg" loading="eager" sizes="80px" fetchpriority="high" />
                         </EntityImageExpand>
                         <div class="flex-1 min-w-0">
                             <h1 class="text-lg font-bold text-white leading-tight mb-1">
@@ -227,12 +227,11 @@ const allianceHistoryWithDuration = computed(() => {
             <EntityHeader :accent="accent?.accent" :background-image="`/images/corporations/${corp.corporation_id}/logo?size=1024`">
                 <template #image>
                     <EntityImageExpand :full-src="`/images/corporations/${corp.corporation_id}/logo?size=256`" :alt="corp.name">
-                        <img
+                        <EveImage
                             :src="`/images/corporations/${corp.corporation_id}/logo?size=256`"
                             :alt="corp.name"
                             class="w-40 h-40 rounded-lg shadow-lg"
-                            loading="eager"
-                        >
+                            loading="lazy" sizes="160px" />
                     </EntityImageExpand>
                 </template>
 
@@ -312,8 +311,8 @@ const allianceHistoryWithDuration = computed(() => {
                         <EntityRankingBadge :ranking="allTimeRanking" />
                         <NuxtLink v-if="corp.alliance_id" :to="`/alliance/${corp.alliance_id}`"
                             class="block hover:opacity-80 transition-opacity">
-                            <img :src="`/images/alliances/${corp.alliance_id}/logo?size=128`"
-                                :alt="corp.alliance_name" class="w-20 h-20 rounded-lg shadow-md">
+                            <EveImage :src="`/images/alliances/${corp.alliance_id}/logo?size=128`"
+                                :alt="corp.alliance_name" class="w-20 h-20 rounded-lg shadow-md" sizes="80px" />
                         </NuxtLink>
                     </div>
                 </template>
