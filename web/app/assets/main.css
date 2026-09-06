@@ -5,7 +5,7 @@
 @import "./css/components.css";
 
 @theme {
-    --font-sans: 'Exo 2', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-sans: 'Exo 2', 'Exo 2 Fallback', 'Exo 2 Roboto Fallback', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
     /*
      * Themeable Color Overrides
@@ -68,6 +68,39 @@
     font-weight: 100 900;
     font-style: normal;
     font-display: swap;
+}
+
+/* Latin (including combining marks), punctuation and symbols cover the interface and most pilot names.
+   Other scripts still use the complete original font above. */
+@font-face {
+    font-family: 'Exo 2';
+    src: url('/fonts/Exo2-Latin-v1.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-036F, U+2000-23FF;
+}
+
+/* Match Arial's average Latin width to Exo 2 at weight 400 (97.0577%).
+   Exo 2's 999/201/0 vertical metrics are divided by that adjustment.
+   This keeps wrapped metadata and normal line boxes closer during the swap. */
+@font-face {
+    font-family: 'Exo 2 Fallback';
+    src: local('Arial');
+    size-adjust: 97.0577%;
+    ascent-override: 102.9285%;
+    descent-override: 20.7093%;
+    line-gap-override: 0%;
+}
+
+/* Android normally provides Roboto rather than Arial. */
+@font-face {
+    font-family: 'Exo 2 Roboto Fallback';
+    src: local('Roboto');
+    size-adjust: 99.3148%;
+    ascent-override: 100.5893%;
+    descent-override: 20.2387%;
+    line-gap-override: 0%;
 }
 
 .font-triglavian {

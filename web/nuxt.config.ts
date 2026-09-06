@@ -546,7 +546,7 @@ export default defineNuxtConfig({
         // Preload critical font to avoid render-blocking chain
         {
           rel: "preload",
-          href: "/fonts/Exo2-Variable.woff2",
+          href: "/fonts/Exo2-Latin-v1.woff2",
           as: "font",
           type: "font/woff2",
           crossorigin: "",
