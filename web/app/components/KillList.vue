@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { killlistClockKey } from '~/utils/killlistClock'
 import {
     type KilllistLossEntities,
     type KilllistRow,
@@ -427,6 +428,7 @@ watch(() => stream.kills.value[0], (latest) => {
 // ── Live-updating timestamps ─────────────────────────────────────────────────
 
 const now = ref(Date.now())
+provide(killlistClockKey, now)
 let tickTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
@@ -545,17 +547,6 @@ const ordinal = (n: number): string => {
     }
 }
 
-// Kill time — relative "Xm ago" within the last 30 minutes, otherwise
-// the EVE-time clock (UTC HH:MM). Day context comes from the header and
-// dividers, so the per-row slot only carries the hour/minute.
-const killTime = (dateStr: string): string => {
-    const diff = now.value - new Date(dateStr).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 1) return 'just now'
-    if (mins < 30) return `${mins}m ago`
-    return new Date(dateStr).toISOString().slice(11, 16)
-}
-
 // Friendly day label — e.g. "Today (15th April)" / "Yesterday (14th April)" /
 // "13th April" (adds year only when it differs from the current UTC year).
 const formatDayLabel = (utcDate: string): string => {
@@ -606,17 +597,6 @@ const headerDateLabel = computed(() => {
     return first ? formatDayLabel(utcDateKey(first.killmail_time)) : ''
 })
 
-const secColor = (sec: number | null): string => {
-    if (sec === null) return 'text-gray-400'
-    if (sec >= 0.5) return 'text-blue-400'
-    if (sec > 0.0) return 'text-amber-400'
-    return 'text-red-400'
-}
-
-const secLabel = (sec: number | null): string => {
-    if (sec === null) return '?'
-    return sec.toFixed(1)
-}
 </script>
 
 <template>
@@ -758,54 +738,9 @@ const secLabel = (sec: number | null): string => {
                     :class="sideRowClass(row.kill) || (isLoss(row.kill) ? 'loss-row loss-row-hover' : warRowClass(row.kill) || (row.visualIdx % 2 === 0 ? 'bg-white/[0.02]' : ''))"
                     :style="sideRowStyle(row.kill)"
                 >
-                    <!-- Stretched row link — covers whitespace so clicks anywhere that
-                         miss an inner entity link navigate to the killmail. Inner
-                         NuxtLinks use relative+z-10 to render above and capture clicks. -->
-                    <NuxtLink
-                        :to="`/kill/${row.kill.killmail_id}`"
-                        class="absolute inset-0 z-0"
-                        :aria-label="`Killmail: ${row.kill.ship_name || 'ship'} — ${formatIsk(row.kill.total_value)} ISK`"
-                    />
-
-                    <!-- Ship -->
-                    <div class="relative z-10 flex items-center gap-2.5 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-                        <NuxtLink v-if="row.kill.ship_type_id" :to="`/kill/${row.kill.killmail_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
-                            <EveImage :src="`/images/types/${row.kill.ship_type_id}/icon?size=64`" :alt="row.kill.ship_name || ''" class="w-full h-full object-cover" loading="lazy" />
-                        </NuxtLink>
-                        <div v-else class="flex-shrink-0 w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">
-                            <Icon name="lucide:box" class="text-sm text-gray-500" />
-                        </div>
-                        <div class="min-w-0">
-                            <NuxtLink v-if="row.kill.ship_type_id" :to="`/item/${row.kill.ship_type_id}`" class="block w-fit max-w-full text-xs text-gray-300 group-hover:text-blue-400 hover:text-blue-400 truncate">{{ row.kill.ship_name || 'Unknown' }}</NuxtLink>
-                            <div v-else class="text-xs text-gray-300 truncate">{{ row.kill.ship_name || 'Unknown' }}</div>
-                            <NuxtLink v-if="row.kill.ship_group_id && row.kill.ship_group_name" :to="`/group/${row.kill.ship_group_id}`" class="hidden md:block w-fit max-w-full text-fine text-gray-400 hover:text-blue-400 truncate">{{ row.kill.ship_group_name }}</NuxtLink>
-                            <div v-else class="hidden md:block text-fine text-gray-400 truncate">{{ row.kill.ship_group_name }}</div>
-                            <div class="hidden md:block text-fine text-isk/70 tabular-nums">{{ formatIsk(row.kill.total_value) }} ISK</div>
-                            <div class="md:hidden text-fine text-gray-400 truncate">
-                                {{ row.kill.victim_character_name || row.kill.victim_corporation_name || 'Unknown' }}
-                                <span v-if="row.kill.victim_character_name && row.kill.victim_corporation_name"> · {{ row.kill.victim_corporation_name }}</span>
-                            </div>
-                            <div class="md:hidden text-fine truncate">
-                                <span :class="secColor(row.kill.solar_system_security)" class="tabular-nums">{{ secLabel(row.kill.solar_system_security) }}</span>
-                                <span class="text-gray-400 ml-0.5" :class="pochvenClass(row.kill.region_id)">{{ row.kill.solar_system_name }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <LazyKillRowDesktopDetails :kill="row.kill" hydrate-on-media-query="(min-width: 768px)" />
-
-                    <!-- Details -->
-                    <div class="relative z-10 text-right min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-                        <div class="md:hidden text-fine text-isk/80 tabular-nums mb-4">{{ formatIsk(row.kill.total_value) }}</div>
-                        <div
-                            class="text-xs text-gray-300 truncate tabular-nums"
-                            data-allow-mismatch="text"
-                        >{{ killTime(row.kill.killmail_time) }}</div>
-                        <div class="hidden md:flex items-center justify-end gap-1 text-fine text-gray-400">
-                            <Icon name="lucide:users" class="text-fine" />
-                            <span class="tabular-nums">{{ row.kill.attacker_count }}</span>
-                        </div>
-                    </div>
+                    <!-- Keep styling in the live list shell: prepending a kill changes
+                         zebra stripes without waking every offscreen row. -->
+                    <LazyKillRowContent :kill="row.kill" :hydrate-on-visible="{ rootMargin: '200px' }" />
                 </div>
             </template>
 
