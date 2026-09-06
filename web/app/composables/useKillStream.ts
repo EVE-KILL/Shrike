@@ -10,6 +10,7 @@
 
 import { createRelaySocket, type RelaySocket } from './useRelaySocket'
 import type { KilllistRow } from '#shared/utils/killlistRow'
+import { matchesDomainKeys, streamPoolKey } from '~/utils/killStreamPolicy'
 
 /**
  * Relay `killlist` events carry exactly the row shape the REST killlist
@@ -41,7 +42,7 @@ const SSR_STUB = {
 // reconnect + visibility handling, see useRelaySocket) with the ref-counted
 // set of listener callbacks.
 
-type KillListener = (km: HydratedKill) => void
+type KillListener = (km: HydratedKill, keys: string[]) => void
 
 interface PoolEntry {
     socket: RelaySocket
@@ -50,12 +51,8 @@ interface PoolEntry {
 
 const socketPool = new Map<string, PoolEntry>()
 
-function topicKey(topics: string[]): string {
-    return [...topics].sort().join(',')
-}
-
-function getOrCreateSocket(topics: string[], wsUrl: string): PoolEntry {
-    const key = topicKey(topics)
+function getOrCreateSocket(topics: string[], wsUrl: string, background: boolean): PoolEntry {
+    const key = streamPoolKey(topics, wsUrl, background)
     let entry = socketPool.get(key)
     if (entry) return entry
 
@@ -66,17 +63,17 @@ function getOrCreateSocket(topics: string[], wsUrl: string): PoolEntry {
         onOpen: (ws) => {
             ws.send(JSON.stringify({ action: 'subscribe', topics }))
         },
-        onMessage: (channel, data) => {
+        onMessage: (channel, data, keys) => {
             if (channel === 'killlist' && data?.killmail) {
                 const km = data.killmail as HydratedKill
                 for (const listener of listeners) {
-                    listener(km)
+                    listener(km, keys)
                 }
             }
         },
         reconnect: true,
         shouldReconnect: () => listeners.size > 0,
-        visibilityPause: true,
+        visibilityPause: !background,
     })
 
     entry = { socket, listeners }
@@ -86,8 +83,7 @@ function getOrCreateSocket(topics: string[], wsUrl: string): PoolEntry {
     return entry
 }
 
-function releaseSocket(topics: string[], listener: KillListener) {
-    const key = topicKey(topics)
+function releaseSocket(key: string, listener: KillListener) {
     const entry = socketPool.get(key)
     if (!entry) return
 
@@ -101,7 +97,7 @@ function releaseSocket(topics: string[], listener: KillListener) {
 
 // ── Public composable ──────────────────────────────────────────────────────
 
-export function useKillStream(topics: string[] | null) {
+export function useKillStream(topics: string[] | null, options: { background?: boolean; onKill?: (kill: HydratedKill) => void } = {}) {
     if (import.meta.server) {
         return SSR_STUB
     }
@@ -120,18 +116,12 @@ export function useKillStream(topics: string[] | null) {
 
     // Listener callback — receives every kill from the shared socket,
     // applies domain filtering and pause logic per-consumer.
-    const onKill: KillListener = (km) => {
+    const onKill: KillListener = (km, keys) => {
         if (domainEntityIds) {
-            const { characterIds, corporationIds, allianceIds } = domainEntityIds
-            const involves =
-                characterIds.includes(km.victim_character_id as number) ||
-                corporationIds.includes(km.victim_corporation_id as number) ||
-                allianceIds.includes(km.victim_alliance_id as number) ||
-                characterIds.includes(km.final_blow_character_id as number) ||
-                corporationIds.includes(km.final_blow_corporation_id as number) ||
-                allianceIds.includes(km.final_blow_alliance_id as number)
-            if (!involves) return
+            if (!matchesDomainKeys(keys, domainEntityIds, km)) return
         }
+
+        options.onKill?.(km)
 
         if (paused.value) {
             newCount.value++
@@ -144,6 +134,7 @@ export function useKillStream(topics: string[] | null) {
     }
 
     let sharedSocket: PoolEntry | null = null
+    let poolKey = ''
     const connected = ref(false)
     let stopConnectedWatch: (() => void) | null = null
 
@@ -152,7 +143,8 @@ export function useKillStream(topics: string[] | null) {
         const wsUrl = config.public.wsUrl as string | undefined
         if (!wsUrl) return
 
-        sharedSocket = getOrCreateSocket(topics, wsUrl)
+        poolKey = streamPoolKey(topics, wsUrl, options.background ?? false)
+        sharedSocket = getOrCreateSocket(topics, wsUrl, options.background ?? false)
         sharedSocket.listeners.add(onKill)
         stopConnectedWatch = watch(sharedSocket.socket.connected, (value) => {
             connected.value = value
@@ -163,7 +155,7 @@ export function useKillStream(topics: string[] | null) {
         stopConnectedWatch?.()
         stopConnectedWatch = null
         if (topics && sharedSocket) {
-            releaseSocket(topics, onKill)
+            releaseSocket(poolKey, onKill)
             sharedSocket = null
         }
     })
@@ -184,7 +176,7 @@ export function useKillStream(topics: string[] | null) {
         stopConnectedWatch = null
         connected.value = false
         if (topics && sharedSocket) {
-            releaseSocket(topics, onKill)
+            releaseSocket(poolKey, onKill)
             sharedSocket = null
         }
     }

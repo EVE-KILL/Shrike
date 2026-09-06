@@ -100,7 +100,7 @@ func (c *ResponseCache) LoadState(
 	if c == nil {
 		return cachedResponse{}, false, false
 	}
-	if entry, ok := c.local.Get(key, time.Now()); ok {
+	if entry, ok := c.local.Get(key, time.Now()); ok && !sharedOnlyResponse(key) {
 		return entry, responseIsFresh(entry, time.Now()), true
 	}
 	if c.shared == nil {
@@ -110,7 +110,9 @@ func (c *ResponseCache) LoadState(
 	if !ok {
 		return cachedResponse{}, false, false
 	}
-	c.local.Put(key, entry, ttl, time.Now())
+	if !sharedOnlyResponse(key) {
+		c.local.Put(key, entry, ttl, time.Now())
+	}
 	return cloneCachedResponse(entry), responseIsFresh(entry, time.Now()), true
 }
 
@@ -150,10 +152,20 @@ func (c *ResponseCache) store(
 	}
 	entry.FreshUntil = time.Now().Add(freshTTL)
 	retentionTTL := freshTTL + staleTTL
-	c.local.Put(key, entry, retentionTTL, time.Now())
+	if !sharedOnlyResponse(key) {
+		c.local.Put(key, entry, retentionTTL, time.Now())
+	}
 	if c.shared != nil {
 		c.shared.Store(ctx, key, entry, retentionTTL)
 	}
+}
+
+// User-editable conflict and coalition data is invalidated on mutation. Keep
+// these entries only in shared storage: a process-local copy cannot observe a
+// deletion performed by another replica (or recover missed pub/sub messages).
+// If shared storage is unavailable, these routes safely fall back to their DB.
+func sharedOnlyResponse(key string) bool {
+	return strings.Contains(key, "battle") || strings.Contains(key, "/coalitions")
 }
 
 // DeleteMatching invalidates both tiers. The pattern uses the Redis glob

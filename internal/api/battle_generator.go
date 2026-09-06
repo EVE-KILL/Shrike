@@ -712,4 +712,6 @@ func invalidateConflictBattleCache(ctx context.Context, opts Options) {
 		return
 	}
 	opts.responseCache.DeleteMatching(ctx, "shrike:web-api:*:*battle*")
+	opts.responseCache.DeleteMatching(ctx, "shrike:api:*:/battles*")
+	opts.responseCache.DeleteMatching(ctx, "web:shrike:api:*:/battles*")
 }

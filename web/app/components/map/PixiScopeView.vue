@@ -7,6 +7,7 @@ import { aiidAlarmBand, heatColor, mapActivityLayerLabel, mapActivityRatio, mapA
 import { secColorStr } from '~/utils/map/colors'
 import { createSovereigntyTerritories, sovereigntyOwnerAt } from '~/utils/map/territories'
 import { playAIIDAlarm } from '~/utils/map/aiidAudio'
+import { createKillFreshnessGate } from '~/utils/killStreamPolicy'
 
 const props = withDefaults(defineProps<{
     type: string
@@ -34,7 +35,11 @@ const { data, pending, error } = useApiFetch<any>(() => props.mode === 'sovereig
         ? `/api/map/aiid?systems=${watchedSystemQuery.value}&hours=${props.hours}`
         : `/api/map/scope?type=${props.type}&hours=${props.hours}`, { watch: [() => props.type, () => props.hours, () => props.mode, watchedSystemQuery] })
 const isWatchingKills = props.mode === 'live' || props.mode === 'aiid'
-const { kills: streamedKills, connected: liveConnected } = useKillStream(isWatchingKills ? ['all'] : null)
+const acceptLiveKill = createKillFreshnessGate()
+const { kills: streamedKills, connected: liveConnected } = useKillStream(isWatchingKills ? ['all'] : null, {
+    background: props.mode === 'aiid',
+    onKill: handleLiveKill,
+})
 const { data: recentLiveData } = useApiFetch<{ kills: KilllistRow[] }>('/api/killlist?type=latest&limit=50', {
     immediate: props.mode === 'live',
     default: () => ({ kills: [] }),
@@ -754,16 +759,15 @@ function onWheel(event: WheelEvent) {
     world.scale.set(next); world.position.set(point.x - before.x * next, point.y - before.y * next)
 }
 
-watch(() => streamedKills.value[0]?.killmail_id, (killmailId) => {
-    if (!killmailId || (props.mode !== 'live' && props.mode !== 'aiid')) return
-    const kill = streamedKills.value[0]
-    if (!kill || !nodeById.value.has(kill.solar_system_id)) return
+function handleLiveKill(kill: KilllistRow) {
+    if (props.mode !== 'live' && props.mode !== 'aiid') return
+    if (!nodeById.value.has(kill.solar_system_id) || !acceptLiveKill(kill.killmail_id, kill.killmail_time)) return
     livePulses.set(kill.solar_system_id, { startedAt: performance.now(), value: kill.total_value ?? 0 })
     if (props.mode === 'aiid') {
         const band = aiidAlarmBand(nodeById.value.get(kill.solar_system_id)?.distance)
         if ((band === 'near' && props.nearAlarmEnabled) || (band === 'outer' && props.outerAlarmEnabled)) playAIIDAlarm(band)
     }
-})
+}
 
 watch(watchedSystemQuery, () => {
     livePulses.clear()

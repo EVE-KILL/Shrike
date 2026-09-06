@@ -86,6 +86,7 @@ func TestKilllistTopicRoutingAndProtocol(t *testing.T) {
 		`{"routing_keys":["solo"],"data":{"killmail":{"killmail_id":2}}}`,
 	))
 	event := readObject(t, conn)
+	assertStrings(t, event["routing_keys"], []string{"solo"})
 	if event["channel"] != "killlist" {
 		t.Fatalf("event channel = %#v, want killlist", event["channel"])
 	}

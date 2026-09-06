@@ -274,11 +274,13 @@ func (s *Server) handleRedisMessage(channel string, raw []byte) {
 		data = envelope.Data
 	}
 	payload, err := json.Marshal(struct {
-		Channel string          `json:"channel"`
-		Data    json.RawMessage `json:"data"`
+		Channel     string          `json:"channel"`
+		Data        json.RawMessage `json:"data"`
+		RoutingKeys []string        `json:"routing_keys,omitempty"`
 	}{
-		Channel: strings.TrimPrefix(endpoint.Path, "/"),
-		Data:    data,
+		Channel:     strings.TrimPrefix(endpoint.Path, "/"),
+		Data:        data,
+		RoutingKeys: envelope.RoutingKeys,
 	})
 	if err != nil {
 		s.log.Warn().Err(err).Str("channel", channel).Msg("encoding websocket frame failed")

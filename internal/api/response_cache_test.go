@@ -89,6 +89,45 @@ func TestResponseCacheWritesThroughAndServesL1First(t *testing.T) {
 	}
 }
 
+func TestResponseCacheMutableEntriesInvalidateAcrossReplicas(t *testing.T) {
+	for _, key := range []string{"shrike:api:build:/coalitions", "shrike:web-api:build:battle:123"} {
+		t.Run(key, func(t *testing.T) {
+			shared := newFakeResponseCacheBackend()
+			first := newResponseCache(shared, 4096)
+			second := newResponseCache(shared, 4096)
+			ctx := context.Background()
+			first.Store(ctx, key, cachedResponse{Body: []byte("old")}, time.Minute)
+			if _, ok := second.Load(ctx, key); !ok {
+				t.Fatal("second replica did not warm its cache")
+			}
+			first.DeleteMatching(ctx, key)
+			if _, ok := second.Load(ctx, key); ok {
+				t.Fatal("second replica retained invalidated data")
+			}
+		})
+	}
+}
+
+func TestBattleInvalidationCoversAllCacheNamespaces(t *testing.T) {
+	shared := newFakeResponseCacheBackend()
+	writer := newResponseCache(shared, 4096)
+	reader := newResponseCache(shared, 4096)
+	ctx := context.Background()
+	keys := []string{"shrike:web-api:build:battle:123", "shrike:api:build:/battles/123", "web:shrike:api:build:/battles"}
+	for _, key := range keys {
+		writer.Store(ctx, key, cachedResponse{Body: []byte("old")}, time.Minute)
+		if _, ok := reader.Load(ctx, key); !ok {
+			t.Fatalf("warm %s", key)
+		}
+	}
+	invalidateConflictBattleCache(ctx, Options{responseCache: writer})
+	for _, key := range keys {
+		if _, ok := reader.Load(ctx, key); ok {
+			t.Fatalf("stale battle survived: %s", key)
+		}
+	}
+}
+
 func TestResponseCachePromotesL2HitIntoL1(t *testing.T) {
 	shared := newFakeResponseCacheBackend()
 	shared.entries["response"] = fakeResponseCacheEntry{

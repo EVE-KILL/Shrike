@@ -34,7 +34,7 @@ export interface RelaySocketOptions {
      * same try/catch as JSON.parse, so a throwing handler drops that frame
      * silently — identical to the original per-client handlers.
      */
-    onMessage: (channel: string, data: any) => void
+    onMessage: (channel: string, data: any, routingKeys: string[]) => void
     /** Called when the socket opens, after backoff state is reset. */
     onOpen?: (ws: WebSocket) => void
     /** Reconnect with exponential backoff on unexpected close. Default false. */
@@ -129,6 +129,7 @@ export function createRelaySocket(options: RelaySocketOptions): RelaySocket {
 
     function connect() {
         if (!import.meta.client) return
+        if (visibilityPause && document.hidden) return
         if (ws && ws.readyState <= 1) return // CONNECTING or OPEN
 
         let sock: WebSocket
@@ -150,8 +151,8 @@ export function createRelaySocket(options: RelaySocketOptions): RelaySocket {
         sock.onmessage = (event) => {
             if (ws !== sock) return
             try {
-                const { channel, data } = JSON.parse(event.data)
-                onMessage(channel, data)
+                const { channel, data, routing_keys } = JSON.parse(event.data)
+                onMessage(channel, data, Array.isArray(routing_keys) ? routing_keys : [])
             } catch { /* skip malformed */ }
         }
 
