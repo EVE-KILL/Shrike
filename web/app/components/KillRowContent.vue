@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { KilllistRow } from '#shared/utils/killlistRow'
+import { killNavigationTokenKey } from '~/utils/killNavigation'
 import { killlistClockKey } from '~/utils/killlistClock'
 
-defineProps<{ kill: KilllistRow }>()
+const props = defineProps<{ kill: KilllistRow }>()
+const navigationToken = inject(killNavigationTokenKey, ref(''))
+const killLink = computed(() => navigationToken.value ? `/kill/${props.kill.killmail_id}?nav=${navigationToken.value}` : `/kill/${props.kill.killmail_id}`)
 
 // Inject the list's shared clock only when this row hydrates. A changing time
 // prop would force every offscreen row to hydrate on the first timer tick.
@@ -37,14 +40,14 @@ const secLabel = (sec: number | null): string => {
          miss an inner entity link navigate to the killmail. Inner
          NuxtLinks use relative+z-10 to render above and capture clicks. -->
     <NuxtLink
-        :to="`/kill/${kill.killmail_id}`"
+        :to="killLink"
         class="absolute inset-0 z-0"
         :aria-label="`Killmail: ${kill.ship_name || 'ship'} — ${formatIsk(kill.total_value)} ISK`"
     />
 
     <!-- Ship -->
     <div class="relative z-10 flex items-center gap-2.5 min-w-0 pointer-events-none [&_a]:pointer-events-auto">
-        <NuxtLink v-if="kill.ship_type_id" :to="`/kill/${kill.killmail_id}`" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
+        <NuxtLink v-if="kill.ship_type_id" :to="killLink" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-white/[0.04]">
             <EveImage :src="`/images/types/${kill.ship_type_id}/icon?size=64`" :alt="kill.ship_name || ''" class="w-full h-full object-cover" loading="lazy" />
         </NuxtLink>
         <div v-else class="flex-shrink-0 w-10 h-10 rounded bg-white/[0.04] flex items-center justify-center">

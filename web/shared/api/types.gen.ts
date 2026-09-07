@@ -10,6 +10,64 @@ export type AccountBoardsDocument = {
     pinned: Array<string>;
 };
 
+export type AdvancedEntity = {
+    exclude?: boolean;
+    id: number;
+    name?: string;
+    type: string;
+};
+
+export type AdvancedFilters = {
+    attackerCount?: string;
+    attackerType?: string;
+    entities?: AdvancedFiltersEntitiesStruct;
+    iskMax?: number;
+    iskMin?: number;
+    iskValue?: string;
+    items?: Array<AdvancedItemFilter> | null;
+    label?: string;
+    location?: AdvancedFiltersLocationStruct;
+    shipCategory?: string;
+    sort?: AdvancedFiltersSortStruct;
+    techLevel?: string;
+    timeRange?: AdvancedTimeRange;
+};
+
+export type AdvancedFiltersEntitiesStruct = {
+    attacker?: Array<AdvancedEntity> | null;
+    both?: Array<AdvancedEntity> | null;
+    victim?: Array<AdvancedEntity> | null;
+};
+
+export type AdvancedFiltersLocationStruct = {
+    constellationId?: number;
+    constellationName?: string;
+    regionId?: number;
+    regionName?: string;
+    securityTypes?: Array<string> | null;
+    systemId?: number;
+    systemName?: string;
+};
+
+export type AdvancedFiltersSortStruct = {
+    direction?: string;
+    field?: string;
+};
+
+export type AdvancedItemFilter = {
+    groupId?: number;
+    name?: string;
+    side?: string;
+    slot?: string;
+    typeId?: number;
+};
+
+export type AdvancedTimeRange = {
+    from?: string;
+    preset?: string;
+    to?: string;
+};
+
 export type AllianceNode = {
     alliance_id: number;
     name: string | null;
@@ -1792,6 +1850,15 @@ export type RouteLeg = {
     hops: Array<RouteHop> | null;
     jumps: number;
     total_kills_on_route: number;
+};
+
+export type SavedSearchDocument = {
+    dedup: 'none' | 'exact' | 'family';
+    familyHash?: string;
+    filters: AdvancedFilters;
+    fitHash?: string;
+    version: 1;
+    view: 'kills' | 'fits';
 };
 
 export type SearchHit = {
@@ -29872,6 +29939,115 @@ export type AccountPreferencesUpdateResponses = {
 };
 
 export type AccountPreferencesUpdateResponse = AccountPreferencesUpdateResponses[keyof AccountPreferencesUpdateResponses];
+
+export type AccountSavedSearchesGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/me/saved-searches';
+};
+
+export type AccountSavedSearchesGetResponses = {
+    /**
+     * Success
+     */
+    200: {
+        limit: number;
+        searches: Array<{
+            created_at: string;
+            document: SavedSearchDocument;
+            id: number;
+            name: string;
+            revision: number;
+            updated_at: string;
+        }>;
+    };
+};
+
+export type AccountSavedSearchesGetResponse = AccountSavedSearchesGetResponses[keyof AccountSavedSearchesGetResponses];
+
+export type AccountSavedSearchesPostData = {
+    body: {
+        document: SavedSearchDocument;
+        name: string;
+        /**
+         * Required current revision when replacing a saved search.
+         */
+        revision?: number;
+    };
+    path?: never;
+    query?: never;
+    url: '/me/saved-searches';
+};
+
+export type AccountSavedSearchesPostResponses = {
+    /**
+     * Success
+     */
+    200: {
+        created_at: string;
+        document: SavedSearchDocument;
+        id: number;
+        name: string;
+        revision: number;
+        updated_at: string;
+    };
+};
+
+export type AccountSavedSearchesPostResponse = AccountSavedSearchesPostResponses[keyof AccountSavedSearchesPostResponses];
+
+export type AccountSavedSearchesDeleteData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Current saved-search revision; rejects concurrent changes.
+         */
+        revision: number;
+    };
+    url: '/me/saved-searches/{id}';
+};
+
+export type AccountSavedSearchesDeleteResponses = {
+    /**
+     * Success
+     */
+    200: {
+        deleted: boolean;
+    };
+};
+
+export type AccountSavedSearchesDeleteResponse = AccountSavedSearchesDeleteResponses[keyof AccountSavedSearchesDeleteResponses];
+
+export type AccountSavedSearchesPutData = {
+    body: {
+        document: SavedSearchDocument;
+        name: string;
+        /**
+         * Required current revision when replacing a saved search.
+         */
+        revision?: number;
+    };
+    path?: never;
+    query?: never;
+    url: '/me/saved-searches/{id}';
+};
+
+export type AccountSavedSearchesPutResponses = {
+    /**
+     * Success
+     */
+    200: {
+        created_at: string;
+        document: SavedSearchDocument;
+        id: number;
+        name: string;
+        revision: number;
+        updated_at: string;
+    };
+};
+
+export type AccountSavedSearchesPutResponse = AccountSavedSearchesPutResponses[keyof AccountSavedSearchesPutResponses];
 
 export type SessionDeleteData = {
     body?: never;

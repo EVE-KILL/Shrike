@@ -8,6 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AccountSavedSearch struct {
+	SearchID    int64              `json:"search_id"`
+	CharacterID int32              `json:"character_id"`
+	Name        string             `json:"name"`
+	Document    []byte             `json:"document"`
+	Revision    int32              `json:"revision"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Alliance struct {
 	AllianceID              int32              `json:"alliance_id"`
 	Name                    string             `json:"name"`

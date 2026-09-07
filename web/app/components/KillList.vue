@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { writeKillNavigation, killNavigationTokenKey } from '~/utils/killNavigation'
 import { killlistClockKey } from '~/utils/killlistClock'
 import {
     type KilllistLossEntities,
@@ -237,6 +238,25 @@ const kills = computed({
 })
 
 const hasMore = computed(() => data.value?.hasMore ?? false)
+
+// Keep only the currently displayed page, never an entire search result set.
+// A context is frozen when its link is followed; subsequent live-list updates
+// do not reorder the sequence the reader opened.
+const navigationRoute = useRoute()
+const navigationToken = ref('')
+provide(killNavigationTokenKey, navigationToken)
+onMounted(() => { navigationToken.value = crypto.randomUUID() })
+function captureNavigation(event: Event) {
+    const anchor = (event.target as Element)?.closest?.('a')
+    if (!anchor || !navigationToken.value || !anchor.getAttribute('href')?.startsWith('/kill/')) return
+    const label = navigationRoute.path === '/advancedsearch' ? 'Advanced Search'
+        : navigationRoute.path.startsWith('/battle/') ? 'Battle results'
+        : navigationRoute.path === '/' ? 'Latest kills' : 'Back to results'
+    writeKillNavigation(navigationToken.value, {
+        version: 1, createdAt: Date.now(), returnTo: navigationRoute.fullPath,
+        label, ids: kills.value.map(kill => kill.killmail_id).slice(0, 100),
+    })
+}
 
 // Capture server-side hints from each response: totalPages (unlocks numbered
 // mode) and the next-page cursor (cursor mode only). Both are server-driven;
@@ -712,7 +732,7 @@ const headerDateLabel = computed(() => {
         <div v-else-if="kills.length === 0" class="py-12 text-center text-xs text-gray-600">No kills found</div>
 
         <!-- Kill rows -->
-        <div v-else>
+        <div v-else @click.capture="captureNavigation" @auxclick.capture="captureNavigation" @contextmenu.capture="captureNavigation">
             <!-- Desktop header -->
             <div class="hidden md:grid grid-cols-[minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)] gap-3 px-2 py-1.5 text-fine font-bold uppercase tracking-wider text-gray-400 border-b border-white/[0.08]">
                 <div>Ship</div>

@@ -25,6 +25,201 @@
         ],
         "type": "object"
       },
+      "AdvancedEntity": {
+        "additionalProperties": false,
+        "properties": {
+          "exclude": {
+            "type": "boolean"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "type": "object"
+      },
+      "AdvancedFilters": {
+        "additionalProperties": false,
+        "properties": {
+          "attackerCount": {
+            "type": "string"
+          },
+          "attackerType": {
+            "type": "string"
+          },
+          "entities": {
+            "$ref": "#/components/schemas/AdvancedFiltersEntitiesStruct"
+          },
+          "iskMax": {
+            "format": "double",
+            "type": "number"
+          },
+          "iskMin": {
+            "format": "double",
+            "type": "number"
+          },
+          "iskValue": {
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdvancedItemFilter"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/AdvancedFiltersLocationStruct"
+          },
+          "shipCategory": {
+            "type": "string"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/AdvancedFiltersSortStruct"
+          },
+          "techLevel": {
+            "type": "string"
+          },
+          "timeRange": {
+            "$ref": "#/components/schemas/AdvancedTimeRange"
+          }
+        },
+        "type": "object"
+      },
+      "AdvancedFiltersEntitiesStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "attacker": {
+            "items": {
+              "$ref": "#/components/schemas/AdvancedEntity"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "both": {
+            "items": {
+              "$ref": "#/components/schemas/AdvancedEntity"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "victim": {
+            "items": {
+              "$ref": "#/components/schemas/AdvancedEntity"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "AdvancedFiltersLocationStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "constellationId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "constellationName": {
+            "type": "string"
+          },
+          "regionId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "regionName": {
+            "type": "string"
+          },
+          "securityTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "systemId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "systemName": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdvancedFiltersSortStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "direction": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "AdvancedItemFilter": {
+        "additionalProperties": false,
+        "properties": {
+          "groupId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "side": {
+            "type": "string"
+          },
+          "slot": {
+            "type": "string"
+          },
+          "typeId": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AdvancedTimeRange": {
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "preset": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "AllianceNode": {
         "additionalProperties": false,
         "properties": {
@@ -7676,6 +7871,49 @@
           "crosses_nullsec",
           "avg_danger",
           "hops"
+        ],
+        "type": "object"
+      },
+      "SavedSearchDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "dedup": {
+            "enum": [
+              "none",
+              "exact",
+              "family"
+            ],
+            "type": "string"
+          },
+          "familyHash": {
+            "type": "string"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AdvancedFilters"
+          },
+          "fitHash": {
+            "type": "string"
+          },
+          "version": {
+            "enum": [
+              1
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "view": {
+            "enum": [
+              "kills",
+              "fits"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "filters",
+          "view",
+          "dedup"
         ],
         "type": "object"
       },
@@ -88918,6 +89156,308 @@
           }
         ],
         "summary": "Update account preferences",
+        "tags": [
+          "account"
+        ],
+        "x-audience": "account"
+      }
+    },
+    "/me/saved-searches": {
+      "get": {
+        "operationId": "account-saved-searches-get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "limit": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "searches": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "created_at": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "document": {
+                            "$ref": "#/components/schemas/SavedSearchDocument"
+                          },
+                          "id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "revision": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "updated_at": {
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "document",
+                          "revision",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "searches",
+                    "limit"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "List account saved searches",
+        "tags": [
+          "account"
+        ],
+        "x-audience": "account"
+      },
+      "post": {
+        "operationId": "account-saved-searches-post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "document": {
+                    "$ref": "#/components/schemas/SavedSearchDocument"
+                  },
+                  "name": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "revision": {
+                    "description": "Required current revision when replacing a saved search.",
+                    "format": "int64",
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "document"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "created_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "document": {
+                      "$ref": "#/components/schemas/SavedSearchDocument"
+                    },
+                    "id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "updated_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "document",
+                    "revision",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Create a saved search",
+        "tags": [
+          "account"
+        ],
+        "x-audience": "account"
+      }
+    },
+    "/me/saved-searches/{id}": {
+      "delete": {
+        "operationId": "account-saved-searches-delete",
+        "parameters": [
+          {
+            "description": "Current saved-search revision; rejects concurrent changes.",
+            "in": "query",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "deleted": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "deleted"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Delete a saved search",
+        "tags": [
+          "account"
+        ],
+        "x-audience": "account"
+      },
+      "put": {
+        "operationId": "account-saved-searches-put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "document": {
+                    "$ref": "#/components/schemas/SavedSearchDocument"
+                  },
+                  "name": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "revision": {
+                    "description": "Required current revision when replacing a saved search.",
+                    "format": "int64",
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "document"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "created_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "document": {
+                      "$ref": "#/components/schemas/SavedSearchDocument"
+                    },
+                    "id": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "revision": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "updated_at": {
+                      "format": "date-time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "document",
+                    "revision",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Success"
+          }
+        },
+        "security": [
+          {
+            "eveSession": []
+          }
+        ],
+        "summary": "Replace a saved search",
         "tags": [
           "account"
         ],

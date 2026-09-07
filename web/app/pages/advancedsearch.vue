@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { savedSearchDocument, savedSearchQuery, type SavedSearchDocument } from "~/utils/savedSearches"
 const { track } = useAnalytics()
 
 interface SearchHit {
@@ -238,61 +239,6 @@ const copyUrl = async () => {
     } catch { /* clipboard not available */ }
 }
 
-// Saved searches
-interface SavedSearch {
-    name: string
-    filters: string
-    date: string
-}
-
-const savedSearches = ref<SavedSearch[]>([])
-const showSaveDialog = ref(false)
-const saveName = ref('')
-const showSavedList = ref(false)
-
-const loadSavedSearches = () => {
-    if (!import.meta.client) return
-    try {
-        const stored = localStorage.getItem('evekill-saved-searches')
-        if (stored) savedSearches.value = JSON.parse(stored)
-    } catch { /* ignore */ }
-}
-
-const persistSavedSearches = () => {
-    if (!import.meta.client) return
-    try {
-        localStorage.setItem('evekill-saved-searches', JSON.stringify(savedSearches.value))
-    } catch { /* ignore */ }
-}
-
-const saveCurrentSearch = () => {
-    if (!saveName.value.trim()) return
-    savedSearches.value.push({
-        name: saveName.value.trim(),
-        filters: filtersForUrl.value || '{}',
-        date: new Date().toISOString(),
-    })
-    persistSavedSearches()
-    saveName.value = ''
-    showSaveDialog.value = false
-}
-
-const loadSavedSearch = (search: SavedSearch) => {
-    const url = `/advancedsearch?q=${encodeURIComponent(search.filters)}`
-    navigateTo(url)
-    // Restore from the saved data directly
-    try {
-        const parsed = JSON.parse(search.filters)
-        applyParsedFilters(parsed)
-    } catch { /* ignore */ }
-    showSavedList.value = false
-}
-
-const deleteSavedSearch = (index: number) => {
-    savedSearches.value.splice(index, 1)
-    persistSavedSearches()
-}
-
 // Results
 const showResults = ref(false)
 
@@ -466,8 +412,8 @@ const applyParsedFilters = (parsed: any) => {
     if (parsed.attackerCount) f.attackerCount = parsed.attackerCount
     if (parsed.attackerType) f.attackerType = parsed.attackerType
     if (parsed.iskValue) f.iskValue = parsed.iskValue
-    if (parsed.iskMin) f.iskMin = parsed.iskMin
-    if (parsed.iskMax) f.iskMax = parsed.iskMax
+    if (parsed.iskMin != null) f.iskMin = String(parsed.iskMin)
+    if (parsed.iskMax != null) f.iskMax = String(parsed.iskMax)
     if (parsed.shipCategory) f.shipCategory = parsed.shipCategory
     if (parsed.techLevel) f.techLevel = parsed.techLevel
     if (parsed.sort) f.sort = parsed.sort
@@ -480,12 +426,47 @@ const applyParsedFilters = (parsed: any) => {
     }
 }
 
+function currentSavedSearch(): SavedSearchDocument {
+    return savedSearchDocument(filtersForUrl.value || '{}', {
+        view: viewMode.value, dedup: fitsDedup.value,
+        fitHash: drilldownMode.value === 'exact' ? drilldownHash.value ?? undefined : undefined,
+        familyHash: drilldownMode.value === 'family' ? drilldownHash.value ?? undefined : undefined,
+    })
+}
+async function loadAccountSearch(document: SavedSearchDocument) {
+    const query = savedSearchQuery(document)
+    skipUrlSync = true
+    applyParsedFilters(document.filters)
+    viewMode.value = document.view
+    fitsDedup.value = document.dedup
+    drilldownHash.value = document.fitHash ?? document.familyHash ?? null
+    drilldownMode.value = document.fitHash ? 'exact' : document.familyHash ? 'family' : null
+    drilldownShipName.value = ''
+    customFrom.value = document.filters.timeRange?.from ?? ''
+    customTo.value = document.filters.timeRange?.to ?? ''
+    await nextTick()
+    skipUrlSync = false
+    showResults.value = true
+    appliedKillListParams.value = killListParams.value
+    lastSyncedPath = router.resolve({ query }).fullPath
+    await router.push(lastSyncedPath)
+    if (viewMode.value === 'fits') fetchFits()
+}
+
 // Restore from URL
 const restoreFromUrl = () => {
     const q = route.query.q as string | undefined
     try {
         const parsed = q ? JSON.parse(q) : {}
         applyParsedFilters(parsed)
+        viewMode.value = 'kills'
+        fitsDedup.value = 'family'
+        drilldownHash.value = null
+        drilldownMode.value = null
+        drilldownShipName.value = ''
+        customFrom.value = parsed.timeRange?.from ?? ''
+        customTo.value = parsed.timeRange?.to ?? ''
+        showResults.value = false
 
         // Restore view mode + dedup from URL
         const urlView = route.query.view as string
@@ -514,6 +495,7 @@ const restoreFromUrl = () => {
 
 // URL sync
 let skipUrlSync = false
+let lastSyncedPath = ''
 
 skipUrlSync = true
 restoreFromUrl()
@@ -531,13 +513,23 @@ const syncUrl = () => {
         q.dh = drilldownHash.value
         q.dm = drilldownMode.value
     }
-    router.replace({ query: Object.keys(q).length ? q : {} })
+    lastSyncedPath = router.resolve({ query: Object.keys(q).length ? q : {} }).fullPath
+    router.replace(lastSyncedPath)
 }
 
 watch(filtersForUrl, syncUrl, { flush: 'post' })
 watch(viewMode, syncUrl, { flush: 'post' })
 watch(fitsDedup, syncUrl, { flush: 'post' })
 watch(drilldownHash, syncUrl, { flush: 'post' })
+
+// Back/forward may change only the query, keeping this page mounted.
+watch(() => route.fullPath, async (path) => {
+    if (skipUrlSync || path === lastSyncedPath) { lastSyncedPath = ''; return }
+    skipUrlSync = true
+    restoreFromUrl()
+    await nextTick()
+    skipUrlSync = false
+})
 
 // Auto-refresh after a filter change. Typing into the ISK range needs a
 // debounce so we don't fire a query per keystroke, but a chip click is a
@@ -752,7 +744,6 @@ const onClickOutside = (e: MouseEvent) => {
 
 onMounted(() => {
     document.addEventListener('click', onClickOutside)
-    loadSavedSearches()
 })
 onUnmounted(() => document.removeEventListener('click', onClickOutside))
 
@@ -1012,52 +1003,7 @@ const locationLabel = computed(() => {
                     <Icon :name="copyStatus === 'copied' ? 'lucide:check' : 'lucide:link'" class="text-xs mr-1" />
                     {{ copyStatus === 'copied' ? 'Copied!' : 'Copy Link' }}
                 </button>
-                <!-- Save search -->
-                <div class="relative">
-                    <button
-                        v-if="hasFilters"
-                        @click="showSaveDialog = !showSaveDialog; showSavedList = false"
-                        class="px-2.5 py-1.5 text-xs font-medium rounded border transition-colors bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-blue-500/[0.08]"
-                    >
-                        <Icon name="lucide:bookmark" class="text-xs mr-1" />
-                        Save
-                    </button>
-                    <div v-if="showSaveDialog" class="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg bg-black/90 backdrop-blur-xl border border-white/[0.08] shadow-2xl p-3">
-                        <input
-                            v-model="saveName"
-                            type="text"
-                            placeholder="Search name..."
-                            class="w-full px-2 py-1.5 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none mb-2"
-                            @keyup.enter="saveCurrentSearch"
-                        />
-                        <button @click="saveCurrentSearch" :disabled="!saveName.trim()" class="w-full px-2 py-1.5 text-xs font-medium rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40">
-                            Save Search
-                        </button>
-                    </div>
-                </div>
-                <!-- Load saved -->
-                <div class="relative">
-                    <button
-                        v-if="savedSearches.length > 0"
-                        @click="showSavedList = !showSavedList; showSaveDialog = false"
-                        class="px-2.5 py-1.5 text-xs font-medium rounded border transition-colors bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-blue-500/[0.08]"
-                    >
-                        <Icon name="lucide:folder-open" class="text-xs mr-1" />
-                        Saved ({{ savedSearches.length }})
-                    </button>
-                    <div v-if="showSavedList" class="absolute right-0 top-full mt-1 z-50 w-72 rounded-lg bg-black/90 backdrop-blur-xl border border-white/[0.08] shadow-2xl max-h-60 overflow-y-auto">
-                        <div v-for="(search, idx) in savedSearches" :key="idx"
-                            class="flex items-center justify-between gap-2 px-3 py-2 border-b border-white/[0.04] last:border-b-0 hover:bg-blue-500/[0.04]">
-                            <button @click="loadSavedSearch(search)" class="flex-1 text-left min-w-0">
-                                <div class="text-xs text-gray-300 truncate">{{ search.name }}</div>
-                                <div class="text-fine text-gray-600">{{ new Date(search.date).toLocaleDateString() }}</div>
-                            </button>
-                            <button @click.stop="deleteSavedSearch(idx)" class="text-gray-600 hover:text-red-400 flex-shrink-0">
-                                <Icon name="lucide:trash-2" class="text-fine" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <SavedSearches :current="currentSavedSearch" @load="loadAccountSearch" />
             </div>
             </template>
         </PageHeader>

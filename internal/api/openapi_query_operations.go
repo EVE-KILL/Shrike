@@ -265,6 +265,7 @@ const maxInt32Page = 2147483647
 // --- the table ----------------------------------------------------------------
 
 var operationQueryParameters = map[string][]*huma.Param{
+	"account-saved-searches-delete": {requiredQuery(intQuery("revision", "Current saved-search revision; rejects concurrent changes."))},
 	// --- Killboard -----------------------------------------------------------
 	"killlist": {
 		killTypeQuery(),

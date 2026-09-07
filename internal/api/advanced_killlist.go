@@ -51,10 +51,13 @@ type advancedFilters struct {
 	} `json:"entities,omitempty"`
 	Items    []advancedItemFilter `json:"items,omitempty"`
 	Location *struct {
-		SecurityTypes   []string `json:"securityTypes,omitempty"`
-		SystemID        int64    `json:"systemId,omitempty"`
-		RegionID        int64    `json:"regionId,omitempty"`
-		ConstellationID int64    `json:"constellationId,omitempty"`
+		SecurityTypes     []string `json:"securityTypes,omitempty"`
+		SystemName        string   `json:"systemName,omitempty"`
+		RegionName        string   `json:"regionName,omitempty"`
+		ConstellationName string   `json:"constellationName,omitempty"`
+		SystemID          int64    `json:"systemId,omitempty"`
+		RegionID          int64    `json:"regionId,omitempty"`
+		ConstellationID   int64    `json:"constellationId,omitempty"`
 	} `json:"location,omitempty"`
 	TimeRange     *advancedTimeRange `json:"timeRange,omitempty"`
 	AttackerCount string             `json:"attackerCount,omitempty"`

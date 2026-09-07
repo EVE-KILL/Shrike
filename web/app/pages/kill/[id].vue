@@ -528,6 +528,7 @@ const toolContext = computed(() => ({
 </script>
 
 <template>
+    <KillContextNavigation />
     <!-- Loading -->
     <div v-if="pending" class="flex items-center justify-center py-20">
         <Icon name="lucide:loader" class="text-2xl text-gray-500 animate-spin" />
