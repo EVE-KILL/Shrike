@@ -32,7 +32,7 @@
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.129",
+    "@iconify-json/lucide": "^1.2.131",
     "@types/d3-contour": "^3.0.6",
     "sharp": "0.35.4",
     "typescript": "5.9.3",
