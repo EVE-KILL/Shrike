@@ -34928,7 +34928,7 @@
         "operationId": "eve-login-start",
         "parameters": [
           {
-            "description": "Same-origin path to return to after login. `redirect` is accepted as an alias.",
+            "description": "Relative page path to return to after login. `redirect` is accepted as an alias.",
             "in": "query",
             "name": "returnTo",
             "schema": {
@@ -34939,6 +34939,14 @@
             "description": "Alias for `returnTo`.",
             "in": "query",
             "name": "redirect",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Active eve-kill.com board hostname to return to after login via the main site.",
+            "in": "query",
+            "name": "returnHost",
             "schema": {
               "type": "string"
             }
@@ -35009,7 +35017,7 @@
         "operationId": "auth-login-legacy",
         "parameters": [
           {
-            "description": "Same-origin path to return to after login. `redirect` is accepted as an alias.",
+            "description": "Relative page path to return to after login. `redirect` is accepted as an alias.",
             "in": "query",
             "name": "returnTo",
             "schema": {
@@ -35020,6 +35028,14 @@
             "description": "Alias for `returnTo`.",
             "in": "query",
             "name": "redirect",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Active eve-kill.com board hostname to return to after login via the main site.",
+            "in": "query",
+            "name": "returnHost",
             "schema": {
               "type": "string"
             }

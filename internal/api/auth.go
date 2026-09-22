@@ -172,6 +172,7 @@ type oauthCodeClient interface {
 }
 
 type authService struct {
+	domainDB    Database
 	store       authStore
 	storeErr    error
 	flows       oauthFlowStore
@@ -187,6 +188,7 @@ type authService struct {
 func newAuthService(opts Options) *authService {
 	auth := opts.Auth
 	service := &authService{
+		domainDB:   opts.DB,
 		store:      auth.store,
 		flows:      auth.flowStore,
 		oauth:      auth.oauth,
@@ -683,6 +685,15 @@ func (s *authService) beginLogin(
 	returnTo, err := normalizeReturnTo(returnToRaw)
 	if err != nil {
 		return "", nil, err
+	}
+	returnTo, loginHop, err := s.subsiteLoginDestination(ctx, req, returnTo)
+	if err != nil {
+		return "", nil, err
+	}
+	if loginHop != "" {
+		// The browser must visit the callback host before we set its host-only
+		// OAuth binding cookie. The legacy JSON endpoint returns this hop too.
+		return loginHop, nil, nil
 	}
 	flow := pendingOAuthFlow{
 		Purpose:  oauthStatePurposeLogin,

@@ -176,7 +176,9 @@ func (s *authService) loginStartHandler() legacyHandler {
 		headers := make(http.Header)
 		headers.Set("Location", authorizationURL)
 		headers.Set("Cache-Control", "private, no-store")
-		headers.Add("Set-Cookie", cookie.String())
+		if cookie != nil {
+			headers.Add("Set-Cookie", cookie.String())
+		}
 		return legacyPayload{
 			Status: http.StatusFound, Headers: headers, RawBody: []byte{},
 		}, nil
@@ -192,7 +194,9 @@ func (s *authService) loginURLHandler() legacyHandler {
 		}
 		headers := make(http.Header)
 		headers.Set("Cache-Control", "private, no-store")
-		headers.Add("Set-Cookie", cookie.String())
+		if cookie != nil {
+			headers.Add("Set-Cookie", cookie.String())
+		}
 		return legacyPayload{
 			Headers: headers,
 			Body:    map[string]any{"url": authorizationURL},

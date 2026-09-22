@@ -1174,10 +1174,11 @@ func loginParams() []*huma.Param {
 	return []*huma.Param{
 		textQuery(
 			"returnTo",
-			"Same-origin path to return to after login. `redirect` is "+
+			"Relative page path to return to after login. `redirect` is "+
 				"accepted as an alias.",
 		),
 		textQuery("redirect", "Alias for `returnTo`."),
+		textQuery("returnHost", "Active eve-kill.com board hostname to return to after login via the main site."),
 		textQuery("delay", "Delay applied before the redirect, in seconds."),
 		enumQuery(
 			"charKm",

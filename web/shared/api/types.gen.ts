@@ -13536,13 +13536,17 @@ export type EveLoginStartData = {
     path?: never;
     query?: {
         /**
-         * Same-origin path to return to after login. `redirect` is accepted as an alias.
+         * Relative page path to return to after login. `redirect` is accepted as an alias.
          */
         returnTo?: string;
         /**
          * Alias for `returnTo`.
          */
         redirect?: string;
+        /**
+         * Active eve-kill.com board hostname to return to after login via the main site.
+         */
+        returnHost?: string;
         /**
          * Delay applied before the redirect, in seconds.
          */
@@ -13564,13 +13568,17 @@ export type AuthLoginLegacyData = {
     path?: never;
     query?: {
         /**
-         * Same-origin path to return to after login. `redirect` is accepted as an alias.
+         * Relative page path to return to after login. `redirect` is accepted as an alias.
          */
         returnTo?: string;
         /**
          * Alias for `returnTo`.
          */
         redirect?: string;
+        /**
+         * Active eve-kill.com board hostname to return to after login via the main site.
+         */
+        returnHost?: string;
         /**
          * Delay applied before the redirect, in seconds.
          */
