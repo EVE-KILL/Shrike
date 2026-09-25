@@ -70,7 +70,7 @@ function buildToolLinks(k: KillToolContext): ToolLink[] {
     links.push({
         name: 'Missioneer', icon: '/remotes/evemissioneer.png',
         items: [
-            { label: 'System', desc: k.systemName, url: `https://evemissioneer.com/s/${k.systemId}`, external: true },
+            { label: 'System', desc: k.systemName, url: `https://evemissioneer.com/system/${k.systemId}`, external: true },
             { label: 'Region', desc: k.regionName, url: `https://evemissioneer.com/r/${k.regionId}`, external: true, disabled: !k.regionId },
         ],
     })
