@@ -68,7 +68,7 @@ async function createReport() {
 </script>
 
 <template>
-    <div class="mx-auto max-w-5xl pb-16">
+    <div class="pb-16">
         <PageHeader
             class="mb-8"
             title="Roam Report"
