@@ -132,6 +132,31 @@ func TestRoamReportCreateAndLoadAgainstPostgres(t *testing.T) {
 	if got := get.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("get cache-control = %q", got)
 	}
+	for _, role := range []struct {
+		name, path string
+		want       int
+	}{
+		{"kills", "", 1},
+		{"losses", "?role=losses", 0},
+	} {
+		list := httptest.NewRecorder()
+		handler.ServeHTTP(list, httptest.NewRequest(http.MethodGet,
+			"http://example.test/tools/roam-report/"+created.ID+"/killlist"+role.path, nil))
+		if list.Code != http.StatusOK {
+			t.Fatalf("%s killlist: status %d: %s", role.name, list.Code, list.Body.String())
+		}
+		var result struct {
+			Kills []struct {
+				KillmailID int32 `json:"killmail_id"`
+			} `json:"kills"`
+		}
+		if err := json.Unmarshal(list.Body.Bytes(), &result); err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Kills) != role.want || role.want > 0 && result.Kills[0].KillmailID != 123456 {
+			t.Fatalf("%s killlist = %+v", role.name, result.Kills)
+		}
+	}
 
 	updateBody, err := json.Marshal(roamReportCreateBody{
 		NamesText: "Pilot Two", StartTime: start.Add(-time.Hour), EndTime: end,
@@ -168,5 +193,17 @@ func TestRoamReportCreateAndLoadAgainstPostgres(t *testing.T) {
 	}
 	if loaded.ID != created.ID || len(loaded.Roster) != 1 || loaded.Roster[0].CharacterID != 2 || loaded.Summary.Kills != 0 {
 		t.Fatalf("report at original URL = %+v", loaded)
+	}
+	listAfterUpdate := httptest.NewRecorder()
+	handler.ServeHTTP(listAfterUpdate, httptest.NewRequest(http.MethodGet,
+		"http://example.test/tools/roam-report/"+created.ID+"/killlist", nil))
+	var revisedList struct {
+		Kills []json.RawMessage `json:"kills"`
+	}
+	if err := json.Unmarshal(listAfterUpdate.Body.Bytes(), &revisedList); err != nil {
+		t.Fatal(err)
+	}
+	if listAfterUpdate.Code != http.StatusOK || len(revisedList.Kills) != 0 {
+		t.Fatalf("killlist after edit: status %d, kills %d", listAfterUpdate.Code, len(revisedList.Kills))
 	}
 }

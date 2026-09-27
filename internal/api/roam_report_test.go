@@ -25,6 +25,9 @@ func TestRoamReportRoutes(t *testing.T) {
 	if path := a.OpenAPI().Paths["/tools/roam-report/{id}"]; path == nil || path.Put == nil || path.Put.RequestBody == nil {
 		t.Fatal("edit report route or request schema is missing")
 	}
+	if path := a.OpenAPI().Paths["/tools/roam-report/{id}/killlist"]; path == nil || path.Get == nil {
+		t.Fatal("report killlist route is missing")
+	}
 }
 
 func TestRoamShipCompositionTracksMultipleHulls(t *testing.T) {

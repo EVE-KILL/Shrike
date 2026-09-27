@@ -309,6 +309,61 @@ func registerRoamReportRoutes(a huma.API, opts Options) {
 		payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
 		return payload, nil
 	})
+
+	registerLegacy(a, huma.Operation{
+		OperationID: "roam-report-killlist",
+		Method:      http.MethodGet,
+		Path:        "/tools/roam-report/{id}/killlist",
+		Summary:     "Paginated killlist for the killmails saved in a roam report",
+		Tags:        []string{"tools", "battles"},
+	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		id := req.Param("id")
+		if !validRoamID(id) {
+			return legacyPayload{}, apiError(http.StatusNotFound, "Roam report not found")
+		}
+		role := req.Query.Get("role")
+		if role == "" {
+			role = "kills"
+		}
+		if role != "kills" && role != "losses" && role != "all" {
+			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid role")
+		}
+		db := primaryDatabase(opts)
+		if db == nil {
+			return legacyPayload{}, apiError(http.StatusServiceUnavailable, "API database is not configured")
+		}
+		var raw []byte
+		if err := db.QueryRow(ctx, `SELECT report FROM roam_reports WHERE id = $1`, id).Scan(&raw); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return legacyPayload{}, apiError(http.StatusNotFound, "Roam report not found")
+			}
+			return legacyPayload{}, err
+		}
+		var report roamReport
+		if err := json.Unmarshal(raw, &report); err != nil {
+			return legacyPayload{}, fmt.Errorf("decode roam report: %w", err)
+		}
+		killIDs := make([]int32, 0)
+		for _, engagement := range report.Engagements {
+			for _, kill := range engagement.Killmails {
+				if role == "all" || role == "kills" && kill.Role == "kill" || role == "losses" && kill.Role == "loss" {
+					killIDs = append(killIDs, kill.KillmailID)
+				}
+			}
+		}
+		if len(killIDs) == 0 {
+			payload := jsonPayload(map[string]any{"kills": []any{}, "hasMore": false, "cursor": nil, "totalPages": 1})
+			payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
+			return payload, nil
+		}
+		payload, err := loadConflictKilllist(ctx, db, req.Query,
+			[]string{"k.killmail_id = ANY($1::int[])"}, []any{killIDs})
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
+		return payload, nil
+	})
 }
 
 func validRoamID(id string) bool {

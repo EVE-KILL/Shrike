@@ -33,7 +33,7 @@ const basePath = `/tools/roam-report/${props.report.id}`
             </section>
         </div>
 
-        <div class="grid gap-6 xl:grid-cols-3">
+        <div class="grid items-start gap-6 xl:grid-cols-3">
             <section class="glass-panel overflow-hidden xl:col-span-2">
                 <div class="flex items-center justify-between gap-3 border-b border-white/[0.07] p-5">
                     <div>

@@ -121,6 +121,8 @@ func publicOperationResponseSchema(operationID string) *huma.Schema {
 		return responseSchema(map[string]*huma.Schema{"id": stringSchema()}, "id")
 	case "roam-report-get", "roam-report-update":
 		return roamReportResponseSchema()
+	case "roam-report-killlist":
+		return killlistFrontendResponseSchema()
 	case "wars":
 		return cursorPageSchema(warListSchema())
 	case "war":

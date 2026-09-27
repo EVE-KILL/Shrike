@@ -33356,6 +33356,65 @@ export type RoamReportUpdateResponses = {
 
 export type RoamReportUpdateResponse = RoamReportUpdateResponses[keyof RoamReportUpdateResponses];
 
+export type RoamReportKilllistData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tools/roam-report/{id}/killlist';
+};
+
+export type RoamReportKilllistResponses = {
+    /**
+     * OK
+     */
+    200: {
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_id: number | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            victim_faction_id: number | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
+    };
+};
+
+export type RoamReportKilllistResponse = RoamReportKilllistResponses[keyof RoamReportKilllistResponses];
+
 export type UniverseConstellationData = {
     body?: never;
     path?: never;
