@@ -126,7 +126,47 @@ func TestRoamReportCreateAndLoadAgainstPostgres(t *testing.T) {
 	}
 	if report.ID != created.ID || report.Summary.Kills != 1 || report.Summary.Losses != 0 ||
 		len(report.Engagements) != 1 || len(report.Unresolved) != 1 ||
-		report.Engagements[0].Killmails[0].VictimShipName != "Rifter" {
+		report.Engagements[0].Killmails[0].VictimShipName != "Rifter" || report.Roster[0].Ships == nil {
 		t.Fatalf("saved report = %+v", report)
+	}
+	if got := get.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("get cache-control = %q", got)
+	}
+
+	updateBody, err := json.Marshal(roamReportCreateBody{
+		NamesText: "Pilot Two", StartTime: start.Add(-time.Hour), EndTime: end,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	update := httptest.NewRecorder()
+	updateRequest := httptest.NewRequest(http.MethodPut,
+		"http://example.test/tools/roam-report/"+created.ID, bytes.NewReader(updateBody))
+	updateRequest.Header.Set("Content-Type", "application/json")
+	handler.ServeHTTP(update, updateRequest)
+	if update.Code != http.StatusOK {
+		t.Fatalf("update report: status %d: %s", update.Code, update.Body.String())
+	}
+	var updated roamReport
+	if err := json.Unmarshal(update.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.ID != report.ID || !updated.CreatedAt.Equal(report.CreatedAt) ||
+		len(updated.Roster) != 1 || updated.Roster[0].Name != "Pilot Two" ||
+		updated.Summary.Kills != 0 || !updated.StartTime.Equal(start.Add(-time.Hour)) {
+		t.Fatalf("updated report = %+v", updated)
+	}
+	if got := update.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("update cache-control = %q", got)
+	}
+	getAfterUpdate := httptest.NewRecorder()
+	handler.ServeHTTP(getAfterUpdate, httptest.NewRequest(http.MethodGet,
+		"http://example.test/tools/roam-report/"+created.ID, nil))
+	var loaded roamReport
+	if err := json.Unmarshal(getAfterUpdate.Body.Bytes(), &loaded); err != nil {
+		t.Fatal(err)
+	}
+	if loaded.ID != created.ID || len(loaded.Roster) != 1 || loaded.Roster[0].CharacterID != 2 || loaded.Summary.Kills != 0 {
+		t.Fatalf("report at original URL = %+v", loaded)
 	}
 }

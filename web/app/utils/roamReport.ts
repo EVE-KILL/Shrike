@@ -12,6 +12,17 @@ export interface RoamPilot {
     losses: number
     engagements: number
     damage_done: number
+    ships: RoamShip[]
+}
+
+export interface RoamShip {
+    ship_type_id: number
+    ship_name: string
+    ship_group_id: number
+    ship_group_name: string
+    killmails: number
+    losses: number
+    damage_done: number
 }
 
 export interface RoamKillmail {
@@ -29,6 +40,8 @@ export interface RoamKillmail {
     victim_alliance_name: string
     victim_ship_type_id: number
     victim_ship_name: string
+    victim_ship_group_id: number
+    victim_ship_group_name: string
     total_value: number
     attacker_count: number
     role: 'kill' | 'loss'

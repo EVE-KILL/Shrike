@@ -98004,6 +98004,13 @@
                                 "victim_name": {
                                   "type": "string"
                                 },
+                                "victim_ship_group_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "victim_ship_group_name": {
+                                  "type": "string"
+                                },
                                 "victim_ship_name": {
                                   "type": "string"
                                 },
@@ -98027,6 +98034,8 @@
                                 "victim_alliance_name",
                                 "victim_ship_type_id",
                                 "victim_ship_name",
+                                "victim_ship_group_id",
+                                "victim_ship_group_name",
                                 "total_value",
                                 "attacker_count",
                                 "role",
@@ -98155,6 +98164,50 @@
                           },
                           "name": {
                             "type": "string"
+                          },
+                          "ships": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "damage_done": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "killmails": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "losses": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "ship_group_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "ship_group_name": {
+                                  "type": "string"
+                                },
+                                "ship_name": {
+                                  "type": "string"
+                                },
+                                "ship_type_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "ship_type_id",
+                                "ship_name",
+                                "ship_group_id",
+                                "ship_group_name",
+                                "killmails",
+                                "losses",
+                                "damage_done"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
                           }
                         },
                         "required": [
@@ -98170,7 +98223,8 @@
                           "final_blows",
                           "losses",
                           "engagements",
-                          "damage_done"
+                          "damage_done",
+                          "ships"
                         ],
                         "type": "object"
                       },
@@ -98386,6 +98440,594 @@
           }
         },
         "summary": "Get a saved roam report",
+        "tags": [
+          "scans"
+        ],
+        "x-audience": "public"
+      },
+      "put": {
+        "operationId": "roam-report-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "end_time": {
+                    "description": "End of the roam in EVE time (UTC).",
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "names_text": {
+                    "description": "Character names copied from the in-game fleet window, one per line.",
+                    "maxLength": 16384,
+                    "type": "string"
+                  },
+                  "start_time": {
+                    "description": "Start of the roam in EVE time (UTC).",
+                    "format": "date-time",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "names_text",
+                  "start_time",
+                  "end_time"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "created_at": {
+                      "description": "UTC timestamp with millisecond precision.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "end_time": {
+                      "description": "UTC timestamp with millisecond precision.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "engagements": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_time": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "isk_destroyed": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "isk_lost": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "killmails": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "attacker_count": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "final_blow_character_name": {
+                                  "type": "string"
+                                },
+                                "final_blow_corporation_name": {
+                                  "type": "string"
+                                },
+                                "fleet_attacker_ids": {
+                                  "items": {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "type": "array"
+                                },
+                                "fleet_final_blow": {
+                                  "type": "boolean"
+                                },
+                                "friendly_fire": {
+                                  "type": "boolean"
+                                },
+                                "killmail_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "killmail_time": {
+                                  "description": "UTC timestamp with millisecond precision.",
+                                  "format": "date-time",
+                                  "type": "string"
+                                },
+                                "region_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "region_name": {
+                                  "type": "string"
+                                },
+                                "role": {
+                                  "type": "string"
+                                },
+                                "solar_system_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "solar_system_name": {
+                                  "type": "string"
+                                },
+                                "total_value": {
+                                  "format": "double",
+                                  "type": "number"
+                                },
+                                "victim_alliance_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "victim_alliance_name": {
+                                  "type": "string"
+                                },
+                                "victim_character_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "victim_corporation_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "victim_corporation_name": {
+                                  "type": "string"
+                                },
+                                "victim_name": {
+                                  "type": "string"
+                                },
+                                "victim_ship_group_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "victim_ship_group_name": {
+                                  "type": "string"
+                                },
+                                "victim_ship_name": {
+                                  "type": "string"
+                                },
+                                "victim_ship_type_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "killmail_id",
+                                "killmail_time",
+                                "solar_system_id",
+                                "solar_system_name",
+                                "region_id",
+                                "region_name",
+                                "victim_character_id",
+                                "victim_name",
+                                "victim_corporation_id",
+                                "victim_corporation_name",
+                                "victim_alliance_id",
+                                "victim_alliance_name",
+                                "victim_ship_type_id",
+                                "victim_ship_name",
+                                "victim_ship_group_id",
+                                "victim_ship_group_name",
+                                "total_value",
+                                "attacker_count",
+                                "role",
+                                "friendly_fire",
+                                "fleet_attacker_ids",
+                                "fleet_final_blow",
+                                "final_blow_character_name",
+                                "final_blow_corporation_name"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "losses": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "number": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "pilot_ids": {
+                            "items": {
+                              "format": "int64",
+                              "type": "integer"
+                            },
+                            "type": "array"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "region_name": {
+                            "type": "string"
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_name": {
+                            "type": "string"
+                          },
+                          "start_time": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "number",
+                          "solar_system_id",
+                          "solar_system_name",
+                          "region_id",
+                          "region_name",
+                          "start_time",
+                          "end_time",
+                          "kills",
+                          "losses",
+                          "isk_destroyed",
+                          "isk_lost",
+                          "pilot_ids",
+                          "killmails"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "input_count": {
+                      "format": "int64",
+                      "type": "integer"
+                    },
+                    "roster": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "alliance_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "alliance_name": {
+                            "type": "string"
+                          },
+                          "alliance_ticker": {
+                            "type": "string"
+                          },
+                          "character_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "corporation_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "corporation_name": {
+                            "type": "string"
+                          },
+                          "corporation_ticker": {
+                            "type": "string"
+                          },
+                          "damage_done": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "engagements": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "final_blows": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "kill_participations": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "losses": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "ships": {
+                            "items": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "damage_done": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "killmails": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "losses": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "ship_group_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                },
+                                "ship_group_name": {
+                                  "type": "string"
+                                },
+                                "ship_name": {
+                                  "type": "string"
+                                },
+                                "ship_type_id": {
+                                  "format": "int64",
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "ship_type_id",
+                                "ship_name",
+                                "ship_group_id",
+                                "ship_group_name",
+                                "killmails",
+                                "losses",
+                                "damage_done"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          }
+                        },
+                        "required": [
+                          "character_id",
+                          "name",
+                          "corporation_id",
+                          "corporation_name",
+                          "corporation_ticker",
+                          "alliance_id",
+                          "alliance_name",
+                          "alliance_ticker",
+                          "kill_participations",
+                          "final_blows",
+                          "losses",
+                          "engagements",
+                          "damage_done",
+                          "ships"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "start_time": {
+                      "description": "UTC timestamp with millisecond precision.",
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "summary": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "active_pilots": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "coordinated_kills": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "efficiency": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "engagements": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "friendly_fire_losses": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "isk_destroyed": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "isk_lost": {
+                          "format": "double",
+                          "type": "number"
+                        },
+                        "kills": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "losses": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "regions": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "systems": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "unique_character_targets": {
+                          "format": "int64",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "kills",
+                        "losses",
+                        "friendly_fire_losses",
+                        "isk_destroyed",
+                        "isk_lost",
+                        "efficiency",
+                        "engagements",
+                        "systems",
+                        "regions",
+                        "active_pilots",
+                        "coordinated_kills",
+                        "unique_character_targets"
+                      ],
+                      "type": "object"
+                    },
+                    "systems": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "engagements": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "first_seen": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "isk_destroyed": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "isk_lost": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "last_seen": {
+                            "description": "UTC timestamp with millisecond precision.",
+                            "format": "date-time",
+                            "type": "string"
+                          },
+                          "losses": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "region_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "region_name": {
+                            "type": "string"
+                          },
+                          "solar_system_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "solar_system_name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "solar_system_id",
+                          "solar_system_name",
+                          "region_id",
+                          "region_name",
+                          "first_seen",
+                          "last_seen",
+                          "engagements",
+                          "kills",
+                          "losses",
+                          "isk_destroyed",
+                          "isk_lost"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "targets": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "alliance_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "alliance_name": {
+                            "type": "string"
+                          },
+                          "corporation_id": {
+                            "format": "int64",
+                            "type": "integer"
+                          },
+                          "corporation_name": {
+                            "type": "string"
+                          },
+                          "isk_destroyed": {
+                            "format": "double",
+                            "type": "number"
+                          },
+                          "kills": {
+                            "format": "int64",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "corporation_id",
+                          "corporation_name",
+                          "alliance_id",
+                          "alliance_name",
+                          "kills",
+                          "isk_destroyed"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    },
+                    "unresolved": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "created_at",
+                    "start_time",
+                    "end_time",
+                    "input_count",
+                    "roster",
+                    "unresolved",
+                    "truncated",
+                    "summary",
+                    "systems",
+                    "targets",
+                    "engagements"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "Update the pilots or time range of a saved roam report",
         "tags": [
           "scans"
         ],

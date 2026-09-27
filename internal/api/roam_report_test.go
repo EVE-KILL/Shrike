@@ -22,6 +22,33 @@ func TestRoamReportRoutes(t *testing.T) {
 	if path := a.OpenAPI().Paths["/tools/roam-report/{id}"]; path == nil || path.Get == nil {
 		t.Fatal("saved report route is missing")
 	}
+	if path := a.OpenAPI().Paths["/tools/roam-report/{id}"]; path == nil || path.Put == nil || path.Put.RequestBody == nil {
+		t.Fatal("edit report route or request schema is missing")
+	}
+}
+
+func TestRoamShipCompositionTracksMultipleHulls(t *testing.T) {
+	report := roamReport{
+		Roster: []roamPilot{{CharacterID: 1, Name: "Pilot One"}, {CharacterID: 2, Name: "Pilot Two"}},
+		Engagements: []roamEngagement{{Killmails: []roamKillmail{{
+			KillmailID: 3, Role: "loss", VictimCharacterID: 1,
+			VictimShipTypeID: 20, VictimShipName: "Ship Two", VictimShipGroupID: 200,
+		}}}},
+	}
+	addRoamShips(&report, []roamAttacker{
+		{KillmailID: 1, CharacterID: 1, ShipTypeID: 10, ShipName: "Ship One", DamageDone: 100},
+		{KillmailID: 2, CharacterID: 1, ShipTypeID: 20, ShipName: "Ship Two", DamageDone: 200},
+		{KillmailID: 3, CharacterID: 1, ShipTypeID: 20, ShipName: "Ship Two", DamageDone: 50},
+	})
+	ships := report.Roster[0].Ships
+	if len(ships) != 2 || ships[0].ShipTypeID != 20 || ships[0].Killmails != 2 ||
+		ships[0].Losses != 1 || ships[0].DamageDone != 250 ||
+		ships[1].ShipTypeID != 10 || ships[1].Killmails != 1 {
+		t.Fatalf("ships = %+v", ships)
+	}
+	if report.Roster[1].Ships == nil || len(report.Roster[1].Ships) != 0 {
+		t.Fatalf("pilot without observations = %+v", report.Roster[1].Ships)
+	}
 }
 
 func TestParseRoamNames(t *testing.T) {

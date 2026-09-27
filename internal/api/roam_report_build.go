@@ -234,3 +234,73 @@ func buildRoamReport(
 	}
 	return report
 }
+
+// addRoamShips counts each pilot/ship/killmail once, including a ship lost on
+// a killmail where the pilot also appeared as an attacker. A pilot may have
+// flown several hulls during the report window.
+func addRoamShips(report *roamReport, attackers []roamAttacker) {
+	type observation struct{ pilotID, shipTypeID, killmailID int32 }
+	pilotIndex := make(map[int32]int, len(report.Roster))
+	ships := make(map[int32]map[int32]*roamShip, len(report.Roster))
+	seen := make(map[observation]struct{})
+	for index := range report.Roster {
+		pilot := &report.Roster[index]
+		pilot.Ships = []roamShip{}
+		pilotIndex[pilot.CharacterID] = index
+		ships[pilot.CharacterID] = make(map[int32]*roamShip)
+	}
+	add := func(pilotID, shipTypeID, groupID, killmailID int32, shipName, groupName string, damage int64, lost bool) {
+		if shipTypeID == 0 {
+			return
+		}
+		if _, ok := pilotIndex[pilotID]; !ok {
+			return
+		}
+		ship := ships[pilotID][shipTypeID]
+		if ship == nil {
+			if shipName == "" {
+				shipName = fmt.Sprintf("Ship %d", shipTypeID)
+			}
+			ship = &roamShip{ShipTypeID: shipTypeID, ShipName: shipName, ShipGroupID: groupID, ShipGroupName: groupName}
+			ships[pilotID][shipTypeID] = ship
+		}
+		if ship.ShipGroupID == 0 && groupID != 0 {
+			ship.ShipGroupID, ship.ShipGroupName = groupID, groupName
+		}
+		key := observation{pilotID, shipTypeID, killmailID}
+		if _, ok := seen[key]; !ok {
+			ship.Killmails++
+			seen[key] = struct{}{}
+		}
+		if damage > 0 {
+			ship.DamageDone += damage
+		}
+		if lost {
+			ship.Losses++
+		}
+	}
+	for _, attacker := range attackers {
+		add(attacker.CharacterID, attacker.ShipTypeID, attacker.ShipGroupID, attacker.KillmailID,
+			attacker.ShipName, attacker.ShipGroupName, attacker.DamageDone, false)
+	}
+	for _, engagement := range report.Engagements {
+		for _, kill := range engagement.Killmails {
+			if kill.Role == "loss" {
+				add(kill.VictimCharacterID, kill.VictimShipTypeID, kill.VictimShipGroupID, kill.KillmailID,
+					kill.VictimShipName, kill.VictimShipGroupName, 0, true)
+			}
+		}
+	}
+	for index := range report.Roster {
+		pilot := &report.Roster[index]
+		for _, ship := range ships[pilot.CharacterID] {
+			pilot.Ships = append(pilot.Ships, *ship)
+		}
+		sort.Slice(pilot.Ships, func(i, j int) bool {
+			if pilot.Ships[i].Killmails != pilot.Ships[j].Killmails {
+				return pilot.Ships[i].Killmails > pilot.Ships[j].Killmails
+			}
+			return pilot.Ships[i].ShipTypeID < pilot.Ships[j].ShipTypeID
+		})
+	}
+}

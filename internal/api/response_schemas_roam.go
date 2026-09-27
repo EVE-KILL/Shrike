@@ -2,6 +2,15 @@ package api
 
 import "github.com/danielgtaylor/huma/v2"
 
+func roamShipResponseSchema() *huma.Schema {
+	return responseSchema(map[string]*huma.Schema{
+		"ship_type_id": intSchema(), "ship_name": stringSchema(),
+		"ship_group_id": intSchema(), "ship_group_name": stringSchema(),
+		"killmails": intSchema(), "losses": intSchema(), "damage_done": intSchema(),
+	}, "ship_type_id", "ship_name", "ship_group_id", "ship_group_name",
+		"killmails", "losses", "damage_done")
+}
+
 func roamPilotResponseSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
 		"character_id": intSchema(), "name": stringSchema(),
@@ -10,9 +19,10 @@ func roamPilotResponseSchema() *huma.Schema {
 		"alliance_name": stringSchema(), "alliance_ticker": stringSchema(),
 		"kill_participations": intSchema(), "final_blows": intSchema(),
 		"losses": intSchema(), "engagements": intSchema(), "damage_done": intSchema(),
+		"ships": arraySchema(roamShipResponseSchema()),
 	}, "character_id", "name", "corporation_id", "corporation_name",
 		"corporation_ticker", "alliance_id", "alliance_name", "alliance_ticker",
-		"kill_participations", "final_blows", "losses", "engagements", "damage_done")
+		"kill_participations", "final_blows", "losses", "engagements", "damage_done", "ships")
 }
 
 func roamKillmailResponseSchema() *huma.Schema {
@@ -24,6 +34,7 @@ func roamKillmailResponseSchema() *huma.Schema {
 		"victim_corporation_id": intSchema(), "victim_corporation_name": stringSchema(),
 		"victim_alliance_id": intSchema(), "victim_alliance_name": stringSchema(),
 		"victim_ship_type_id": intSchema(), "victim_ship_name": stringSchema(),
+		"victim_ship_group_id": intSchema(), "victim_ship_group_name": stringSchema(),
 		"total_value": numberSchema(), "attacker_count": intSchema(),
 		"role": stringSchema(), "friendly_fire": boolSchema(),
 		"fleet_attacker_ids": arraySchema(intSchema()), "fleet_final_blow": boolSchema(),
@@ -32,6 +43,7 @@ func roamKillmailResponseSchema() *huma.Schema {
 		"region_id", "region_name", "victim_character_id", "victim_name",
 		"victim_corporation_id", "victim_corporation_name", "victim_alliance_id",
 		"victim_alliance_name", "victim_ship_type_id", "victim_ship_name",
+		"victim_ship_group_id", "victim_ship_group_name",
 		"total_value", "attacker_count", "role", "friendly_fire",
 		"fleet_attacker_ids", "fleet_final_blow", "final_blow_character_name",
 		"final_blow_corporation_name")
