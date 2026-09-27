@@ -105,11 +105,11 @@ export default defineNuxtConfig({
       description:
         "Community-driven killboard for EVE Online — real-time combat data, killmail tracking, and battle reports for New Eden.",
       email: "contact@eve-kill.com",
-      sameAs: ["https://discord.gg/Bz5gMHd", "https://github.com/EVE-KILL"],
+      sameAs: ["https://discord.gg/R9gZRc4Jtn", "https://github.com/EVE-KILL"],
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
-        url: "https://discord.gg/Bz5gMHd",
+        url: "https://discord.gg/R9gZRc4Jtn",
       },
     },
   },

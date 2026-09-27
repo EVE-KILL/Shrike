@@ -84,7 +84,7 @@ const items = [
     label: "How can I contact EVE-KILL?",
     icon: "lucide:message-square",
     content:
-      'Join the <a href="https://discord.gg/Bz5gMHd" target="_blank" rel="noopener noreferrer">EVE-KILL Discord</a> for discussion and support. Bugs and technical feature requests can also be reported through the <a href="https://github.com/EVE-KILL" target="_blank" rel="noopener noreferrer">EVE-KILL GitHub organisation</a>.',
+      'Join the <a href="https://discord.gg/R9gZRc4Jtn" target="_blank" rel="noopener noreferrer">EVE-KILL Discord</a> for discussion and support. Bugs and technical feature requests can also be reported through the <a href="https://github.com/EVE-KILL" target="_blank" rel="noopener noreferrer">EVE-KILL GitHub organisation</a>.',
   },
 ];
 
