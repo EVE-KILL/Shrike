@@ -14,7 +14,8 @@ const views = [
     { id: 'groups' as const, label: 'By Group', icon: 'lucide:layers' },
 ]
 
-type PilotRow = { pilot: RoamPilot, ship: RoamShip, iskLost: number }
+type PilotRow = { pilot: RoamPilot, ship: RoamShip | null, iskLost: number }
+type ObservedRow = PilotRow & { ship: RoamShip }
 type Aggregate = {
     id: number, name: string, groupId: number, groupName: string,
     pilotIds: Set<number>, observations: number, losses: number, iskLost: number, damage: number,
@@ -28,25 +29,29 @@ const lossValue = computed(() => {
     }
     return values
 })
-const pilotRows = computed<PilotRow[]>(() => props.report.roster.flatMap(pilot =>
-    (pilot.ships ?? []).map(ship => ({
+const pilotRows = computed<PilotRow[]>(() => props.report.roster.flatMap((pilot): PilotRow[] => {
+    const ships = pilot.ships ?? []
+    return ships.length ? ships.map(ship => ({
         pilot, ship,
         iskLost: lossValue.value.get(`${pilot.character_id}:${ship.ship_type_id}`) ?? 0,
-    }))))
-const observedPilots = computed(() => new Set(pilotRows.value.map(row => row.pilot.character_id)).size)
-const hullTypes = computed(() => new Set(pilotRows.value.map(row => row.ship.ship_type_id)).size)
-const groups = computed(() => [...new Map(pilotRows.value
+    })) : [{ pilot, ship: null, iskLost: 0 }]
+}))
+function isObserved(row: PilotRow): row is ObservedRow { return row.ship !== null }
+const observedRows = computed(() => pilotRows.value.filter(isObserved))
+const observedPilots = computed(() => new Set(observedRows.value.map(row => row.pilot.character_id)).size)
+const hullTypes = computed(() => new Set(observedRows.value.map(row => row.ship.ship_type_id)).size)
+const groups = computed(() => [...new Map(observedRows.value
     .filter(row => row.ship.ship_group_id)
     .map(row => [row.ship.ship_group_id, row.ship.ship_group_name || 'Unknown group'] as const)).entries()]
     .sort((a, b) => a[1].localeCompare(b[1])))
 const searchTerm = computed(() => search.value.trim().toLowerCase())
 const filteredPilots = computed(() => pilotRows.value.filter(row =>
-    (!groupFilter.value || row.ship.ship_group_id === groupFilter.value) &&
-    (!lossOnly.value || row.ship.losses > 0) &&
-    (!searchTerm.value || [row.pilot.name, row.pilot.corporation_name, row.ship.ship_name, row.ship.ship_group_name]
+    (!groupFilter.value || row.ship?.ship_group_id === groupFilter.value) &&
+    (!lossOnly.value || (row.ship?.losses ?? 0) > 0) &&
+    (!searchTerm.value || [row.pilot.name, row.pilot.corporation_name, row.ship?.ship_name ?? '', row.ship?.ship_group_name ?? '']
         .some(value => value.toLowerCase().includes(searchTerm.value)))))
 
-function aggregate(rows: PilotRow[], byGroup: boolean): Aggregate[] {
+function aggregate(rows: ObservedRow[], byGroup: boolean): Aggregate[] {
     const totals = new Map<string, Aggregate>()
     for (const row of rows) {
         const key = byGroup ? String(row.ship.ship_group_id || 'unknown') : String(row.ship.ship_type_id)
@@ -65,20 +70,20 @@ function aggregate(rows: PilotRow[], byGroup: boolean): Aggregate[] {
     }
     return [...totals.values()]
 }
-const shipRows = computed(() => aggregate(filteredPilots.value, false))
-const groupRows = computed(() => aggregate(filteredPilots.value, true))
+const shipRows = computed(() => aggregate(filteredPilots.value.filter(isObserved), false))
+const groupRows = computed(() => aggregate(filteredPilots.value.filter(isObserved), true))
 
 function compareNumbers(a: number, b: number) { return descending.value ? b - a : a - b }
 function compareNames(a: string, b: string) { return descending.value ? b.localeCompare(a) : a.localeCompare(b) }
 const sortedPilots = computed(() => [...filteredPilots.value].sort((a, b) => {
     switch (sortKey.value) {
-        case 'ship': return compareNames(a.ship.ship_name, b.ship.ship_name)
+        case 'ship': return compareNames(a.ship?.ship_name ?? '', b.ship?.ship_name ?? '')
         case 'pilot': return compareNames(a.pilot.name, b.pilot.name)
-        case 'observations': return compareNumbers(a.ship.killmails, b.ship.killmails)
-        case 'losses': return compareNumbers(a.ship.losses, b.ship.losses)
+        case 'observations': return compareNumbers(a.ship?.killmails ?? 0, b.ship?.killmails ?? 0)
+        case 'losses': return compareNumbers(a.ship?.losses ?? 0, b.ship?.losses ?? 0)
         case 'iskLost': return compareNumbers(a.iskLost, b.iskLost)
-        case 'damage': return compareNumbers(a.ship.damage_done, b.ship.damage_done)
-        default: return b.ship.killmails - a.ship.killmails || b.ship.damage_done - a.ship.damage_done || a.pilot.name.localeCompare(b.pilot.name)
+        case 'damage': return compareNumbers(a.ship?.damage_done ?? 0, b.ship?.damage_done ?? 0)
+        default: return (b.ship?.killmails ?? 0) - (a.ship?.killmails ?? 0) || (b.ship?.damage_done ?? 0) - (a.ship?.damage_done ?? 0) || a.pilot.name.localeCompare(b.pilot.name)
     }
 }))
 function sortAggregates(rows: Aggregate[]) {
@@ -110,15 +115,15 @@ function resetFilters() { search.value = ''; groupFilter.value = null; lossOnly.
 <template>
     <div>
         <div class="glass-panel mb-4 border-l-2 border-blue-500/20 p-4">
-            <div class="mb-2 text-xs font-semibold text-blue-400">Fleet · recorded observations</div>
+            <div class="mb-2 text-xs font-semibold text-blue-400">Fleet · roster and observed hulls</div>
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div><div class="font-mono text-lg text-gray-200">{{ formatNumber(observedPilots) }}</div><div class="text-[10px] text-gray-500">Observed pilots</div></div>
+                <div><div class="font-mono text-lg text-gray-200">{{ formatNumber(report.roster.length) }}</div><div class="text-[10px] text-gray-500">Listed pilots · {{ observedPilots }} observed</div></div>
                 <div><div class="font-mono text-lg text-gray-200">{{ formatNumber(hullTypes) }}</div><div class="text-[10px] text-gray-500">Hull types</div></div>
                 <div><div class="font-mono text-lg text-gray-200">{{ formatNumber(report.summary.losses) }}</div><div class="text-[10px] text-gray-500">Recorded losses</div></div>
                 <div><div class="font-mono text-lg text-amber-200">{{ formatIsk(report.summary.isk_lost) }}</div><div class="text-[10px] text-gray-500">ISK lost</div></div>
             </div>
         </div>
-        <p class="mb-3 text-xs text-gray-500">Ships observed on the report's killmails, not a complete fleet inventory. Pilots can appear in multiple hulls. {{ report.roster.length - observedPilots }} listed {{ report.roster.length - observedPilots === 1 ? 'pilot has' : 'pilots have' }} no observed ship.</p>
+        <p class="mb-3 text-xs text-gray-500">Every listed pilot appears below. Ships come from matching killmails, so {{ report.roster.length - observedPilots }} {{ report.roster.length - observedPilots === 1 ? 'pilot has' : 'pilots have' }} no recorded hull. A pilot may appear in several ships.</p>
 
         <div class="glass-panel mb-4 flex flex-wrap items-center gap-3 p-3">
             <label class="text-xs text-gray-400">Find <input v-model="search" type="search" placeholder="Ship, pilot or corporation" class="ml-2 rounded border border-white/10 bg-black/30 px-3 py-2 text-gray-200"></label>
@@ -135,7 +140,7 @@ function resetFilters() { search.value = ''; groupFilter.value = null; lossOnly.
         <div class="rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
             <div class="mb-3 flex items-center justify-between border-b border-white/[0.06] pb-2">
                 <h2 class="text-sm font-bold text-blue-400">Fleet</h2>
-                <span class="text-fine text-gray-500">{{ view === 'pilots' ? sortedPilots.length + ' pilot / ship observations' : view === 'ships' ? sortedShips.length + ' ship types' : sortedGroups.length + ' ship groups' }}</span>
+                <span class="text-fine text-gray-500">{{ view === 'pilots' ? report.roster.length + ' pilots · ' + sortedPilots.length + ' rows' : view === 'ships' ? sortedShips.length + ' ship types' : sortedGroups.length + ' ship groups' }}</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[680px] table-fixed text-xs">
@@ -150,13 +155,13 @@ function resetFilters() { search.value = ''; groupFilter.value = null; lossOnly.
                         </tr>
                     </thead>
                     <tbody v-if="view === 'pilots'">
-                        <tr v-for="row in sortedPilots" :key="`${row.pilot.character_id}-${row.ship.ship_type_id}`" class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
-                            <td class="py-1.5 pr-2"><div class="flex min-w-0 items-center gap-2"><img :src="`/images/types/${row.ship.ship_type_id}/render?size=32`" :alt="row.ship.ship_name" class="h-7 w-7 shrink-0 rounded bg-gray-900" loading="lazy"><div class="min-w-0"><NuxtLink :to="`/item/${row.ship.ship_type_id}`" class="block truncate hover:text-blue-400">{{ row.ship.ship_name }}</NuxtLink><span class="block truncate text-fine text-gray-500">{{ row.ship.ship_group_name }}</span></div></div></td>
+                        <tr v-for="row in sortedPilots" :key="`${row.pilot.character_id}-${row.ship?.ship_type_id ?? 'unknown'}`" class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
+                            <td class="py-1.5 pr-2"><div v-if="row.ship" class="flex min-w-0 items-center gap-2"><img :src="`/images/types/${row.ship.ship_type_id}/render?size=32`" :alt="row.ship.ship_name" class="h-7 w-7 shrink-0 rounded bg-gray-900" loading="lazy"><div class="min-w-0"><NuxtLink :to="`/item/${row.ship.ship_type_id}`" class="block truncate hover:text-blue-400">{{ row.ship.ship_name }}</NuxtLink><span class="block truncate text-fine text-gray-500">{{ row.ship.ship_group_name }}</span></div></div><span v-else class="flex items-center gap-2 text-gray-500"><Icon name="lucide:circle-help" /> No ship recorded</span></td>
                             <td class="px-2 py-1.5"><div class="flex min-w-0 items-center gap-2"><img :src="`/images/characters/${row.pilot.character_id}/portrait?size=32`" :alt="row.pilot.name" class="h-6 w-6 shrink-0 rounded bg-gray-900" loading="lazy"><div class="min-w-0"><NuxtLink :to="`/character/${row.pilot.character_id}`" class="block truncate hover:text-blue-400">{{ row.pilot.name }}</NuxtLink><span class="block truncate text-fine text-gray-500">{{ row.pilot.corporation_name }}</span></div></div></td>
-                            <td class="px-2 py-1.5 text-right tabular-nums">{{ formatNumber(row.ship.killmails) }}</td>
-                            <td class="px-2 py-1.5 text-right tabular-nums" :class="row.ship.losses ? 'text-red-400' : 'text-gray-600'">{{ row.ship.losses || '—' }}</td>
+                            <td class="px-2 py-1.5 text-right tabular-nums">{{ row.ship ? formatNumber(row.ship.killmails) : '—' }}</td>
+                            <td class="px-2 py-1.5 text-right tabular-nums" :class="row.ship?.losses ? 'text-red-400' : 'text-gray-600'">{{ row.ship?.losses || '—' }}</td>
                             <td class="px-2 py-1.5 text-right tabular-nums" :class="row.iskLost ? 'text-red-400' : 'text-gray-600'">{{ row.iskLost ? formatIsk(row.iskLost) : '—' }}</td>
-                            <td class="py-1.5 pl-2 text-right tabular-nums">{{ formatNumber(row.ship.damage_done) }}</td>
+                            <td class="py-1.5 pl-2 text-right tabular-nums">{{ row.ship ? formatNumber(row.ship.damage_done) : '—' }}</td>
                         </tr>
                     </tbody>
                     <tbody v-else>
@@ -170,7 +175,7 @@ function resetFilters() { search.value = ''; groupFilter.value = null; lossOnly.
                         </tr>
                     </tbody>
                 </table>
-                <p v-if="view === 'pilots' ? !sortedPilots.length : view === 'ships' ? !sortedShips.length : !sortedGroups.length" class="py-8 text-center text-xs text-gray-600">No observed ships match these filters.</p>
+                <p v-if="view === 'pilots' ? !sortedPilots.length : view === 'ships' ? !sortedShips.length : !sortedGroups.length" class="py-8 text-center text-xs text-gray-600">{{ view === 'pilots' ? 'No pilots match these filters.' : 'No observed ships match these filters.' }}</p>
             </div>
         </div>
     </div>
