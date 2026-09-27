@@ -31,6 +31,12 @@ const tools: Tool[] = [
         description: 'Paste killmail IDs to build a shareable battle report on the fly.',
     },
     {
+        label: 'Roam Report',
+        href: '/tools/roam-report',
+        icon: 'lucide:route',
+        description: 'Paste a fleet list and turn its recorded fights into a shareable combat trail.',
+    },
+    {
         label: 'Campaign Creator',
         href: '/campaigncreator',
         icon: 'lucide:flag',

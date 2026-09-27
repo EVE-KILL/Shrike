@@ -117,6 +117,10 @@ func publicOperationResponseSchema(operationID string) *huma.Schema {
 		return battlePageSchema()
 	case "battle":
 		return battleDetailSchema()
+	case "roam-report-create":
+		return responseSchema(map[string]*huma.Schema{"id": stringSchema()}, "id")
+	case "roam-report-get":
+		return roamReportResponseSchema()
 	case "wars":
 		return cursorPageSchema(warListSchema())
 	case "war":
