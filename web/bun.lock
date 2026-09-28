@@ -24,7 +24,7 @@
         "vue-router": "^5.3.1",
       },
       "devDependencies": {
-        "@iconify-json/lucide": "^1.2.134",
+        "@iconify-json/lucide": "^1.2.136",
         "@types/d3-contour": "^3.0.6",
         "sharp": "0.35.4",
         "typescript": "5.9.3",
@@ -162,7 +162,7 @@
 
     "@fingerprintjs/botd": ["@fingerprintjs/botd@2.0.0", "", {}, "sha512-yhuz23NKEcBDTHmGz/ULrXlGnbHenO+xZmVwuBkuqHUkqvaZ5TAA0kAgcRy4Wyo5dIBdkIf57UXX8/c9UlMLJg=="],
 
-    "@iconify-json/lucide": ["@iconify-json/lucide@1.2.134", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-MXzwT7H8Ii/aGN6NLtMbMLDaxLYsOxCKEdW0F5h3MemNUaUBqAxr9nz0mPlXzozd/piQyrdSiUyk0t5b5ErADg=="],
+    "@iconify-json/lucide": ["@iconify-json/lucide@1.2.136", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-Wk+OeDVKkw+1LELZqRR3gXWIy5jNx5XjNMvVc9KoygJYmGqclv36FYqseRuJuxBIKDggdoZWNBxNRrOkiRbtwQ=="],
 
     "@iconify/collections": ["@iconify/collections@1.0.730", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-vuSS1r5FVWH5Oo6vEnAYvCd4u13sr95s0uDjfOaSFdF15EvLAaUKA2yDpufc5KbFLBVvwzE5pIFt0dIM2kjYWA=="],
 
