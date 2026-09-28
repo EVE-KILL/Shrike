@@ -284,7 +284,7 @@ const entityLink = (type: string | null, entityId: number | null): string | null
                     <div class="hidden md:flex flex-col gap-1.5 flex-shrink-0">
                         <a :href="dotlanUrl" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/dotlan.png" width="16" height="16" class="w-4 h-4" alt="" /> DOTLAN</a>
                         <a :href="`https://eveeye.com/?m=${encodeURIComponent(system.region_name || '')}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/eveeye.svg" width="16" height="16" class="w-4 h-4" alt="" /> EVEEye</a>
-                        <a :href="`https://evemissioneer.com/s/${id}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/evemissioneer.png" width="16" height="16" class="w-4 h-4" alt="" /> Missioneer</a>
+                        <a :href="`https://evemissioneer.com/system/${id}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/evemissioneer.png" width="16" height="16" class="w-4 h-4" alt="" /> Missioneer</a>
                         <a :href="`https://www.jita.space/system/${id}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/jita-space.png" width="16" height="16" class="w-4 h-4" alt="" /> Jita.Space</a>
                         <a :href="`https://zkillboard.com/system/${id}/`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/zkillboard.png" width="16" height="16" class="w-4 h-4" alt="" /> zKillboard</a>
                     </div>
@@ -295,7 +295,7 @@ const entityLink = (type: string | null, entityId: number | null): string | null
                     <div class="md:hidden flex flex-col gap-1.5 flex-shrink-0">
                         <a :href="dotlanUrl" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/dotlan.png" width="16" height="16" class="w-4 h-4" alt="" /> DOTLAN</a>
                         <a :href="`https://eveeye.com/?m=${encodeURIComponent(system.region_name || '')}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/eveeye.svg" width="16" height="16" class="w-4 h-4" alt="" /> EVEEye</a>
-                        <a :href="`https://evemissioneer.com/s/${id}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/evemissioneer.png" width="16" height="16" class="w-4 h-4" alt="" /> Missioneer</a>
+                        <a :href="`https://evemissioneer.com/system/${id}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/evemissioneer.png" width="16" height="16" class="w-4 h-4" alt="" /> Missioneer</a>
                         <a :href="`https://www.jita.space/system/${id}`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/jita-space.png" width="16" height="16" class="w-4 h-4" alt="" /> Jita.Space</a>
                         <a :href="`https://zkillboard.com/system/${id}/`" target="_blank" rel="noopener noreferrer" class="ext-link text-fine"><NuxtImg src="/remotes/zkillboard.png" width="16" height="16" class="w-4 h-4" alt="" /> zKillboard</a>
                     </div>
