@@ -463,11 +463,13 @@ func base64ID(raw []byte) string {
 }
 
 type authTestRig struct {
-	now    time.Time
-	secret []byte
-	store  *fakeAuthStore
-	flows  *fakeOAuthFlowStore
-	oauth  *fakeOAuthCodeClient
+	production bool
+	domainDB   Database
+	now        time.Time
+	secret     []byte
+	store      *fakeAuthStore
+	flows      *fakeOAuthFlowStore
+	oauth      *fakeOAuthCodeClient
 }
 
 func newAuthTestRig(t *testing.T) *authTestRig {
@@ -501,8 +503,10 @@ func (r *authTestRig) handler(t *testing.T) http.Handler {
 	cfg.SchemasPath = ""
 	api := humago.New(mux, cfg)
 	registerAuthRoutes(api, Options{
+		DB: r.domainDB,
 		Auth: AuthOptions{
-			ClientID: "client", ClientSecret: "client-secret",
+			Production: r.production,
+			ClientID:   "client", ClientSecret: "client-secret",
 			CallbackURL: "https://eve-kill.com/auth/eve/callback",
 			StateSecret: string(r.secret),
 			store:       r.store, flowStore: r.flows, oauth: r.oauth,

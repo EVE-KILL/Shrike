@@ -32,6 +32,7 @@ export const DEFAULT_NAVBAR: NavbarLink[] = [
                     { label: 'Rankings', href: '/rankings', icon: 'lucide:trophy' },
                     { label: 'Advanced Search', href: '/advancedsearch', icon: 'lucide:search' },
                     { label: 'Battle Generator', href: '/battlegenerator', icon: 'lucide:shield' },
+                    { label: 'Roam Report', href: '/tools/roam-report', icon: 'lucide:route' },
                     { label: 'Campaign Creator', href: '/campaigncreator', icon: 'lucide:flag' },
                     { label: 'Comments', href: '/comments', icon: 'lucide:message-square' },
                     { label: 'Local Scan', href: '/tools/localscan', icon: 'lucide:scan-search' },
