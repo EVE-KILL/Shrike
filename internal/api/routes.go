@@ -33,6 +33,7 @@ func registerRoutes(a huma.API, opts Options) *responseSchemaResolver {
 	registerBackgroundRoutes(a, opts)
 	registerFittingRoutes(a, opts)
 	registerScanRoutes(a, opts)
+	registerRoamReportRoutes(a, opts)
 	registerUniverseRoutes(a, opts)
 	registerEntityPageRoutes(a, opts)
 	registerEntityTopRoutes(a, opts)

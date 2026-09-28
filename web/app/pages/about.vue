@@ -47,7 +47,7 @@ useSchemaOrg([
                     <h2 class="text-2xl font-bold text-white mb-3">Contact Us</h2>
                     <p class="text-gray-300 leading-relaxed about-content">
                         We value your feedback and are here to help. For questions, suggestions, or technical support,
-                        join our active <a href="https://discord.gg/Bz5gMHd" target="_blank" rel="noopener noreferrer">Discord community</a>
+                        join our active <a href="https://discord.gg/R9gZRc4Jtn" target="_blank" rel="noopener noreferrer">Discord community</a>
                         where our team regularly engages with users. Alternatively, you can submit issues or feature requests
                         directly through our <a href="https://github.com/EVE-KILL" target="_blank" rel="noopener noreferrer">GitHub repository</a>
                         for more technical matters.
@@ -55,7 +55,7 @@ useSchemaOrg([
                 </section>
 
                 <div class="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                    <a href="https://discord.gg/Bz5gMHd" target="_blank" rel="noopener noreferrer"
+                    <a href="https://discord.gg/R9gZRc4Jtn" target="_blank" rel="noopener noreferrer"
                         class="inline-flex items-center gap-2 justify-center px-6 py-3 rounded-lg bg-[#5865F2] text-white hover:bg-[#4752C4] transition-colors text-sm font-medium">
                         <Icon name="lucide:message-circle" class="w-5 h-5" />
                         Join our Discord
