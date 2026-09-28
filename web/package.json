@@ -20,7 +20,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/d3-delaunay": "^6.0.4",
     "@vueuse/core": "^14.4.0",
-    "@vueuse/nuxt": "^14.4.0",
+    "@vueuse/nuxt": "^15.0.0",
     "d3-contour": "^4.0.2",
     "d3-delaunay": "^6.0.4",
     "isbot": "^5.2.2",
