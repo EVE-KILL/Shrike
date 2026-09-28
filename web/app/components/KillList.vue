@@ -13,6 +13,8 @@ const props = defineProps<{
     killlistType?: string
     /** API endpoint override */
     apiEndpoint?: string
+    /** Mutable lists can opt out of Nuxt's persistent payload reuse. */
+    cachePayload?: boolean
     /** Dedicated entity endpoint — when set, uses this with just role/page/limit */
     entityEndpoint?: string
     /** For combined kill/loss view: entity type being viewed */
@@ -229,7 +231,7 @@ const { data, pending: loading, refresh } = await useApiFetch<{ kills: KillRow[]
     params: fetchParams,
     default: () => ({ kills: [], hasMore: false, cursor: null }),
     lazy: import.meta.client,
-    getCachedData: cachedPayload,
+    getCachedData: props.cachePayload === false ? () => undefined : cachedPayload,
 })
 
 const kills = computed({
