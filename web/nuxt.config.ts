@@ -105,11 +105,11 @@ export default defineNuxtConfig({
       description:
         "Community-driven killboard for EVE Online — real-time combat data, killmail tracking, and battle reports for New Eden.",
       email: "contact@eve-kill.com",
-      sameAs: ["https://discord.gg/Bz5gMHd", "https://github.com/EVE-KILL"],
+      sameAs: ["https://discord.gg/R9gZRc4Jtn", "https://github.com/EVE-KILL"],
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer support",
-        url: "https://discord.gg/Bz5gMHd",
+        url: "https://discord.gg/R9gZRc4Jtn",
       },
     },
   },
@@ -317,6 +317,11 @@ export default defineNuxtConfig({
         headers: {
           "Cache-Control": "public, s-maxage=120, stale-while-revalidate=120",
         },
+      },
+      // Roam reports can be edited at their existing URL. Do not cache the
+      // server-rendered snapshot after a pilot or time-window change.
+      "/tools/roam-report/**": {
+        headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
       },
       // Without an explicit s-maxage CF's respect-origin rule falls back
       // to the zone DEFAULT edge TTL (hours) — keep these short so new

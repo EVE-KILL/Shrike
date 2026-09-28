@@ -33018,6 +33018,403 @@ export type LocalscanGetLegacyResponses = {
 
 export type LocalscanGetLegacyResponse = LocalscanGetLegacyResponses[keyof LocalscanGetLegacyResponses];
 
+export type RoamReportCreateData = {
+    body: {
+        /**
+         * End of the roam in EVE time (UTC).
+         */
+        end_time: string;
+        /**
+         * Character names copied from the in-game fleet window, one per line.
+         */
+        names_text: string;
+        /**
+         * Start of the roam in EVE time (UTC).
+         */
+        start_time: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/tools/roam-report';
+};
+
+export type RoamReportCreateResponses = {
+    /**
+     * OK
+     */
+    200: {
+        id: string;
+    };
+};
+
+export type RoamReportCreateResponse = RoamReportCreateResponses[keyof RoamReportCreateResponses];
+
+export type RoamReportGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tools/roam-report/{id}';
+};
+
+export type RoamReportGetResponses = {
+    /**
+     * OK
+     */
+    200: {
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        end_time: string;
+        engagements: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            end_time: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            killmails: Array<{
+                attacker_count: number;
+                final_blow_character_name: string;
+                final_blow_corporation_name: string;
+                fleet_attacker_ids: Array<number>;
+                fleet_final_blow: boolean;
+                friendly_fire: boolean;
+                killmail_id: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                killmail_time: string;
+                region_id: number;
+                region_name: string;
+                role: string;
+                solar_system_id: number;
+                solar_system_name: string;
+                total_value: number;
+                victim_alliance_id: number;
+                victim_alliance_name: string;
+                victim_character_id: number;
+                victim_corporation_id: number;
+                victim_corporation_name: string;
+                victim_name: string;
+                victim_ship_group_id: number;
+                victim_ship_group_name: string;
+                victim_ship_name: string;
+                victim_ship_type_id: number;
+            }>;
+            kills: number;
+            losses: number;
+            number: number;
+            pilot_ids: Array<number>;
+            region_id: number;
+            region_name: string;
+            solar_system_id: number;
+            solar_system_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_time: string;
+        }>;
+        id: string;
+        input_count: number;
+        roster: Array<{
+            alliance_id: number;
+            alliance_name: string;
+            alliance_ticker: string;
+            character_id: number;
+            corporation_id: number;
+            corporation_name: string;
+            corporation_ticker: string;
+            damage_done: number;
+            engagements: number;
+            final_blows: number;
+            kill_participations: number;
+            losses: number;
+            name: string;
+            ships: Array<{
+                damage_done: number;
+                killmails: number;
+                losses: number;
+                ship_group_id: number;
+                ship_group_name: string;
+                ship_name: string;
+                ship_type_id: number;
+            }>;
+        }>;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        start_time: string;
+        summary: {
+            active_pilots: number;
+            coordinated_kills: number;
+            efficiency: number;
+            engagements: number;
+            friendly_fire_losses: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            regions: number;
+            systems: number;
+            unique_character_targets: number;
+        };
+        systems: Array<{
+            engagements: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            first_seen: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_seen: string;
+            losses: number;
+            region_id: number;
+            region_name: string;
+            solar_system_id: number;
+            solar_system_name: string;
+        }>;
+        targets: Array<{
+            alliance_id: number;
+            alliance_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            isk_destroyed: number;
+            kills: number;
+        }>;
+        truncated: boolean;
+        unresolved: Array<string>;
+    };
+};
+
+export type RoamReportGetResponse = RoamReportGetResponses[keyof RoamReportGetResponses];
+
+export type RoamReportUpdateData = {
+    body: {
+        /**
+         * End of the roam in EVE time (UTC).
+         */
+        end_time: string;
+        /**
+         * Character names copied from the in-game fleet window, one per line.
+         */
+        names_text: string;
+        /**
+         * Start of the roam in EVE time (UTC).
+         */
+        start_time: string;
+    };
+    path?: never;
+    query?: never;
+    url: '/tools/roam-report/{id}';
+};
+
+export type RoamReportUpdateResponses = {
+    /**
+     * OK
+     */
+    200: {
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        created_at: string;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        end_time: string;
+        engagements: Array<{
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            end_time: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            killmails: Array<{
+                attacker_count: number;
+                final_blow_character_name: string;
+                final_blow_corporation_name: string;
+                fleet_attacker_ids: Array<number>;
+                fleet_final_blow: boolean;
+                friendly_fire: boolean;
+                killmail_id: number;
+                /**
+                 * UTC timestamp with millisecond precision.
+                 */
+                killmail_time: string;
+                region_id: number;
+                region_name: string;
+                role: string;
+                solar_system_id: number;
+                solar_system_name: string;
+                total_value: number;
+                victim_alliance_id: number;
+                victim_alliance_name: string;
+                victim_character_id: number;
+                victim_corporation_id: number;
+                victim_corporation_name: string;
+                victim_name: string;
+                victim_ship_group_id: number;
+                victim_ship_group_name: string;
+                victim_ship_name: string;
+                victim_ship_type_id: number;
+            }>;
+            kills: number;
+            losses: number;
+            number: number;
+            pilot_ids: Array<number>;
+            region_id: number;
+            region_name: string;
+            solar_system_id: number;
+            solar_system_name: string;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            start_time: string;
+        }>;
+        id: string;
+        input_count: number;
+        roster: Array<{
+            alliance_id: number;
+            alliance_name: string;
+            alliance_ticker: string;
+            character_id: number;
+            corporation_id: number;
+            corporation_name: string;
+            corporation_ticker: string;
+            damage_done: number;
+            engagements: number;
+            final_blows: number;
+            kill_participations: number;
+            losses: number;
+            name: string;
+            ships: Array<{
+                damage_done: number;
+                killmails: number;
+                losses: number;
+                ship_group_id: number;
+                ship_group_name: string;
+                ship_name: string;
+                ship_type_id: number;
+            }>;
+        }>;
+        /**
+         * UTC timestamp with millisecond precision.
+         */
+        start_time: string;
+        summary: {
+            active_pilots: number;
+            coordinated_kills: number;
+            efficiency: number;
+            engagements: number;
+            friendly_fire_losses: number;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            losses: number;
+            regions: number;
+            systems: number;
+            unique_character_targets: number;
+        };
+        systems: Array<{
+            engagements: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            first_seen: string;
+            isk_destroyed: number;
+            isk_lost: number;
+            kills: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            last_seen: string;
+            losses: number;
+            region_id: number;
+            region_name: string;
+            solar_system_id: number;
+            solar_system_name: string;
+        }>;
+        targets: Array<{
+            alliance_id: number;
+            alliance_name: string;
+            corporation_id: number;
+            corporation_name: string;
+            isk_destroyed: number;
+            kills: number;
+        }>;
+        truncated: boolean;
+        unresolved: Array<string>;
+    };
+};
+
+export type RoamReportUpdateResponse = RoamReportUpdateResponses[keyof RoamReportUpdateResponses];
+
+export type RoamReportKilllistData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/tools/roam-report/{id}/killlist';
+};
+
+export type RoamReportKilllistResponses = {
+    /**
+     * OK
+     */
+    200: {
+        cursor: number | null;
+        hasMore: boolean;
+        kills: Array<{
+            attacker_count: number;
+            final_blow_alliance_id: number | null;
+            final_blow_alliance_name: string | null;
+            final_blow_character_id: number | null;
+            final_blow_character_name: string | null;
+            final_blow_corporation_id: number | null;
+            final_blow_corporation_name: string | null;
+            final_blow_ship_name: string | null;
+            final_blow_ship_type_id: number | null;
+            is_npc: boolean;
+            is_solo: boolean;
+            killmail_hash: string;
+            killmail_id: number;
+            /**
+             * UTC timestamp with millisecond precision.
+             */
+            killmail_time: string;
+            meta_group_id: number | null;
+            region_id: number | null;
+            region_name: string | null;
+            ship_group_id: number | null;
+            ship_group_name: string | null;
+            ship_market_path: string | null;
+            ship_name: string | null;
+            ship_type_id: number | null;
+            solar_system_id: number;
+            solar_system_name: string | null;
+            solar_system_security: number | null;
+            total_value: number;
+            victim_alliance_id: number | null;
+            victim_alliance_name: string | null;
+            victim_character_id: number | null;
+            victim_character_name: string | null;
+            victim_corporation_id: number | null;
+            victim_corporation_name: string | null;
+            victim_faction_id: number | null;
+            [key: string]: unknown;
+        }>;
+        totalPages?: number;
+    };
+};
+
+export type RoamReportKilllistResponse = RoamReportKilllistResponses[keyof RoamReportKilllistResponses];
+
 export type UniverseConstellationData = {
     body?: never;
     path?: never;

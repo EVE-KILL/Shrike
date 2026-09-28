@@ -14,6 +14,8 @@ import { createKillFreshnessGate } from '~/utils/killStreamPolicy'
 const props = withDefaults(defineProps<{
     battleSystems?: BattleMapSystem[]
     battleRegionId?: number | null
+    markerNoun?: string
+    markerValueLabel?: string
     type: string
     baseLayer: MapRenderBaseLayer
     activityLayer: MapActivityLayer
@@ -26,13 +28,15 @@ const props = withDefaults(defineProps<{
     watchedSystemIds?: number[]
     nearAlarmEnabled?: boolean
     outerAlarmEnabled?: boolean
-}>(), { mode: 'map', showChanges: false })
+}>(), { mode: 'map', showChanges: false, markerNoun: 'battles', markerValueLabel: 'ISK destroyed' })
 
 const emit = defineEmits<{
     (event: 'battleRegion', id: number): void
     (event: 'battleSystem', system: BattleMapSystem): void
     (event: 'update:watchedSystemIds', value: number[]): void
 }>()
+
+const markerCountLabel = (count: number) => `${count} ${count === 1 ? props.markerNoun.replace(/s$/, '') : props.markerNoun}`
 
 const watchedSystemQuery = computed(() => (props.watchedSystemIds ?? []).join(','))
 const { data, pending, error } = useApiFetch<any>(() => props.mode === 'sovereignty'
@@ -919,8 +923,8 @@ onUnmounted(() => {
         <div ref="canvasHostRef" class="absolute inset-0" />
         <div v-if="battleSystems && ready && !pending && !error" class="pointer-events-none absolute inset-0 z-10">
             <button v-for="marker in battleMarkers" :key="marker.id" type="button"
-                :style="marker.style" :aria-label="`${marker.name}: ${marker.count} battles, ${formatIsk(marker.isk)} ISK destroyed`"
-                :title="`${marker.name} · ${marker.count} battles · ${formatIsk(marker.isk)} ISK`"
+                :style="marker.style" :aria-label="`${marker.name}: ${markerCountLabel(marker.count)}, ${formatIsk(marker.isk)} ${markerValueLabel}`"
+                :title="`${marker.name} · ${markerCountLabel(marker.count)} · ${formatIsk(marker.isk)} ${markerValueLabel}`"
                 class="pointer-events-auto absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-md border border-rose-300/40 bg-[#251018]/95 px-1.5 py-1 text-xs font-semibold text-rose-100 shadow-lg transition-colors hover:z-20 hover:border-rose-200 hover:bg-rose-900 focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-rose-200"
                 @click="selectBattleMarker(marker)">
                 <Icon name="lucide:swords" class="h-4 w-4" /><span>{{ marker.count }}</span>
