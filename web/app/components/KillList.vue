@@ -8,7 +8,7 @@ import {
     matchesMetaGroup,
 } from '#shared/utils/killlistRow'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     /** Kill list filter type (e.g. 'latest', 'big', 'solo') */
     killlistType?: string
     /** API endpoint override */
@@ -70,7 +70,9 @@ const props = defineProps<{
      *  it routes queries through /api/killlist/advanced and disables the live
      *  feed. Defaults off, so every other KillList usage is unaffected. */
     quickFilter?: boolean
-}>()
+}>(), {
+    cachePayload: true,
+})
 
 // Rows arrive from two producers — the REST killlist endpoints and the relay
 // `killlist` event — which emit the same shape by construction. See KilllistRow.
@@ -231,7 +233,9 @@ const { data, pending: loading, refresh } = await useApiFetch<{ kills: KillRow[]
     params: fetchParams,
     default: () => ({ kills: [], hasMore: false, cursor: null }),
     lazy: import.meta.client,
-    getCachedData: props.cachePayload === false ? () => undefined : cachedPayload,
+    // An uncached list still needs Nuxt's SSR payload during hydration. Its
+    // default cache policy refetches on later navigation and manual refresh.
+    getCachedData: props.cachePayload ? cachedPayload : undefined,
 })
 
 const kills = computed({
