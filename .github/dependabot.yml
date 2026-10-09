@@ -25,34 +25,35 @@ updates:
       # Caddy. See the matching note in go.mod.
       - dependency-name: github.com/google/cel-go
 
-  # Bun reads the text-based bun.lock only. Both directories have one.
-  # web/packages/dogma is deliberately absent: it is a local file: dependency,
-  # and the manifests under its dist/upstream/ are vendored third-party data
-  # that must keep the versions they were vendored at.
-  - package-ecosystem: bun
+  # Browser tooling and API generation only; engine/WASM pins move together.
+  - package-ecosystem: npm
     directories:
-      - /web
-      - /web/tools/api-codegen
+      - /frontend
+      - /frontend/tools/api-codegen
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
     groups:
-      bun:
+      browser:
         update-types:
           - minor
           - patch
-    ignore:
-      # TypeScript 7 is the native port. vue-tsc 3.3.8 bundles
-      # @vue/language-core and @volar/typescript builds that target 5 and 6,
-      # and @hey-api/openapi-ts peers on ">=5.5.3 || >=6.0.0". Remove this
-      # entry once both declare support.
-      - dependency-name: typescript
-        update-types:
-          - version-update:semver-major
 
-  # Base images in the root Dockerfile: golang and oven/bun.
+  - package-ecosystem: cargo
+    directory: /engine/dogma
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      rust:
+        update-types:
+          - minor
+          - patch
+
+  # Base images in the root Dockerfile: Go, Rust and Alpine.
   - package-ecosystem: docker
     directory: /
     schedule:

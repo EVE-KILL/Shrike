@@ -1,0 +1,54 @@
+new:
+  displayName: Damage Per Second (without reload)
+  category: Miscellaneous
+  unit: damagePerSecond
+  highIsGood: true
+
+effects:
+  # Some modules keep their cycle time in "speed", others in "duration".
+  - name: damagePerSecondWithoutReload
+    on: moduleCyclesOnSpeed or damagingDrone
+    category: active
+    rules:
+      - {div: speed}
+
+  - name: damagePerSecondWithoutReload2
+    on: moduleCyclesOnDuration
+    category: active
+    rules:
+      - {div: duration}
+
+  - name: damagePerSecondWithoutReload3
+    on: cyclingDamageDealer
+    category: active
+    rules:
+      - {from: thousand}
+      - {mul: damageVolley}
+      - {add: damagePerSecondWithoutReload, domain: shipID}
+
+  - name: damagePerSecondWithoutReload4
+    on: isCharge and attribute("dotMaxDamagePerTick")
+    category: passive
+    rules:
+      - {assign: dotMaxDamagePerTick, domain: otherID}
+
+  - name: damagePerSecondWithoutReload5
+    on: isFighter
+    category: passive
+    rules:
+      - {add: damagePerSecondWithoutReload, domain: shipID}
+
+  - name: damagePerSecondWithoutReload6
+    on: spoolsDamage
+    category: active
+    rules:
+      - {mul: spoolMultiplier}
+
+addTo:
+  - effect: fighterAbilityAttackM
+    rules:
+      - {add: fighterAbilityAttackMissileDamagePerSecond}
+
+  - effect: fighterAbilityMissiles
+    rules:
+      - {add: fighterAbilityMissilesDamagePerSecond}

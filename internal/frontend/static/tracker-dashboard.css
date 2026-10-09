@@ -1,0 +1,6 @@
+/* Widget geometry comes from the shared killboard components. */
+[data-tracker-dashboard] [hidden] { display: none !important; }
+@media (min-width:1024px) { [data-tracker-dashboard] .dashboard-columns { grid-template-columns: var(--dashboard-columns,1fr); } }
+[data-tracker-dashboard] [data-widget-icon] > .icon { width:12px; height:12px; color:var(--color-gray-500); }
+[data-tracker-dashboard] [data-dashboard-remote][aria-busy="true"] .valuable-empty { visibility:hidden; }
+[data-tracker-dashboard] [data-dashboard-remote][aria-busy="true"] .valuable-empty::after { content:'Loading…'; visibility:visible; display:block; }

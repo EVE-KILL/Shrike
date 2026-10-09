@@ -87,12 +87,14 @@ type announcementsAdminService struct {
 	storeErr error
 	now      func() time.Time
 	dispatch announcementEventDispatcher
+	cache    *ResponseCache
 }
 
 func newAnnouncementsAdminService(opts Options) *announcementsAdminService {
 	service := &announcementsAdminService{
-		auth: newAuthService(opts),
-		now:  time.Now,
+		auth:  newAuthService(opts),
+		now:   time.Now,
+		cache: opts.responseCache,
 	}
 	db, err := mutationDatabase(opts)
 	if err != nil {
@@ -375,6 +377,7 @@ func (s *announcementsAdminService) createHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
+		s.invalidate(ctx)
 		now := s.now().UTC()
 		if !startsAt.After(now) && expiresAt.After(now) {
 			s.dispatchEvent(ctx, "new", row)
@@ -466,6 +469,7 @@ func (s *announcementsAdminService) updateHandler() legacyHandler {
 			)
 		}
 		now := s.now().UTC()
+		s.invalidate(ctx)
 		starts, startsOK := timeFrom(row["starts_at"])
 		expires, expiresOK := timeFrom(row["expires_at"])
 		if row["archived_at"] == nil && startsOK && expiresOK &&
@@ -503,6 +507,7 @@ func (s *announcementsAdminService) archiveHandler() legacyHandler {
 				"Announcement not found",
 			)
 		}
+		s.invalidate(ctx)
 		s.dispatchEvent(ctx, "archived", row)
 		return accountNoStorePayload(map[string]any{
 			"announcement": row,
@@ -518,6 +523,16 @@ func announcementColor(value any) string {
 	default:
 		return "info"
 	}
+}
+
+func (s *announcementsAdminService) invalidate(ctx context.Context) {
+	if s.cache == nil {
+		return
+	}
+	ctx = context.WithoutCancel(ctx)
+	s.cache.DeleteMatching(ctx, "shrike:web-api:*:announcements:canonical")
+	s.cache.DeleteMatching(ctx, "shrike:api:*:/user/announcements/active*")
+	s.cache.DeleteMatching(ctx, "web:shrike:api:*:/user/announcements/active*")
 }
 
 func (s *announcementsAdminService) dispatchEvent(
@@ -542,26 +557,25 @@ func (d *riverAnnouncementEventDispatcher) DispatchAnnouncement(
 	if d == nil || d.client == nil {
 		return
 	}
-	announcement := make(map[string]any)
-	for _, key := range []string{
-		"id", "tier", "title", "body_md", "body_html", "color",
-		"icon", "link_url", "link_label", "starts_at", "expires_at",
-	} {
-		announcement[key] = row[key]
-	}
-	raw, err := json.Marshal(normalizeJSON(map[string]any{
-		"event_type":   event,
-		"announcement": announcement,
-	}))
+	raw, err := announcementEventPayload(event, row)
 	if err != nil {
 		return
 	}
-	_, _ = queue.Dispatch(
-		ctx,
-		d.client,
-		queue.AnnouncementEventArgs{Payload: raw},
-		queue.Live,
-	)
+	_, _ = queue.Dispatch(ctx, d.client, queue.AnnouncementEventArgs{Payload: raw}, queue.Live)
+}
+
+func announcementEventPayload(event string, row map[string]any) ([]byte, error) {
+	announcement := make(map[string]any)
+	for _, key := range []string{
+		"id", "tier", "title", "body_md", "body_html", "color",
+		"icon", "link_url", "link_label", "starts_at", "expires_at", "created_at",
+	} {
+		announcement[key] = row[key]
+	}
+	return json.Marshal(normalizeJSON(map[string]any{
+		"event_type":   event,
+		"announcement": announcement,
+	}))
 }
 
 func (s *postgresAnnouncementAdminStore) List(

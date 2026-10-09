@@ -952,7 +952,7 @@ func (s *campaignService) adminCampaignListHandler() legacyHandler {
 			LEFT JOIN users creator
 			  ON creator.character_id = c.created_by_character_id
 			WHERE %s
-			ORDER BY c.processing_paused DESC, c.created_at DESC
+			ORDER BY c.processing_paused DESC, c.created_at DESC, c.campaign_id DESC
 			LIMIT %s OFFSET %s`,
 			strings.Join(filters, " AND "), limit, offset,
 		), args...)

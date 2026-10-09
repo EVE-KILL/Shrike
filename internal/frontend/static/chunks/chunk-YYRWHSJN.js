@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+function c(r,e,i,o,a){let t=new URL(i);if(t.pathname!==e)return null;let l;try{let u=a.split("; ").find(f=>f.startsWith("ek_prefs="))?.slice(9);l=u?JSON.parse(decodeURIComponent(u)):null}catch{return null}let n=l?.defaultTabs?.[r==="group"?"item":r];if(typeof n!="string"||n==="dashboard")return null;let s=e+"/"+n;return o.includes(s)?new URL(s,t.origin):null}export{c as a};

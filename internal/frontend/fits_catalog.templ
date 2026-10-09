@@ -1,0 +1,196 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
+
+templ fitsCatalogPage(view fitCatalogView) {
+	<div class="go-utility-page fits-catalog" data-controller="fits-catalogue" data-action="click->fits-catalogue#click popstate@window->fits-catalogue#back pagehide@window->fits-catalogue#hide pageshow@window->fits-catalogue#show" data-fits-catalog>
+		@utilityHeader(utilityHeaderView{Title: "Ship Fittings", Eyebrow: "Build from real combat data", Symbol: "wrench", Background: "/images/types/24694/render?size=1024", Description: "Discover EVE Online ship fittings recovered from real losses, explore alliance doctrines, or build and share your own fits with calculated ship and module stats.", Meta: fitCatalogPart(view, "stats")}) {
+			<div class="flex flex-wrap items-center gap-2">
+				<a href="/fits/create" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors">
+					@icon("plus")
+					Create New Fit
+				</a>
+				<a href="/fits/search" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] rounded-md bg-white/[0.04] text-gray-200 border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 hover:border-blue-500/30 transition-colors">
+					@icon("search")
+					Search Fits
+				</a>
+			</div>
+		}
+		<section class="mb-6" data-fits-section="flavors">
+			@fitCatalogHeading("01", "Last 7 Days", "Flavors of the Week", "amber") {
+				<div class="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-white/[0.08] bg-black/25 p-1" data-fits-modes="flavor">
+					for _,mode:=range []struct{Key,Label,Symbol string}{{"kills","Kills","swords"},{"final_blows","Final Blows","crosshair"},{"losses","Losses","skull"}} {
+						<button type="button" data-fits-flavor={ mode.Key } aria-pressed={ strconv.FormatBool(view.Flavor == mode.Key) } class={ "inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-fine font-bold uppercase tracking-wider transition-colors " + killBoolClass(view.Flavor == mode.Key, "active", "") }>
+							@icon(mode.Symbol)
+							<span>{ mode.Label }</span>
+						</button>
+					}
+				</div>
+			}
+			@fitCatalogPart(view, "flavors")
+		</section>
+		<section class="mb-6" data-fits-section="doctrines">
+			@fitCatalogHeading("02", "Last 30 Days", "Popular Doctrines", "purple") {
+				<div class="flex items-center rounded-lg border border-white/[0.07] bg-black/20 p-1" data-fits-modes="doctrines">
+					for _,mode:=range []struct{Key,Label,Symbol string}{{"alliance","Alliances","shield"},{"corporation","Corporations","building-2"}} {
+						<button type="button" data-fits-doctrine={ mode.Key } aria-pressed={ strconv.FormatBool(view.Doctrine == mode.Key) } class={ "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all " + killBoolClass(view.Doctrine == mode.Key, "active", "") }>
+							@icon(mode.Symbol)
+							<span>{ mode.Label }</span>
+						</button>
+					}
+				</div>
+			}
+			@fitCatalogPart(view, "doctrines")
+		</section>
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+			<section>
+				@fitCatalogHeading("03", "Last 30 Days", "Popular Hulls", "blue") {
+					<div class="text-fine text-gray-500">Click for fit variants</div>
+				}
+				@fitCatalogPart(view, "popular")
+			</section>
+			<section>
+				@fitCatalogHeading("04", "Community", "Latest Shared Fits", "cyan") {
+					<div class="text-fine text-gray-500">Public user-saved</div>
+				}
+				@fitCatalogPart(view, "community")
+			</section>
+		</div>
+		<section class="mb-6" hidden?={ len(view.TopRated.Fits)==0&&!view.Errors["top-rated"] } data-fits-top-rated>
+			@fitCatalogHeading("05", "Community Picks", "Top Rated Fits", "amber") {
+				<div class="text-fine text-gray-500">Sorted by average rating</div>
+			}
+			@fitCatalogPart(view, "top-rated")
+		</section>
+	</div>
+}
+
+templ fitCatalogHeading(number, eyebrow, title, tone string) {
+	<div class="mb-3 flex items-end justify-between border-b border-white/[0.06] pb-3 fits-catalog-heading" data-tone={ tone }>
+		<div class="flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold fits-catalog-number">{ number }</span><div><div class="text-fine font-bold uppercase tracking-[0.15em] mb-1 fits-catalog-eyebrow">{ eyebrow }</div><h2 class="text-lg font-bold text-white">{ title }</h2></div></div>
+		{ children... }
+	</div>
+}
+
+templ fitCatalogPart(view fitCatalogView, part string) {
+	<div data-fits-part={ part }>
+		if view.Errors[part] {
+			<div class="glass-panel p-6 text-sm text-red-300" role="alert">Unable to load fittings. <button type="button" data-fits-retry={ part } class="underline">Retry</button></div>
+		} else {
+			switch part {
+				case "stats":
+					<div class="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
+						for _,stat:=range []struct{Label,Detail,Symbol string;Value int64}{{"Fit families","from real losses","git-branch",view.Stats.Families},{"Killmails","analyzed for fits","scan-search",view.Stats.Killmails},{"Shared fits","published by pilots","users",view.Stats.Community},{"Ratings","from the community","star",view.Stats.Ratings}} {
+							<div class="flex min-w-0 items-center gap-2.5">
+								<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/[0.04] text-blue-400/70">
+									@icon(stat.Symbol)
+								</span>
+								<div class="min-w-0"><div class="flex items-baseline gap-1.5"><span class="text-lg font-bold tabular-nums text-white">{ catalogCount(stat.Value) }</span><span class="truncate text-fine font-bold uppercase tracking-wider text-gray-500">{ stat.Label }</span></div><div class="truncate text-fine text-gray-600">{ catalogStatDetail(stat.Value, stat.Detail) }</div></div>
+							</div>
+						}
+					</div>
+				case "flavors":
+					if len(view.Flavors.Families)==0 {
+						<div class="glass-panel py-12 text-center text-sm text-gray-500">No recent fitting activity</div>
+					} else {
+						<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+							for _,fit:=range view.Flavors.Families {
+								<div class="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-500/30 hover:bg-amber-500/[0.05] hover:shadow-lg hover:shadow-black/20" data-fits-family={ fit.FamilyHash }>
+									<a href={ catalogFlavorURL(view, fit) } class="block w-full text-left"><div class="aspect-square bg-black/40 relative"><img src={ catalogShipRender(fit.ShipID, 256) } alt={ fit.ShipName } width="256" height="256" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" loading="lazy"/><div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 to-transparent p-2"><div class="text-fine font-bold text-amber-300 tabular-nums">{ fullNumber(float64(fit.RankingCount)) } { catalogFlavorMetric(view.Flavor) }</div></div></div><div class="p-2"><div class="text-xs text-gray-200 font-medium truncate group-hover:text-amber-300 transition-colors">{ catalogShipName(fit.ShipName,fit.ShipID) }</div><div class="text-fine text-gray-500 tabular-nums mt-0.5">{ warISK(fit.FitCost+fitHullCost(fit.HullCost)) } ISK</div></div></a>
+									<a href={ fmt.Sprintf("/item/%d/fittings", fit.ShipID) } aria-label={ fmt.Sprintf("View %d %s fitting variants", fit.VariantCount, catalogShipName(fit.ShipName, fit.ShipID)) } class="absolute right-2 top-2 z-10 rounded-md border border-white/10 bg-black/65 px-1.5 py-1 text-fine font-semibold tabular-nums text-gray-300 backdrop-blur-sm transition-colors hover:border-amber-400/35 hover:bg-amber-400/15 hover:text-amber-200">{ fullNumber(float64(fit.VariantCount)) } variants</a>
+								</div>
+							}
+						</div>
+					}
+				case "doctrines":
+					@fitCatalogDoctrines(view)
+				case "popular":
+					if len(view.Popular.Ships)==0 {
+						<div class="glass-panel py-12 text-center text-sm text-gray-500">No recent fitting activity</div>
+					} else {
+						<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3">
+							for _,ship:=range view.Popular.Ships {
+								<a href={ fmt.Sprintf("/item/%d/fittings", ship.ShipID) } class="group block overflow-hidden rounded-xl border border-white/[0.08] bg-black/25 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-blue-500/[0.05] hover:shadow-lg hover:shadow-black/20"><div class="aspect-square bg-black/40 relative"><img src={ catalogShipRender(ship.ShipID, 256) } alt={ ship.ShipName } width="256" height="256" class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" loading="lazy"/><div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 to-transparent p-2"><div class="text-fine font-bold text-blue-300 tabular-nums">{ fullNumber(float64(ship.Uses)) } kills</div></div><div class="absolute right-2 top-2 rounded-md border border-white/10 bg-black/60 px-1.5 py-1 text-fine font-semibold text-gray-300 backdrop-blur-sm">{ fullNumber(float64(ship.Families)) } families</div></div><div class="p-2"><div class="text-xs text-gray-200 font-medium truncate group-hover:text-blue-400 transition-colors">{ catalogShipName(ship.ShipName,ship.ShipID) }</div><div class="text-fine text-gray-500 tabular-nums mt-0.5">View observed fitting families</div></div></a>
+							}
+						</div>
+					}
+				case "community":
+					if len(view.Community.Fits)==0 {
+						<div class="glass-panel p-8 text-center">
+							<span class="block text-gray-600 mb-3 fits-catalog-empty-icon">
+								@icon("ship")
+							</span>
+							<div class="text-sm text-gray-300 mb-1">Be the first to share a fit</div>
+							<div class="text-fine text-gray-500 mb-4">Build a fit in the editor, save it as public, and it'll show up here.</div>
+							<a href="/fits/create" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors">
+								@icon("plus")
+								Create New Fit
+							</a>
+						</div>
+					} else {
+						@communityFitCards(view.Community.Fits, view.Now, false)
+					}
+				case "top-rated":
+					@communityFitCards(view.TopRated.Fits, view.Now, true)
+			}
+		}
+	</div>
+}
+
+templ fitCatalogDoctrines(view fitCatalogView) {
+	if len(view.Doctrines.Entries)==0 {
+		<div class="glass-panel py-12 text-center text-sm text-gray-500">No { view.Doctrine } activity in the window</div>
+	} else {
+		<div class="glass-panel overflow-hidden">
+			<div class="hidden grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)_7rem_5rem] items-center gap-3 border-b border-white/[0.06] bg-white/[0.015] px-4 py-2 text-fine font-bold uppercase tracking-[0.12em] text-gray-600 sm:grid"><span>Rank</span><span>{ view.Doctrine }</span><span>Signature fit</span><span class="text-right">Observed</span><span class="text-right">Share</span></div>
+			for index,fit:=range view.Doctrines.Entries {
+				<a href={ catalogDoctrineURL(view, fit) } data-fits-doctrine-id={ strconv.FormatInt(fit.EntityID, 10) } class="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-white/[0.04] px-4 py-3 text-left transition-all last:border-b-0 hover:bg-purple-500/[0.055] sm:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)_7rem_5rem]">
+					<div class="hidden h-7 w-7 items-center justify-center rounded-md border border-white/[0.06] bg-black/20 text-xs font-bold tabular-nums text-gray-600 transition-colors group-hover:border-purple-400/20 group-hover:text-purple-300 sm:flex">{ fmt.Sprintf("%02d",index+1) }</div>
+					<div class="flex min-w-0 items-center gap-3"><img src={ eveEntityImage(view.Doctrine, fit.EntityID, 64) } alt={ fit.EntityName } width="40" height="40" class="h-10 w-10 shrink-0 rounded bg-black/30 ring-1 ring-white/[0.06]" loading="lazy"/><div class="min-w-0"><div class="truncate text-sm font-medium text-gray-200">{ catalogDoctrineName(view,fit) }</div><div class="text-fine tabular-nums text-gray-500 sm:hidden">{ fullNumber(float64(fit.TotalLosses)) } total losses</div></div></div>
+					<div class="hidden min-w-0 items-center gap-3 sm:flex"><img src={ catalogShipRender(fit.ShipID, 64) } alt={ fit.ShipName } width="40" height="40" class="h-10 w-10 shrink-0 rounded bg-black/30 transition-transform duration-200 group-hover:scale-105" loading="lazy"/><div class="min-w-0"><div class="truncate text-sm font-medium text-purple-300">{ catalogShipName(fit.ShipName,fit.ShipID) }</div><div class="text-fine truncate tabular-nums text-gray-500">{ strconv.Itoa(len(fit.Modules)) } modules · { warISK(fit.FitCost+fitHullCost(fit.HullCost)) } ISK</div></div></div>
+					<div class="hidden text-right text-sm font-semibold tabular-nums text-gray-300 sm:block">{ fullNumber(float64(fit.Uses)) }<div class="text-fine font-normal text-gray-600">of { catalogCount(fit.TotalLosses) }</div></div>
+					<div class="flex shrink-0 flex-col items-end"><div class="text-sm font-bold tabular-nums text-purple-400">{ strconv.FormatFloat(fit.Share,'f',-1,64) }%</div><div class="text-fine text-gray-600 sm:hidden">of losses</div></div>
+				</a>
+			}
+		</div>
+	}
+}
+
+templ communityFitCards(fits []communityFitCard, now time.Time, topRated bool) {
+	<div class="glass-panel overflow-hidden">
+		for _,fit:=range fits {
+			<a href={ "/fit/" + fit.ID } data-community-fit={ fit.ID } class={ "flex items-center gap-3 px-4 py-3 border-b border-white/[0.04] last:border-b-0 transition-colors " + killBoolClass(topRated, "hover:bg-amber-500/[0.04]", "hover:bg-blue-500/[0.04]") }>
+				<img src={ catalogShipRender(fit.ShipID, 256) } alt={ fit.ShipName } width="48" height="48" class="w-12 h-12 rounded-md shrink-0 bg-black/40" loading="lazy"/>
+				<div class="min-w-0 flex-1">
+					<div class="text-sm text-gray-200 font-medium truncate">{ fit.Name }</div>
+					<div class="text-fine text-gray-500 flex items-center gap-1.5 mt-0.5"><span class={ killBoolClass(topRated, "text-amber-300/80", "text-blue-400/80") }>{ catalogShipName(fit.ShipName,fit.ShipID) }</span><span class="text-gray-600">·</span><span class="tabular-nums">{ strconv.Itoa(fit.Modules) } modules</span></div>
+					<div class="mt-1">
+						@fitRatingDisplay(fit.Rating, fit.Ratings)
+					</div>
+				</div>
+				<div class="flex items-center gap-2 shrink-0"><img src={ eveEntityImage("character", fit.OwnerID, 32) } alt={ fit.OwnerName } width="24" height="24" class="w-6 h-6 rounded-full" loading="lazy"/><div class="text-right"><div class="text-xs text-gray-300 truncate max-w-[120px]">{ killBoolClass(fit.OwnerName!="",fit.OwnerName,"Unknown") }</div><div class="text-fine text-gray-500">{ catalogAge(now,fit.Created) }</div></div></div>
+			</a>
+		}
+	</div>
+}
+
+templ fitRatingDisplay(avg *float64, count int) {
+	<div class="flex items-center gap-2">
+		<div class="flex items-center gap-0.5">
+			for index:=1;index<=5;index++ {
+				<button type="button" disabled aria-label={ fmt.Sprintf("Rating star %d of 5", index) } class={ "flex items-center justify-center rounded transition-colors cursor-default fit-rating-star " + killBoolClass(catalogRatingOn(avg, index), "text-amber-400 fill-amber-400", "text-gray-700") }>
+					@icon("star")
+				</button>
+			}
+		</div>
+		if count>0 {
+			<div class="text-fine tabular-nums text-gray-500"><span class="text-gray-300 font-medium">{ catalogRating(avg) }</span><span class="text-gray-600 ml-1">({ strconv.Itoa(count) })</span></div>
+		} else {
+			<div class="text-fine text-gray-600">unrated</div>
+		}
+	</div>
+}

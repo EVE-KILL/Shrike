@@ -81,3 +81,18 @@ func TestAccountESILogFilterKeepsValuesParameterized(t *testing.T) {
 		t.Fatalf("filter = (%s, %#v)", where, filter.args)
 	}
 }
+
+func TestStoredBioPreviewRetainsAllowedStyleDeclarationsAndDropsActiveContent(t *testing.T) {
+	got := SafeAccountBioHTML(`<span style="color:#ff00ff;font-size:18px;position:fixed;background:url(javascript:alert(1))" onclick="alert(1)">Safe bio</span><script>alert(1)</script>`)
+	if !strings.Contains(got, "color:#ff00ff") || !strings.Contains(got, "font-size: 18px") {
+		t.Fatal("valid combined EVE styles were lost")
+	}
+	for _, unsafe := range []string{"position", "background", "javascript:", "onclick", "<script"} {
+		if strings.Contains(got, unsafe) {
+			t.Fatal("unsafe stored bio content survived")
+		}
+	}
+	if again := SafeAccountBioHTML(got); again != got {
+		t.Fatal("bio read policy is not idempotent")
+	}
+}

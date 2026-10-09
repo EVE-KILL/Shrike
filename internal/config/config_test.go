@@ -276,27 +276,6 @@ func TestThirdPartyAPIKeysLoadFromCanonicalAndLegacyNames(t *testing.T) {
 	}
 }
 
-func TestRendererSocketConfiguration(t *testing.T) {
-	clearEnv(t)
-	t.Setenv("NUXT_ENTRYPOINT", "/app/web/server/index.mjs")
-	t.Setenv("NUXT_SOCKET", "/tmp/frontend.sock")
-	t.Setenv("SHRIKE_API_SOCKET", "/tmp/api.sock")
-
-	c, err := Load("")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c.NuxtEntrypoint != "/app/web/server/index.mjs" {
-		t.Fatalf("NuxtEntrypoint = %q", c.NuxtEntrypoint)
-	}
-	if c.NuxtSocket != "/tmp/frontend.sock" {
-		t.Fatalf("NuxtSocket = %q", c.NuxtSocket)
-	}
-	if c.APISocket != "/tmp/api.sock" {
-		t.Fatalf("APISocket = %q", c.APISocket)
-	}
-}
-
 func TestB2BucketsShareCredentialsButConfigureIndependently(t *testing.T) {
 	clearEnv(t)
 	c, err := Load("")

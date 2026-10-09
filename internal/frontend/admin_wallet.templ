@@ -1,0 +1,241 @@
+package frontend
+
+import (
+	"net/url"
+	"strconv"
+)
+
+templ adminWallet(data adminWalletData, banner url.Values) {
+	<div class="space-y-4" data-admin-wallet data-controller="admin-wallet" data-action="click->admin-wallet#click pagehide@window->admin-wallet#hide pageshow@window->admin-wallet#show" data-query={ settingsJSON(data.Query.values()) }>
+		{{ message, tone := adminWalletBanner(banner) }}
+		<div hidden?={ tone=="" } data-wallet-banner class={ "rounded-lg border px-4 py-3 text-sm " + tone }>{ message }</div>
+		<div hidden data-wallet-message class="rounded-lg border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-300" role="status"></div>
+		<div hidden data-wallet-action-error class="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300" role="alert"></div>
+		<div data-wallet-results>
+			@adminWalletResults(data)
+		</div>
+	</div>
+}
+
+templ adminWalletMoney(raw *string) {
+	<span data-wallet-isk={ adminWalletRaw(raw) }>{ walletIsk(raw) }</span>
+}
+
+templ adminWalletStamp(raw *string) {
+	<span data-wallet-date={ adminWalletRaw(raw) }>{ adminWalletDate(raw) }</span>
+}
+
+templ adminWalletResults(data adminWalletData) {
+	<div class="space-y-4" data-wallet-result data-failed={ strconv.FormatBool(data.Failed) } data-initial={ settingsJSON(data) }>
+		<div class="glass-panel p-5">
+			<div class="flex flex-col lg:flex-row lg:items-start gap-5">
+				<div class="flex-1 min-w-0">
+					<div class="flex items-center gap-3">
+						<div class="w-10 h-10 rounded-lg bg-yellow-500/15 flex items-center justify-center flex-shrink-0">
+							<span class="text-xl text-yellow-400">
+								@icon("wallet-cards")
+							</span>
+						</div>
+						<div><h2 class="text-base font-semibold text-white">{ domainDefault(data.Corporation.Name,"EVE-KILL.com")+" wallet" }</h2><p class="text-xs text-gray-500">{ "Corporation "+walletCorporationID(data.Corporation.ID)+" · refreshed hourly" }</p></div>
+					</div>
+					if auth:=data.Authorization;auth!=nil {
+						<div class="mt-4 grid sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+							<div><span class="text-gray-600">Authorized character</span><div class="text-gray-300 mt-0.5">{ auth.CharacterName }<span class="text-gray-600">{ " ("+warID(auth.CharacterID)+")" }</span></div></div>
+							<div><span class="text-gray-600">Status</span><div class={ "mt-0.5 font-medium " + killBoolClass(auth.Disabled, "text-red-400", "text-green-400") }>{ killBoolClass(auth.Disabled,"Authorization disabled","Active") }</div></div>
+							<div>
+								<span class="text-gray-600">Last balance sync</span>
+								<div class="text-gray-300 mt-0.5">
+									@adminWalletStamp(auth.BalanceSync)
+								</div>
+							</div>
+							<div>
+								<span class="text-gray-600">Last journal sync</span>
+								<div class="text-gray-300 mt-0.5">
+									@adminWalletStamp(auth.JournalSync)
+								</div>
+							</div>
+						</div>
+						if auth.Error!=nil&&*auth.Error!="" {
+							<div class="mt-4 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-300 break-words">{ *auth.Error }</div>
+						}
+					} else {
+						<p class="mt-4 text-sm text-gray-400">Authorize an EVE-KILL.com character with Accountant or Junior Accountant to start importing the corporation wallet.</p>
+					}
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<button type="button" data-wallet-authorize class="flex items-center gap-2 px-3 py-2 rounded-md bg-blue-500/15 text-sm font-medium text-blue-300 hover:bg-blue-500/25 disabled:opacity-50">
+						@icon("key-round")
+						{ killBoolClass(data.Authorization!=nil,"Re-authorize ESI","Authorize ESI wallet") }
+					</button>
+					if data.Authorization!=nil {
+						<button type="button" data-wallet-sync disabled?={ data.Authorization.Disabled } data-disabled={ strconv.FormatBool(data.Authorization.Disabled) } class="flex items-center gap-2 px-3 py-2 rounded-md bg-white/[0.05] text-sm text-gray-300 hover:bg-white/[0.09] disabled:opacity-50">
+							@icon("refresh-cw")
+							Sync now
+						</button>
+					}
+					<button type="button" data-wallet-refresh class="flex items-center gap-2 px-3 py-2 rounded-md bg-white/[0.05] text-sm text-gray-400 hover:bg-white/[0.09]">
+						@icon("rotate-cw")
+						Refresh
+					</button>
+				</div>
+			</div>
+		</div>
+		<div hidden?={ !data.Failed } data-wallet-error class="glass-panel p-5 text-sm text-red-400" role="alert">Could not load the corporation wallet. <button type="button" data-wallet-refresh class="text-blue-400">Retry</button></div>
+		if !data.Failed {
+			<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+				<div class="glass-panel p-4 col-span-2">
+					<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Total balance</div>
+					<div class="mt-1 text-xl font-bold text-yellow-400 tabular-nums">
+						@adminWalletMoney(&data.TotalBalance)
+					</div>
+				</div>
+				for _,wallet:=range data.divisions() {
+					<div class="glass-panel p-4">
+						<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">{ "Division "+strconv.Itoa(wallet.Division) }</div>
+						<div class="mt-1 text-sm font-semibold text-white tabular-nums">
+							@adminWalletMoney(&wallet.Balance)
+						</div>
+					</div>
+				}
+			</div>
+			if groups:=data.groups();len(groups)>0 {
+				<div class="glass-panel overflow-hidden">
+					<div class="p-4 border-b border-white/[0.06]"><h2 class="text-sm font-semibold text-white">Campaign prize settlements</h2><p class="text-fine text-gray-600 mt-0.5">Verified claims waiting for manual in-game payment.</p></div>
+					<div class="divide-y divide-white/[0.06]">
+						for _,group:=range groups {
+							{{ pool := group.Pool }}
+							<div data-admin-wallet-pool={ pool.CampaignID } class="p-4">
+								<div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+									<div>
+										<a href={ "/campaign/" + pool.CampaignID } class="text-sm font-semibold text-blue-300 hover:text-blue-200">{ pool.Name }</a>
+										<div class="text-fine text-gray-600 mt-0.5">
+											{ pool.CampaignID+" · finalized " }@adminWalletStamp(pool.Finalized)
+										</div>
+									</div>
+									<div class="text-right">
+										<div class="text-sm font-semibold text-yellow-400 tabular-nums">
+											@adminWalletMoney(&pool.Funded)
+										</div>
+										<div class={ "text-fine " + killBoolClass(pool.Status == 2, "text-green-400", "text-yellow-400") }>{ killBoolClass(pool.Status==2,"Paid","Ready for payout") }</div>
+									</div>
+								</div>
+								<div class="overflow-x-auto">
+									<table class="w-full text-xs">
+										<tbody>
+											for _,row:=range group.Results {
+												<tr data-admin-wallet-prize={ row.CampaignID + ":" + adminWalletInt(row.Rank) } class="border-t border-white/[0.04]">
+													<td class="py-2 pr-3 text-gray-500 w-10">{ "#"+adminWalletInt(row.Rank) }</td>
+													<td class="py-2 pr-3"><a href={ "/character/" + walletID(row.CharacterID) } class="text-gray-300 hover:text-blue-300">{ domainDefault(adminWalletRaw(row.CharacterName),walletID(row.CharacterID)) }</a></td>
+													<td class="py-2 px-3 text-right text-gray-400 tabular-nums">
+														{ adminWalletInt(row.Percentage)+"% · " }@adminWalletMoney(row.Amount)
+													</td>
+													<td class="py-2 pl-3 text-right">
+														if row.Paid!=nil&&*row.Paid!="" {
+															<span class="text-green-400">
+																{ "Paid " }
+																@adminWalletStamp(row.Paid)
+															</span>
+														} else if row.Claimed!=nil&&*row.Claimed!="" {
+															<button type="button" data-wallet-paid class="px-2.5 py-1 rounded bg-green-500/15 text-green-300 hover:bg-green-500/25 disabled:opacity-50">Mark paid</button>
+														} else {
+															<span class="text-gray-600">Awaiting claim</span>
+														}
+													</td>
+												</tr>
+											}
+										</tbody>
+									</table>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			}
+			if len(data.References)>0 {
+				<div class="glass-panel overflow-hidden">
+					<div class="p-4 border-b border-white/[0.06]"><h2 class="text-sm font-semibold text-white">Wallet references</h2><p class="text-fine text-gray-600 mt-0.5">Matched and rejected campaign and EK Wallet references.</p></div>
+					<div class="overflow-x-auto">
+						<table class="w-full text-xs">
+							<thead>
+								<tr class="text-left text-gray-600 border-b border-white/[0.06]">
+									for _,label:=range []string{"Date","Reference","Status","Amount","Note"} {
+										<th class={ "px-4 py-2.5 font-medium " + killBoolClass(label == "Amount", "text-right", "") }>{ label }</th>
+									}
+								</tr>
+							</thead>
+							<tbody>
+								for _,reference:=range data.References {
+									<tr class="border-b border-white/[0.04] last:border-0">
+										<td class="px-4 py-3 text-gray-500 whitespace-nowrap">
+											@adminWalletStamp(&reference.Date)
+										</td>
+										<td class="px-4 py-3 text-gray-300 font-mono">{ reference.Type+":"+reference.ID }</td>
+										<td class={ "px-4 py-3 " + adminWalletReferenceTone(reference.Status) }>{ adminWalletReferenceStatus(reference.Status) }</td>
+										<td class="px-4 py-3 text-right text-gray-300 tabular-nums whitespace-nowrap">
+											@adminWalletMoney(reference.Amount)
+										</td>
+										<td class="px-4 py-3 text-gray-600">{ domainDefault(adminWalletRaw(reference.Note),"—") }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			}
+			<div class="glass-panel overflow-hidden">
+				<div class="p-4 border-b border-white/[0.06] flex flex-col sm:flex-row sm:items-center gap-3"><div class="flex-1"><h2 class="text-sm font-semibold text-white">Wallet journal</h2><p class="text-fine text-gray-600 mt-0.5">The latest entries retained by ESI, newest first.</p></div><div data-wallet-division></div></div>
+				<div class="overflow-x-auto">
+					<table class="w-full text-xs">
+						<thead>
+							<tr class="text-left text-gray-600 border-b border-white/[0.06]">
+								for _,label:=range []string{"Date","Division","Type","Description","Amount","Balance","Parties"} {
+									<th class={ "px-4 py-2.5 font-medium " + killBoolClass(label == "Date", "whitespace-nowrap", "") + killBoolClass(label == "Description", " min-w-64", "") + killBoolClass(label == "Amount" || label == "Balance", " text-right", "") }>{ label }</th>
+								}
+							</tr>
+						</thead>
+						<tbody>
+							for _,entry:=range data.Journal {
+								<tr data-admin-wallet-entry={ strconv.Itoa(entry.Division) + "-" + warID(entry.JournalID) } class="border-b border-white/[0.04] last:border-0 align-top">
+									<td class="px-4 py-3 text-gray-400 whitespace-nowrap">
+										@adminWalletStamp(&entry.Date)
+									</td>
+									<td class="px-4 py-3 text-gray-400">{ strconv.Itoa(entry.Division) }</td>
+									<td class="px-4 py-3 text-gray-300 whitespace-nowrap">{ walletRefType(entry.RefType) }</td>
+									<td class="px-4 py-3">
+										<div class="text-gray-300">{ domainDefault(entry.Description,"—") }</div>
+										if entry.Reason!=nil&&*entry.Reason!="" {
+											<div class="text-fine text-gray-600 mt-1">{ *entry.Reason }</div>
+										}
+									</td>
+									<td class={ "px-4 py-3 text-right tabular-nums whitespace-nowrap font-medium " + adminWalletAmountTone(entry.Amount) }>
+										@adminWalletMoney(entry.Amount)
+									</td>
+									<td class="px-4 py-3 text-right text-gray-400 tabular-nums whitespace-nowrap">
+										@adminWalletMoney(entry.Balance)
+									</td>
+									<td class="px-4 py-3 text-fine text-gray-600 whitespace-nowrap">
+										if entry.FirstPartyID!=nil&&*entry.FirstPartyID!=0 {
+											<div>{ "From "+walletID(entry.FirstPartyID) }</div>
+										}
+										if entry.SecondPartyID!=nil&&*entry.SecondPartyID!=0 {
+											<div>{ "To "+walletID(entry.SecondPartyID) }</div>
+										}
+										if (entry.FirstPartyID==nil||*entry.FirstPartyID==0)&&(entry.SecondPartyID==nil||*entry.SecondPartyID==0) {
+											<div>—</div>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				if len(data.Journal)==0 {
+					<div class="p-8 text-center text-sm text-gray-500">No wallet journal entries have been imported yet.</div>
+				}
+			</div>
+			if data.Page>1||data.HasMore {
+				<div class="flex items-center justify-center gap-2"><button type="button" data-wallet-page={ strconv.Itoa(data.Page - 1) } disabled?={ data.Page<=1 } class="glass-panel px-3 py-1.5 text-xs text-gray-400 disabled:opacity-30">Previous</button><span class="text-fine text-gray-600">{ "Page "+strconv.Itoa(data.Page) }</span><button type="button" data-wallet-page={ strconv.Itoa(data.Page + 1) } disabled?={ !data.HasMore } class="glass-panel px-3 py-1.5 text-xs text-gray-400 disabled:opacity-30">Next</button></div>
+			}
+		}
+	</div>
+}

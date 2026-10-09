@@ -1,0 +1,30 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/eve-kill/shrike/internal/api"
+)
+
+templ fitVariantsList(ship api.UniverseItem, data api.UniverseFitFamilies) {
+	@templ.JSONScript("fit-variants-data", data).WithType("application/json")
+	if len(data.Families) == 0 {
+		<p class="fit-editor-variants-empty">No observed fitting families for this hull.</p>
+	} else {
+		for index, family := range data.Families {
+			<div class="fit-editor-variant-card">
+				<a class="fit-editor-variant-hit" href={ fitEditorURL(ship.ID, family, data.WindowDays) } data-fit-variant={ family.FamilyHash } data-fit-variant-index={ strconv.Itoa(index + 1) } aria-label={ "Preview " + fitFamilyName(family, ship.GroupName) + " fitting family" }></a>
+				<span class="fit-editor-variant-rank">{ fmt.Sprintf("%02d", index + 1) }</span>
+				<span class="fit-editor-variant-detail">
+					<span class="fit-editor-variant-title"><strong>{ fitFamilyName(family, ship.GroupName) }</strong><small>{ fitObservedAgo(family.LastUsed) }</small></span>
+					<span class="fit-editor-variant-meta"><span><a href={ fitFamilySearchURL(family.FamilyHash, data.WindowDays, false) } target="_blank" rel="noopener">{ fullNumber(float64(family.TotalUses)) } losses</a> · <a href={ fitFamilySearchURL(family.FamilyHash, data.WindowDays, true) } target="_blank" rel="noopener">{ strconv.Itoa(family.VariantCount) } { fitVariantsLabel(family.VariantCount) }</a></span><em>{ compactNumber(family.FitCost + fitHullCost(data.HullCost)) }</em></span>
+					if family.Context != nil {
+						<small class="fit-editor-variant-context" title={ strings.Join(fitContextParts(family.Context), " · ") }>{ strings.Join(fitContextParts(family.Context), " · ") }</small>
+					}
+				</span>
+			</div>
+		}
+	}
+}

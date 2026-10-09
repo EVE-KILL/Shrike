@@ -15,7 +15,8 @@ concurrency:
 
 env:
   GO_VERSION: 1.27.0
-  BUN_VERSION: 1.4.0
+  NODE_VERSION: 24
+  RUST_VERSION: 1.99.0
   TEST_DATABASE_URL: postgresql://shrike_ci:shrike_ci@127.0.0.1:5432/shrike_ci
   TEST_REDIS_ADDR: 127.0.0.1:6379
 
@@ -36,6 +37,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: true
+
+      - name: Check frontend template formatting and generation
+        run: |
+          go tool templ fmt -fail internal/frontend
+          go tool templ generate -path internal/frontend
+          git diff --exit-code -- internal/frontend
 
       - name: Check formatting
         run: |
@@ -79,13 +86,15 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install API generator modules
-        run: bun install --cwd web/tools/api-codegen --frozen-lockfile
+        run: npm --prefix frontend/tools/api-codegen ci --ignore-scripts
 
       - name: Check generated API contract
         run: make check-api-client
@@ -150,11 +159,6 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: ${{ env.BUN_VERSION }}
-
       - name: Create application schema
         env:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
@@ -194,31 +198,62 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v7
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Guard against trusted dependencies
+      - name: Install browser build modules
+        run: npm --prefix frontend ci --ignore-scripts
+
+      - name: Run browser interaction and WASM tests
+        run: npm --prefix frontend test
+
+      - name: Type-check browser code
+        run: npm --prefix frontend run typecheck
+
+      - name: Verify reproducible browser bundles
         run: |
-          if grep -q '"trustedDependencies"' web/package.json; then
-            echo "web/package.json introduces trustedDependencies."
-            echo "This permits dependency lifecycle scripts and requires explicit review."
-            exit 1
-          fi
+          npm --prefix frontend run build
+          git diff --exit-code -- internal/frontend/static internal/frontend/data frontend/browser-artifacts.json
 
-      - name: Install frontend modules
-        run: bun install --cwd web --frozen-lockfile
+      - name: Audit browser dependencies
+        run: npm --prefix frontend audit --omit=dev
 
-      - name: Run frontend tests
-        run: bun run --cwd web test
+  native-engine:
+    name: Native fitting engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt
+      - name: Check worker formatting
+        run: cargo fmt --manifest-path engine/dogma/Cargo.toml -p shrike-dogma --check
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Verify committed WASM matches its source
+        run: node frontend/scripts/dogma-source.mjs --check
+      - name: Build pinned native worker
+        run: make build-dogma
+      - name: Validate protocol, cancellation and calculation parity
+        run: go test -race -count=1 ./internal/dogma
+      - name: Install browser engine test tooling
+        run: npm --prefix frontend ci --ignore-scripts
+      - name: Verify native and browser calculations match
+        env:
+          DOGMA_REQUIRE_NATIVE: 1
+        run: npm --prefix frontend test -- dogma/test/native-parity.test.ts
 
-      - name: Type-check frontend
-        run: bun run --cwd web typecheck
-
-      - name: Audit frontend dependencies
-        continue-on-error: true
-        run: bun audit --cwd web
 
   security:
     name: Security (govulncheck and OSV)
@@ -264,6 +299,7 @@ jobs:
       - go-generated
       - go-race
       - frontend
+      - native-engine
       - security
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -274,6 +310,7 @@ jobs:
           GO_QUALITY_RESULT: ${{ needs.go-quality.result }}
           GO_GENERATED_RESULT: ${{ needs.go-generated.result }}
           GO_RACE_RESULT: ${{ needs.go-race.result }}
+          NATIVE_ENGINE_RESULT: ${{ needs.native-engine.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
         shell: bash
@@ -281,12 +318,14 @@ jobs:
           if [[ "$GO_QUALITY_RESULT" != "success" ||
                 "$GO_GENERATED_RESULT" != "success" ||
                 "$GO_RACE_RESULT" != "success" ||
+                "$NATIVE_ENGINE_RESULT" != "success" ||
                 "$FRONTEND_RESULT" != "success" ||
                 "$SECURITY_RESULT" != "success" ]]; then
             echo "Go quality: $GO_QUALITY_RESULT"
             echo "Go generated: $GO_GENERATED_RESULT"
             echo "Go race: $GO_RACE_RESULT"
             echo "Frontend: $FRONTEND_RESULT"
+            echo "Native engine: $NATIVE_ENGINE_RESULT"
             echo "Security: $SECURITY_RESULT"
             exit 1
           fi

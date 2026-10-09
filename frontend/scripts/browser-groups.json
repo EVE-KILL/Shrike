@@ -1,0 +1,21 @@
+{
+  "dogma": "dogma",
+  "map-canvas": "map",
+  "region-map": "map",
+  "map-aiid-audio": "map",
+  "fit-table-data": "fit-table",
+  "fit-document": "fit-document",
+  "fit-drag-data": "fit-drag",
+  "formatters": "formatters",
+  "settings-data": "settings",
+  "account-data": "account",
+  "esi-data": "esi",
+  "admin-data": "admin",
+  "announcement-data": "announcement",
+  "saved-search-data": "search",
+  "campaign-data": "campaign",
+  "comment-input-data": "comment",
+  "battle-data": "battle",
+  "faction-war-data": "faction-war",
+  "battle-generator-data": "battle-generator"
+}

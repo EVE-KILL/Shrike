@@ -1,0 +1,12 @@
+new:
+  displayName: Structure Effective Kinetic Resonance
+  category: Structure
+  unit: "Inverse Absolute Percent"
+  highIsGood: false
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: damageProfileKinetic}
+      - {mul: kineticDamageResonance}

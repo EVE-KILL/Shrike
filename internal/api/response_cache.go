@@ -31,6 +31,15 @@ type responseCacheBackend interface {
 	DeleteMatching(context.Context, string)
 }
 
+type cachedResponseWithTTL struct {
+	Entry cachedResponse
+	TTL   time.Duration
+}
+
+type responseCacheBulkBackend interface {
+	LoadMany(context.Context, []string) map[string]cachedResponseWithTTL
+}
+
 // LoadOnce collapses concurrent cache misses for the same key in this process.
 // The shared Valkey cache handles reuse across replicas; this guard prevents a
 // burst inside one replica from running the same expensive database query for
@@ -90,6 +99,51 @@ func (c *ResponseCache) Load(
 ) (cachedResponse, bool) {
 	entry, fresh, ok := c.LoadState(ctx, key)
 	return entry, ok && fresh
+}
+
+// LoadMany reads fresh entries in one shared-cache round trip after checking
+// L1. It never loads the database or starts refresh work on a miss.
+func (c *ResponseCache) LoadMany(ctx context.Context, keys []string) map[string]cachedResponse {
+	result := make(map[string]cachedResponse)
+	if c == nil {
+		return result
+	}
+	now := time.Now()
+	missing := []string{}
+	seen := map[string]bool{}
+	for _, key := range keys {
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		if entry, ok := c.local.Get(key, now); ok && !sharedOnlyResponse(key) {
+			if responseIsFresh(entry, now) {
+				result[key] = entry
+			}
+			continue
+		}
+		missing = append(missing, key)
+	}
+	if c.shared == nil || len(missing) == 0 {
+		return result
+	}
+	if shared, ok := c.shared.(responseCacheBulkBackend); ok {
+		for key, value := range shared.LoadMany(ctx, missing) {
+			if !sharedOnlyResponse(key) {
+				c.local.Put(key, value.Entry, value.TTL, time.Now())
+			}
+			if responseIsFresh(value.Entry, time.Now()) {
+				result[key] = cloneCachedResponse(value.Entry)
+			}
+		}
+	} else {
+		for _, key := range missing {
+			if entry, ok := c.Load(ctx, key); ok {
+				result[key] = entry
+			}
+		}
+	}
+	return result
 }
 
 // LoadState returns fresh and stale entries while their retention TTL lasts.
@@ -160,12 +214,12 @@ func (c *ResponseCache) store(
 	}
 }
 
-// User-editable conflict and coalition data is invalidated on mutation. Keep
+// User-editable conflict, coalition and announcement data is invalidated on mutation. Keep
 // these entries only in shared storage: a process-local copy cannot observe a
 // deletion performed by another replica (or recover missed pub/sub messages).
 // If shared storage is unavailable, these routes safely fall back to their DB.
 func sharedOnlyResponse(key string) bool {
-	return strings.Contains(key, "battle") || strings.Contains(key, "/coalitions")
+	return strings.Contains(key, "battle") || strings.Contains(key, "/coalitions") || strings.Contains(key, "announcements:canonical") || strings.Contains(key, "/announcements/active")
 }
 
 // DeleteMatching invalidates both tiers. The pattern uses the Redis glob
@@ -197,7 +251,34 @@ func (c *redisResponseCache) Load(
 		return cachedResponse{}, 0, false
 	}
 
-	fields := values.Val()
+	return decodeRedisCachedResponse(values.Val(), remaining.Val())
+}
+
+func (c *redisResponseCache) LoadMany(ctx context.Context, keys []string) map[string]cachedResponseWithTTL {
+	result := make(map[string]cachedResponseWithTTL)
+	pipe := c.client.Pipeline()
+	values := make([]*redis.SliceCmd, len(keys))
+	remaining := make([]*redis.DurationCmd, len(keys))
+	for i, key := range keys {
+		values[i] = pipe.HMGet(ctx, key, "content_type", "body", "fresh_until")
+		remaining[i] = pipe.PTTL(ctx, key)
+	}
+	if len(keys) == 0 {
+		return result
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return result
+	}
+	for i, key := range keys {
+		entry, ttl, ok := decodeRedisCachedResponse(values[i].Val(), remaining[i].Val())
+		if ok {
+			result[key] = cachedResponseWithTTL{Entry: entry, TTL: ttl}
+		}
+	}
+	return result
+}
+
+func decodeRedisCachedResponse(fields []any, ttl time.Duration) (cachedResponse, time.Duration, bool) {
 	if len(fields) != 3 {
 		return cachedResponse{}, 0, false
 	}
@@ -205,7 +286,6 @@ func (c *redisResponseCache) Load(
 	if !ok {
 		return cachedResponse{}, 0, false
 	}
-	ttl := remaining.Val()
 	if ttl <= 0 {
 		return cachedResponse{}, 0, false
 	}

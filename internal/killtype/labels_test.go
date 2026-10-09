@@ -34,7 +34,7 @@ func TestLabelsMatchPublicKillTypes(t *testing.T) {
 }
 
 func TestEveryPublicLabelIsInDefaultKillsDropdown(t *testing.T) {
-	menu, err := os.ReadFile("../../web/app/composables/useDomainConfig.ts")
+	menu, err := os.ReadFile("../../frontend/src/models/domainConfig.ts")
 	if err != nil {
 		t.Fatal(err)
 	}

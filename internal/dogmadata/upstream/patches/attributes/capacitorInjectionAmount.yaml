@@ -1,0 +1,12 @@
+new:
+  displayName: Capacitor Injection Amount
+  category: Capacitor
+  unit: "capacitor units"
+  default: 0
+  highIsGood: true
+
+effects:
+  - on: capacitorBoosterCharge
+    category: passive
+    rules:
+      - {add: capacitorBonus, domain: otherID}

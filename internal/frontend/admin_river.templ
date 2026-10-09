@@ -1,0 +1,145 @@
+package frontend
+
+import "strconv"
+
+templ adminRiver(data adminRiverData) {
+	<div class="space-y-5" data-admin-river data-controller="admin-river" data-action="click->admin-river#click change->admin-river#change cancel->admin-river#close:capture pagehide@window->admin-river#hide pageshow@window->admin-river#show" data-query={ settingsJSON(data.Query.values()) }>
+		<div class="flex items-center justify-between gap-3">
+			<div><h2 class="text-lg font-bold text-white">River Operations</h2><p class="text-xs text-gray-500 mt-1">Queue workers, cron runs, inputs, outcomes, retries, and controls.</p></div>
+			<button type="button" data-river-refresh class="px-3 py-2 rounded-lg bg-white/[0.05] text-xs text-gray-300 hover:text-blue-400 cursor-pointer whitespace-nowrap">
+				<span data-river-spinner class="mr-1">
+					@icon("refresh-cw")
+				</span> Refresh
+			</button>
+		</div>
+		<p hidden?={ !data.Queues.Failed } data-river-error="queues" class="text-sm text-red-300" role="alert">Could not load River queues. <button type="button" class="text-blue-400" data-river-retry="queues">Retry</button></p>
+		<div data-admin-river-queues>
+			@adminRiverQueueResults(data.Queues)
+		</div>
+		<div class="glass-panel overflow-hidden">
+			<div class="p-4 border-b border-white/[0.06] flex flex-wrap gap-2 items-center">
+				<h3 class="text-sm font-bold text-white mr-auto">Jobs</h3>
+				<select aria-label="Queue" data-river-filter="queue" class="bg-zinc-900 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-300">
+					<option value="">All queues</option>
+					for _,queue:=range data.Queues.Rows {
+						<option value={ queue.Name } selected?={ queue.Name==data.Query.Queue }>{ queue.Name }</option>
+					}
+				</select>
+				<select aria-label="State" data-river-filter="state" class="bg-zinc-900 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-300">
+					<option value="">All states</option>
+					for _,state:=range adminRiverStates {
+						<option value={ state } selected?={ state==data.Query.State }>{ state }</option>
+					}
+				</select>
+			</div>
+			<p hidden?={ !data.Jobs.Failed } data-river-error="jobs" class="p-4 text-sm text-red-300" role="alert">Could not load River jobs. <button type="button" class="text-blue-400" data-river-retry="jobs">Retry</button></p>
+			<div data-admin-river-jobs>
+				@adminRiverJobResults(data.Jobs)
+			</div>
+		</div>
+		@adminRiverInspector()
+	</div>
+}
+
+templ adminRiverQueueResults(data adminRiverQueues) {
+	<div class="grid grid-cols-1 xl:grid-cols-2 gap-3" data-river-result="queues" data-failed={ strconv.FormatBool(data.Failed) } data-initial={ settingsJSON(data) }>
+		for _,q:=range data.Rows {
+			<div class="glass-panel p-4" data-admin-river-queue={ q.Name }>
+				<div class="flex flex-wrap sm:flex-nowrap items-start justify-between gap-3">
+					<div class="min-w-0">
+						<div class="flex items-center gap-2 flex-wrap">
+							<span class="font-mono text-sm text-white">{ q.Name }</span>
+							if q.Cron {
+								<span class="text-fine px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400">CRON</span>
+							}
+							<span class={ "text-fine " + killBoolClass(q.Active, "text-green-400", "text-red-400") }>{ "● "+killBoolClass(q.Active,"worker live","worker stale") }</span>
+						</div>
+						<p class="text-xs text-gray-600 mt-1 truncate">{ q.Description }</p>
+					</div>
+					<div class="flex gap-1">
+						<button type="button" data-river-queue-action={ killBoolClass(q.Paused != nil, "resume", "pause") } class="px-2 py-1 rounded text-xs bg-white/[0.05] text-gray-400 hover:text-yellow-400 cursor-pointer">{ killBoolClass(q.Paused!=nil,"Resume","Pause") }</button>
+						<button type="button" data-river-queue-action="clear" class="px-2 py-1 rounded text-xs bg-red-500/10 text-red-400 cursor-pointer">Clear history</button>
+					</div>
+				</div>
+				<div class="grid grid-cols-4 sm:grid-cols-7 gap-2 mt-4 text-center">
+					for _,state:=range adminRiverStates {
+						<div><div class={ "text-sm font-bold tabular-nums " + adminRiverStateClass(state) }>{ strconv.FormatInt(adminRiverDepthCount(q.Depth, state), 10) }</div><div class="text-fine text-gray-600 uppercase">{ state }</div></div>
+					}
+				</div>
+				<div class="mt-3 text-fine text-gray-600">
+					{ "Concurrency "+adminRiverConcurrency(q.Concurrency)+" · Pending "+strconv.FormatInt(q.pending(), 10)+" · Heartbeat " }<span data-river-stamp={ adminRiverTime(q.Updated) }>{ adminRiverStamp(q.Updated) }</span>
+					if q.Paused!=nil {
+						<span class="text-yellow-400">{ " · Paused " }<span data-river-stamp={ adminRiverTime(q.Paused) }>{ adminRiverStamp(q.Paused) }</span></span>
+					}
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ adminRiverJobResults(data adminRiverJobs) {
+	<div data-river-result="jobs" data-failed={ strconv.FormatBool(data.Failed) } data-initial={ settingsJSON(data) }>
+		<div class="overflow-x-auto">
+			<table class="w-full text-xs">
+				<thead class="text-gray-600 uppercase text-fine"><tr><th class="text-left p-3">ID</th><th class="text-left p-3">Queue / kind</th><th class="text-left p-3">State</th><th class="text-left p-3">Attempt</th><th class="text-left p-3">Created</th><th class="text-right p-3">Actions</th></tr></thead>
+				<tbody class="divide-y divide-white/[0.05]">
+					for _,job:=range data.Rows {
+						<tr data-admin-river-job={ strconv.FormatInt(job.ID, 10) } class="hover:bg-white/[0.02]">
+							<td class="p-3 font-mono text-gray-400">{ strconv.FormatInt(job.ID,10) }</td>
+							<td class="p-3"><div class="text-white">{ job.Queue }</div><div class="text-gray-600">{ job.Kind }</div></td>
+							<td class={ "p-3 font-medium " + adminRiverStateClass(job.State) }>{ job.State }</td>
+							<td class="p-3 text-gray-400">{ strconv.Itoa(job.Attempt)+"/"+strconv.Itoa(job.MaxAttempts) }</td>
+							<td class="p-3 text-gray-500 whitespace-nowrap" data-river-stamp={ adminRiverTime(job.Created) }>{ adminRiverStamp(job.Created) }</td>
+							<td class="p-3">
+								<div class="flex justify-end gap-1">
+									<button type="button" data-river-inspect class="px-2 py-1 text-blue-400 hover:bg-blue-500/10 rounded cursor-pointer">Inspect</button>
+									if job.cancellable() {
+										<button type="button" data-river-job-action="cancel" class="px-2 py-1 text-yellow-400 hover:bg-yellow-500/10 rounded cursor-pointer">Cancel</button>
+									} else {
+										<button type="button" data-river-job-action="retry" class="px-2 py-1 text-green-400 hover:bg-green-500/10 rounded cursor-pointer">Rerun</button>
+									}
+									if job.State!="running" {
+										<button type="button" data-river-job-action="delete" class="px-2 py-1 text-red-400 hover:bg-red-500/10 rounded cursor-pointer">Delete</button>
+									}
+								</div>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		if data.Before>0 {
+			<div class="p-3 border-t border-white/[0.06] text-center"><button type="button" data-river-older={ strconv.FormatInt(data.Before, 10) } class="text-xs text-blue-400 cursor-pointer">Older jobs</button></div>
+		}
+		if !data.Failed&&len(data.Rows)==0 {
+			<p class="p-8 text-center text-xs text-gray-500">No jobs match these filters.</p>
+		}
+	</div>
+}
+
+templ adminRiverInspector() {
+	<dialog data-river-dialog class="admin-river-dialog go-utility-page admin-page" aria-label="River job">
+		<div class="admin-river-inspector flex w-full flex-col overflow-hidden">
+			<div class="flex shrink-0 items-start justify-between border-b border-white/[0.08] px-5 py-4">
+				<div><div class="flex items-center gap-2"><h3 data-river-field="title" class="font-mono text-base font-bold text-white"></h3><span data-river-field="state" class="rounded px-2 py-0.5 text-fine font-semibold uppercase bg-white/[0.05]"></span></div><p data-river-field="queue" class="mt-1 font-mono text-xs text-gray-500"></p></div>
+				<button type="button" data-river-close class="rounded-lg p-2 text-gray-500 hover:bg-white/[0.06] hover:text-white cursor-pointer" aria-label="Close job inspector">
+					@icon("x")
+				</button>
+			</div>
+			<div class="overflow-y-auto p-5 space-y-5">
+				<div class="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-white/[0.07] bg-white/[0.07] md:grid-cols-4">
+					for _,field:=range []struct{ID,Label,Tone string}{{"attempt","Attempt","text-sm text-white"},{"priority","Priority","text-sm text-white"},{"scheduled","Scheduled","text-xs text-gray-300"},{"finalized","Finalized","text-xs text-gray-300"}} {
+						<div class="bg-zinc-950 p-3"><span class="text-fine font-semibold uppercase tracking-wider text-gray-600">{ field.Label }</span><div data-river-field={ field.ID } class={ "mt-1 " + field.Tone }></div></div>
+					}
+				</div>
+				<div class="grid gap-4 lg:grid-cols-2">
+					for _,field:=range []struct{ID,Label string}{{"args","Input arguments"},{"output","Output"}} {
+						<section class="min-w-0"><h4 class="mb-2 text-fine font-semibold uppercase tracking-wider text-gray-500">{ field.Label }</h4><pre data-river-field={ field.ID } class="max-h-80 overflow-auto rounded-lg border border-white/[0.06] bg-black p-4 text-xs leading-5 text-gray-300"></pre></section>
+					}
+				</div>
+				<section data-river-errors><h4 class="mb-2 text-fine font-semibold uppercase tracking-wider text-red-400">Errors</h4><pre data-river-field="errors" class="max-h-80 overflow-auto rounded-lg border border-red-500/15 bg-red-500/[0.05] p-4 text-xs leading-5 text-red-300"></pre></section>
+				<section><h4 class="mb-2 text-fine font-semibold uppercase tracking-wider text-gray-500">Worker IDs</h4><div data-river-field="workers" class="break-all rounded-lg border border-white/[0.06] bg-black px-4 py-3 font-mono text-xs text-gray-400"></div></section>
+			</div>
+		</div>
+	</dialog>
+}

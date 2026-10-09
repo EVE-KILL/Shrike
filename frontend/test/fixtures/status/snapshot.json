@@ -1,0 +1,176 @@
+{
+  "event": "status",
+  "uptime": 0,
+  "started_at": "",
+  "timestamp": "2026-10-08T12:00:00.000Z",
+  "system": {
+    "platform": "linux",
+    "arch": "arm64",
+    "cpus": 8,
+    "memory_total": "64 GB",
+    "memory_free": "16 GB",
+    "load_average": [
+      1.25,
+      2.5,
+      3.75
+    ]
+  },
+  "database": {
+    "size": "1 GB",
+    "version": "18.6",
+    "role": "primary",
+    "sampled_at": "",
+    "uptime_seconds": 3600,
+    "connections": {
+      "total": 10,
+      "active": 2,
+      "idle_in_transaction": 1,
+      "waiting": 1,
+      "max": 100
+    },
+    "cluster": {
+      "replicas": 2,
+      "streaming": 2,
+      "synchronous": 0,
+      "max_lag_bytes": 0,
+      "max_lag_seconds": 0.25
+    },
+    "workload": {
+      "transactions_per_second": 42.5,
+      "rollback_percent": 0,
+      "wal_bytes_per_second": 1024,
+      "read_bytes_per_second": 2048,
+      "write_bytes_per_second": 512,
+      "read_latency_ms": 0,
+      "write_latency_ms": 0,
+      "rows_changed_per_second": 0,
+      "temp_bytes_per_second": 0,
+      "deadlocks": 0
+    },
+    "statements": {
+      "queries_per_second": 125,
+      "average_latency_ms": 3.25
+    },
+    "maintenance": {
+      "checkpoints": 1,
+      "requested_checkpoints": 0,
+      "average_checkpoint_time_ms": 0,
+      "active_autovacuums": 0,
+      "dead_rows": 1000
+    },
+    "history": [
+      {
+        "timestamp": "",
+        "transactions_per_second": 30,
+        "queries_per_second": 100,
+        "average_latency_ms": 0,
+        "read_bytes_per_second": 0,
+        "write_bytes_per_second": 0,
+        "wal_bytes_per_second": 0
+      },
+      {
+        "timestamp": "",
+        "transactions_per_second": 42.5,
+        "queries_per_second": 125,
+        "average_latency_ms": 0,
+        "read_bytes_per_second": 0,
+        "write_bytes_per_second": 0,
+        "wal_bytes_per_second": 0
+      }
+    ],
+    "cache_hit_ratio": 99.95,
+    "waiting_locks": 0,
+    "tables": {
+      "killmails": {
+        "total_size": "1 GB",
+        "data_size": "900 MB",
+        "rows": 42000
+      }
+    }
+  },
+  "queues": {
+    "killmails": {
+      "waiting": 3,
+      "active": 1,
+      "delayed": 0,
+      "failed": 2
+    }
+  },
+  "esi": {
+    "tq_status": "online",
+    "tq_players": 42000,
+    "error_budget": 99,
+    "paused": false,
+    "groups": null
+  },
+  "redis": {
+    "version": "",
+    "uptime_seconds": 0,
+    "connected_clients": 12,
+    "used_memory": "4 GB",
+    "total_commands_processed": 0,
+    "keyspace_hits": 90,
+    "keyspace_misses": 10
+  },
+  "zkb_ingest": {
+    "window_hours": 3,
+    "new_hourly": [
+      2,
+      4,
+      8
+    ],
+    "repost_hourly": [
+      1,
+      2,
+      3
+    ],
+    "new_total": 0,
+    "repost_total": 0
+  },
+  "coverage": {
+    "window_days": 30,
+    "characters": {
+      "active": 10,
+      "covered": 8
+    },
+    "corporations": {
+      "active": 4,
+      "covered": 2
+    },
+    "alliances": {
+      "active": 0,
+      "corps_active": 0,
+      "corps_covered": 0
+    }
+  },
+  "esi_tokens": {
+    "tokens": {
+      "total": 5,
+      "active": 4,
+      "revoked": 0,
+      "can_fetch_character": 0,
+      "can_fetch_corporation": 0
+    },
+    "fetches": {
+      "all_time": {
+        "total": 0,
+        "killmails_found": 0,
+        "new_killmails": 0,
+        "failed": 0
+      },
+      "last_24h": {
+        "total": 10,
+        "killmails_found": 0,
+        "new_killmails": 5,
+        "failed": 0
+      }
+    }
+  },
+  "wallet": {
+    "total_balance": "1234567890",
+    "updated_at": null
+  },
+  "image_server": null,
+  "websocket": null,
+  "cloudflare": null
+}

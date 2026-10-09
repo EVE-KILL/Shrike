@@ -1,0 +1,35 @@
+package frontend
+
+// The shared public feed is client-side, like Nuxt: no identity or announcement
+// query is added to a public document's critical rendering path.
+templ announcementBannerHost() {
+	<div class="go-utility-page announcement-surfaces"><div data-announcement-banners hidden></div></div>
+}
+
+templ announcementGlobalHosts() {
+	<div class="go-utility-page announcement-surfaces">
+		<dialog class="announcement-modal" data-announcement-modal aria-label="Site announcement" data-action="cancel->announcements#cancel">
+			<div class="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06]" data-announcement-modal-header></div>
+			<div class="px-5 py-4 max-h-[60vh] overflow-y-auto" data-announcement-modal-body></div>
+			<div class="px-5 py-3 border-t border-white/[0.06] flex items-center justify-between">
+				<span class="text-xs text-gray-500" data-announcement-modal-count></span>
+				<button type="button" data-announcement-ack data-action="click->announcements#acknowledge" class="px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors cursor-pointer">I Acknowledge</button>
+			</div>
+		</dialog>
+		<div class="fixed bottom-0 inset-x-0 z-[9998] border-t border-white/[0.08]" data-announcement-ticker hidden>
+			<button type="button" data-announcement-expand data-action="click->announcements#toggle" aria-label="Expand news ticker" hidden class="w-full flex justify-center py-0.5 bg-black/70 backdrop-blur-sm cursor-pointer hover:bg-black/80 transition-colors text-xs text-gray-500">
+				@icon("chevron-up")
+			</button>
+			<div class="ticker-bg relative" data-announcement-ticker-expanded>
+				<div class="absolute right-0 top-0 bottom-0 z-10 flex items-center gap-1 px-2 bg-gradient-to-l from-black/90 via-black/70 to-transparent pl-8">
+					<button type="button" data-announcement-collapse data-action="click->announcements#toggle" aria-label="Collapse news ticker" title="Collapse ticker" class="flex items-center justify-center w-5 h-5 rounded text-gray-500 hover:text-white transition-colors cursor-pointer">
+						<span class="text-xs">
+							@icon("chevron-down")
+						</span>
+					</button>
+				</div>
+				<div class="ticker-track overflow-hidden py-1.5 pr-16"><div class="ticker-scroll" data-announcement-scroll></div></div>
+			</div>
+		</div>
+	</div>
+}

@@ -1,0 +1,11 @@
+new:
+  displayName: Drones Active
+  category: Drones
+  highIsGood: true
+  published: false
+
+effects:
+  - on: isDrone
+    category: active
+    rules:
+      - {add: droneUsage, domain: shipID}

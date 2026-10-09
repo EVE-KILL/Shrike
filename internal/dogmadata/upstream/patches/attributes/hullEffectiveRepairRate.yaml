@@ -1,0 +1,12 @@
+new:
+  displayName: Effective Structure Repair Rate
+  category: Structure
+  unit: hitpointsPerSecond
+  highIsGood: true
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {add: hullRepairRate}
+      - {div: hullDamageEffectiveResonance}

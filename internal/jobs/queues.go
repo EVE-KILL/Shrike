@@ -150,11 +150,6 @@ var Queues = []Queue{
 		Concurrency: 5, Retries: 3, BackoffDelay: 1000, RequiresTQ: true,
 	},
 	{
-		Name:        "image_refresh",
-		Description: "Refresh stale entity images from CCP into image storage",
-		Concurrency: 4, Retries: 3, BackoffDelay: 10_000,
-	},
-	{
 		Name:        "stats_writer",
 		Description: "Write daily stats + breakdown rows for one killmail",
 		Concurrency: 8, Retries: 3, BackoffDelay: 2000,

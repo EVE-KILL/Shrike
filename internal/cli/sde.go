@@ -377,9 +377,9 @@ check when a count differs.`,
 var sdeBuildDogmaCmd = &cobra.Command{
 	Use:   "build-dogma",
 	Short: "Build EVEShipFit-compatible Dogma data from the current CCP SDE",
-	Long: `Generates the protobuf bundle consumed by both the browser fitting editor
-and the server fitting-stat bridge. The converter is implemented in Go, while
-the calculation semantics remain pinned to EVEShipFit/data's upstream YAML
+	Long: `Generates the FlatBuffer bundle consumed by both the browser fitting editor
+and the native server fitting worker. The converter is implemented in Go, while
+the calculation semantics remain pinned to EVEShipFit/sde-patched's upstream YAML
 patch set. Output is validated before the existing bundle is replaced.`,
 	Annotations: map[string]string{skipConfigAnnotation: "true"},
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -404,8 +404,18 @@ patch set. Output is validated before the existing bundle is replaced.`,
 		if err != nil {
 			return err
 		}
-		if err := updateDogmaMetadata(manifest.BuildNumber); err != nil {
+		outputPath, err := filepath.Abs(flagDogmaOutput)
+		if err != nil {
 			return err
+		}
+		defaultPath, err := filepath.Abs(filepath.Join("frontend", "dogma", "dist", "upstream", "data", "dist"))
+		if err != nil {
+			return err
+		}
+		if outputPath == defaultPath {
+			if err := updateDogmaMetadata(manifest.BuildNumber); err != nil {
+				return err
+			}
 		}
 
 		ui.Section("Dogma data")
@@ -423,7 +433,7 @@ patch set. Output is validated before the existing bundle is replaced.`,
 }
 
 func updateDogmaMetadata(build int64) error {
-	path := filepath.Join("web", "packages", "dogma", "dist", "upstream", "VERSION.json")
+	path := filepath.Join("frontend", "dogma", "dist", "upstream", "VERSION.json")
 	// #nosec G304 -- this is the fixed repository metadata path for an operator-only generator.
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -434,6 +444,8 @@ func updateDogmaMetadata(build int64) error {
 		return fmt.Errorf("parse Dogma version: %w", err)
 	}
 	version["sde_build"] = build
+	version["data_major"] = dogmadata.DataMajorVersion
+	version["data"] = fmt.Sprintf("%d.%d.0", dogmadata.DataMajorVersion, build)
 	version["data_converter_commit"] = dogmadata.ConverterCommit
 	version["generated_at"] = time.Now().UTC().Format(time.RFC3339)
 	encoded, err := json.MarshalIndent(version, "", "  ")
@@ -490,8 +502,8 @@ func init() {
 			"Where to keep downloaded archives (default .data/sde)")
 	}
 	sdeBuildDogmaCmd.Flags().StringVar(&flagDogmaOutput, "output",
-		filepath.Join("web", "packages", "dogma", "dist", "upstream", "data", "dist", "sde"),
-		"Destination directory for generated protobuf files")
+		filepath.Join("frontend", "dogma", "dist", "upstream", "data", "dist"),
+		"Destination directory for generated FlatBuffer files")
 	sdeBuildDogmaCmd.Flags().StringVar(&flagSDECacheDir, "cache-dir", "",
 		"Where to keep downloaded archives (default .data/sde)")
 	sdeCmd.AddCommand(sdeStatusCmd, sdeImportCmd, sdeVerifyCmd, sdeBuildDogmaCmd)

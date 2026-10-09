@@ -1,0 +1,12 @@
+new:
+  displayName: Armor Effective Thermal Resonance
+  category: Armor
+  unit: "Inverse Absolute Percent"
+  highIsGood: false
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: damageProfileThermal}
+      - {mul: armorThermalDamageResonance}

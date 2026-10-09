@@ -707,12 +707,7 @@ func loadAdvancedKills(
 	args := append([]any(nil), query.Args...)
 	args = append(args, query.Limit+1)
 	rows, err := queryMaps(ctx, db,
-		campaignKilllistSelect+
-			" WHERE "+query.whereSQL()+
-			fmt.Sprintf(
-				" ORDER BY %s %s, k.killmail_id %s LIMIT $%d",
-				query.Sort, query.Direction, query.Direction, len(args),
-			),
+		advancedPageSelect(query, len(args)),
 		args...,
 	)
 	if err != nil {
@@ -727,6 +722,17 @@ func loadAdvancedKills(
 	return jsonPayload(map[string]any{
 		"kills": rows, "hasMore": hasMore, "cursor": cursor,
 	}), nil
+}
+
+// Limit matching IDs before the expensive display joins, especially the
+// final-blow lateral lookup. Otherwise PostgreSQL can hydrate every killmail
+// in the time window before applying a selective attacker filter.
+func advancedPageSelect(query advancedKilllistQuery, limitParameter int) string {
+	order := fmt.Sprintf(" ORDER BY %s %s, k.killmail_id %s", query.Sort, query.Direction, query.Direction)
+	return fmt.Sprintf(`WITH advanced_matches AS MATERIALIZED (
+		SELECT k.killmail_id FROM killmails k WHERE %s%s LIMIT $%d
+	) `, query.whereSQL(), order, limitParameter) +
+		strings.Replace(campaignKilllistSelect, "FROM killmails k", "FROM advanced_matches selected JOIN killmails k ON k.killmail_id = selected.killmail_id", 1) + order
 }
 
 func loadAdvancedFits(
@@ -890,12 +896,7 @@ func loadAdvancedIndividualFits(
 	args := append([]any(nil), query.Args...)
 	args = append(args, limit+1)
 	rows, err := queryMaps(ctx, db,
-		campaignKilllistSelect+
-			" WHERE "+query.whereSQL()+
-			fmt.Sprintf(
-				" ORDER BY %s %s, k.killmail_id %s LIMIT $%d",
-				query.Sort, query.Direction, query.Direction, len(args),
-			),
+		advancedPageSelect(query, len(args)),
 		args...,
 	)
 	if err != nil {

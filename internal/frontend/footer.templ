@@ -1,0 +1,31 @@
+package frontend
+
+templ footer() {
+	<footer class="site-footer">
+		<div class="footer-project">
+			<a href="https://github.com/EVE-KILL/Shrike" target="_blank" rel="noopener noreferrer">
+				@icon("github")
+				<strong>Shrike on GitHub</strong><span>Open source</span>
+			</a>
+			<p>EVE Online and all related materials © <a href="https://www.ccpgames.com/" target="_blank" rel="noopener noreferrer">CCP Games</a></p>
+		</div>
+		<div class="community-links">
+			for _, link := range community {
+				<a href={ templ.URL(link.URL) } target="_blank" rel="noopener noreferrer" title={ link.Title }>
+					if link.Icon != "" {
+						<img src={ assetURL(link.Icon) } alt="" width="18" height="18" loading="lazy"/>
+					} else {
+						@icon("radio")
+					}
+					if link.Label != "" {
+						<span>{ link.Label }</span>
+					} else {
+						<span>
+							{ link.Name }
+						</span>
+					}
+				</a>
+			}
+		</div>
+	</footer>
+}

@@ -32,9 +32,15 @@ type legacyRequest struct {
 	Huma  huma.Context
 	Query url.Values
 	Body  io.Reader
+	// Params allows an in-process reader to reuse a legacy handler without
+	// constructing an HTTP router context. HTTP requests still use Huma.
+	Params map[string]string
 }
 
 func (r *legacyRequest) Param(name string) string {
+	if r.Params != nil {
+		return r.Params[name]
+	}
 	return r.Huma.Param(name)
 }
 
@@ -56,6 +62,9 @@ type legacyAPIError struct {
 func (e *legacyAPIError) Error() string {
 	return e.Message
 }
+
+// GetStatus also preserves HTTP error semantics for in-process page readers.
+func (e *legacyAPIError) GetStatus() int { return e.Status }
 
 func apiError(status int, message string) error {
 	return &legacyAPIError{Status: status, Message: message}

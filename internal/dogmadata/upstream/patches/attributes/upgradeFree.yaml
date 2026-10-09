@@ -1,0 +1,12 @@
+new:
+  displayName: Calibration Free
+  category: Fitting
+  unit: attributePoints
+  highIsGood: true
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: upgradeCapacity}
+      - {sub: upgradeLoad}

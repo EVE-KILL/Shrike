@@ -117,6 +117,12 @@ func publicOperationResponseSchema(operationID string) *huma.Schema {
 		return battlePageSchema()
 	case "battle":
 		return battleDetailSchema()
+	case "roam-report-create":
+		return responseSchema(map[string]*huma.Schema{"id": stringSchema()}, "id")
+	case "roam-report-get", "roam-report-update":
+		return roamReportResponseSchema()
+	case "roam-report-killlist":
+		return killlistFrontendResponseSchema()
 	case "wars":
 		return cursorPageSchema(warListSchema())
 	case "war":
@@ -409,13 +415,14 @@ func killmailDetailSchema() *huma.Schema {
 		"is_solo":         boolSchema(),
 		"total_damage":    intSchema(),
 		"attackers": arraySchema(recordSchema(map[string]*huma.Schema{
-			"character_id":   nullable(intSchema()),
-			"corporation_id": nullable(intSchema()),
-			"alliance_id":    nullable(intSchema()),
-			"ship_type_id":   nullable(intSchema()),
-			"weapon_type_id": nullable(intSchema()),
-			"damage_done":    intSchema(),
-			"final_blow":     boolSchema(),
+			"character_id":     nullable(intSchema()),
+			"corporation_id":   nullable(intSchema()),
+			"alliance_id":      nullable(intSchema()),
+			"ship_type_id":     nullable(intSchema()),
+			"ship_category_id": nullable(intSchema()),
+			"weapon_type_id":   nullable(intSchema()),
+			"damage_done":      intSchema(),
+			"final_blow":       boolSchema(),
 		})),
 		"items": arraySchema(recordSchema(map[string]*huma.Schema{
 			"item_index":         intSchema(),

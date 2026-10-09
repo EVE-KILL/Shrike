@@ -1,0 +1,192 @@
+package frontend
+
+import "strconv"
+
+templ adminPageContent(view adminView) {
+	<div class="go-utility-page admin-page w-full" data-admin-root data-controller="admin" data-action="click->admin#click popstate@window->admin#restore pagehide@window->admin#hide pageshow@window->admin#show" data-active={ view.Active }>
+		if view.User==nil {
+			@utilityLoginGate("Log in with EVE Online to access the admin panel")
+		} else {
+			<div class="hero-surface glass-panel p-5 mb-6">
+				<div class="flex items-center gap-3">
+					<div class="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+						<span class="text-lg text-red-400">
+							@icon("shield-alert")
+						</span>
+					</div>
+					<div>
+						<h1 class="text-lg font-bold text-white">Admin Panel</h1>
+						<p class="text-xs text-gray-500">
+							{ "Logged in as "+view.User.Name }
+						</p>
+					</div>
+				</div>
+			</div>
+			<div class="flex flex-col md:flex-row gap-6">
+				<nav class="admin-nav md:w-48 flex-shrink-0" aria-label="Admin sections">
+					<div class="flex md:flex-col overflow-x-auto gap-1 md:gap-0.5 pb-2 md:pb-0 scrollbar-hide">
+						for _,section:=range adminSections {
+							<a href={ adminPath(section.ID) } data-admin-tab={ section.ID } data-label={ section.Label } aria-current={ killBoolClass(view.Active == section.ID, "page", "false") } class={ "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left cursor-pointer whitespace-nowrap flex-shrink-0 " + killBoolClass(view.Active == section.ID, "bg-blue-500/10 text-blue-400", "text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.04]") }>
+								<span class="text-base flex-shrink-0">
+									@icon(section.Icon)
+								</span>
+								<span class="flex-1 min-w-0 truncate">
+									{ section.Label }
+								</span>
+								<span data-admin-badge={ section.ID } hidden?={ adminBadge(view,section.ID)==0 } class="px-1.5 rounded-full bg-yellow-500/20 text-yellow-400 text-fine font-bold tabular-nums flex-shrink-0">
+									{ strconv.Itoa(adminBadge(view,section.ID)) }
+								</span>
+							</a>
+						}
+						<div class="hidden md:block mt-4 pt-4 border-t border-white/[0.06]">
+							<a href="/settings" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.04] transition-colors">
+								<span class="text-base">
+									@icon("arrow-left")
+								</span>Back to Settings
+							</a>
+						</div>
+					</div>
+				</nav>
+				<div class="flex-1 min-w-0" data-admin-panels>
+					@adminSectionContent(view)
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ adminSectionContent(view adminView) {
+	<section data-admin-section={ view.Active }>
+		if component:=adminComponent(view);component!=nil {
+			@component
+		}
+	</section>
+}
+
+templ adminOverview(view adminView) {
+	<div class="space-y-4" data-admin-overview data-overview={ settingsJSON(view.Overview) }>
+		if view.OverviewError {
+			<p class="glass-panel p-4 text-sm text-red-300" role="alert">Could not load the overview. <button type="button" data-admin-section-retry class="text-blue-400">Retry</button></p>
+		}
+		{{ attention := []struct{ Key, Label, Icon, Path string }{{"moderation", "awaiting moderation", "shield-check", "moderation"}, {"domainAssets", "domain assets to review", "image", "domains"}, {"campaignsPaused", "campaigns paused", "pause", "campaigns"}, {"campaignsFailed", "campaigns erroring", "triangle-alert", "campaigns"}} }}
+		if adminBadge(view,"moderation")+adminBadge(view,"domains")+adminBadge(view,"campaigns")>0 {
+			<div class="glass-panel p-4 border-yellow-500/20">
+				<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-3">Needs Attention</h2>
+				<div class="flex flex-wrap gap-2">
+					for _,item:=range attention {
+						if count:=adminValue(view.Overview,"attention",item.Key);adminFloat(count)>0 {
+							<a href={ adminPath(item.Path) } data-admin-tab={ item.Path } class="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/[0.08] border border-yellow-500/20 text-sm text-yellow-400 hover:bg-yellow-500/[0.15] transition-colors">
+								<span class="text-base flex-shrink-0">
+									@icon(item.Icon)
+								</span>
+								<span class="font-bold tabular-nums">
+									{ adminNumber(count) }
+								</span>
+								<span class="text-yellow-400/70">
+									{ item.Label }
+								</span>
+							</a>
+						}
+					}
+				</div>
+			</div>
+		}
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+			@adminStatCard("Users", adminNumber(adminValue(view.Overview, "users", "total")), "+"+adminNumber(adminValue(view.Overview, "users", "recent7d"))+" this week", "text-gray-500")
+			@adminStatCard("Killmails", adminNumber(adminValue(view.Overview, "killmails", "total")), adminNumber(adminValue(view.Overview, "killmails", "last24h"))+" today", "text-gray-500")
+			@adminStatCard("Killmails (7d)", adminNumber(adminValue(view.Overview, "killmails", "last7d")), "~"+adminDailyCount(view.Overview)+"/day", "text-gray-500")
+			@adminStatCard("ESI 24h", adminNumber(adminValue(view.Overview, "esi", "requests24h")), adminRate(adminValue(view.Overview, "esi", "errorRate"))+"% error rate", killBoolClass(adminFloat(adminValue(view.Overview, "esi", "errorRate")) > 5, "text-red-400", "text-gray-500"))
+		</div>
+		<div data-admin-esi-overview data-admin-esi-summary data-controller="admin-esi-summary" data-admin-esi-summary-admin-outlet="[data-admin-root]" data-action="click->admin-esi-summary#click pagehide@window->admin-esi-summary#hide pageshow@window->admin-esi-summary#show"><div data-esi-volume data-title="ESI Request Volume (24h)"></div><p hidden data-admin-esi-error role="alert" class="glass-panel p-4 text-sm text-red-300"></p></div>
+	</div>
+}
+
+templ adminStatCard(label, value, detail, tone string) {
+	<div class="glass-panel p-4">
+		<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-1">
+			{ label }
+		</div>
+		<div class="text-2xl font-bold text-white tabular-nums">
+			{ value }
+		</div>
+		<div class={ "text-xs mt-1 " + tone }>
+			{ detail }
+		</div>
+	</div>
+}
+
+templ adminUsers(view adminView) {
+	<div class="space-y-4" data-admin-users data-controller="admin-users" data-action="input->admin-users#search click->admin-users#click keydown->admin-users#keyboard pagehide@window->admin-users#hide pageshow@window->admin-users#show" data-query={ settingsJSON(view.UsersQuery.values()) }>
+		<div class="glass-panel p-4">
+			<div class="flex items-center gap-3">
+				<span class="text-gray-500">
+					@icon("search")
+				</span><input data-admin-user-search type="text" value={ view.UsersQuery.Search } placeholder="Search by name or character ID..." aria-label="Search users" class="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none"/>
+				<span data-admin-users-count class="text-xs text-gray-500 tabular-nums">
+					{ fullNumber(float64(view.Users.Total))+" users" }
+				</span>
+			</div>
+		</div>
+		<p data-admin-users-error role="alert" hidden?={ !view.UsersError } class="glass-panel p-4 text-sm text-red-300">Could not load users. <button type="button" data-admin-users-retry class="text-blue-400">Retry</button></p>
+		<div data-admin-users-results>
+			@adminUsersResults(view)
+		</div>
+	</div>
+}
+
+templ adminUsersResults(view adminView) {
+	<div class="space-y-4" data-admin-users-result data-total={ strconv.Itoa(view.Users.Total) }>
+		<div class="glass-panel overflow-hidden">
+			<div class="overflow-x-auto">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-white/[0.06]">
+							for _,column:=range []struct{ID,Label string}{{"character_name","Character"},{"last_login","Last Login"},{"created_at","Joined"}} {
+								<th class="text-left px-4 py-3 text-fine font-bold uppercase tracking-[0.15em] text-gray-500 cursor-pointer hover:text-blue-400">
+									<button type="button" data-admin-user-sort={ column.ID }>
+										{ column.Label }
+										if view.UsersQuery.Sort==column.ID {
+											<span class="text-xs ml-1 inline">
+												@icon(killBoolClass(view.UsersQuery.Direction == "asc", "arrow-up", "arrow-down"))
+											</span>
+										}
+									</button>
+								</th>
+							}
+							<th class="text-center px-4 py-3 text-fine font-bold uppercase tracking-[0.15em] text-gray-500 w-[60px]">Admin</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _,user:=range view.Users.Users {
+							<tr data-admin-user-row={ "/admin/users/" + warID(user.ID) } tabindex="0" role="link" aria-label={ "Manage " + user.Name } class="border-b border-white/[0.04] hover:bg-blue-500/[0.04] cursor-pointer transition-colors">
+								<td class="px-4 py-2.5">
+									<div class="flex items-center gap-2.5 text-gray-300">
+										<img src={ eveEntityImage("character", user.ID, 32) } alt="" width="24" height="24" class="w-6 h-6 rounded-full" loading="lazy"/>{ user.Name }
+									</div>
+								</td>
+								<td class="px-4 py-2.5 text-gray-500 tabular-nums text-xs" data-admin-relative-date={ adminTimeValue(user.LastLogin) }>
+									{ settingsSince(user.LastLogin,view.Now) }
+								</td>
+								<td class="px-4 py-2.5 text-gray-500 tabular-nums text-xs">
+									{ adminDateShort(user.CreatedAt) }
+								</td>
+								<td class="px-4 py-2.5 text-center"><span class={ "inline-block w-2 h-2 rounded-full " + killBoolClass(user.Admin, "bg-green-400", "bg-gray-700") }></span></td>
+							</tr>
+						}
+						if len(view.Users.Users)==0 {
+							<tr><td colspan="4" class="px-4 py-8 text-center text-gray-600">No users found.</td></tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+		if view.Users.Pages>1 {
+			<div class="flex items-center justify-between">
+				<button type="button" data-admin-user-page={ strconv.Itoa(view.UsersQuery.Page - 1) } disabled?={ view.UsersQuery.Page<=1 } class="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer">Previous</button>
+				<span class="text-xs text-gray-500 tabular-nums">
+					{ "Page "+strconv.Itoa(view.UsersQuery.Page)+" of "+strconv.Itoa(view.Users.Pages) }
+				</span><button type="button" data-admin-user-page={ strconv.Itoa(view.UsersQuery.Page + 1) } disabled?={ view.UsersQuery.Page>=view.Users.Pages } class="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer">Next</button>
+			</div>
+		}
+	</div>
+}

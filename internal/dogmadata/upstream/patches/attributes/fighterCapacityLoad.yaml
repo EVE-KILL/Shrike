@@ -1,0 +1,11 @@
+new:
+  displayName: Fighter Bay Used
+  category: Fighter Attributes
+  unit: Volume
+  highIsGood: true
+
+effects:
+  - on: isFighter
+    category: passive
+    rules:
+      - {add: volume, domain: shipID}

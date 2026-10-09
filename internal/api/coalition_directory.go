@@ -108,6 +108,39 @@ const coalitionDirectorySummarySQL = `
 	WHERE ($1::text = '' OR c.slug = $1)
 	ORDER BY membership.member_count DESC NULLS LAST, c.name ASC`
 
+// The page's initial directory excludes the recent killmail/attacker scan.
+// Keep coalition membership and ordering identical to the public summary.
+const coalitionDirectoryOverviewSQL = `
+	WITH membership AS (
+		SELECT cm.coalition_id,
+		       count(*)::bigint AS alliance_count,
+		       sum(members.member_count)::bigint AS member_count
+		FROM coalition_memberships cm
+		JOIN LATERAL (
+			SELECT count(*)::bigint AS member_count
+			FROM characters ch
+			WHERE ch.alliance_id = cm.alliance_id AND ch.deleted IS NOT TRUE
+			OFFSET 0
+		) members ON true
+		GROUP BY cm.coalition_id
+	), systems AS (
+		SELECT cm.coalition_id, count(*)::bigint AS system_count
+		FROM coalition_memberships cm
+		JOIN sovereignty s ON s.alliance_id = cm.alliance_id
+		GROUP BY cm.coalition_id
+	)
+	SELECT c.coalition_id, c.slug, c.name, c.description, c.source_url,
+	       c.revision, c.updated_at,
+	       c.updated_by_character_id, editor.character_name AS updated_by_character_name,
+	       coalesce(membership.alliance_count, 0)::bigint AS alliance_count,
+	       coalesce(membership.member_count, 0)::bigint AS member_count,
+	       coalesce(systems.system_count, 0)::bigint AS system_count
+	FROM coalitions c
+	LEFT JOIN users editor ON editor.character_id = c.updated_by_character_id
+	LEFT JOIN membership ON membership.coalition_id = c.coalition_id
+	LEFT JOIN systems ON systems.coalition_id = c.coalition_id
+	ORDER BY membership.member_count DESC NULLS LAST, c.name ASC`
+
 func registerCoalitionDirectoryRoutes(a huma.API, opts Options) {
 	auth := newAuthService(opts)
 
@@ -729,6 +762,7 @@ func invalidateCoalitionDirectoryCache(ctx context.Context, opts Options) {
 	}
 	opts.responseCache.DeleteMatching(ctx, "shrike:api:*:/coalitions*")
 	opts.responseCache.DeleteMatching(ctx, "web:shrike:api:*:/coalitions*")
+	opts.responseCache.DeleteMatching(ctx, "shrike:homepage:v1:*:/coalitions*")
 }
 
 func noStoreHeaders() http.Header {

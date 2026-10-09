@@ -1,0 +1,316 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/eve-kill/shrike/internal/api"
+)
+
+// Markup and utility classes are ported from the original Roam Report views.
+templ roamCreatePage(form roamFormView) {
+	<div class="go-utility-page pb-16 roam-create" data-roam-create>
+		@scanHeader("Roam Report", "Fleet tools", "Paste the pilots from your fleet window, choose the roam window, and turn their recorded combat into a report you can share.", "route")
+		<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+			@roamReportForm(form)
+			<aside class="space-y-4">
+				<div class="glass-panel p-5">
+					@icon("map-pinned")
+					<h2 class="mt-3 font-semibold text-white">A combat trail</h2>
+					<p class="mt-2 text-sm leading-6 text-gray-400">See the systems and regions where these pilots appear on killmails, ordered by time.</p>
+				</div>
+				<div class="glass-panel p-5">
+					@icon("swords")
+					<h2 class="mt-3 font-semibold text-white">Fights and outcomes</h2>
+					<p class="mt-2 text-sm leading-6 text-gray-400">Review engagements, kills, losses, ISK, opponents, and each pilot's recorded contribution.</p>
+				</div>
+				<p class="px-1 text-xs leading-5 text-gray-500">Reports use recorded killmails. They cannot show jumps without combat, ships that never appeared on a killmail, or prove that every listed pilot flew together.</p>
+			</aside>
+		</div>
+	</div>
+}
+
+templ roamReportForm(form roamFormView) {
+	<div class="contents" data-controller="roam-form" data-action="input->roam-form#change change->roam-form#change reset->roam-form#reset submit->roam-form#submit pagehide@window->roam-form#hide pageshow@window->roam-form#show">
+	<form class="glass-panel p-5 sm:p-7" data-roam-form data-edit={ strconv.FormatBool(form.Edit) }>
+		if form.Edit {
+			<div class="mb-5 flex flex-wrap items-start justify-between gap-3">
+				<div><h2 class="text-lg font-semibold text-white">Edit Roam Report</h2><p class="mt-1 text-sm text-gray-400">Change the pilots or time window, then rebuild the report at this same URL.</p></div>
+				<button type="button" data-roam-cancel class="rounded-lg border border-white/10 px-3 py-2 text-sm text-gray-300 hover:bg-white/5">Cancel</button>
+			</div>
+			<div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
+				<div>
+					<label for="roam-edit-pilots" class="mb-2 block text-sm font-medium text-gray-200">Fleet pilots</label>@roamPilotInput(form)
+				</div>
+				<div>
+					<p class="mb-2 text-sm font-medium text-gray-200">Roam window · EVE time (UTC)</p>@roamTimeInputs(form)
+				</div>
+			</div>
+			<p class="mt-5 text-xs leading-5 text-gray-500">Anyone with the share link can edit this report. Saving updates the existing report for everyone viewing it.</p>
+		} else {
+			<div class="mb-4 flex items-start justify-between gap-4">
+				<div><h2 class="text-lg font-semibold text-white">Fleet pilots</h2><p class="mt-1 text-sm text-gray-400">Copy the character list from the in-game fleet window. Use one name per line.</p></div>
+				<button type="button" data-roam-paste data-action="click->roam-form#paste" class="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-blue-300 hover:bg-white/5">
+					@icon("clipboard-paste")
+					Paste
+				</button>
+			</div>
+			@roamPilotInput(form)
+			<div class="mt-8 border-t border-white/[0.08] pt-6">
+				<h2 class="text-lg font-semibold text-white">Roam window</h2>
+				<p class="mt-1 text-sm text-gray-400">Times are EVE time (UTC). The last three hours are filled in for you.</p>
+				@roamTimeInputs(form)
+			</div>
+		}
+		<p class="mt-5 text-sm text-amber-300" data-roam-pilot-error hidden>A report can include at most 256 pilots.</p>
+		<p data-roam-form-status hidden role="status" class="mt-5 text-sm text-isk"></p>
+		<p role="alert" class="mt-5 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300" data-roam-form-error hidden></p>
+		<button type="submit" data-roam-submit disabled class={ killBoolClass(form.Edit, "mt-5 inline-flex items-center gap-2 rounded-lg bg-blue-500 px-5 py-2.5 font-semibold text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40", "mt-7 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto") }>
+			<span data-roam-submit-icon>
+				@icon(killBoolClass(form.Edit, "save", "chart-no-axes-combined"))
+			</span>
+			<span data-roam-submit-label>
+				{ killBoolClass(form.Edit, "Save changes", "Create Roam Report") }
+			</span>
+		</button>
+	</form>
+	</div>
+}
+
+templ roamPilotInput(form roamFormView) {
+	<textarea id={ killBoolClass(form.Edit, "roam-edit-pilots", "roam-create-pilots") } name="names_text" data-roam-names class={ "w-full resize-y rounded-lg border border-white/10 bg-black/25 p-4 font-mono text-sm leading-6 text-gray-100 outline-none placeholder:text-gray-600 focus:border-blue-500/50 " + killBoolClass(form.Edit, "h-56", "h-52") } placeholder="Pilot One&#10;Pilot Two&#10;Pilot Three" maxlength="16384" aria-label="Fleet character names, one per line" spellcheck="false">
+		{ form.Names }
+	</textarea>
+	<p class="mt-2 text-xs text-gray-500" data-roam-pilot-count>0 unique pilots · up to 256</p>
+}
+
+templ roamTimeInputs(form roamFormView) {
+	<div class={ killBoolClass(form.Edit, "space-y-4", "mt-4 grid gap-4 sm:grid-cols-2") }>
+		<label class="block text-sm text-gray-300">
+			<span class="mb-2 block font-medium">Start</span>@dateTimePicker(dateTimePickerOptions{Name: "start_time", Value: form.Start, Placeholder: "Choose a start"})
+		</label>
+		<label class="block text-sm text-gray-300">
+			<span class="mb-2 block font-medium">End</span>@dateTimePicker(dateTimePickerOptions{Name: "end_time", Value: form.End, Placeholder: "Choose an end"})
+		</label>
+	</div>
+	<p class="mt-3 text-sm text-amber-300" data-roam-time-error hidden></p>
+}
+
+templ roamUnavailable() {
+	<div class="go-utility-page pb-16"><div role="alert" class="glass-panel p-8"><h1 class="text-xl font-semibold text-white">Report unavailable</h1><p class="mt-2 text-sm text-gray-400">This Roam Report could not be loaded.</p><a href="/tools/roam-report" class="mt-5 inline-block text-sm text-blue-300 hover:underline">Create a new report →</a></div></div>
+}
+
+templ roamDetailPage(view roamView) {
+	<article class="go-utility-page pb-16" data-roam-report data-controller="roam-report" data-action="click->roam-report#click change->roam-report#change roam-form:saved->roam-report#reportSaved popstate@window->roam-report#popstate pagehide@window->roam-report#hide pageshow@window->roam-report#show" data-roam-id={ view.Data.ID } data-roam-tab={ view.Tab }>
+		@roamHero(view.Data)
+		<p data-roam-status hidden role="status" class="glass-panel p-3 mb-5 text-sm text-isk"></p>
+		if view.Data.Truncated {
+			<div role="status" class="mb-5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">This report reached the 2,000 killmail limit. Totals cover the first 2,000 matching killmails in the window.</div>
+		}
+		if len(view.Data.Unresolved)>0 {
+			<div class="mb-5 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-4 text-sm text-amber-200">
+				{ strconv.Itoa(len(view.Data.Unresolved)) } { roamPlural(len(view.Data.Unresolved), "name was", "names were") } not found: { strings.Join(view.Data.Unresolved, ", ") }
+			</div>
+		}
+		<div id="roam-edit" class="mb-7 scroll-mt-6" data-roam-edit hidden>
+			@roamReportForm(roamForm(view.Data))
+		</div>
+		<nav aria-label="Roam Report sections" class="mb-6 flex overflow-x-auto border-b border-white/[0.08] scrollbar-hide">
+			for _, tab := range roamTabs {
+				<a href={ roamTabPath(view.Data.ID, tab.ID) } data-roam-tab-link={ tab.ID } class={ "flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors " + killBoolClass(view.Tab == tab.ID, "border-white text-white", "border-transparent text-gray-500 hover:text-blue-400") } aria-current={ killBoolClass(view.Tab == tab.ID, "page", "false") }>
+					@icon(tab.Icon)
+					<span>{ tab.Label }</span>
+				</a>
+			}
+		</nav>
+		<div data-roam-content>
+			@roamTabContent(view)
+		</div>
+	</article>
+}
+
+templ roamHero(report api.RoamReport) {
+	<header class="roam-hero hero-surface glass-panel relative overflow-hidden mb-6" style="background-image:linear-gradient(to bottom,color-mix(in srgb,#60a5fa 8%,transparent),transparent 60%);box-shadow:inset 0 2px 0 0 #60a5fa">
+		if len(report.Systems)>0 {
+			<img class="roam-hero-background pointer-events-none absolute inset-0 h-full w-full object-cover" src={ fmt.Sprintf("/images/systems/%d?size=1024", report.Systems[0].SolarSystemID) } alt="" loading="lazy" fetchpriority="low"/>
+			<div class="roam-hero-shade pointer-events-none absolute inset-0"></div>
+		}
+		<div class="relative p-6">
+			<div class="flex flex-col md:flex-row gap-6">
+				<div class="flex-shrink-0 flex justify-center md:justify-start">
+					<div class="grid h-32 w-32 shrink-0 grid-cols-2 gap-1 overflow-hidden rounded-lg border border-white/10 bg-blue-500/10 shadow-lg md:h-40 md:w-40">
+						for _, pilot := range roamSortedPilots(report)[:min(4,len(report.Roster))] {
+							<img src={ fmt.Sprintf("https://images.evetech.net/characters/%d/portrait?size=128", pilot.CharacterID) } alt={ pilot.Name } class="h-full w-full object-cover" width="80" height="80" loading="eager"/>
+						}
+						if len(report.Roster)==0 {
+							<div class="col-span-2 flex items-center justify-center">
+								@icon("route")
+							</div>
+						}
+					</div>
+				</div>
+				<div class="flex-1 min-w-0">
+					<div class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-300">
+						@icon("route")
+						Fleet combat trail
+					</div>
+					<h1 class="text-2xl font-bold text-white md:text-3xl">Roam Report</h1>
+					<div class="mt-4 flex flex-wrap items-center gap-2 text-sm text-gray-300">
+						@icon("calendar-range")
+						<span class="tabular-nums">
+							{ roamDate(report.StartTime) }
+						</span>@icon("arrow-right")
+						<span class="tabular-nums">
+							{ roamDate(report.EndTime) }
+						</span>
+					</div>
+					<p class="mt-3 text-xs text-gray-400">{ strconv.Itoa(len(report.Roster)) } listed pilots · { strconv.Itoa(report.Summary.Systems) } systems with recorded combat · { strconv.Itoa(report.Summary.Engagements) } engagements</p>
+				</div>
+				<div class="flex-shrink-0">
+					<div class="flex flex-wrap justify-center gap-2 md:max-w-36 md:flex-col md:items-stretch">
+						<button type="button" data-roam-copy class="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-blue-300 hover:bg-white/5">
+							@icon("link")
+							<span>Copy link</span>
+						</button>
+						<button type="button" data-roam-edit-open class="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-blue-300 hover:bg-white/5">
+							@icon("pencil")
+							Edit report
+						</button>
+						<a href="/tools/roam-report" class="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-center text-sm text-gray-300 hover:bg-white/5">New report</a>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="relative px-6 pb-6 pt-3 border-t border-white/[0.06] bg-black/[0.08]">
+			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+				for _, metric := range roamMetrics(report) {
+					<div class="min-w-0 rounded-lg border border-white/[0.06] bg-white/[0.03] p-3 text-center">
+						<p class="truncate text-lg font-bold tabular-nums text-white" title={ metric.Value }>
+							{ metric.Value }
+						</p>
+						<p class={ "mt-1 flex items-center justify-center gap-1.5 text-fine font-medium uppercase tracking-wider text-gray-400" }>
+							<span class={ metric.Tone }>
+								@icon(metric.Icon)
+							</span> { metric.Label }
+						</p>
+						<p class="mt-1 truncate text-fine text-gray-500">
+							{ metric.Detail }
+						</p>
+					</div>
+				}
+			</div>
+		</div>
+	</header>
+}
+
+templ roamTabContent(view roamView) {
+	<div data-roam-tab-content={ view.Tab }>
+		switch view.Tab {
+			case "information":
+				@roamInformation(view.Data)
+			case "kills":
+				@roamKills(view)
+			case "systems":
+				@roamSystems(view.Data)
+			case "composition":
+				@roamComposition(buildRoamComposition(view.Data))
+			case "intel":
+				@roamIntel(buildRoamIntel(view.Data))
+		}
+	</div>
+}
+
+templ roamInformation(report api.RoamReport) {
+	<div class="space-y-6">
+		<div class="grid gap-4 lg:grid-cols-3">
+			<section class="glass-panel p-5">
+				<p class="text-xs font-semibold uppercase tracking-wider text-blue-300">Where you fought</p>
+				<p class="mt-2 text-lg font-semibold text-white">{ strconv.Itoa(report.Summary.Systems) } systems · { strconv.Itoa(report.Summary.Regions) } regions</p>
+				if system := roamBusiestSystem(report); system != nil {
+					<p class="mt-2 text-sm leading-6 text-gray-400">
+						Most activity in 
+						<strong class="text-gray-200">
+							{ system.SolarSystemName }
+						</strong>: { strconv.Itoa(system.Kills) } kills and { strconv.Itoa(system.Losses) } losses.
+					</p>
+				} else {
+					<p class="mt-2 text-sm text-gray-400">No recorded combat in this window.</p>
+				}
+			</section>
+			<section class="glass-panel p-5">
+				<p class="text-xs font-semibold uppercase tracking-wider text-amber-300">Who you met</p>
+				<p class="mt-2 text-lg font-semibold text-white">
+					{ strconv.Itoa(report.Summary.UniqueCharacterTargets) } named { roamPlural(report.Summary.UniqueCharacterTargets, "target", "targets") }
+				</p>
+				if len(report.Targets)>0 {
+					<p class="mt-2 text-sm leading-6 text-gray-400">
+						Most frequent opposing corporation: 
+						<strong class="text-gray-200">
+							{ fallbackName(report.Targets[0].CorporationName) }
+						</strong> on { strconv.Itoa(report.Targets[0].Kills) } killmails.
+					</p>
+				}
+			</section>
+			<section class="glass-panel p-5">
+				<p class="text-xs font-semibold uppercase tracking-wider text-emerald-300">Fleet activity</p>
+				<p class="mt-2 text-lg font-semibold text-white">{ strconv.Itoa(report.Summary.ActivePilots) } of { strconv.Itoa(len(report.Roster)) } pilots recorded</p>
+				<p class="mt-2 text-sm leading-6 text-gray-400">{ strconv.Itoa(report.Summary.CoordinatedKills) } kills show two or more listed pilots.</p>
+				if pilots := roamSortedPilots(report); len(pilots)>0 && pilots[0].Engagements>0 {
+					<p class="mt-1 text-sm leading-6 text-gray-400">{ pilots[0].Name } appears in the most killmails.</p>
+				}
+			</section>
+		</div>
+		<div class="grid items-start gap-6 xl:grid-cols-3">
+			<section class="glass-panel overflow-hidden xl:col-span-2">
+				<div class="flex items-center justify-between gap-3 border-b border-white/[0.07] p-5"><div><h2 class="text-lg font-semibold text-white">Engagement trail</h2><p class="mt-1 text-xs text-gray-500">First recorded combat in each stretch of fighting</p></div><a href={ roamTabPath(report.ID, "systems") } data-roam-tab-link="systems" class="shrink-0 text-sm text-blue-300 hover:underline">All systems →</a></div>
+				if len(report.Engagements)>0 {
+					<div class="divide-y divide-white/[0.06]">
+						for _, engagement := range report.Engagements[:min(8,len(report.Engagements))] {
+							<div class="flex items-center gap-4 px-5 py-3">
+								<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-semibold text-blue-300">
+									{ strconv.Itoa(engagement.Number) }
+								</span>
+								<div class="min-w-0 flex-1">
+									<a href={ idPath("system", int64(engagement.SolarSystemID)) } class="block truncate text-sm font-medium text-gray-100 hover:text-blue-300">
+										{ engagement.SolarSystemName }
+									</a>
+									<p class="truncate text-xs text-gray-500">
+										{ engagement.RegionName } · { roamDate(engagement.StartTime) }
+									</p>
+								</div><span class="shrink-0 text-xs tabular-nums"><span class="text-emerald-300">{ strconv.Itoa(engagement.Kills) } K</span> · <span class="text-rose-300">{ strconv.Itoa(engagement.Losses) } L</span></span>
+							</div>
+						}
+					</div>
+				} else {
+					<div class="p-8 text-center text-sm text-gray-400">No recorded combat. Try extending the time window or checking the pilot list.</div>
+				}
+				if len(report.Engagements)>8 {
+					<p class="border-t border-white/[0.06] px-5 py-3 text-xs text-gray-500">Showing the first 8 of { strconv.Itoa(len(report.Engagements)) } engagements.</p>
+				}
+			</section>
+			<section class="glass-panel overflow-hidden">
+				<div class="border-b border-white/[0.07] p-5"><h2 class="text-lg font-semibold text-white">Fleet roster</h2><p class="mt-1 text-xs text-gray-500">Current affiliations and recorded activity</p></div>
+				<div class="divide-y divide-white/[0.06]">
+					for _, pilot := range roamSortedPilots(report)[:min(8,len(report.Roster))] {
+						<div class="flex items-center gap-3 px-5 py-2.5">
+							<img src={ fmt.Sprintf("https://images.evetech.net/characters/%d/portrait?size=64", pilot.CharacterID) } alt={ pilot.Name } class="h-8 w-8 shrink-0 rounded-full bg-gray-900" width="32" height="32" loading="lazy"/>
+							<div class="min-w-0 flex-1">
+								<a href={ idPath("character", int64(pilot.CharacterID)) } class="block truncate text-sm text-gray-100 hover:text-blue-300">
+									{ pilot.Name }
+								</a>
+								<p class="truncate text-xs text-gray-500">
+									{ fallbackName(pilot.CorporationName) }
+								</p>
+							</div><span class="shrink-0 text-xs tabular-nums text-gray-400">{ strconv.Itoa(pilot.KillParticipations) } K / { strconv.Itoa(pilot.Losses) } L</span>
+						</div>
+					}
+				</div>
+				if len(report.Roster)>8 {
+					<a href={ roamTabPath(report.ID, "composition") } data-roam-tab-link="composition" class="block border-t border-white/[0.06] px-5 py-3 text-sm text-blue-300 hover:bg-white/[0.03]">See all { strconv.Itoa(len(report.Roster)) } pilots →</a>
+				}
+			</section>
+		</div>
+		<p class="text-xs leading-5 text-gray-500">This is an inferred combat trail from public killmails. It cannot show jumps without combat or prove fleet membership. Affiliations shown are current. Separate engagements begin when fighting moves systems or pauses for more than 30 minutes.</p>
+	</div>
+}

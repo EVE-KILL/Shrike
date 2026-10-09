@@ -1,0 +1,198 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"net/url"
+	"strconv"
+	"strings"
+)
+
+templ itemFitsPanel(view itemPageView) {
+	<section class="item-fits" data-item-fits data-controller="item-fits" data-action="click->item-fits#click change->item-fits#change input->item-fits#input submit->item-fits#submit pagehide@window->item-fits#hide pageshow@window->item-fits#show" data-fit-type-id={ strconv.FormatInt(view.ID, 10) } data-fit-query={ view.FitQuery.Encode() } data-fit-sort={ view.FitSort }>
+		if view.Fits.IsRareHull {
+			<div class="item-fit-rare"><strong>Rare hull</strong><span>Sample size is small, so we're showing every fit we've seen — even the one-offs.</span></div>
+		}
+		<div data-fit-meta><p class="item-fit-loading">Loading module usage…</p></div>
+		<div data-fit-distributions><p class="item-fit-loading">Loading observed fit profiles…</p></div>
+		<div class="item-fit-filters">
+			<div class="item-fit-filter-bar">
+				<button type="button" data-fit-filter-toggle data-focus-key="fit-filter-toggle">
+					@icon("list-filter")
+					Filter fits
+					if fitFilterCount(view.FitQuery)>0 {
+						<span>{ strconv.Itoa(fitFilterCount(view.FitQuery)) }</span>
+					}
+				</button>
+				if !fitHasFilters(view.FitQuery) {
+					<small>EHP, damage, repair, mobility, or NPC-specific tank</small>
+				}
+				for _, metric := range fitMetricLabels {
+					if view.FitQuery.Get("min_"+metric.Key)!="" || view.FitQuery.Get("max_"+metric.Key)!="" || metric.Key=="npc_ehp" && view.FitQuery.Get("npc_profile")!="" {
+						<button type="button" class="item-fit-chip" data-fit-remove-metric={ metric.Key } title={ "Remove " + fitFilterLabel(metric.Key, metric.Label, view.FitQuery) + " filter" }>{ fitFilterLabel(metric.Key, metric.Label, view.FitQuery) } ×</button>
+					}
+				}
+				if view.FitQuery.Get("groups")!="" {
+					for _, group := range strings.Split(view.FitQuery.Get("groups"), ",") {
+						<button type="button" class="item-fit-chip" data-fit-group={ group } data-fit-group-chip data-focus-key={ "fit-group-chip:" + group }><span>Requires Module group { group }</span> ×</button>
+					}
+				}
+				if fitHasFilters(view.FitQuery) {
+					<button type="button" class="item-fit-clear" data-fit-clear>Clear all</button>
+				}
+			</div>
+			<form data-fit-filter-form hidden?={ !fitHasFilters(view.FitQuery) }>
+				<label>
+					Statistic
+					<select name="metric" data-fit-metric>
+						for _, metric := range fitMetricLabels {
+							<option value={ metric.Key }>{ metric.Label }</option>
+						}
+					</select>
+				</label>
+				<label class="item-fit-npc" hidden>
+					NPC damage
+					<select name="npc_profile">
+						for _, profile := range fitNPCProfiles {
+							<option value={ profile.Key } selected?={ profile.Key=="guristas" }>{ profile.Label }</option>
+						}
+					</select>
+				</label>
+				<div class="item-fit-npc-placeholder"></div><label>Minimum<input name="min" inputmode="decimal" placeholder="e.g. 50k"/></label><label>Maximum<input name="max" inputmode="decimal" placeholder="optional"/></label><button type="submit" data-focus-key="fit-filter-add">Add filter</button>
+			</form>
+		</div>
+		if len(view.Fits.Families)==0 {
+			<div class="item-fit-empty"><strong>No observed fits match these filters.</strong><p>Remove a filter or clear everything to see the full set again.</p></div>
+		} else {
+			<div class="item-fit-heading">
+				<h2>Popular Fits <small>(last { strconv.Itoa(view.Fits.WindowDays) } days)</small></h2>
+				<div>
+					<span>{ strconv.Itoa(len(view.Fits.Families)) } families</span>
+					<label>
+						Sort by 
+						<select data-fit-sort aria-label="Sort fits">
+							for _, option := range fitSortLabels {
+								<option value={ option.Key } selected?={ option.Key==view.FitSort }>{ option.Label }</option>
+							}
+						</select>
+					</label>
+				</div>
+			</div>
+			<div class="item-fit-families">
+				for index, family := range view.Fits.Families {
+					@itemFitFamilyCard(view, family, index)
+				}
+			</div>
+		}
+	</section>
+}
+
+templ itemFitMeta(data api.UniverseFitMeta, filters url.Values, id int64) {
+	<section class="item-fit-meta" data-fit-meta data-fit-type-id={ strconv.FormatInt(id, 10) } data-fit-query={ filters.Encode() }>
+		<header><strong>Module Usage</strong><span>Click to require a module group · { fullNumber(float64(data.TotalKills)) } losses</span></header>
+		<div>
+			for _, group := range data.Groups {
+				<button type="button" class={ fitMetaClass(fitGroupSelected(filters, group.ID)) } data-fit-group={ strconv.FormatInt(group.ID, 10) } data-focus-key={ "fit-group:" + strconv.FormatInt(group.ID, 10) } aria-pressed={ strconv.FormatBool(fitGroupSelected(filters, group.ID)) }><span>{ group.Name }</span><small>{ fmt.Sprintf("%.1f%%",group.Pct) }</small></button>
+			}
+		</div>
+	</section>
+}
+
+templ itemFitDistributions(data api.UniverseFitDistributions, filters url.Values, id int64) {
+	<section class="item-fit-distributions" data-fit-distributions data-fit-type-id={ strconv.FormatInt(id, 10) } data-fit-query={ filters.Encode() }>
+		<header><div><strong>Observed Fit Profiles</strong><small>Distribution of calculated all-V statistics across recorded losses</small></div><span>{ strconv.Itoa(data.WindowDays) } days</span></header>
+		<div class="item-fit-distribution-grid">
+			for _, wanted := range []string{"ehp","dps","repair","speed"} {
+				for _, metric := range data.Metrics {
+					if metric.Metric==wanted {
+						@itemFitDistribution(metric)
+					}
+				}
+			}
+		</div>
+	</section>
+}
+
+templ itemFitDistribution(metric api.UniverseFitDistributionMetric) {
+	<div class="item-fit-distribution">
+		<header><div><strong>{ fitDistributionLabel(metric.Metric) }</strong><b>{ fitMetricValue(metric.Metric,metric.Median) }</b><small>median · { fullNumber(float64(metric.ObservationCount)) } losses</small></div><aside>P10 { fitMetricValue(metric.Metric,metric.P10) }<br/>P90 { fitMetricValue(metric.Metric,metric.P90) }</aside></header>
+		<div class="item-fit-histogram" aria-label={ fitDistributionLabel(metric.Metric) + " histogram" }>
+			for _, bucket := range metric.Buckets {
+				<button type="button" data-fit-bucket-metric={ metric.Metric } data-fit-bucket-min={ strconv.FormatFloat(bucket.LowerBound, 'f', -1, 64) } data-fit-bucket-max={ strconv.FormatFloat(bucket.UpperBound, 'f', -1, 64) } data-focus-key={ "fit-bucket:" + metric.Metric + ":" + strconv.FormatFloat(bucket.LowerBound, 'f', -1, 64) } style={ "height:" + fitBucketHeight(bucket, metric.Buckets) } title={ fitMetricValue(metric.Metric, bucket.LowerBound) + "–" + fitMetricValue(metric.Metric, bucket.UpperBound) + " · " + fullNumber(float64(bucket.ObservationCount)) } aria-label={ fitDistributionLabel(metric.Metric) + ": " + fitMetricValue(metric.Metric, bucket.LowerBound) + "–" + fitMetricValue(metric.Metric, bucket.UpperBound) + " · " + fullNumber(float64(bucket.ObservationCount)) + " losses" }></button>
+			}
+		</div>
+		<footer><span>{ fitMetricValue(metric.Metric,metric.P10) }</span><span>{ fitMetricValue(metric.Metric,metric.P90) }</span></footer>
+	</div>
+}
+
+templ itemFitFamilyCard(view itemPageView, family api.UniverseFitFamily, index int) {
+	<article class="item-fit-family" data-fit-family={ family.FamilyHash }>
+		<div class="item-fit-family-top">
+			<details>
+				<summary data-focus-key={ "fit-family:" + family.FamilyHash }>
+					<span class="item-fit-rank">{ fmt.Sprintf("%02d",index+1) }</span><span class="item-fit-chevron">›</span>
+					<span class="item-fit-family-info">
+						<strong>{ fitFamilyName(family,view.Data.Item.GroupName) }</strong>
+						<span class="item-fit-family-facts">
+							<b>{ strconv.Itoa(family.TotalUses) }</b> { fitLossesLabel(family.TotalUses) } <b>{ strconv.Itoa(family.VariantCount) }</b> { fitVariantsLabel(family.VariantCount) } <span>Seen <b>{ fitLastSeen(family.LastUsed) }</b></span>
+							if family.FitCost>0 {
+								<span><b class="cost">{ compactNumber(family.FitCost+fitHullCost(view.Fits.HullCost)) }</b> ISK total</span>
+							}
+						</span>
+						if family.Context!=nil {
+							<small title={ strings.Join(fitContextParts(family.Context), " · ") }>{ strings.Join(fitContextParts(family.Context)," · ") }</small>
+						}
+						if family.Stats!=nil {
+							<em>
+								for _, part := range fitStatParts(family.Stats) {
+									<span>{ part }</span>
+								}
+							</em>
+						}
+					</span>
+				</summary>
+				<div class="item-fit-slots">
+					for _, slot := range []int{1,2,3,4,5} {
+						@itemFitSlot(family, slot)
+					}
+				</div>
+				if len(family.Drones)>0 {
+					<div class="item-fit-drones">
+						<strong>Drone bay</strong>
+						for _, drone := range family.Drones {
+							<a href={ idPath("item", drone.TypeID) }><img src={ fmt.Sprintf("/images/types/%d/icon?size=32", drone.TypeID) } alt="" width="16" height="16" loading="lazy"/>{ drone.Name } ×{ strconv.Itoa(drone.Quantity) }</a>
+						}
+					</div>
+				}
+				if len(family.TopAlliances)>0 {
+					<div class="item-fit-alliances">
+						<strong>Flown by</strong>
+						for _, alliance := range family.TopAlliances {
+							<a href={ idPath("alliance", alliance.ID) }><img src={ eveEntityImage("alliance", alliance.ID, 32) } alt="" width="16" height="16" loading="lazy"/>{ alliance.Name } { fmt.Sprintf("%.1f%%",alliance.PctOfAllianceLosses) }</a>
+						}
+					</div>
+				}
+			</details><a class="item-fit-editor" href={ fitEditorURL(view.ID, family, view.Fits.WindowDays) }>Load in editor</a>
+		</div>
+	</article>
+}
+
+templ itemFitSlot(family api.UniverseFitFamily, slot int) {
+	<div class="item-fit-slot">
+		<strong>{ fitSlotLabel(slot) } · { strconv.Itoa(len(fitFamilyModules(family,slot))) }</strong>
+		if len(fitFamilyModules(family,slot))==0 {
+			<small>empty</small>
+		} else {
+			<ul>
+				for _, module := range fitFamilyModules(family,slot) {
+					<li>
+						<a href={ idPath("item", module.TypeID) }><img src={ fmt.Sprintf("/images/types/%d/icon?size=32", module.TypeID) } alt="" width="20" height="20" loading="lazy"/><span>{ module.Name }</span></a>
+						if module.ChargeTypeID>0 {
+							<a class="item-fit-charge" href={ idPath("item", module.ChargeTypeID) }><img src={ fmt.Sprintf("/images/types/%d/icon?size=32", module.ChargeTypeID) } alt="" width="14" height="14" loading="lazy"/><span>{ module.ChargeName }</span></a>
+						}
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}

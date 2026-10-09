@@ -466,7 +466,15 @@ func attachConflictBattleListTeams(
 			sort.Slice(aggregates, func(i, j int) bool {
 				left := float64(aggregates[i].Kills) + aggregates[i].Destroyed
 				right := float64(aggregates[j].Kills) + aggregates[j].Destroyed
-				return left > right
+				if left != right {
+					return left > right
+				}
+				leftName := fmt.Sprint(aggregates[i].Name) + fmt.Sprint(aggregates[i].CorpName)
+				rightName := fmt.Sprint(aggregates[j].Name) + fmt.Sprint(aggregates[j].CorpName)
+				if leftName != rightName {
+					return leftName < rightName
+				}
+				return fmt.Sprint(aggregates[i].ID, aggregates[i].CorpID) < fmt.Sprint(aggregates[j].ID, aggregates[j].CorpID)
 			})
 			if len(aggregates) > 5 {
 				aggregates = aggregates[:5]

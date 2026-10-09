@@ -1,0 +1,19 @@
+new:
+  displayName: Charge Amount
+  category: Miscellaneous
+  default: 1
+  highIsGood: true
+  published: false
+
+effects:
+  - name: chargeAmount
+    on: holdsCharge
+    category: passive
+    rules:
+      - {from: capacity}
+
+  - name: chargeAmount2
+    on: isCharge
+    category: passive
+    rules:
+      - {div: volume, domain: otherID}

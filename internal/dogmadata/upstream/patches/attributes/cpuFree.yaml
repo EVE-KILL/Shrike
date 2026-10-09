@@ -1,0 +1,12 @@
+new:
+  displayName: CPU Free
+  category: Fitting
+  unit: Teraflops
+  highIsGood: true
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: cpuOutput}
+      - {sub: cpuLoad}

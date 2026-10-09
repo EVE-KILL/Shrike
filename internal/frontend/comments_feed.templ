@@ -1,0 +1,130 @@
+package frontend
+
+import "strconv"
+
+templ commentsFeedPage(view commentFeedView) {
+	<div class="comments-feed" data-comments-feed data-controller="comments-feed" data-action="click->comments-feed#click input->comments-feed#searchChanged change->comments-feed#change pagehide@window->comments-feed#hide pageshow@window->comments-feed#show">
+		<header class="page-header hero-surface glass-panel comments-feed-header">
+			<div class="comments-feed-title">
+				<span class="page-header-icon">
+					@icon("message-square")
+				</span>
+				<div>
+					<p class="eyebrow">Community activity</p>
+					<h1>Comments</h1>
+					<p>Latest activity across killmails, entities, systems, and battles.</p>
+				</div>
+			</div>
+			<div class="comments-feed-header-actions">
+				<span data-comments-shown>
+					if len(view.Data.Comments)>0 {
+						<b>{ strconv.Itoa(len(view.Data.Comments)) }</b> shown
+					}
+				</span>
+				<button type="button" data-comments-refresh>
+					@icon("refresh-cw")
+					Refresh
+				</button>
+			</div>
+		</header>
+		<div class="comments-feed-filters">
+			<div class="comments-feed-pills" aria-label="Comment type">
+				for _,meta:=range commentTypes {
+					<button type="button" class={ "comment-filter-pill" + killBoolClass(meta.ID == 0, " active", "") } data-comment-filter={ strconv.Itoa(meta.ID) } aria-pressed={ strconv.FormatBool(meta.ID == 0) }>
+						@icon(meta.Icon)
+						{ meta.Plural }
+					</button>
+				}
+			</div>
+			<div class="comments-feed-filter-row">
+				<label class="comments-feed-search">
+					@icon("search")
+					<input type="search" data-comments-search placeholder="Search comment text…" aria-label="Search comment text"/>
+					<button type="button" data-comments-search-clear hidden aria-label="Clear search">
+						@icon("x")
+					</button>
+				</label>
+				<select data-comments-sort aria-label="Sort comments"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
+				<button type="button" data-comments-clear hidden>
+					@icon("x")
+					Clear
+				</button>
+			</div>
+		</div>
+		<div class="comments-feed-error" data-comments-error role="alert" hidden></div>
+		<div class="comments-feed-grid" data-comments-grid>
+			@commentFeedCards(view.Data.Comments)
+		</div>
+		<div class="comments-feed-empty" data-comments-empty hidden>
+			<span>
+				@icon("message-square")
+			</span>
+			<h2>No comments found</h2>
+			<p data-comments-empty-text>Be the first to leave one on a killmail or battle.</p>
+			<button type="button" data-comments-empty-clear hidden>Clear filters</button>
+		</div>
+		<div class="comments-feed-load" data-comments-load-wrap hidden>
+			<button type="button" data-comments-more>
+				@icon("chevron-down")
+				Load more comments
+			</button>
+		</div>
+		<div class="comments-feed-end" data-comments-end hidden>— End of feed —</div>
+		<div data-comments-initial-next={ cursorString(view.Data.NextCursor) } data-comments-initial-error={ view.Error } hidden></div>
+	</div>
+}
+
+templ commentFeedCards(comments []feedComment) {
+	for _,comment:=range comments {
+		@commentFeedCard(comment)
+	}
+}
+
+templ commentFeedFragmentContent(comments []feedComment) {
+	<div data-comments-fragment>
+		@commentFeedCards(comments)
+	</div>
+}
+
+templ commentFeedCard(comment feedComment) {
+	<article class={ "comment-feed-card " + commentMeta(comment.TargetType).Key + killBoolClass(comment.DeletedAt != nil, " deleted", "") } data-comment-id={ strconv.FormatInt(comment.ID, 10) } data-author-id={ strconv.FormatInt(comment.CharacterID, 10) }>
+		<div class="comment-feed-top">
+			<span class={ "comment-feed-type " + commentMeta(comment.TargetType).Key }>
+				@icon(commentMeta(comment.TargetType).Icon)
+				{ commentMeta(comment.TargetType).Label }
+			</span>
+			<time datetime={ comment.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") } title={ commentTime(comment.CreatedAt) }>{ commentRelative(comment.CreatedAt) }</time>
+		</div>
+		<div class="comment-feed-author">
+			<a href={ idPath("character", comment.CharacterID) }><img src={ eveEntityImage("character", comment.CharacterID, 64) } alt={ comment.CharacterName } width="40" height="40" loading="lazy"/></a>
+			<div>
+				<a class="name" href={ idPath("character", comment.CharacterID) }>{ comment.CharacterName }</a>
+				<small>
+					<a href={ idPath("corporation", comment.CorporationID) }>{ comment.CorporationName }</a>
+					if comment.AllianceID!=nil && comment.AllianceName!="" {
+						<span>/ </span><a href={ idPath("alliance", *comment.AllianceID) }>{ comment.AllianceName }</a>
+					}
+				</small>
+			</div>
+		</div>
+		<div class="comment-feed-body">
+			@templ.Raw(commentSafeBody(comment.BodyHTML))
+		</div>
+		<div class="comment-feed-footer">
+			<a class={ "comment-feed-target " + commentMeta(comment.TargetType).Key } href={ commentTargetURL(comment) }>
+				@icon(commentMeta(comment.TargetType).Icon)
+				{ commentTargetLabel(comment) }
+				@icon("arrow-up-right")
+			</a>
+			if comment.ReplyCount>0 {
+				<span class="comment-feed-replies" title={ strconv.Itoa(comment.ReplyCount) + " replies" }>
+					@icon("corner-down-right")
+					{ strconv.Itoa(comment.ReplyCount) }
+				</span>
+			}
+			<button type="button" data-comment-delete={ strconv.FormatInt(comment.ID, 10) } title="Delete" aria-label="Delete comment" hidden>
+				@icon("trash-2")
+			</button>
+		</div>
+	</article>
+}

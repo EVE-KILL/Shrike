@@ -1,0 +1,10 @@
+change:
+  highIsGood: false
+
+addTo:
+  - effect: moduleBonusAfterburner
+    rules:
+      - {add: massAddition, domain: shipID}
+  - effect: moduleBonusMicrowarpdrive
+    rules:
+      - {add: massAddition, domain: shipID}

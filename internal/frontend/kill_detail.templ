@@ -1,0 +1,829 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ killDetailPage(view killDetailView) {
+	<div
+		class="kill-detail"
+		data-kill-detail
+		data-kill-id={ strconv.FormatInt(view.Data.KillmailID, 10) }
+		data-controller="kill-detail"
+		data-action="click->kill-detail#click error->kill-detail#imageError:capture mouseover->kill-detail#hover mouseout->kill-detail#leave pointerdown@document->kill-detail#closeMenus keydown@document->kill-detail#closeMenus popstate@window->kill-detail#syncTab hashchange@window->kill-detail#syncTab pagehide@window->kill-detail#hide pageshow@window->kill-detail#show"
+	>
+		<nav class="kill-context-nav" data-kill-context aria-label="Killmail result navigation" hidden></nav>
+		<section class="hero-surface glass-panel kill-hero">
+			<div class="kill-hero-top">
+				<div class="kill-hero-intro">
+					<h1>
+						{ killHeadline(view) }
+					</h1>
+					<div class="kill-hero-meta">
+						<span>
+							@icon("user-round")
+							{ killWho(view.Data) }
+						</span>
+						<a
+							href={ idPath("system", view.Data.SolarSystemID) }
+						>
+							@icon("map-pin")
+							<em
+								class={ killSecClass(view.Data.SolarSystemSecurity) }
+							>
+								{ killSecurity(view.Data.SolarSystemSecurity) }
+							</em> { view.Data.SolarSystemName } <small>· { view.Data.RegionName }</small>
+						</a>
+						<time
+							datetime={ view.Data.KillmailTime.UTC().Format("2006-01-02T15:04:05Z") }
+							title={ killRelative(view.Data.KillmailTime) }
+						>
+							@icon("clock")
+							{ killTimestamp(view.Data.KillmailTime) }
+							<small>
+								({ killRelative(view.Data.KillmailTime) })
+							</small>
+						</time>
+						if view.Data.Points>0 {
+							<span class="kill-points" title="Killboard points — how much this kill is worth, scaled by ship class and the odds faced">
+								@icon("star")
+								{ killNumber(view.Data.Points) } { killBoolClass(view.Data.Points==1,"pt","pts") }
+							</span>
+						}
+					</div>
+				</div>
+				<div class="kill-hero-actions">
+					if view.Data.IsSolo {
+						<span class="kill-hero-badge solo">
+							@icon("swords")
+							Solo
+						</span>
+					}
+					if view.Data.IsNPC {
+						<span class="kill-hero-badge npc">
+							@icon("bot")
+							NPC
+						</span>
+					}
+					<a
+						class="kill-hero-button"
+						href={ fmt.Sprintf("/battle/%d?killmail=%d", view.Data.KillmailID, view.Data.KillmailID) }
+					>
+						@icon("swords")
+						Battle report
+					</a>
+					if len(view.Data.Siblings)==1 {
+						<a
+							class="kill-hero-button"
+							href={ fmt.Sprintf("/kill/%d", view.Data.Siblings[0].KillmailID) }
+						>{ view.Data.Siblings[0].ShipName }</a>
+					} else if len(view.Data.Siblings)>1 {
+						<details class="kill-dropdown kill-siblings">
+							<summary>
+								@icon("layers")
+								Other kills 
+								<small>
+									{ strconv.Itoa(len(view.Data.Siblings)) }
+								</small> @icon("chevron-down")
+							</summary>
+							<div class="kill-siblings-menu">
+								for _,sibling:=range view.Data.Siblings {
+									<a
+										href={ fmt.Sprintf("/kill/%d", sibling.KillmailID) }
+									>
+										if sibling.ShipTypeID!=nil {
+											<img
+												src={ killTypeIcon(*sibling.ShipTypeID, 32) }
+												alt=""
+												width="20"
+												height="20"
+												loading="lazy"
+											/>
+										}
+										<span>{ sibling.ShipName }</span>
+										<em>
+											{ compactNumber(sibling.TotalValue) }
+										</em>
+									</a>
+								}
+							</div>
+						</details>
+					}
+					@killToolsMenu(view)
+				</div>
+			</div>
+			if view.Data.DestroyedValue+view.Data.DroppedValue>0 {
+				<div
+					class="kill-loss-bar"
+					title={ fmt.Sprintf("Destroyed %s ISK · Dropped %s ISK", compactNumber(view.Data.DestroyedValue), compactNumber(view.Data.DroppedValue)) }
+				>
+					<i
+						style={ fmt.Sprintf("width:%.2f%%", view.Data.DestroyedValue/(view.Data.DestroyedValue+view.Data.DroppedValue)*100) }
+					></i>
+				</div>
+			}
+			<div class="kill-hero-tiles">
+				@killHeroTile("Total value", compactNumber(view.Data.TotalValue)+" ISK", "coins", "total")
+				@killHeroTile("Destroyed", compactNumber(view.Data.DestroyedValue), "flame", "destroyed")
+				@killHeroTile("Dropped", compactNumber(view.Data.DroppedValue), "package", "dropped")
+				@killHeroTile("Fitted", compactNumber(view.Data.FittedValue), "wrench", "fitted")
+				@killHeroTile("Damage", killNumber(view.Data.TotalDamage), "zap", "damage")
+				@killHeroTile("Attackers", strconv.Itoa(view.Data.AttackerCount), "users", "attackers")
+			</div>
+		</section>
+		<nav class="kill-mobile-tabs" aria-label="Killmail views">
+			<button type="button" data-kill-tab="kill" class="active">
+				@icon("swords")
+				Kill
+			</button>
+			<button type="button" data-kill-tab="tools">
+				@icon("external-link")
+				Tools
+			</button>
+			<a
+				href={ fmt.Sprintf("/battle/%d?killmail=%d", view.Data.KillmailID, view.Data.KillmailID) }
+			>
+				@icon("swords")
+				Battle
+			</a>
+		</nav>
+		<div class="kill-columns" data-kill-main>
+			<div class="kill-left">
+				<div class="kill-identity-row">
+					@killWheel(view)
+					@killVictimCard(view)
+				</div>
+				<div class="kill-mobile-victim">
+					@killVictimCompact(view)
+				</div>
+				@killItemsTable(view)
+			</div>
+			<div class="kill-right">
+				if view.Data.IsSolo && view.FinalBlow!=nil && view.FinalBlow.CharacterID!=nil && view.FinalBlow.ShipTypeID!=nil && view.Data.Victim.ShipTypeID!=nil && (view.Data.Victim.ShipGroupID==nil || *view.Data.Victim.ShipGroupID!=29) {
+					<div
+						data-kill-matchup
+						data-attacker={ strconv.FormatInt(*view.FinalBlow.ShipTypeID, 10) }
+						data-attacker-name={ view.FinalBlow.ShipName }
+						data-victim={ strconv.FormatInt(*view.Data.Victim.ShipTypeID, 10) }
+						data-victim-name={ view.Data.Victim.ShipName }
+					></div>
+				}
+				<section class="kill-attacker-panel">
+					<div class="kill-featured">
+						if view.FinalBlow!=nil {
+							@killFeaturedAttacker(*view.FinalBlow, "FB", "final", view.Data.TotalDamage, view.TopDamage != nil)
+						}
+						if view.TopDamage!=nil {
+							@killFeaturedAttacker(*view.TopDamage, "TD", "top", view.Data.TotalDamage, true)
+						}
+					</div>
+					<div class="kill-attackers-title">
+						Attackers ({ strconv.Itoa(view.Data.AttackerCount) })
+					</div>
+					<div class="kill-attackers">
+						for index,attacker:=range view.Data.Attackers {
+							@killAttackerRow(attacker, index, view.Data.TotalDamage, view.Data.Attackers[0].DamageDone)
+						}
+					</div>
+					if len(view.Data.Attackers)>10 {
+						<button class="kill-show-more" type="button" data-kill-more>
+							Show more ({ killRemaining(len(view.Data.Attackers)) } remaining)
+						</button>
+					}
+				</section>
+				<section class="kill-comments">
+					<div
+						class="blog-comment-thread"
+						data-comment-thread data-controller="comment-thread" data-action="click->comment-thread#click pagehide@window->comment-thread#hide pageshow@window->comment-thread#show"
+						data-show-header="true"
+						data-target-type="1"
+						data-target-id={ strconv.FormatInt(view.Data.KillmailID, 10) }
+					><p data-comments-status>Loading comments…</p><div data-comments-list></div><div data-comments-composer></div></div>
+				</section>
+			</div>
+		</div>
+		<div class="kill-mobile-tools" data-kill-tools hidden>
+			<a
+				class="kill-hero-button"
+				href={ fmt.Sprintf("/battle/%d?killmail=%d", view.Data.KillmailID, view.Data.KillmailID) }
+			>Battle Report</a>
+			for _,sibling:=range view.Data.Siblings {
+				<a
+					class="kill-hero-button"
+					href={ fmt.Sprintf("/kill/%d", sibling.KillmailID) }
+				>
+					{ sibling.ShipName } · { compactNumber(sibling.TotalValue) }
+				</a>
+			}
+			@killToolLinks(view)
+		</div>
+	</div>
+}
+
+templ killHeroTile(label, value, iconName, class string) {
+	<div class="kill-tile">
+		<strong class={ class }>{ value }</strong>
+		<span>
+			@icon(iconName)
+			{ label }
+		</span>
+	</div>
+}
+
+templ killToolsMenu(view killDetailView) {
+	<details class="kill-dropdown kill-tools-menu">
+		<summary>
+			@icon("external-link")
+			Open in <small>{ strconv.Itoa(len(view.Tools)) }</small> @icon("chevron-down")
+		</summary>
+		<div class="kill-tools-popover">
+			@killToolLinks(view)
+		</div>
+	</details>
+}
+
+templ killToolLinks(view killDetailView) {
+	<div class="kill-tool-grid">
+		for _,tool:=range view.Tools {
+			<div>
+				<h3>
+					if tool.Icon!="" {
+						<img src={ killToolIcon(tool.Icon) } alt="" width="14" height="14" loading="lazy"/>
+					}
+					{ tool.Name }
+				</h3>
+				for _,link:=range tool.Links {
+					<a href={ link.URL } target="_blank" rel="noopener noreferrer">
+						<span>{ link.Label }</span>
+						if link.Description!="" {
+							<small>{ link.Description }</small>
+						}
+					</a>
+				}
+			</div>
+		}
+	</div>
+}
+
+templ killWheel(view killDetailView) {
+	<div class="kill-wheel-wrap">
+		<button type="button" class="kill-load-fit" data-kill-load-fit title="Open this fit in the editor">
+			@icon("wrench")
+			Load in Editor
+		</button>
+		<div class="kill-wheel" data-kill-wheel>
+			<div class="kill-wheel-background">
+				<img
+					src={ killTypeRender(killID(view.Data.Victim.ShipTypeID), 512) }
+					alt={ view.Data.Victim.ShipName }
+					width="512"
+					height="512"
+					fetchpriority="high"
+				/>
+			</div>
+			<svg class="kill-wheel-outer" viewBox="24 24 464 464" aria-hidden="true"><circle cx="256" cy="256" r="224" fill="none" stroke="black" stroke-width="16"></circle></svg>
+			<svg class="kill-wheel-inner" viewBox="24 24 464 464" aria-hidden="true"><circle cx="256" cy="256" r="195" fill="none" stroke="black" stroke-width="46" stroke-opacity="0.6"></circle></svg>
+			<div class="kill-wheel-tooltip" data-kill-wheel-tooltip hidden><div><strong data-tip-name></strong><small data-tip-ammo hidden></small><span data-tip-quantities></span></div></div>
+			for _,group:=range []string{"top","right","bottom","left"} {
+				<i
+					class={ "kill-wheel-dot " + group }
+					style={ killWheelPosition(group, -1) }
+				></i>
+			}
+			for _,slot:=range view.Wheel {
+				if slot.Group!="sub" || killHasSubslots(view.Wheel) {
+					<div
+						class={ "kill-wheel-slot " + slot.Group }
+						style={ killWheelPosition(slot.Group, slot.Index) }
+					>
+						if slot.Item!=nil {
+							<div class="kill-wheel-module" data-kill-wheel-module data-name={ slot.Item.TypeName } data-ammo={ killWheelAmmoName(slot) } data-dropped={ strconv.FormatInt(slot.Item.QuantityDropped, 10) } data-destroyed={ strconv.FormatInt(slot.Item.QuantityDestroyed, 10) }>
+								<img
+									src={ killTypeIcon(slot.Item.TypeID, 64) }
+									alt={ slot.Item.TypeName }
+									width="42"
+									height="42"
+									loading="lazy"
+								/>
+								if slot.Ammo!=nil {
+									<img
+										class="kill-wheel-ammo"
+										src={ killTypeIcon(slot.Ammo.TypeID, 64) }
+										alt={ slot.Ammo.TypeName }
+										width="20"
+										height="20"
+										loading="lazy"
+									/>
+								}
+							</div>
+						}
+					</div>
+				}
+			}
+		</div>
+	</div>
+}
+
+templ killVictimCard(view killDetailView) {
+	<div class="kill-victim-card" style={ view.BorderStyle }>
+		<div class="kill-victim-portrait">
+			if view.Data.Victim.CharacterID!=nil {
+				<img
+					src={ eveEntityImage("character", *view.Data.Victim.CharacterID, 512) }
+					alt={ view.Data.Victim.CharacterName }
+					width="252"
+					height="252"
+				/>
+			} else {
+				<div class="kill-no-portrait">
+					@icon("building-2")
+				</div>
+			}
+			<div class="kill-victim-badges">
+				if view.Data.IsSolo {
+					<b>SOLO</b>
+				}
+				if view.Data.IsNPC {
+					<b>NPC</b>
+				}
+				if view.Data.TotalValue>=1e9 {
+					<b>
+						{ compactNumber(view.Data.TotalValue) }
+					</b>
+				}
+			</div>
+			<div class="kill-victim-logos">
+				if view.Data.Victim.CorporationID!=nil {
+					<a
+						href={ idPath("corporation", *view.Data.Victim.CorporationID) }
+					>
+						<img
+							src={ eveEntityImage("corporation", *view.Data.Victim.CorporationID, 64) }
+							alt={ view.Data.Victim.CorporationName }
+							width="40"
+							height="40"
+						/>
+					</a>
+				}
+				if view.Data.Victim.AllianceID!=nil {
+					<a
+						href={ idPath("alliance", *view.Data.Victim.AllianceID) }
+					>
+						<img
+							src={ eveEntityImage("alliance", *view.Data.Victim.AllianceID, 64) }
+							alt={ view.Data.Victim.AllianceName }
+							width="40"
+							height="40"
+						/>
+					</a>
+				}
+			</div>
+			<div class="kill-victim-name">
+				<strong>
+					if view.Data.Victim.CharacterID!=nil {
+						<a
+							href={ idPath("character", *view.Data.Victim.CharacterID) }
+						>
+							{ killWho(view.Data) }
+						</a>
+					} else {
+						{ killWho(view.Data) }
+					}
+				</strong>
+				if view.Data.Victim.CharacterName!="" && view.Data.Victim.CorporationID!=nil {
+					<a
+						href={ idPath("corporation", *view.Data.Victim.CorporationID) }
+					>{ view.Data.Victim.CorporationName }</a>
+				}
+				if view.Data.Victim.AllianceID!=nil {
+					<a
+						href={ idPath("alliance", *view.Data.Victim.AllianceID) }
+					>{ view.Data.Victim.AllianceName }</a>
+				}
+			</div>
+		</div>
+		@killInfoStats(view, true)
+	</div>
+}
+
+templ killVictimCompact(view killDetailView) {
+	<div class="kill-victim-compact">
+		<div class="kill-compact-identity">
+			if view.Data.Victim.CharacterID!=nil {
+				<a
+					href={ idPath("character", *view.Data.Victim.CharacterID) }
+				>
+					<img
+						src={ eveEntityImage("character", *view.Data.Victim.CharacterID, 128) }
+						alt=""
+						width="64"
+						height="64"
+					/>
+				</a>
+			}
+			<div>
+				<strong>
+					{ killWho(view.Data) }
+				</strong><span>{ view.Data.Victim.CorporationName }</span><small>{ view.Data.Victim.AllianceName }</small>
+			</div>
+			if view.Data.Victim.CorporationID!=nil {
+				<img
+					src={ eveEntityImage("corporation", *view.Data.Victim.CorporationID, 64) }
+					alt=""
+					width="64"
+					height="64"
+				/>
+			}
+			if view.Data.Victim.AllianceID!=nil {
+				<img src={ eveEntityImage("alliance", *view.Data.Victim.AllianceID, 64) } alt="" width="64" height="64"/>
+			}
+		</div>@killInfoStats(view, false)
+	</div>
+}
+
+templ killInfoStats(view killDetailView, interactive bool) {
+	<div class="kill-info-stats">
+		<div>
+			<span>Ship</span>
+			<strong>
+				<img
+					src={ killTypeIcon(killID(view.Data.Victim.ShipTypeID), 32) }
+					alt=""
+					width="16"
+					height="16"
+				/><a
+	href={ idPath("item", killID(view.Data.Victim.ShipTypeID)) }
+>{ view.Data.Victim.ShipName }</a> <small>({ view.Data.Victim.ShipGroupName })</small>
+			</strong>
+		</div>
+		<div>
+			<span>System</span>
+			<strong>
+				<img
+					src={ fmt.Sprintf("/images/systems/%d?size=32", view.Data.SolarSystemID) }
+					alt=""
+					width="16"
+					height="16"
+				/>
+				<a
+					href={ idPath("system", view.Data.SolarSystemID) }
+				>
+					<em
+						class={ killSecClass(view.Data.SolarSystemSecurity) }
+					>
+						{ killSecurity(view.Data.SolarSystemSecurity) }
+					</em> { view.Data.SolarSystemName }
+				</a>
+			</strong>
+		</div>
+		<div>
+			<span>Region</span>
+			<strong>
+				if view.Data.RegionID!=nil {
+					<img
+						src={ fmt.Sprintf("/images/regions/%d?size=32", *view.Data.RegionID) }
+						alt=""
+						width="16"
+						height="16"
+					/><a
+	href={ idPath("region", *view.Data.RegionID) }
+>{ view.Data.RegionName }</a>
+				} else {
+					{ view.Data.RegionName }
+				}
+			</strong>
+		</div>
+		if view.Data.Location!=nil && view.Data.Location.ItemName!="" {
+			<div><span>Location</span><strong>{ view.Data.Location.ItemName }</strong></div>
+			<div>
+				<span>Distance</span>
+				<strong>
+					{ killDistance(view.Data.Location.Distance) }
+				</strong>
+			</div>
+		}
+		<div>
+			<span>Time</span>
+			<strong title={ killTimestamp(view.Data.KillmailTime) }>
+				if interactive {
+					{ killRelative(view.Data.KillmailTime) }
+				} else {
+					{ killTimestamp(view.Data.KillmailTime) }
+				}
+			</strong>
+		</div>
+		<div>
+			<span>Damage Taken</span>
+			<strong class="red">
+				{ killNumber(view.Data.Victim.DamageTaken) }
+			</strong>
+		</div>
+		<div>
+			<span>Attackers</span>
+			<strong>
+				{ strconv.Itoa(view.Data.AttackerCount) }
+			</strong>
+		</div>
+	</div>
+	<div class="kill-info-loss">
+		<i
+			style={ fmt.Sprintf("width:%.2f%%", killDestroyedPercent(view.Data)) }
+		></i>
+	</div>
+	<div class="kill-info-values">
+		<div>
+			<span>Destroyed</span>
+			<strong class="red">
+				{ compactNumber(view.Data.DestroyedValue) }
+			</strong>
+		</div>
+		<div>
+			<span>Dropped</span>
+			<strong class="green">
+				{ compactNumber(view.Data.DroppedValue) }
+			</strong>
+		</div>
+		if view.FittedValue>0 {
+			<div>
+				<span>Fitted</span>
+				<strong>
+					{ compactNumber(view.FittedValue) }
+				</strong>
+			</div>
+		}
+		if view.Data.Victim.ShipPrice>0 {
+			<div>
+				<span>Ship</span>
+				<strong>
+					{ compactNumber(view.Data.Victim.ShipPrice) }
+				</strong>
+			</div>
+		}
+		<div class="kill-info-total">
+			<span>Total Value</span>
+			<strong>
+				{ compactNumber(view.Data.TotalValue) } ISK
+			</strong>
+		</div>
+	</div>
+}
+
+templ killItemsTable(view killDetailView) {
+	<div class="kill-items-table">
+		<div class="kill-items-grid kill-items-heading"><span></span><button type="button" data-kill-sort="name">Item <i data-sort-arrow></i></button><button type="button" data-kill-sort="dropped"><span class="kill-sort-desktop">Dropped</span><span class="kill-sort-mobile">Drop</span> <i data-sort-arrow></i></button><button type="button" data-kill-sort="destroyed"><span class="kill-sort-desktop">Destroyed</span><span class="kill-sort-mobile">Lost</span> <i data-sort-arrow></i></button><button type="button" data-kill-sort="value">Value <i data-sort-arrow></i></button></div>
+		<div class="kill-items-grid kill-hull-row">
+			<img
+				src={ killTypeIcon(killID(view.Data.Victim.ShipTypeID), 64) }
+				alt=""
+				width="24"
+				height="24"
+			/><a
+	href={ idPath("item", killID(view.Data.Victim.ShipTypeID)) }
+>{ view.Data.Victim.ShipName } <small>({ view.Data.Victim.ShipGroupName })</small></a><span></span><b>1</b>
+			<em>
+				{ compactNumber(view.Data.Victim.ShipPrice) }
+			</em>
+		</div>
+		for _,group:=range view.Groups {
+			<section class="kill-item-group" data-kill-slot={ group.Slot }>
+				<button class="kill-items-grid kill-group-heading" type="button" data-kill-collapse aria-expanded="true">
+					<span>
+						@icon("chevron-down")
+					</span>
+					<strong>
+						{ group.Label }
+						<small>
+							({ strconv.Itoa(len(group.Rows)) })
+						</small>
+					</strong>
+					<em class="green">
+						if group.Dropped>0 {
+							{ compactNumber(group.Dropped) }
+						}
+					</em>
+					<em class="red">
+						if group.Destroyed>0 {
+							{ compactNumber(group.Destroyed) }
+						}
+					</em>
+					<em>
+						{ compactNumber(group.Value) }
+					</em>
+				</button>
+				<div class="kill-group-rows">
+					for _,row:=range group.Rows {
+						@killItemRow(row.KillmailItem, row.Value, false)
+						for _,child:=range row.Children {
+							@killItemRow(child, child.Price*float64(child.QuantityDropped+child.QuantityDestroyed), true)
+						}
+					}
+				</div>
+			</section>
+		}
+		<div class="kill-items-footer">
+			if view.FittedValue>0 {
+				<div>
+					<span>Fitted</span>
+					<strong>
+						{ compactNumber(view.FittedValue) }
+					</strong>
+				</div>
+			}
+			if view.Data.Victim.ShipPrice>0 {
+				<div>
+					<span>Ship</span>
+					<strong>
+						{ compactNumber(view.Data.Victim.ShipPrice) }
+					</strong>
+				</div>
+			}
+			if view.OtherValue>0 {
+				<div>
+					<span>Cargo &amp; other</span>
+					<strong>
+						{ compactNumber(view.OtherValue) }
+					</strong>
+				</div>
+			}
+			<div class="total">
+				<span>Total</span>
+				<strong>
+					{ compactNumber(view.Data.Victim.ShipPrice+view.FittedValue+view.OtherValue) }
+				</strong>
+			</div>
+		</div>
+	</div>
+}
+
+templ killItemRow(item api.KillmailItem, value float64, child bool) {
+	<a
+		class={ "kill-items-grid kill-item-row " + killItemStatus(item) + killBoolClass(child, " child", "") }
+		href={ idPath("item", item.TypeID) }
+		data-name={ item.TypeName }
+		data-dropped={ strconv.FormatInt(item.QuantityDropped, 10) }
+		data-destroyed={ strconv.FormatInt(item.QuantityDestroyed, 10) }
+		data-value={ fmt.Sprintf("%.2f", value) }
+	>
+		<img
+			src={ killTypeIcon(item.TypeID, 64) }
+			alt=""
+			width="24"
+			height="24"
+			loading="lazy"
+		/><span>{ item.TypeName }</span>
+		<span>
+			if item.QuantityDropped>0 {
+				<b class="green">
+					{ killNumber(item.QuantityDropped) }
+				</b>
+			}
+		</span>
+		<span>
+			if item.QuantityDestroyed>0 {
+				<b class="red">
+					{ killNumber(item.QuantityDestroyed) }
+				</b>
+			}
+		</span>
+		<em>
+			if value>0 {
+				{ compactNumber(value) }
+			}
+		</em>
+	</a>
+}
+
+templ killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, total int64, small bool) {
+	<div class={ "kill-featured-card " + class }>
+		if killID(attacker.ShipTypeID)>0 {
+			<img
+				class="kill-featured-ship"
+				src={ killAttackerImage(attacker, 512) }
+				data-kill-image-fallback={ killTypeIcon(*attacker.ShipTypeID, 512) }
+				alt={ attacker.ShipName }
+				loading="lazy"
+			/>
+		}
+		<div class="kill-featured-shade"></div><b>{ badge }</b>
+		if killID(attacker.CharacterID)>0 {
+			<a
+				class="kill-featured-portrait"
+				href={ idPath("character", *attacker.CharacterID) }
+			>
+				<img
+					src={ eveEntityImage("character", *attacker.CharacterID, 128) }
+					alt={ attacker.CharacterName }
+					width="64"
+					height="64"
+					loading="lazy"
+				/>
+			</a>
+		}
+		<div class="kill-featured-label">
+			<strong>
+				{ killAttackerName(attacker) }
+			</strong>
+			<span>
+				{ attacker.ShipName }
+				if attacker.WeaponName!="" {
+					— { attacker.WeaponName }
+				}
+			</span>
+			<small>
+				⚡ { killNumber(attacker.DamageDone) } ({ killPercent(attacker.DamageDone,total) }%)
+			</small>
+		</div>
+	</div>
+}
+
+templ killAttackerRow(attacker api.KillmailAttacker, index int, total, highest int64) {
+	<div
+		class={ "kill-attacker-row" + killBoolClass(attacker.FinalBlow, " final", "") + killBoolClass(index >= 10, " extra", "") }
+		data-kill-attacker-index={ strconv.Itoa(index) }
+	>
+		<i
+			class="kill-damage-bar"
+			style={ fmt.Sprintf("width:%.2f%%", killDamageWidth(attacker.DamageDone, highest)) }
+		></i>
+		<div class="kill-attacker-inner">
+			if attacker.CharacterID!=nil {
+				<a
+					href={ idPath("character", *attacker.CharacterID) }
+				>
+					<img
+						src={ eveEntityImage("character", *attacker.CharacterID, 64) }
+						alt={ attacker.CharacterName }
+						width="48"
+						height="48"
+						loading="lazy"
+					/>
+				</a>
+			} else if attacker.ShipTypeID!=nil {
+				<img
+					src={ killTypeIcon(*attacker.ShipTypeID, 64) }
+					alt={ attacker.ShipName }
+					width="48"
+					height="48"
+					loading="lazy"
+				/>
+			}
+			if attacker.ShipTypeID!=nil {
+				<a
+					href={ idPath("item", *attacker.ShipTypeID) }
+					title={ attacker.WeaponName }
+				>
+					<img
+						src={ killTypeIcon(*attacker.ShipTypeID, 64) }
+						alt={ attacker.ShipName }
+						width="48"
+						height="48"
+						loading="lazy"
+					/>
+				</a>
+			}
+			<div class="kill-attacker-info">
+				<strong>
+					if attacker.CharacterID!=nil {
+						<a
+							href={ idPath("character", *attacker.CharacterID) }
+						>{ attacker.CharacterName }</a>
+					} else if attacker.CorporationID!=nil {
+						<a
+							href={ idPath("corporation", *attacker.CorporationID) }
+						>{ attacker.CorporationName }</a>
+					} else {
+						{ attacker.ShipName }
+					}
+					if attacker.FinalBlow {
+						<b>FB</b>
+					}
+				</strong>
+				<span>
+					{ attacker.ShipName }
+					if attacker.CharacterID!=nil && attacker.CorporationID!=nil {
+						· <a
+	href={ idPath("corporation", *attacker.CorporationID) }
+>{ attacker.CorporationName }</a>
+					}
+				</span>
+				if attacker.AllianceID!=nil {
+					<small>
+						<a
+							href={ idPath("alliance", *attacker.AllianceID) }
+						>{ attacker.AllianceName }</a>
+					</small>
+				}
+			</div>
+			<div class="kill-attacker-damage">
+				<strong>
+					{ killNumber(attacker.DamageDone) }
+				</strong>
+				<span>
+					{ killPercent(attacker.DamageDone,total) }%
+				</span>
+			</div>
+		</div>
+	</div>
+}

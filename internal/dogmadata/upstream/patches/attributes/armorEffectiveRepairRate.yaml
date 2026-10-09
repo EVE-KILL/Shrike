@@ -1,0 +1,12 @@
+new:
+  displayName: Effective Armor Repair Rate
+  category: Armor
+  unit: hitpointsPerSecond
+  highIsGood: true
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {add: armorRepairRate}
+      - {div: armorDamageEffectiveResonance}

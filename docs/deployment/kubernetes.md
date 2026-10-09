@@ -96,7 +96,7 @@ Do not give the Shrike pod a Cloudflare certificate-management token.
 
 1. Expose the Caddy TLS port through the Kubernetes Service.
 2. Configure the readiness and liveness probes for HTTPS.
-3. Keep the private Nuxt and API Unix sockets inside the pod.
+3. Serve pages and APIs through the Go ingress; native fitting workers use stdin/stdout.
 4. Do not expose User Datagram Protocol for Cloudflare origin traffic.
 
 Cloudflare documents HTTP/2 and HTTP/1.1 for origin connections. It does not
@@ -114,7 +114,7 @@ document HTTP/3 for this origin path.
 
 1. Load `/health` through Cloudflare.
 2. Confirm that Cloudflare does not return error `526`.
-3. Load API, image, WebSocket, and Nuxt routes.
+3. Load API, image, WebSocket, and Go page routes.
 4. Load a tenant custom domain.
 5. Confirm that Caddy negotiates HTTP/2 for origin requests.
 6. Confirm that no public route uses the private Unix sockets.

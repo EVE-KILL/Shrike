@@ -1,0 +1,10 @@
+addTo:
+  - effect: shipModuleTrackingDisruptor
+    rules:
+      - {percent: maxRangeBonus, domain: targetID, func: locationRequiredSkillModifier, skill: Gunnery}
+  - effect: npcEntityWeaponDisruptor
+    rules:
+      - {percent: maxRangeBonus, domain: targetID, func: locationRequiredSkillModifier, skill: Gunnery}
+  - effect: shipModuleRemoteTrackingComputer
+    rules:
+      - {percent: maxRangeBonus, domain: targetID, func: locationRequiredSkillModifier, skill: Gunnery}

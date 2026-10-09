@@ -1,0 +1,194 @@
+package frontend
+
+import "fmt"
+
+templ fitEditorPage() {
+	@fitEditorContent(fitEditorConfig{})
+}
+
+templ fitEditorContent(config fitEditorConfig) {
+	<div class={ "fit-editor", templ.KV("fit-detail", config.Detail) } data-controller="fit-editor" data-action="click->fit-editor#bootAction pagehide@window->fit-editor#hide pageshow@window->fit-editor#show" data-fit-editor data-fit-detail={ fmt.Sprint(config.Detail) } data-fit-owner={ fmt.Sprint(config.Owner) }>
+		if config.Detail {
+			@templ.JSONScript("saved-fit-state", config.Data).WithType("application/json")
+		}
+		<div class="fit-editor-actions">
+			<div class="fit-editor-action-group">
+				<button type="button" data-fit-action="undo" title="Undo (Ctrl/⌘ Z)" aria-label="Undo" hidden?={ config.viewOnly() } disabled>
+					@fitIcon("undo")
+				</button>
+				<button type="button" data-fit-action="redo" title="Redo (Ctrl/⌘ Shift Z)" aria-label="Redo" hidden?={ config.viewOnly() } disabled>
+					@fitIcon("redo")
+				</button>
+				<span class="fit-editor-divider" hidden?={ config.viewOnly() }></span>
+				<button type="button" data-fit-action="paste" hidden?={ config.Detail }>
+					@fitIcon("paste")
+					<span>Paste</span>
+				</button>
+				<button type="button" data-fit-action="copy-eft" disabled>
+					@fitIcon("copy")
+					<span>Copy EFT</span>
+				</button>
+				<button type="button" data-fit-action="share" disabled>
+					@fitIcon("link")
+					<span>Share Link</span>
+				</button>
+				<button type="button" data-fit-action="save" hidden?={ config.viewOnly() } disabled>
+					@fitIcon("save")
+					<span data-fit-save-label>Save</span>
+				</button>
+				<button type="button" data-fit-action="rename" hidden?={ config.viewOnly() } disabled>
+					@fitIcon("pencil")
+					<span>Rename</span>
+				</button>
+				<button type="button" data-fit-action="new" hidden?={ config.viewOnly() }>
+					@fitIcon("plus")
+					<span>New</span>
+				</button>
+				<button type="button" data-fit-action="fork" hidden?={ !config.viewOnly() } disabled>
+					@fitIcon("copy")
+					<span>Fork</span>
+				</button>
+			</div>
+			<div class="fit-editor-meta">
+				<strong data-fit-name>{ config.Data.Fit.Name }</strong><span class="fit-editor-validity" data-fit-validity hidden>Valid</span><span class="fit-editor-price" data-fit-price hidden>— ISK</span>
+				<label class="fit-editor-skill">
+					@fitIcon("zap")
+					<select data-fit-skill aria-label="Fitting skill profile"><option value="5">All Skills L5</option><option value="4">All Skills L4</option><option value="3">All Skills L3</option></select>
+				</label>
+				<button type="button" data-fit-action="expand" aria-label="Expand" hidden?={ config.Detail }>
+					@fitIcon("expand")
+					<span data-fit-expand-label>Expand</span>
+				</button><span data-fit-status>Loading fitting data…</span>
+			</div>
+		</div>
+		if config.Detail {
+			@savedFitInformation(config)
+		}
+		<div class="fit-editor-grid">
+			<div class="fit-editor-workspace">
+				<div class="fit-editor-top">
+					<aside class="fit-editor-sidebar" aria-label="Fitting browser">
+						<div class="fit-editor-sidebar-tabs glass-panel" role="tablist" aria-label="Fitting browser"><button type="button" role="tab" data-fit-tab="hulls" aria-selected={ fmt.Sprint(!config.Detail) }>Hulls</button><button type="button" role="tab" data-fit-tab="hardware" aria-selected={ fmt.Sprint(config.Detail) }>Hardware</button></div>
+						<div class="fit-editor-catalog-panel glass-panel">
+							<div class="fit-editor-search">
+								@fitIcon("search")
+								<input type="search" data-fit-search placeholder="Search hulls…" autocomplete="off" aria-label="Search hulls and hardware"/>
+							</div>
+							<div class="fit-editor-filter-pills" data-fit-filter-pills></div>
+							<div class="fit-editor-catalog" data-fit-catalog role="tabpanel"><p class="fit-editor-empty">Loading fitting data…</p></div>
+						</div>
+					</aside>
+					<div class="fit-editor-main">
+						<div class="fit-editor-view-toggle" role="group" aria-label="Fitting view" hidden?={ config.Detail }><button type="button" data-fit-view="ship" aria-pressed="true">Ship</button><button type="button" data-fit-view="table" aria-pressed="false">Table</button><span class="fit-editor-hull-compact" data-fit-hull-compact hidden><img data-fit-hull-image width="28" height="28" alt=""/><span><strong data-fit-hull-title></strong><small data-fit-hull-group></small></span></span></div>
+						<div class="fit-editor-stage">
+							<div class="fit-editor-stage-body" data-fit-stage>
+								if config.Detail {
+									<p class="fit-editor-empty">Loading dogma engine…</p>
+								} else {
+									<p class="fit-editor-empty">Pick a hull to start</p>
+								}
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="fit-editor-resources glass-panel" data-fit-resources hidden><div>CPU <b>—</b></div><div>Power <b>—</b></div><div>Drone Bay <b>—</b></div><div>Bandwidth <b>—</b></div><div>Cargo <b>—</b></div></div>
+				<div class="fit-editor-bays" data-fit-bays hidden></div>
+			</div>
+			<aside class="fit-editor-stats glass-panel" aria-label="Ship statistics"><h2 class="fit-editor-sr-only">Ship Statistics</h2><div class="fit-editor-identity" data-fit-identity></div><div data-fit-stats></div></aside>
+			<aside class="fit-editor-variants glass-panel" data-fit-variants hidden aria-label="Observed fits"><header><strong>◈ Observed Fits</strong><span class="fit-editor-variants-subtitle"><small data-fit-variants-subtitle>Pick a hull to see observed fits.</small><button type="button" data-fit-variant-action="toggle-comparison" hidden>Compare</button></span></header><div class="fit-editor-variants-list" data-fit-variants-list></div></aside>
+		</div>
+		if config.Detail {
+			@savedFitComments(config.Data.Fit.ID)
+		}
+		<div class="fit-editor-toast" data-fit-toast role="status" aria-live="polite"></div>
+		if !config.Detail {
+			<div class="fit-editor-shortcuts" data-fit-shortcuts hidden>
+				<div class="fit-editor-shortcuts-panel" role="dialog" aria-modal="true" aria-labelledby="fit-shortcuts-title">
+					<header><h2 id="fit-shortcuts-title">Fitting shortcuts</h2><button type="button" data-fit-action="close-shortcuts" aria-label="Close shortcuts">×</button></header>
+					<div class="fit-editor-shortcuts-grid">
+						<kbd>⌘/Ctrl K</kbd><span>Search hulls or hardware</span>
+						<kbd>↑ / ↓</kbd><span>Move through search or table rows</span>
+						<kbd>Enter</kbd><span>Fit the selected result</span>
+						<kbd>Shift Enter</kbd><span>Fill compatible high slots</span>
+						<kbd>Shift Click</kbd><span>Fill compatible high slots</span>
+						<kbd>Delete</kbd><span>Remove charge, then selected module</span>
+						<kbd>⌘/Ctrl Z</kbd><span>Undo</span>
+						<kbd>⌘/Ctrl Shift Z</kbd><span>Redo</span>
+						<kbd>?</kbd><span>Toggle this help</span>
+						<kbd>Escape</kbd><span>Close transient UI; fullscreen stays open</span>
+					</div>
+				</div>
+			</div>
+		}
+		<dialog class="fit-editor-save fit-editor-save--fit" data-fit-save-dialog aria-labelledby="fit-save-title" tabindex="-1">
+			<form method="dialog" data-fit-save-form>
+				<header class="fit-editor-save-header">
+					<h2 id="fit-save-title">Save Fit</h2>
+					<button type="button" data-fit-action="cancel-save" aria-label="Close save dialog">
+						@icon("x")
+					</button>
+				</header>
+				<div class="fit-editor-save-body">
+					<label class="fit-editor-save-field">Fit Name<input name="name" maxlength="100" required placeholder="Muninn — Fury HM"/></label>
+					<label class="fit-editor-save-field">Description <small>(optional)</small><textarea name="description" maxlength="2000" rows="3" placeholder="Notes, use case, skill prereqs, anything useful for the next pilot who flies this."></textarea></label>
+					<fieldset class="fit-editor-save-visibility">
+						<legend>Visibility</legend>
+						@fitSaveVisibility("3", "Public", "Anyone, including logged-out visitors, can see this fit.", "globe", true)
+						@fitSaveVisibility("0", "Private", "Only you can see this fit.", "lock", false)
+						@fitSaveVisibility("1", "Corporation", "Members of your current corp can see this fit.", "users", false)
+						@fitSaveVisibility("2", "Alliance", "Members of your current alliance can see this fit.", "flag", false)
+					</fieldset>
+					<p class="fit-editor-save-error" data-fit-save-error role="alert" hidden></p>
+					<p class="fit-editor-save-existing" data-fit-save-existing hidden>
+						@icon("info")
+						<span>Updating existing fit <code data-fit-save-id></code> — items will be replaced.</span>
+					</p>
+				</div>
+				<div class="fit-editor-save-actions">
+					<button type="button" data-fit-action="cancel-save">Cancel</button>
+					<button type="submit">
+						@fitIcon("save")
+						<span data-fit-submit-label>Save</span>
+					</button>
+				</div>
+			</form>
+		</dialog>
+		<dialog class="fit-editor-save fit-editor-modal fit-editor-modal--nuxt" data-fit-rename-dialog aria-labelledby="fit-rename-title">
+			<form method="dialog" data-fit-rename-form>
+				<header class="fit-editor-save-header">
+					<h2 id="fit-rename-title">Rename fit</h2>
+					<button type="button" data-fit-action="cancel-rename" aria-label="Close rename dialog">
+						@icon("x")
+					</button>
+				</header>
+				<div class="fit-editor-modal-body"><label for="fit-editor-rename">Fit name</label><input id="fit-editor-rename" name="name" maxlength="120" required placeholder="Name this fitting"/></div>
+				<div class="fit-editor-modal-actions"><button type="button" data-fit-action="cancel-rename">Cancel</button><button type="submit">Rename</button></div>
+			</form>
+		</dialog>
+		<dialog class="fit-editor-save fit-editor-modal fit-editor-modal--nuxt" data-fit-discard-dialog aria-labelledby="fit-discard-title">
+			<header class="fit-editor-save-header">
+				<h2 id="fit-discard-title">Start a new fit</h2>
+				<button type="button" data-fit-action="cancel-discard" aria-label="Close new fit dialog">
+					@icon("x")
+				</button>
+			</header>
+			<div class="fit-editor-modal-body fit-editor-discard-body">
+				<span class="fit-editor-discard-icon">
+					@icon("triangle-alert")
+				</span><span><strong>Discard the current fitting?</strong><small>Your current hull, modules, drones, and cargo will be cleared. You can still cancel and save or copy it first.</small></span>
+			</div>
+			<div class="fit-editor-modal-actions"><button type="button" data-fit-action="cancel-discard">Keep editing</button><button type="button" data-fit-action="confirm-discard">Discard and start new</button></div>
+		</dialog>
+	</div>
+}
+
+templ fitIcon(name string) {
+	<svg class="fit-editor-icon" aria-hidden="true" viewBox="0 0 24 24"><use href={ assetURL("fit-icons.svg") + "#" + name }></use></svg>
+}
+
+templ fitSaveVisibility(value, label, hint, iconName string, selected bool) {
+	<label class="fit-editor-save-choice">
+		<input type="radio" name="visibility" value={ value } checked?={ selected }/>@icon(iconName)
+		<span><strong>{ label }</strong><small>{ hint }</small></span>
+	</label>
+}

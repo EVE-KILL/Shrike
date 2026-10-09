@@ -1,0 +1,295 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ coalitionDirectory(data api.CoalitionDirectoryData) {
+	<div class="coalition-page" data-coalition-directory data-controller="coalition-activity coalitions" data-action="click->coalitions#click input->coalitions#input submit->coalitions#submit pagehide@window->coalitions#hide pageshow@window->coalitions#show visibilitychange@document->coalitions#visibility">
+		<header class="page-header hero-surface glass-panel coalition-header">
+			<div class="coalition-heading">
+				<span class="page-header-icon">
+					@icon("network")
+				</span>
+				<div>
+					<p class="eyebrow">Community-maintained politics</p>
+					<h1>Coalitions</h1>
+					<p>Coalitions are player-created political blocs rather than official EVE entities. This directory is maintained by signed-in pilots, with every change recorded publicly.</p>
+				</div>
+			</div>
+			@coalitionDirectoryMeta(data)
+		</header>
+		<div class="coalition-controls">
+			<div class="coalition-search">
+				@icon("search")
+				<input type="search" placeholder="Filter coalitions..." aria-label="Filter coalitions" data-coalition-filter/>
+			</div>
+			<button type="button" class="coalition-auth-button" data-coalition-login>
+				@icon("log-in")
+				Sign in to contribute
+			</button>
+			<button type="button" class="coalition-auth-button primary" data-coalition-create-toggle hidden>
+				<span data-icon-open>
+					@icon("plus")
+				</span>
+				<span data-icon-close hidden>
+					@icon("x")
+				</span><span data-coalition-toggle-label>Add coalition</span>
+			</button>
+		</div>
+		<form class="glass-panel coalition-editor" data-coalition-form="create" hidden>
+			<div class="coalition-editor-heading">
+				<span class="coalition-editor-icon">
+					@icon("network")
+				</span>
+				<div><h2>Add a coalition</h2><p>Add a public source when possible. Your character will be attached to the creation record.</p></div>
+			</div>
+			@coalitionEditorFields("", "", "")
+			<div class="coalition-editor-picker">
+				<label>Member alliances</label>@coalitionPicker(nil, "Search for an alliance...")
+			</div>
+			<p class="coalition-editor-error" role="alert" data-coalition-error hidden></p>
+			<div class="coalition-editor-actions">
+				<button type="submit" disabled>
+					@icon("plus")
+					<span>Create coalition</span>
+				</button>
+			</div>
+		</form>
+		@coalitionDirectoryCards(data)
+		<div class="coalition-activity-status" data-coalition-activity-status aria-busy="false" role="status">
+			if len(data.Coalitions) > 0 {
+				<span>Loading combat statistics…</span>
+				<button type="button" data-coalition-activity-retry data-action="click->coalition-activity#load" hidden>Retry</button>
+			}
+		</div>
+		<p class="glass-panel coalition-empty" data-coalition-empty hidden></p>
+	</div>
+}
+
+templ coalitionDirectoryMeta(data api.CoalitionDirectoryData) {
+	<div class="coalition-header-meta" data-coalition-meta>
+		<span><strong>{ coalitionNumber(int64(len(data.Coalitions))) }</strong> coalitions</span>
+		<span><strong>{ coalitionNumber(coalitionAllianceTotal(data.Coalitions)) }</strong> alliance records</span>
+		<span>{ strconv.Itoa(data.StatsWindowDays) }-day combat window</span>
+	</div>
+}
+
+templ coalitionDirectoryCards(data api.CoalitionDirectoryData) {
+	<div class="coalition-cards" data-coalition-cards>
+		for _, coalition := range data.Coalitions {
+			@coalitionCard(coalition)
+		}
+	</div>
+}
+
+templ coalitionCard(coalition api.CoalitionSummary) {
+	<a class="glass-panel coalition-card" href={ "/coalitions/" + coalition.Slug } data-searchable={ coalitionSearchText(coalition) }>
+		<div class="coalition-card-intro">
+			<div>
+				<h2>
+					@icon("network")
+					<span>{ coalition.Name }</span>
+				</h2>
+				<p>{ coalitionSummaryText(coalition) }</p>
+			</div><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17 17 7"></path></svg>
+		</div>
+		<div class="coalition-card-counts">
+			@coalitionCardCount("Members", coalition.MemberCount)
+			@coalitionCardCount("Alliances", coalition.AllianceCount)
+			@coalitionCardCount("Systems", coalition.SystemCount)
+		</div>
+		@coalitionCardActivity(coalition, true)
+		<div class="coalition-card-footer"><span>Revision { strconv.FormatInt(coalition.Revision,10) }</span><span>{ coalitionEditorName(coalition.UpdatedByCharacterName) }</span></div>
+	</a>
+}
+
+templ coalitionDirectoryActivity(data api.CoalitionDirectoryData) {
+	for _, coalition := range data.Coalitions {
+		@coalitionCardActivity(coalition, false)
+	}
+}
+
+templ coalitionCardActivity(coalition api.CoalitionSummary, pending bool) {
+	<div class="coalition-card-combat" data-coalition-activity={ coalitionID(coalition.CoalitionID) }>
+		if pending {
+			<div><span>Kills</span><strong class="green">—</strong></div>
+			<div><span>Losses</span><strong class="red">—</strong></div>
+			<div><span>Destroyed</span><strong class="yellow">—</strong></div>
+			<div><span>Efficiency</span><strong>—</strong></div>
+		} else {
+			<div><span>Kills</span><strong class="green">{ coalitionNumber(coalition.Kills) }</strong></div>
+			<div><span>Losses</span><strong class="red">{ coalitionNumber(coalition.Losses) }</strong></div>
+			<div><span>Destroyed</span><strong class="yellow">{ compactNumber(coalition.ISKDestroyed) }</strong></div>
+			<div><span>Efficiency</span><strong>{ coalitionEfficiency(coalition.Kills,coalition.Losses) }</strong></div>
+		}
+	</div>
+}
+
+templ coalitionCardCount(label string, value int64) {
+	<div><strong>{ coalitionNumber(value) }</strong><span>{ label }</span></div>
+}
+
+templ coalitionDetail(data api.CoalitionDetailData) {
+	<div class="coalition-page" data-coalition-detail data-controller="coalitions" data-action="click->coalitions#click input->coalitions#input submit->coalitions#submit pagehide@window->coalitions#hide pageshow@window->coalitions#show visibilitychange@document->coalitions#visibility">
+		@coalitionDetailContent(data)
+	</div>
+}
+
+templ coalitionDetailContent(data api.CoalitionDetailData) {
+	<div data-coalition-detail-content data-coalition-slug={ data.Coalition.Slug } data-coalition-revision={ strconv.FormatInt(data.Coalition.Revision, 10) }>
+		<header class="page-header hero-surface glass-panel coalition-header detail">
+			<div class="coalition-heading">
+				<span class="page-header-icon">
+					@icon("network")
+				</span>
+				<div>
+					<p class="eyebrow">Community-maintained coalition</p>
+					<h1>{ data.Coalition.Name }</h1>
+					<p>{ coalitionSummaryText(data.Coalition) }</p>
+				</div>
+			</div>
+			<div class="coalition-header-meta">
+				<span>Revision { strconv.FormatInt(data.Coalition.Revision,10) }</span>
+				if coalitionSafeURL(data.Coalition.SourceURL)!="" {
+					<a href={ coalitionSafeURL(data.Coalition.SourceURL) } target="_blank" rel="noopener noreferrer">Verification source ↗</a>
+				}
+				<a href={ "/api/coalitions/" + data.Coalition.Slug } target="_blank" rel="noopener noreferrer">Public API { "{}" }</a>
+			</div>
+		</header>
+		<div class="coalition-detail-actions">
+			<button type="button" class="coalition-auth-button" data-coalition-login>
+				@icon("log-in")
+				Sign in to edit
+			</button>
+			<button type="button" class="coalition-auth-button primary" data-coalition-edit-toggle hidden>
+				<span data-icon-open><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></g></svg></span>
+				<span data-icon-close hidden>
+					@icon("x")
+				</span><span data-coalition-toggle-label>Edit coalition</span>
+			</button>
+		</div>
+		<form class="glass-panel coalition-editor" data-coalition-form="edit" hidden>
+			<div class="coalition-editor-heading"><div><h2>Edit { data.Coalition.Name }</h2><p>The complete change and your character name will be added to the public edit history.</p></div></div>
+			@coalitionEditorFields(data.Coalition.Name, data.Coalition.Description, coalitionSafeURL(data.Coalition.SourceURL))
+			<div class="coalition-editor-picker">
+				<label>Member alliances <span data-selected-count>{ strconv.Itoa(len(data.Alliances)) } selected</span></label>@coalitionPicker(data.Alliances, "Add an alliance...")
+			</div>
+			<p class="coalition-editor-error" role="alert" data-coalition-error hidden></p>
+			<div class="coalition-editor-actions">
+				<button type="submit">
+					@icon("plus")
+					<span>Save edit</span>
+				</button>
+			</div>
+		</form>
+		<div class="coalition-detail-stats">
+			@coalitionDetailStat("Members", coalitionNumber(data.Coalition.MemberCount), "")
+			@coalitionDetailStat("Alliances", coalitionNumber(data.Coalition.AllianceCount), "")
+			@coalitionDetailStat("Systems", coalitionNumber(data.Coalition.SystemCount), "blue")
+			@coalitionDetailStat("Kills", coalitionNumber(data.Coalition.Kills), "green")
+			@coalitionDetailStat("Losses", coalitionNumber(data.Coalition.Losses), "red")
+			@coalitionDetailStat("Destroyed", compactNumber(data.Coalition.ISKDestroyed), "yellow")
+			@coalitionDetailStat("Combat eff.", coalitionEfficiency(data.Coalition.Kills, data.Coalition.Losses), "")
+			@coalitionDetailStat("ISK eff.", coalitionISKEfficiency(data.Coalition.ISKDestroyed, data.Coalition.ISKLost), "")
+		</div>
+		<p class="coalition-window-note">Combat statistics cover the last { strconv.Itoa(data.StatsWindowDays) } days.</p>
+		<div class="coalition-detail-grid">
+			<section class="coalition-members">
+				<div class="coalition-section-heading">
+					<h2>
+						@icon("shield")
+						Member alliances
+					</h2><span>{ strconv.Itoa(len(data.Alliances)) } total</span>
+				</div>
+				<div class="glass-panel coalition-members-list">
+					if len(data.Alliances)==0 {
+						<p class="coalition-empty-inline">No alliances are currently assigned.</p>
+					} else {
+						for _, alliance := range data.Alliances {
+							@coalitionAllianceRow(alliance)
+						}
+					}
+				</div>
+			</section>
+			<aside class="coalition-history">
+				<div class="coalition-section-heading"><h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12a9 9 0 1 0 2.6-6.4M3 3v5h5M12 7v5l3 2"></path></svg> Edit history</h2></div>
+				<div class="glass-panel coalition-history-list">
+					if len(data.Edits)==0 {
+						<p class="coalition-empty-inline">No recorded edits.</p>
+					} else {
+						for _, edit := range data.Edits {
+							@coalitionEditRow(data.Coalition.Name, edit)
+						}
+					}
+				</div>
+			</aside>
+		</div>
+	</div>
+}
+
+templ coalitionDetailStat(label, value, tone string) {
+	<div class="glass-panel coalition-detail-stat"><strong class={ tone }>{ value }</strong><span>{ label }</span></div>
+}
+
+templ coalitionAllianceRow(alliance api.CoalitionAlliance) {
+	<a class="coalition-alliance-row" href={ idPath("alliance", alliance.AllianceID) }>
+		<span class="coalition-alliance-name"><img src={ eveEntityImage("alliance", alliance.AllianceID, 64) } alt={ alliance.Name } width="40" height="40" loading="lazy"/><span><strong>{ alliance.Name }</strong><small>[{ alliance.Ticker }] · { coalitionID(alliance.AllianceID) }</small></span></span>
+		<span><strong>{ coalitionNumber(alliance.MemberCount) }</strong><small>members</small></span>
+		<span><strong>{ coalitionNumber(alliance.CorporationCount) }</strong><small>corps</small></span>
+		<span><strong class="blue">{ coalitionNumber(alliance.SystemCount) }</strong><small>systems</small></span>
+	</a>
+}
+
+templ coalitionEditRow(name string, edit api.CoalitionEdit) {
+	<article class="coalition-edit-row">
+		if edit.EditorCharacterID!=nil {
+			<img src={ eveEntityImage("character", *edit.EditorCharacterID, 64) } alt={ edit.EditorCharacterName } width="32" height="32" loading="lazy"/>
+		} else {
+			<span class="coalition-bot"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 8V4h-2M4 14H2m20 0h-2"></path><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M9 13v2m6-2v2M9 18h6"></path></g></svg></span>
+		}
+		<div>
+			<p>
+				if edit.EditorCharacterID!=nil {
+					<a href={ idPath("character", *edit.EditorCharacterID) }>{ edit.EditorCharacterName }</a>
+				} else {
+					<strong>{ edit.EditorCharacterName }</strong>
+				}
+				{ coalitionEditVerb(edit.Action,name) }
+			</p>
+			<p>{ edit.Summary }</p><time datetime={ edit.CreatedAt }>{ coalitionUTCDate(edit.CreatedAt) }</time>
+		</div>
+	</article>
+}
+
+templ coalitionEditorFields(name, description, source string) {
+	<div class="coalition-editor-fields">
+		<label>Name<input name="name" value={ name } required minlength="2" maxlength="100" placeholder="Coalition name"/></label>
+		<label>Verification source<input name="source_url" type="url" value={ source } maxlength="2048" placeholder="https://..."/></label>
+		<label>Description<textarea name="description" maxlength="2000" rows="3" placeholder="What this coalition represents...">{ description }</textarea></label>
+	</div>
+}
+
+templ coalitionPicker(alliances []api.CoalitionAlliance, placeholder string) {
+	<div class="coalition-picker">
+		<div class="coalition-picker-input">
+			@icon("search")
+			<input type="text" data-coalition-picker placeholder={ placeholder } autocomplete="off"/>
+		</div>
+		<div class="coalition-picker-results" data-coalition-picker-results hidden></div>
+	</div>
+	<div class="coalition-selected" data-coalition-selected>
+		for _, alliance := range alliances {
+			@coalitionSelectedAlliance(alliance)
+		}
+	</div>
+}
+
+templ coalitionSelectedAlliance(alliance api.CoalitionAlliance) {
+	<div class="coalition-selected-alliance" data-alliance-id={ coalitionID(alliance.AllianceID) }>
+		<img src={ eveEntityImage("alliance", alliance.AllianceID, 64) } alt={ alliance.Name } width="32" height="32" loading="lazy"/>
+		<span><strong>{ alliance.Name }</strong><small>[{ alliance.Ticker }] · { coalitionID(alliance.AllianceID) }</small></span>
+		<button type="button" data-remove-alliance aria-label={ "Remove " + alliance.Name }>×</button>
+	</div>
+}

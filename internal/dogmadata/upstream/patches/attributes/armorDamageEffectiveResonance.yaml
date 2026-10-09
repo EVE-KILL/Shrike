@@ -1,0 +1,14 @@
+new:
+  displayName: Armor Effective Resonance
+  category: Armor
+  unit: "Inverse Absolute Percent"
+  highIsGood: false
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {add: armorEmDamageEffectiveResonance}
+      - {add: armorExplosiveDamageEffectiveResonance}
+      - {add: armorKineticDamageEffectiveResonance}
+      - {add: armorThermalDamageEffectiveResonance}

@@ -1,0 +1,56 @@
+new:
+  displayName: Cycle Time
+  category: Miscellaneous
+  unit: Milliseconds
+  highIsGood: false
+
+effects:
+  # Modules keep their cycle time in one of several different attributes; an
+  # attribute not listed in usesCapacitorInCycles is never read.
+  - name: cycleTime
+    on: (usesCapacitorInCycles or capacitorBooster) and attribute("duration")
+    category: active
+    rules:
+      - {add: duration}
+
+  - name: cycleTime2
+    on: usesCapacitorInCycles and attribute("durationHighisGood")
+    category: active
+    rules:
+      - {add: durationHighisGood}
+
+  - name: cycleTime3
+    on: usesCapacitorInCycles and attribute("speed")
+    category: active
+    rules:
+      - {add: speed}
+
+  - name: cycleTime4
+    on: usesCapacitorInCycles and attribute("moduleReactivationDelay")
+    category: active
+    rules:
+      - {add: moduleReactivationDelay}
+
+  - name: cycleTime5
+    on: usesCapacitorInCycles and attribute("durationECMJammerBurstProjector")
+    category: active
+    rules:
+      - {add: durationECMJammerBurstProjector}
+
+  - name: cycleTime6
+    on: usesCapacitorInCycles and attribute("durationSensorDampeningBurstProjector")
+    category: active
+    rules:
+      - {add: durationSensorDampeningBurstProjector}
+
+  - name: cycleTime7
+    on: usesCapacitorInCycles and attribute("durationTargetIlluminationBurstProjector")
+    category: active
+    rules:
+      - {add: durationTargetIlluminationBurstProjector}
+
+  - name: cycleTime8
+    on: usesCapacitorInCycles and attribute("durationWeaponDisruptionBurstProjector")
+    category: active
+    rules:
+      - {add: durationWeaponDisruptionBurstProjector}

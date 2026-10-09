@@ -1,4 +1,0 @@
-dist/upstream/**/*.wasm binary
-dist/upstream/**/*.pb   binary
-dist/upstream/**/*.pb2  binary
-dist/upstream/**/*.bin  binary

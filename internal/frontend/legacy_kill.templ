@@ -1,0 +1,146 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ legacyKillPage(view legacyKillView) {
+	<div class="legacy-kill-detail" data-legacy-kill data-controller="legacy-kill" data-action="mouseover->legacy-kill#highlight mouseout->legacy-kill#unhighlight">
+		<h1 class="legacy-kill-sr-only">{ view.Data.Kill.VictimShip } | { view.Data.Kill.VictimName } | { compactNumber(view.Data.Kill.TotalValue) } ISK</h1>
+		<div class="legacy-kill-columns">
+			<div class="legacy-kill-left">
+				<div class="legacy-kill-main">
+					@legacyEmptyWheel(view.Data.Kill)
+					@legacyVictimCard(view)
+				</div>
+				if len(view.Data.Items)>0 {
+					@legacyItems(view)
+				}
+				<details class="legacy-original"><summary>View original killmail text</summary><pre>{ view.Data.Kill.RawText }</pre></details>
+			</div>
+			<div class="legacy-kill-right">
+				<div class="glass-panel legacy-attacker-panel">
+					if view.FinalBlow != nil {
+						@legacyFinalBlow(*view.FinalBlow)
+					}
+					<div class="legacy-attackers-title">Attackers ({ strconv.Itoa(len(view.Data.Attackers)) })</div>
+					<div class="legacy-attackers">
+						for index, attacker := range view.Data.Attackers {
+							@legacyAttackerRow(attacker, index)
+						}
+					</div>
+					if len(view.Data.Attackers)>10 {
+						<button type="button" class="legacy-show-attackers" data-legacy-more data-legacy-kill-target="more" data-action="click->legacy-kill#more">Show more ({ legacyAttackerRemaining(len(view.Data.Attackers)) } remaining)</button>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ legacyEmptyWheel(kill api.LegacyArchiveKill) {
+	<div class="legacy-wheel">
+		<div class="legacy-wheel-background"><img src={ legacyTypeImage(kill.VictimShipTypeID, "overlayrender", 512) } alt={ kill.VictimShip } width="512" height="512" fetchpriority="high"/></div>
+		<svg class="legacy-wheel-outer" viewBox="24 24 464 464" aria-hidden="true"><circle cx="256" cy="256" r="224" fill="none" stroke="black" stroke-width="16"></circle></svg>
+		<svg class="legacy-wheel-inner" viewBox="24 24 464 464" aria-hidden="true"><circle cx="256" cy="256" r="195" fill="none" stroke="black" stroke-width="46" stroke-opacity="0.6"></circle></svg>
+		for _, group := range []string{"top","right","bottom","left"} {
+			<div class={ "legacy-wheel-dot " + group } style={ legacyWheelStyle(group, -1) }></div>
+		}
+		for index := 0; index < 8; index++ {
+			<div class="legacy-wheel-slot" style={ legacyWheelStyle("top", index) }></div>
+			<div class="legacy-wheel-slot" style={ legacyWheelStyle("right", index) }></div>
+			<div class="legacy-wheel-slot" style={ legacyWheelStyle("bottom", index) }></div>
+		}
+		for index := 0; index < 3; index++ {
+			<div class="legacy-wheel-slot" style={ legacyWheelStyle("left", index) }></div>
+		}
+	</div>
+}
+
+templ legacyVictimCard(view legacyKillView) {
+	<div class="legacy-victim-card">
+		<div class="legacy-victim-portrait">
+			<img src={ legacyEntityImage("character", view.Data.Kill.VictimCharacterID, 512) } alt={ view.Data.Kill.VictimName } width="512" height="512"/>
+			<div class="legacy-victim-logos">
+				if view.Data.Kill.VictimCorporationID != nil {
+					<img src={ legacyEntityImage("corporation", view.Data.Kill.VictimCorporationID, 64) } alt={ view.Data.Kill.VictimCorp } width="40" height="40"/>
+				}
+				if view.Data.Kill.VictimAllianceID != nil {
+					<img src={ legacyEntityImage("alliance", view.Data.Kill.VictimAllianceID, 64) } alt={ view.Data.Kill.VictimAlliance } width="40" height="40"/>
+				}
+			</div>
+			<div class="legacy-victim-name">
+				<strong>{ fallbackName(view.Data.Kill.VictimName) }</strong><span>{ view.Data.Kill.VictimCorp }</span>
+				if view.Data.Kill.VictimAlliance!="" && view.Data.Kill.VictimAlliance!="None" {
+					<small>{ view.Data.Kill.VictimAlliance }</small>
+				}
+			</div>
+		</div>
+		<div class="legacy-victim-stats">
+			<div><span>Ship</span><strong>{ fallbackName(view.Data.Kill.VictimShip) }</strong></div>
+			<div><span>System</span><strong><em class={ securityClass(view.Data.Kill.Security) }>{ legacySecurity(view.Data.Kill.Security) }</em> { view.Data.Kill.SystemName }</strong></div>
+			<div><span>Time</span><strong>{ legacyKillTime(view.Data.Kill.KillmailTime) }</strong></div>
+			<div><span>Attackers</span><strong>{ strconv.Itoa(len(view.Data.Attackers)) }</strong></div>
+		</div>
+		<div class="legacy-victim-value"><span>Total Value</span><strong>{ compactNumber(view.Data.Kill.TotalValue) } ISK</strong></div>
+	</div>
+}
+
+templ legacyItems(view legacyKillView) {
+	<div class="glass-panel legacy-item-panel">
+		<div class="legacy-item-heading"><span></span><strong>Item</strong><b>Qty</b></div>
+		<div class="legacy-item-row hull"><img src={ legacyTypeImage(view.Data.Kill.VictimShipTypeID, "icon", 64) } alt={ view.Data.Kill.VictimShip } width="24" height="24"/><span>{ fallbackName(view.Data.Kill.VictimShip) }</span><b>1</b></div>
+		for _, group := range view.Groups {
+			<div class="legacy-item-group"><span></span><strong>{ group.Label } <small>({ strconv.Itoa(len(group.Items)) })</small></strong></div>
+			for _, item := range group.Items {
+				<div class="legacy-item-row"><img src={ legacyTypeImage(item.TypeID, "icon", 64) } alt={ item.Name } width="24" height="24" loading="lazy"/><span>{ item.Name }</span><b>{ strconv.FormatInt(item.Quantity,10) }</b></div>
+			}
+		}
+	</div>
+}
+
+templ legacyFinalBlow(attacker api.LegacyArchiveAttacker) {
+	<div class="legacy-final-blow">
+		if attacker.ShipTypeID != nil {
+			<img class="legacy-final-ship" src={ legacyTypeImage(attacker.ShipTypeID, "overlayrender", 512) } alt={ attacker.Ship } width="512" height="512" loading="lazy"/>
+		} else {
+			<div class="legacy-final-empty"></div>
+		}
+		<div class="legacy-final-shade"></div>
+		<span class="legacy-final-badge">Final Blow</span>
+		if attacker.CharacterID != nil {
+			<img class="legacy-final-portrait" src={ legacyEntityImage("character", attacker.CharacterID, 128) } alt={ attacker.Name } width="64" height="64" loading="lazy"/>
+		}
+		<div class="legacy-final-label">
+			<strong>{ fallbackName(attacker.Name) }</strong>
+			<span>
+				{ attacker.Ship }
+				if attacker.Weapon!="" {
+					{ "— " }{ attacker.Weapon }
+				}
+			</span><small>{ attacker.Corp }</small>
+		</div>
+	</div>
+}
+
+templ legacyAttackerRow(attacker api.LegacyArchiveAttacker, index int) {
+	<div class={ legacyAttackerClass(attacker, index) } data-legacy-kill-target="row" data-attacker-index={ strconv.Itoa(index) } hidden?={ index>=10 }>
+		<div class="legacy-attacker-images">
+			@legacyAttackerCell("char", legacyEntityImage("character", attacker.CharacterID, 128), attacker.Name)
+			@legacyAttackerCell("corp", legacyEntityImage("corporation", attacker.CorporationID, 128), attacker.Corp)
+			@legacyAttackerCell("alli", legacyEntityImage("alliance", attacker.AllianceID, 128), attacker.Alliance)
+			@legacyAttackerCell("ship", legacyAttackerTypeImage(attacker.ShipTypeID), attacker.Ship)
+			@legacyAttackerCell("wpn", legacyAttackerTypeImage(attacker.WeaponTypeID), attacker.Weapon)
+		</div>
+		<div class="legacy-attacker-labels"><span data-label="char">{ fallbackName(attacker.Name,"?") }</span><span data-label="corp">{ attacker.Corp }</span><span data-label="alli">{ attacker.Alliance }</span><span data-label="ship">{ attacker.Ship }</span><span data-label="wpn">{ attacker.Weapon }</span></div>
+	</div>
+}
+
+templ legacyAttackerCell(kind, image, name string) {
+	<div class="legacy-attacker-cell" data-cell={ kind }>
+		if image!="" {
+			<img src={ image } alt={ name } width="48" height="48" loading="lazy"/>
+		}
+	</div>
+}

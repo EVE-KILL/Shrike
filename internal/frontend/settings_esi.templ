@@ -1,0 +1,86 @@
+package frontend
+
+import "time"
+
+templ settingsESI(data settingsESIData, now time.Time) {
+	<div class="space-y-4" data-settings-esi>
+		<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+			@esiMetricCard("Requests (1h)", esiCount(data.Metrics.RateLimit.Count), "", "text-white")
+			@esiMetricCard("Avg Response", esiMetric(data.Metrics.ResponseTime.Average), "ms", "text-white")
+			@esiMetricCard("P95 Response", esiMetric(data.Metrics.ResponseTime.P95), "ms", killBoolClass(data.Metrics.ResponseTime.P95 != nil && *data.Metrics.ResponseTime.P95 > 3000, "text-yellow-400", "text-white"))
+			<div class="glass-panel p-4 text-center">
+				<div class="text-fine uppercase tracking-wider text-gray-500 mb-1">Token</div>
+				{{ status, tone := esiTokenStatus(data.Token.Expiry, now) }}
+				<div class={ "text-base font-bold " + tone }>{ status }</div>
+			</div>
+		</div>
+		if data.MetricsError||data.TokenError {
+			<p class="glass-panel p-4 text-sm text-red-300" role="alert">Could not load your ESI metrics. <button type="button" data-settings-section-retry class="text-blue-400">Retry</button></p>
+		}
+		<div data-esi-volume data-hours={ settingsJSON(data.Metrics.Volume) } data-new-items="true"></div>
+		<div class="glass-panel p-5">
+			<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Granted Scopes</h2>
+			if len(data.Token.Scopes)>0 {
+				<div class="flex flex-wrap gap-1.5">
+					for _,scope:=range data.Token.Scopes {
+						<span class="px-2 py-0.5 text-xs rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{ scope }</span>
+					}
+				</div>
+			} else {
+				<p class="text-sm text-gray-500">No ESI scopes granted.</p>
+			}
+		</div>
+		@esiRequestLog("/api/user/esi-logs", false, data.Logs, data.LogError)
+	</div>
+}
+
+templ esiMetricCard(label, value, unit, tone string) {
+	<div class="glass-panel p-4 text-center">
+		<div class="text-fine uppercase tracking-wider text-gray-500 mb-1">{ label }</div>
+		<div class={ "text-2xl font-bold tabular-nums " + tone }>
+			{ value }
+			if unit!="" {
+				<span class="text-sm text-gray-500 ml-0.5">{ unit }</span>
+			}
+		</div>
+	</div>
+}
+
+// Used by settings and the administrator ESI monitor; the source components
+// share all behavior apart from the optional entity column and detail fields.
+templ esiRequestLog(endpoint string, showEntity bool, initial any, failed bool) {
+	<div data-esi-log data-controller="esi-log" data-action="click->esi-log#click keydown->esi-log#keyboard input->esi-log#search pagehide@window->esi-log#hide pageshow@window->esi-log#show visibilitychange@document->esi-log#visibility" data-endpoint={ endpoint } data-show-entity={ killBoolClass(showEntity, "true", "false") } data-initial={ settingsJSON(initial) } data-failed={ killBoolClass(failed, "true", "false") }>
+		<div class="glass-panel overflow-hidden">
+			<div class="p-4 border-b border-white/[0.06]">
+				<div class="flex flex-wrap items-center gap-2">
+					<h3 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">ESI Request Log</h3>
+					<div class="flex-1"></div>
+					<div data-esi-log-filters class="flex flex-wrap items-center gap-2"></div><span data-esi-log-count class="text-xs text-gray-600 tabular-nums"></span>
+					<button type="button" data-esi-log-live aria-label="Auto-reload ON" title="Auto-reload ON" aria-pressed="true" class="w-6 h-6 flex items-center justify-center rounded transition-colors text-green-400 bg-green-500/10">
+						<span class="text-xs">
+							@icon("play")
+						</span>
+					</button>
+				</div>
+			</div>
+			<p hidden data-esi-log-error role="alert" class="px-4 py-3 text-xs text-red-300"></p>
+			<div data-esi-log-table><div class="px-5 py-8 text-center text-gray-600 text-sm">Loading ESI requests…</div></div>
+		</div>
+		<div hidden data-esi-log-pagination class="flex items-center justify-between mt-4"><button type="button" data-esi-log-page="prev" class="px-3 py-1 text-sm rounded bg-white/[0.06] hover:bg-blue-500/[0.1] transition-colors disabled:opacity-30">Prev</button><span data-esi-log-page-label class="text-xs text-gray-500 tabular-nums"></span><button type="button" data-esi-log-page="next" class="px-3 py-1 text-sm rounded bg-white/[0.06] hover:bg-blue-500/[0.1] transition-colors disabled:opacity-30">Next</button></div>
+		@esiLogDialog()
+	</div>
+}
+
+templ esiLogDialog() {
+	<dialog data-esi-log-dialog class="esi-detail-dialog go-utility-page" aria-label="ESI request details">
+		<div class="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+			<div data-esi-log-detail-header class="flex items-center gap-3"></div>
+			<button type="button" data-esi-log-detail-close aria-label="Close details" class="flex items-center justify-center w-7 h-7 rounded-md text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.08] transition-colors cursor-pointer">
+				<span class="text-sm">
+					@icon("x")
+				</span>
+			</button>
+		</div>
+		<div data-esi-log-detail-body class="max-h-[70vh] overflow-y-auto px-5 py-4"></div>
+	</dialog>
+}

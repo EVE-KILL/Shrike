@@ -1,0 +1,282 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+// These widgets take data, not a page route. Other pages can reuse them with
+// their own scoped loaders and options.
+templ homepage(view homeView) {
+	<h1 class="sr-only">EVE-KILL — EVE Online Killboard</h1>
+	<h2 class="sr-only">The EVE Killboard: real-time killmail feed, top pilots, corporations, alliances, battle reports, and ship fitting analysis for EVE Online.</h2>
+	<div class="homepage" data-controller="home" data-action="click->home#click input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show">
+		@mostValuable(view.Valuable, "kills", false)
+		<div class="home-grid">
+			<div class="home-kills">
+				@killList(view.Killlist, killListOptions{Kind: "latest", Page: 1, Limit: 50, Live: true, QuickFilter: true})
+			</div>
+			<aside class="home-top-list" aria-label="Top pilots and places">
+				for _, box := range view.TopBoxes {
+					@topBox(box)
+				}
+			</aside>
+		</div>
+	</div>
+}
+
+templ topBox(box topBoxView) {
+	if len(box.Entries) > 0 {
+		<section class="top-box glass-panel" data-top-type={ box.DataType }>
+			<h3>{ box.Title }</h3>
+			<div class="top-box-entries">
+				for index, entry := range box.Entries {
+					<a class="top-box-entry" href={ topEntryPath(box.DataType, entry.ID) }>
+						if topAccentColor(entry) != "" {
+							<svg class="top-accent" aria-hidden="true" viewBox="0 0 3 36" preserveAspectRatio="none"><rect width="3" height="36" fill={ topAccentColor(entry) }></rect></svg>
+						}
+						<span class="top-rank">{ strconv.Itoa(index + 1) }</span>
+						<span class="top-image">
+							if topEntryImage(box.DataType, entry.ID) != "" {
+								<img src={ topEntryImage(box.DataType, entry.ID) } alt={ entry.Name } width="24" height="24" loading="lazy"/>
+							} else {
+								@icon("map-pin")
+							}
+						</span>
+						<span class="top-name">{ entry.Name }</span>
+						<span class={ "top-count " + box.CountClass }>{ formatTopCount(box.CountFormat, entry.Count) }</span>
+					</a>
+				}
+			</div>
+			if box.ShowFooter {
+				<p class="top-footer">Last 7 days</p>
+			}
+		</section>
+	}
+}
+
+templ mostValuable(kills []api.ValuableKill, kind string, compact bool) {
+	<section class="valuable glass-panel" id="most-valuable" data-kind={ kind }>
+		<div class="valuable-tabs" role="tablist" aria-label="Most valuable kills">
+			<button type="button" class={ valuableTabClass(kind, "kills") } role="tab" aria-selected={ strconv.FormatBool(kind == "kills") } data-valuable-tab="kills" data-focus-key="valuable-tab:kills"><span class="tab-long">Most Valuable Kills</span><span class="tab-short">Kills</span></button>
+			<button type="button" class={ valuableTabClass(kind, "ships") } role="tab" aria-selected={ strconv.FormatBool(kind == "ships") } data-valuable-tab="ships" data-focus-key="valuable-tab:ships"><span class="tab-long">Most Valuable Ships</span><span class="tab-short">Ships</span></button>
+			<button type="button" class={ valuableTabClass(kind, "structures") } role="tab" aria-selected={ strconv.FormatBool(kind == "structures") } data-valuable-tab="structures" data-focus-key="valuable-tab:structures"><span class="tab-long">Most Valuable Structures</span><span class="tab-short">Structures</span></button>
+		</div>
+		if len(kills) == 0 {
+			<p class="valuable-empty">Nothing in the last 7d</p>
+		}
+		if len(kills) > 0 {
+			<div class={ valuableGridClass(compact) } role="tabpanel">
+				for index, kill := range kills {
+					@valuableCard(kill, index, compact)
+				}
+			</div>
+		}
+	</section>
+}
+
+templ valuableCard(kill api.ValuableKill, index int, compact bool) {
+	<a class={ valuableCardClass(index, compact) } href={ idPath("kill", kill.KillmailID) }>
+		<img class="valuable-ship" src={ valuableImage(kill.ShipTypeID) } alt={ kill.ShipName } width="256" height="256" loading={ valuableLoading(index) } fetchpriority={ valuablePriority(index) }/>
+		<span class="valuable-shade"></span>
+		<span class="valuable-isk">{ compactNumber(kill.TotalValue) }</span>
+		<span class="valuable-labels">
+			<strong>{ kill.ShipName }</strong>
+			if kill.VictimCharacterName != "" {
+				<span>{ kill.VictimCharacterName }</span>
+			}
+			if kill.VictimCorporationName != "" {
+				<span>{ kill.VictimCorporationName }</span>
+			}
+		</span>
+	</a>
+}
+
+templ killList(page api.KilllistPage, options killListOptions) {
+	<section class="kill-list" id="kill-list" data-kind={ options.Kind } data-page={ strconv.Itoa(options.Page) } data-limit={ strconv.Itoa(options.Limit) } data-live={ strconv.FormatBool(options.Live) } data-filtered={ strconv.FormatBool(options.Filtered) } data-quick-filter={ strconv.FormatBool(options.QuickFilter) } data-next-cursor={ cursorString(page.Cursor) }>
+		<div class="kill-toolbar">
+			<div class="kill-toolbar-left">
+				if options.Live {
+					<span class="kill-live-dot" title="Connecting to live feed" aria-label="Live feed connecting"></span>
+					<button class="new-kills" type="button" data-focus-key="kill-new" hidden>+<span>0</span> new</button>
+				}
+				<div class="kill-limits" aria-label="Kills per page">
+					for _, limit := range []int{10, 25, 50, 100} {
+						<button type="button" class={ killLimitClass(limit, options.Limit) } data-kill-limit={ strconv.Itoa(limit) } data-focus-key={ "kill-limit:" + strconv.Itoa(limit) }>{ strconv.Itoa(limit) }</button>
+					}
+				</div>
+				if options.QuickFilter {
+					<button type="button" class="kill-filter-trigger" aria-label="Show kill list filters" aria-expanded="false" title="Filter killlist">
+						@icon("search")
+					</button>
+				}
+			</div>
+			<div class="kill-day-heading">
+				if len(page.Kills) > 0 {
+					{ dayLabel(page.Kills[0].KillmailTime) }
+				}
+			</div>
+			@killPager(page, options)
+		</div>
+		if options.QuickFilter {
+			<div class="kill-filter-panel" hidden>
+				@killQuickFilter()
+			</div>
+		}
+		if len(page.Kills) == 0 {
+			<p class="kill-empty">No kills found</p>
+		} else {
+			<div class="kill-rows">
+				<div class="kill-head"><span>Ship</span><span>Victim</span><span>Final Blow</span><span>Location</span><span>Details</span></div>
+				for index, kill := range page.Kills {
+					if index > 0 && !sameUTCDay(page.Kills[index-1].KillmailTime, kill.KillmailTime) {
+						<div class="kill-day-divider"><span></span><strong>{ dayLabel(kill.KillmailTime) }</strong><span></span></div>
+					}
+					@killRow(kill, index, options)
+				}
+			</div>
+		}
+		if len(page.Kills) > 0 {
+			<div class="kill-bottom-pager">
+				@killPager(page, options)
+			</div>
+		}
+	</section>
+}
+
+templ killPager(page api.KilllistPage, options killListOptions) {
+	<nav class="kill-pager" aria-label="Kill list pages">
+		<button type="button" aria-label="Previous page" data-kill-page={ strconv.Itoa(options.Page - 1) } disabled?={ options.Page <= 1 }>‹</button>
+		if page.TotalPages > 0 {
+			for _, slot := range pageSlots(options.Page, page.TotalPages) {
+				if slot == 0 {
+					<span class="kill-page-ellipsis">…</span>
+				} else {
+					<button type="button" class={ killPageClass(slot, options.Page) } data-focus-key={ "kill-page:" + strconv.Itoa(slot) } data-kill-page={ strconv.Itoa(slot) }>{ formatPageNumber(slot, options.Page) }</button>
+				}
+			}
+		} else {
+			<span>Page { strconv.Itoa(options.Page) }</span>
+		}
+		<button type="button" aria-label="Next page" data-kill-page={ strconv.Itoa(options.Page + 1) } disabled?={ !page.HasMore }>›</button>
+	</nav>
+}
+
+templ killQuickFilter() {
+	<div class="kill-filter-searches">
+		for _, field := range []string{"region", "system", "ship"} {
+			<div class="kill-filter-search" data-search-kind={ field }>
+				<label for={ "kill-filter-" + field }>{ filterLabel(field) }</label>
+				<div class="kill-filter-input-wrap">
+					<input id={ "kill-filter-" + field } data-filter-search={ field } autocomplete="off" placeholder={ "Search " + field + "…" }/>
+					<button type="button" data-filter-clear={ field } aria-label={ "Clear " + field } hidden>×</button>
+				</div>
+				<div class="kill-filter-suggestions" data-filter-suggestions={ field } hidden></div>
+			</div>
+		}
+	</div>
+	<div class="kill-filter-options">
+		for _, option := range []filterOption{
+			{Key: "highsec", Label: "High"}, {Key: "lowsec", Label: "Low"},
+			{Key: "nullsec", Label: "Null"}, {Key: "wspace", Label: "W-Space"},
+			{Key: "pochven", Label: "Pochven"}, {Key: "abyssal", Label: "Abyssal"},
+			{Key: "solo", Label: "Solo"}, {Key: "npc", Label: "NPC"},
+			{Key: "5b", Label: "+5b"}, {Key: "10b", Label: "+10b"},
+			{Key: "t1", Label: "T1"}, {Key: "t2", Label: "T2"}, {Key: "t3", Label: "T3"},
+		} {
+			<button type="button" data-filter-option={ option.Key } data-focus-key={ "kill-filter:" + option.Key } aria-pressed="false">{ option.Label }</button>
+		}
+		<button type="button" class="kill-filter-clear-all" data-filter-clear-all hidden>Clear all</button>
+	</div>
+}
+
+templ killRow(kill api.KilllistRow, index int, options killListOptions) {
+	<article class={ killListRowClass(kill, index, options) } data-kill-id={ strconv.FormatInt(kill.KillmailID, 10) } data-victim-character-id={ strconv.FormatInt(kill.VictimCharacterID, 10) } data-victim-corporation-id={ strconv.FormatInt(kill.VictimCorporationID, 10) } data-victim-alliance-id={ strconv.FormatInt(kill.VictimAllianceID, 10) }>
+		<a class="kill-row-overlay" href={ killDetailPath(options.Kind, kill.KillmailID) } aria-label={ "Killmail: " + kill.ShipName + " — " + compactNumber(kill.TotalValue) + " ISK" }></a>
+		<div class="kill-ship">
+			if kill.ShipTypeID > 0 {
+				<a class="kill-portrait" href={ killDetailPath(options.Kind, kill.KillmailID) }><img src={ killImage("item", kill.ShipTypeID) } alt={ kill.ShipName } width="40" height="40" loading="lazy"/></a>
+			} else {
+				<span class="kill-portrait kill-image-empty">
+					@icon("image")
+				</span>
+			}
+			<div class="kill-ship-copy">
+				if kill.ShipTypeID > 0 {
+					<a href={ idPath("item", kill.ShipTypeID) }>{ fallbackName(kill.ShipName) }</a>
+				} else {
+					<span>{ fallbackName(kill.ShipName) }</span>
+				}
+				if kill.ShipGroupID>0 {
+					<a class="kill-ship-group" href={ idPath("group", kill.ShipGroupID) }>{ kill.ShipGroupName }</a>
+				} else {
+					<span class="kill-ship-group">{ kill.ShipGroupName }</span>
+				}
+				<span class="kill-ship-isk">{ compactNumber(kill.TotalValue) } ISK</span>
+				<span class="kill-mobile-summary">
+					{ fallbackName(kill.VictimCharacterName, kill.VictimCorporationName) }
+					if kill.VictimCharacterName != "" && kill.VictimCorporationName != "" {
+						{ " · " + kill.VictimCorporationName }
+					}
+				</span>
+				<span class="kill-mobile-location"><em class={ securityClass(kill.SolarSystemSecurity) }>{ securityLabel(kill.SolarSystemSecurity) }</em> { kill.SolarSystemName }</span>
+			</div>
+		</div>
+		@killIdentity(victimIdentity(kill))
+		@killIdentity(finalBlowIdentity(kill))
+		<div class="kill-location">
+			if kill.SolarSystemID > 0 {
+				<a href={ idPath("system", kill.SolarSystemID) } class="kill-location-icon"><img src={ killImage("system", kill.SolarSystemID) } alt="" width="24" height="24" loading="lazy"/></a>
+			}
+			<div>
+				<span><em class={ securityClass(kill.SolarSystemSecurity) }>{ securityLabel(kill.SolarSystemSecurity) }</em> <a href={ idPath("system", kill.SolarSystemID) }>{ kill.SolarSystemName }</a></span>
+				if kill.RegionID > 0 {
+					<a class="kill-region" href={ idPath("region", kill.RegionID) }>{ kill.RegionName }</a>
+				}
+			</div>
+		</div>
+		<div class="kill-details">
+			<span class="kill-mobile-isk">{ compactNumber(kill.TotalValue) }</span>
+			<time datetime={ kill.KillmailTime.UTC().Format("2006-01-02T15:04:05Z") }>{ killTime(kill.KillmailTime) }</time>
+			<span class="kill-attacker-count" aria-label={ strconv.Itoa(kill.AttackerCount) + " involved" }>
+				@icon("users")
+				<span>{ strconv.Itoa(kill.AttackerCount) }</span>
+			</span>
+		</div>
+	</article>
+}
+
+templ killIdentity(identity killIdentityView) {
+	<div class="kill-identity">
+		if identity.Portrait.ID > 0 {
+			<a class="kill-portrait" href={ idPath(identity.Portrait.Type, identity.Portrait.ID) }><img src={ killImage(identity.Portrait.Type, identity.Portrait.ID) } alt={ identity.Portrait.Name } width="40" height="40" loading="lazy"/></a>
+		} else {
+			<span class="kill-portrait kill-image-empty">
+				@icon(identity.Portrait.Placeholder)
+			</span>
+		}
+		if identity.CorporationID > 0 || identity.AllianceID > 0 {
+			<div class="kill-identity-badges">
+				if identity.CorporationID > 0 {
+					<a href={ idPath("corporation", identity.CorporationID) } aria-label={ "Corporation: " + identity.CorporationName }><img src={ killImage("corporation", identity.CorporationID) } alt="" width="19" height="19" loading="lazy"/></a>
+				}
+				if identity.AllianceID > 0 {
+					<a href={ idPath("alliance", identity.AllianceID) } aria-label={ "Alliance: " + identity.AllianceName }><img src={ killImage("alliance", identity.AllianceID) } alt="" width="19" height="19" loading="lazy"/></a>
+				}
+			</div>
+		}
+		<div class="kill-identity-copy">
+			if identity.PrimaryID > 0 {
+				<a href={ idPath(identity.PrimaryType, identity.PrimaryID) } class={ identityPrimaryClass(identity.NPC) }>{ fallbackName(identity.PrimaryName) }</a>
+			} else {
+				<span class={ identityPrimaryClass(identity.NPC) }>{ fallbackName(identity.PrimaryName) }</span>
+			}
+			if identity.PrimaryType == "character" && identity.CorporationID > 0 {
+				<a href={ idPath("corporation", identity.CorporationID) }>{ identity.CorporationName }</a>
+			}
+			if identity.AllianceID > 0 {
+				<a href={ idPath("alliance", identity.AllianceID) }>{ identity.AllianceName }</a>
+			}
+		</div>
+	</div>
+}

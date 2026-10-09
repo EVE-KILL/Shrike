@@ -1,0 +1,23 @@
+package frontend
+
+templ toolsPage() {
+	<div class="tools-page">
+		<header class="page-header hero-surface glass-panel tools-header">
+			<span class="page-header-icon">
+				@icon("wrench")
+			</span>
+			<div><p class="eyebrow">Pilot utilities</p><h1>Tools</h1><p>Utilities for EVE Online pilots — scan analyzers, battle tooling, and search helpers.</p></div>
+		</header>
+		<div class="tools-grid">
+			for _, tool := range toolCards {
+				<a class="tool-card" href={ tool.Href }>
+					<div>
+						@icon(tool.Icon)
+						<h2>{ tool.Label }</h2>
+					</div>
+					<p>{ tool.Description }</p>
+				</a>
+			}
+		</div>
+	</div>
+}

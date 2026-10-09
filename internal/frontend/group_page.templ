@@ -1,0 +1,134 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ groupPage(view groupPageView) {
+	<div class="universe-page group-page" data-universe-kind="group" data-universe-id={ strconv.FormatInt(view.ID, 10) } data-controller="universe" data-action="click->universe#click popstate@window->universe#history pagehide@window->universe#hide pageshow@window->universe#show">
+		<link rel="stylesheet" href={ assetURL("entity.css") }/>
+		<link rel="stylesheet" href={ assetURL("group.css") }/>
+		<header class="hero-surface glass-panel group-hero">
+			if len(view.Published) > 0 {
+				<img class="group-hero-background" src={ groupImage(view, view.Published[0], 1024) } alt="" width="1024" height="1024" loading="lazy"/>
+			}
+			<div class="group-hero-shade"></div>
+			<div class="group-hero-content">
+				<div class="group-hero-heading">
+					<h1>{ view.Group.Name }</h1>
+					if view.Group.CategoryName != "" {
+						<span>{ view.Group.CategoryName }</span>
+					}
+					if !view.Group.Published {
+						<span class="unpublished">Unpublished</span>
+					}
+				</div>
+				<nav aria-label="Breadcrumb"><a href="/market">Market</a><span>/</span><span>{ view.Group.CategoryName }</span><span>/</span><strong>{ view.Group.Name }</strong></nav>
+				<p>{ groupDescription(view) }</p>
+			</div>
+			if len(view.Published) > 0 {
+				<div class="group-hull-strip">
+					for _, item := range view.Published {
+						<a href={ idPath("item", item.ID) } title={ item.Name }><img src={ groupImage(view, item, 64) } alt={ item.Name } width="40" height="40" loading="eager"/></a>
+					}
+				</div>
+			}
+		</header>
+		<nav class="entity-tabs universe-tabs group-tabs" aria-label={ view.Group.Name + " pages" }>
+			<a href={ fmt.Sprintf("/group/%d", view.ID) } class={ entityTabClass(view.Tab, "dashboard") } aria-current={ entityTabCurrent(view.Tab, "dashboard") } aria-label="Dashboard">
+				@icon("activity")
+				<span>Dashboard</span>
+			</a>
+			<a href={ fmt.Sprintf("/group/%d/kills", view.ID) } class={ entityTabClass(view.Tab, "kills") } aria-current={ entityTabCurrent(view.Tab, "kills") } aria-label="Kills">
+				@icon("swords")
+				<span>Kills</span>
+			</a>
+		</nav>
+		@groupMain(view)
+		<script type="module" src={ assetURL("universe.js") }></script>
+	</div>
+}
+
+templ groupMain(view groupPageView) {
+	<section class="universe-main group-main" data-group-tab={ view.Tab } data-universe-kind="group" data-universe-id={ strconv.FormatInt(view.ID, 10) } data-universe-tab={ view.Tab } data-page-title={ groupMetadata(view).Title + " - EVE-KILL.com" } data-page-description={ groupMetadata(view).Description }>
+		if view.Tab == "kills" {
+			@killList(view.Kills, killListOptions{Kind: "group", Page: 1, Limit: 50, Filtered: true})
+		} else {
+			<div class="group-dashboard">
+				<div class="group-summary-grid">
+					@groupSummary("Published Types", fullNumber(float64(view.Group.PublishedTypeCount)))
+					@groupSummary("All Types", fullNumber(float64(view.Group.TypeCount)))
+					@groupSummary("Technology Families", strconv.Itoa(len(view.MetaGroups)))
+					@groupSummary("Group ID", strconv.FormatInt(view.ID, 10))
+				</div>
+				if len(view.MetaGroups) > 0 {
+					<section class="glass-panel group-panel">
+						<h2>
+							@icon("tags")
+							<span>Technology Breakdown</span>
+						</h2>
+						<div class="group-meta-list">
+							for _, meta := range view.MetaGroups {
+								<div><span>{ meta.Name }</span><small>{ strconv.Itoa(meta.Count) }</small></div>
+							}
+						</div>
+					</section>
+				}
+				<section class="glass-panel group-panel">
+					<h2>
+						@icon("tags")
+						<span>Published Types</span><small>({ strconv.Itoa(len(view.Published)) })</small>
+					</h2>
+					<div class="group-type-grid">
+						for _, item := range view.Published {
+							@groupTypeCard(view, item, true)
+						}
+					</div>
+					if len(view.Unpublished) > 0 {
+						<details class="group-unpublished">
+							<summary>Show { strconv.Itoa(len(view.Unpublished)) } unpublished types</summary>
+							<div class="group-type-grid">
+								for _, item := range view.Unpublished {
+									@groupTypeCard(view, item, false)
+								}
+							</div>
+						</details>
+					}
+				</section>
+			</div>
+		}
+	</section>
+}
+
+templ groupSummary(label, value string) {
+	<section class="glass-panel group-summary"><span>{ label }</span><strong>{ value }</strong></section>
+}
+
+templ groupTypeCard(view groupPageView, item api.UniverseGroupType, published bool) {
+	<a class={ groupTypeClass(published) } href={ idPath("item", item.ID) }>
+		if published {
+			<img src={ groupImage(view, item, 64) } alt={ item.Name } width="48" height="48" loading="lazy"/>
+			<span>
+				<strong>{ groupTypeName(item) }</strong>
+				<small>
+					if item.MetaGroupName != "" {
+						{ item.MetaGroupName } ·
+					}
+					#{ strconv.FormatInt(item.ID, 10) }
+				</small>
+			</span>
+		} else {
+			<img src={ fmt.Sprintf("/images/types/%d/icon?size=32", item.ID) } alt={ item.Name } width="32" height="32" loading="lazy"/>
+			<span>{ groupTypeName(item) }</span>
+		}
+	</a>
+}
+
+func groupTypeClass(published bool) string {
+	if published {
+		return "group-type-card"
+	}
+	return "group-type-card unpublished"
+}

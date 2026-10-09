@@ -17,7 +17,7 @@ import (
 
 // accessLogHandler emits one nginx-style access line for every completed
 // request. It wraps the origin handler inside each route, so it covers the Go
-// surfaces, the Nuxt reverse proxy, WebSocket upgrades, and the fallback 404.
+// surfaces, including frontend pages and WebSocket upgrades.
 type accessLogHandler struct {
 	log zerolog.Logger
 }

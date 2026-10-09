@@ -1,0 +1,25 @@
+package frontend
+
+import "strconv"
+
+// Port of WizardSteps.vue. The parent chooses when a completed stage can reopen.
+templ wizardSteps(steps []wizardStep) {
+	<ol class="glass-panel flex items-center p-3 md:p-4 overflow-x-auto scrollbar-hide mb-4" data-wizard-steps aria-label="Progress">
+		for i,step:=range steps {
+			<li class={ "flex items-center min-w-0 " + map[bool]string{true: "flex-1"}[i < len(steps)-1] }>
+				<button type="button" data-wizard-step={ strconv.Itoa(step.N) } disabled?={ step.N>1 } class={ "flex items-center gap-2.5 min-w-0 transition-opacity " + killBoolClass(step.N == 1, "cursor-pointer hover:opacity-80", "cursor-default") } aria-label={ step.Label }>
+					<span data-wizard-circle class={ "w-7 h-7 rounded-full flex items-center justify-center text-fine font-bold tabular-nums flex-shrink-0 border transition-colors " + killBoolClass(step.N == 1, "bg-blue-500/20 text-blue-400 border-blue-500/40", "bg-white/[0.03] text-gray-600 border-white/[0.08]") }>
+						<span data-wizard-number>{ strconv.Itoa(step.N) }</span>
+						<span data-wizard-check hidden>
+							@icon("check")
+						</span>
+					</span>
+					<span class="hidden sm:block text-left min-w-0"><span data-wizard-label class={ "block text-xs font-medium truncate " + killBoolClass(step.N == 1, "text-gray-200", "text-gray-600") }>{ step.Label }</span><span class="block text-fine text-gray-600 truncate">{ step.Hint }</span></span>
+				</button>
+				if i<len(steps)-1 {
+					<div data-wizard-connector class="flex-1 h-px mx-3 min-w-[1.5rem] transition-colors bg-white/[0.08]"></div>
+				}
+			</li>
+		}
+	</ol>
+}

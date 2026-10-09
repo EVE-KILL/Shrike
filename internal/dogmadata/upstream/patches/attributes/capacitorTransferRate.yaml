@@ -1,0 +1,22 @@
+new:
+  displayName: Capacitor Transfer Rate
+  category: Capacitor
+  unit: capacitorPerSecond
+  highIsGood: true
+
+effects:
+  - name: capacitorTransferRate
+    on: remoteCapacitorTransmitter or energyNosferatu
+    category: active
+    rules:
+      - {from: thousand}
+      - {mul: powerTransferAmount}
+      - {div: duration}
+
+  - name: capacitorTransferRateNeutralizer
+    on: energyNeutralizer
+    category: active
+    rules:
+      - {from: thousand}
+      - {mul: energyNeutralizerAmount}
+      - {div: duration}

@@ -1,0 +1,61 @@
+.search-page [hidden] { display:none!important; }
+.search-page-header { margin-bottom:24px; }
+.search-page-field { position:relative; }
+.search-page-field>.icon { position:absolute; top:50%; left:16px; width:20px; height:20px; transform:translateY(-50%); color:#6b7280; pointer-events:none; }
+.search-page-field input { width:100%; padding:16px 48px; border:1px solid #ffffff14; border-radius:12px; outline:none; background:#ffffff0a; color:#fff; font-size:16px; transition:background .2s,border-color .2s; backdrop-filter:blur(8px); }
+.search-page-field input::placeholder { color:#4b5563; }
+.search-page-field input:focus { border-color:color-mix(in srgb,var(--color-brand-primary) 40%,transparent); background:#ffffff0f; }
+.search-page-field input::-webkit-search-cancel-button { display:none; }
+.search-page-field button,.search-page-spinner { position:absolute; top:50%; right:16px; transform:translateY(-50%); color:#6b7280; }
+.search-page-field button:hover { color:var(--color-brand-primary); }
+.search-page-field button .icon { width:18px; height:18px; }
+.search-page-spinner { color:var(--color-brand-primary); font-size:28px; animation:search-spin .8s linear infinite; }
+@keyframes search-spin { to { transform:translateY(-50%) rotate(360deg); } }
+.search-page-stats { margin:8px 4px 0; color:#4b5563; font-size:12px; }
+.search-page-filters { display:flex; gap:6px; margin-bottom:20px; padding-bottom:4px; overflow-x:auto; scrollbar-width:none; }
+.search-page-filters::-webkit-scrollbar { display:none; }
+.search-page-tab { display:inline-flex; align-items:center; flex:none; gap:6px; padding:6px 12px; border:1px solid transparent; border-radius:8px; background:#ffffff08; color:#6b7280; font-size:12px; font-weight:500; white-space:nowrap; }
+.search-page-tab .icon { width:14px; height:14px; }
+.search-page-tab small { margin-left:2px; opacity:.6; font-size:10px; font-variant-numeric:tabular-nums; }
+.search-page-tab:hover,.search-page-tab.active { color:var(--color-brand-primary); background:color-mix(in srgb,var(--color-brand-primary) 12%,transparent); }
+.search-page-tab.active { border-color:color-mix(in srgb,var(--color-brand-primary) 30%,transparent); }
+.search-page-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.search-page-card { position:relative; min-width:0; overflow:hidden; border:1px solid #ffffff14; border-radius:12px; background:#ffffff05; transition:transform .2s,border-color .2s,box-shadow .2s; }
+.search-page-card:hover { transform:translateY(-2px); border-color:#ffffff26; box-shadow:0 10px 20px #0005; }
+.search-page-card-main { display:block; }
+.search-page-media { position:relative; aspect-ratio:1; overflow:hidden; }
+.search-page-media.small { display:flex; justify-content:center; align-items:center; background:#ffffff08; }
+.search-page-media>img { width:100%; height:100%; object-fit:cover; transition:transform .3s; }
+.search-page-media.small>img { width:64px; height:64px; border-radius:8px; object-fit:contain; }
+.search-page-media.small>.icon { width:64px; height:64px; color:#374151; }
+.search-page-card:hover .search-page-media>img { transform:scale(1.05); }
+.search-page-shade { position:absolute; inset:0; background:linear-gradient(0deg,#000e,#0003 55%,transparent); pointer-events:none; }
+.search-page-badge { position:absolute; top:8px; left:8px; display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:#ffffff26; color:#d1d5db; font-size:10px; font-weight:700; text-transform:uppercase; backdrop-filter:blur(8px); }
+.search-page-badge .icon { width:11px; height:11px; }
+.search-type-character .search-page-badge { background:color-mix(in srgb,var(--color-brand-primary) 20.000%,transparent); color:var(--color-brand-primary); }
+.search-type-corporation .search-page-badge { background:color-mix(in srgb,var(--color-brand-secondary) 20.000%,transparent); color:var(--color-brand-secondary); }
+.search-type-alliance .search-page-badge { background:#a855f733; color:#c084fc; }
+.search-type-faction .search-page-badge { background:#f59e0b33; color:#fbbf24; }
+.search-type-system .search-page-badge { background:#06b6d433; color:#22d3ee; }
+.search-type-region .search-page-badge { background:#f9731633; color:#fb923c; }
+.search-type-constellation .search-page-badge { background:#14b8a633; color:#2dd4bf; }
+.search-type-ship .search-page-badge { background:color-mix(in srgb,var(--color-error) 20.000%,transparent); color:var(--color-error); }
+.search-page-info { position:absolute; right:0; bottom:0; left:0; display:grid; gap:2px; padding:12px; text-shadow:0 2px 5px #000; }
+.search-page-info strong { overflow:hidden; color:#fff; font-size:14px; font-weight:600; text-overflow:ellipsis; white-space:nowrap; }
+.search-page-card:hover .search-page-info strong { color:var(--color-brand-primary); }
+.search-page-info span { overflow:hidden; color:#9ca3af; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.search-page-info small { overflow:hidden; color:#9ca3afcc; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.search-page-logos { position:absolute; z-index:1; top:8px; right:8px; display:flex; gap:4px; }
+.search-page-logo { width:28px; height:28px; overflow:hidden; border:1px solid #ffffff1a; border-radius:6px; background:#0009; transition:transform .2s,border-color .2s; }
+.search-page-logo:hover { transform:scale(1.1); border-color:color-mix(in srgb,var(--color-brand-primary) 40%,transparent); }
+.search-page-logo img { width:100%; height:100%; }
+.search-page-state { display:flex; flex-direction:column; align-items:center; padding:80px 16px; color:#6b7280; text-align:center; }
+.search-page-state>.icon { width:42px; height:42px; margin-bottom:16px; color:#374151; }
+.search-page-state p { margin:0; font-size:14px; }
+.search-page-state small { margin-top:4px; color:#4b5563; font-size:12px; }
+.search-page-suggestions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:24px; }
+.search-page-suggestions button { padding:8px 16px; border:1px solid #ffffff0f; border-radius:8px; background:#ffffff08; color:#6b7280; font-size:12px; }
+.search-page-suggestions button:hover { border-color:#ffffff1a; background:color-mix(in srgb,var(--color-brand-primary) 6%,transparent); color:var(--color-brand-primary); }
+@media(max-width:1023px) { .search-page-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:767px) { .search-page-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:440px) { .search-page-suggestions { grid-template-columns:repeat(2,minmax(0,1fr)); } }

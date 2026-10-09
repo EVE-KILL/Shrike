@@ -8,8 +8,10 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"io"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -147,13 +149,13 @@ func (s *Service) renderKillmailSocial(
 		party := parties[partyIndex]
 		loaders := []func() (Result, error){
 			func() (Result, error) {
-				return s.Entity(ctx, Character, party.CharacterID, socialIcon, "jpeg")
+				return s.fetchSocialEntity(ctx, "characters", party.CharacterID, "portrait")
 			},
 			func() (Result, error) {
-				return s.Entity(ctx, Corporation, party.CorporationID, socialIcon, "png")
+				return s.fetchSocialEntity(ctx, "corporations", party.CorporationID, "logo")
 			},
 			func() (Result, error) {
-				return s.Entity(ctx, Alliance, party.AllianceID, socialIcon, "png")
+				return s.fetchSocialEntity(ctx, "alliances", party.AllianceID, "logo")
 			},
 			func() (Result, error) {
 				return s.Type(ctx, party.ShipTypeID, "icon", socialIcon, "")
@@ -228,6 +230,47 @@ func (s *Service) renderKillmailSocial(
 		return nil, fmt.Errorf("encode killmail social image: %w", err)
 	}
 	return output.Bytes(), nil
+}
+
+// Social cards retain only the finished immutable PNG. Their changing EVE
+// portraits and logos are fetched directly when a card is first generated.
+func (s *Service) fetchSocialEntity(
+	ctx context.Context, kind string, id int64, variant string,
+) (Result, error) {
+	if id <= 0 {
+		return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
+	}
+	url := fmt.Sprintf("%s/%s/%d/%s?size=%d", s.upstream, kind, id, variant, socialIcon)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return Result{}, err
+	}
+	if s.userAgent != "" {
+		req.Header.Set("User-Agent", s.userAgent)
+	}
+	response, err := s.client.Do(req)
+	if err != nil {
+		return Result{}, err
+	}
+	defer func() { _ = response.Body.Close() }()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return Result{}, statusError(
+			http.StatusBadGateway,
+			"EVE image server returned "+strconv.Itoa(response.StatusCode), nil,
+		)
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, s.maximum+1))
+	if err != nil {
+		return Result{}, err
+	}
+	if int64(len(body)) > s.maximum {
+		return Result{}, statusError(http.StatusBadGateway, "EVE image is too large", nil)
+	}
+	format, err := detectImageFormat(body)
+	if err != nil {
+		return Result{}, statusError(http.StatusBadGateway, "EVE image is invalid", err)
+	}
+	return newResult(body, contentTypeForFormat(format), s.now()), nil
 }
 
 func drawSocialBackground(canvas *image.NRGBA) {

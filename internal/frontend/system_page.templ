@@ -1,0 +1,284 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ systemPage(view systemPageView) {
+	<div class="system-page" data-system-id={ strconv.FormatInt(view.ID, 10) } data-location-kind="system" data-location-id={ strconv.FormatInt(view.ID, 10) } data-controller="location" data-action="click->location#click mouseover->location#hover mouseout->location#leave popstate@window->location#history pagehide@window->location#hide pageshow@window->location#show">
+		<link rel="stylesheet" href={ assetURL("entity.css") }/>
+		<link rel="stylesheet" href={ assetURL("system.css") }/>
+		@systemHeader(view)
+		<div class="system-valuable" data-system-valuable>
+			@mostValuable(view.Valuable, "kills", false)
+		</div>
+		<nav class="entity-tabs system-tabs" aria-label={ view.Data.System.SystemName + " pages" }>
+			<a class={ entityTabClass(view.Tab, "dashboard") } href={ fmt.Sprintf("/system/%d", view.ID) } data-system-tab="dashboard" aria-label="Dashboard">
+				@icon("activity")
+				<span>Dashboard</span>
+			</a>
+			<a class={ entityTabClass(view.Tab, "kills") } href={ fmt.Sprintf("/system/%d/kills", view.ID) } data-system-tab="kills" aria-label="Kills">
+				@icon("skull")
+				<span>Kills</span>
+			</a>
+			<a class={ entityTabClass(view.Tab, "battles") } href={ fmt.Sprintf("/system/%d/battles", view.ID) } data-system-tab="battles" aria-label="Battles">
+				@icon("swords")
+				<span>Battles</span>
+			</a>
+			<a class={ entityTabClass(view.Tab, "map") } href={ fmt.Sprintf("/map/region/%d", view.Data.System.RegionID) } aria-label="Map">
+				@icon("map")
+				<span>Map</span>
+			</a>
+		</nav>
+		@systemMain(view)
+		<script type="module" src={ assetURL("system.js") }></script>
+	</div>
+}
+
+templ systemHeader(view systemPageView) {
+	<header class="hero-surface glass-panel system-hero">
+		<img class="system-hero-background" src={ fmt.Sprintf("/images/systems/%d?size=1024", view.ID) } alt="" width="1024" height="1024" loading="lazy"/>
+		<div class="system-hero-shade"></div>
+		<div class="system-hero-content">
+			if systemSovereigntyImage(view.Data.Sovereignty, 256) != "" {
+				if view.Data.Sovereignty.AllianceID > 0 {
+					<a class="system-hero-logo" href={ idPath("alliance", view.Data.Sovereignty.AllianceID) }><img src={ systemSovereigntyImage(view.Data.Sovereignty, 256) } alt={ systemSovereigntyName(view.Data.Sovereignty) } width="160" height="160" fetchpriority="high"/></a>
+				} else {
+					<img class="system-hero-logo" src={ systemSovereigntyImage(view.Data.Sovereignty, 256) } alt={ systemSovereigntyName(view.Data.Sovereignty) } width="160" height="160" fetchpriority="high"/>
+				}
+			}
+			<div class="system-hero-identity">
+				<div class="system-title-row">
+					<h1>{ view.Data.System.SystemName }</h1><span class={ "system-security-badge " + systemSecurityClass(view.Data.System.Security) }>{ systemSecurityLabel(view.Data.System.Security) }</span>
+					if view.Data.Sovereignty != nil && systemSovereigntyName(view.Data.Sovereignty) != "" {
+						if view.Data.Sovereignty.AllianceID > 0 {
+							<a class="system-sov-badge" href={ idPath("alliance", view.Data.Sovereignty.AllianceID) }>{ systemSovereigntyName(view.Data.Sovereignty) }</a>
+						} else if view.Data.Sovereignty.CorporationID > 0 && view.Data.Sovereignty.FactionID == 0 {
+							<a class="system-sov-badge" href={ idPath("corporation", view.Data.Sovereignty.CorporationID) }>{ systemSovereigntyName(view.Data.Sovereignty) }</a>
+						} else {
+							<span class="system-sov-badge">{ systemSovereigntyName(view.Data.Sovereignty) }</span>
+						}
+					}
+				</div>
+				<nav class="system-breadcrumb" aria-label="Breadcrumb"><a href="/map">Map</a><span>/</span><a href={ idPath("region", view.Data.System.RegionID) }>{ view.Data.System.RegionName }</a><span>/</span><a href={ idPath("constellation", view.Data.System.ConstellationID) }>{ view.Data.System.ConstellationName }</a><span>/</span><strong>{ view.Data.System.SystemName }</strong></nav>
+				if view.Data.System.SunTypeName != "" {
+					<p class="system-sun">
+						@icon("sun") {
+							view.Data.System.SunTypeName 
+						}
+					</p>
+				}
+			</div>
+			<div class="system-external-links">
+				<a href={ "https://evemaps.dotlan.net/system/" + view.Data.System.SystemName } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/dotlan.png") } alt="" width="16" height="16"/>DOTLAN</a>
+				<a href={ "https://eveeye.com/?m=" + view.Data.System.RegionName } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/eveeye.svg") } alt="" width="16" height="16"/>EVEEye</a>
+				<a href={ fmt.Sprintf("https://evemissioneer.com/s/%d", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/evemissioneer.png") } alt="" width="16" height="16"/>Missioneer</a>
+				<a href={ fmt.Sprintf("https://www.jita.space/system/%d", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/jita-space.png") } alt="" width="16" height="16"/>Jita.Space</a>
+				<a href={ fmt.Sprintf("https://zkillboard.com/system/%d/", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/zkillboard.png") } alt="" width="16" height="16"/>zKillboard</a>
+			</div>
+		</div>
+		<div class="system-stat-grid">
+			if view.Data.Activity.Latest != nil {
+				@systemStat("Jumps (1h)", fullNumber(float64(view.Data.Activity.Latest.ShipJumps)), "cyan")
+				@systemStat("Ship Kills (1h)", fullNumber(float64(view.Data.Activity.Latest.ShipKills)), "green")
+				@systemStat("NPC Kills (1h)", fullNumber(float64(view.Data.Activity.Latest.NPCKills)), "")
+				@systemStat("Pod Kills (1h)", fullNumber(float64(view.Data.Activity.Latest.PodKills)), "red")
+			}
+			@systemStat("Kills (7d)", fullNumber(float64(view.Data.Stats.Kills)), "green")
+			@systemStat("ISK (7d)", compactNumber(view.Data.Stats.TotalValue), "gold")
+			@systemStat("Planets", fullNumber(float64(view.Data.Celestials.Planets)), "blue")
+			@systemStat("Gates", strconv.Itoa(len(view.Data.Connections)), "")
+		</div>
+	</header>
+}
+
+templ systemStat(label, value, class string) {
+	<div class={ "system-stat " + class }><span>{ label }</span><strong>{ value }</strong></div>
+}
+
+templ systemMain(view systemPageView) {
+	<section class="system-main" data-system-main data-location-kind="system" data-location-id={ strconv.FormatInt(view.ID, 10) } data-system-tab={ view.Tab } data-page-title={ systemMetadata(view).Title + " - EVE-KILL.com" } data-page-description={ systemMetadata(view).Description } data-page-canonical={ systemMetadata(view).CanonicalPath }>
+		if view.Tab == "dashboard" {
+			@systemDashboard(view)
+		} else if view.Tab == "kills" {
+			@killList(view.Kills, killListOptions{Kind: "system", Page: 1, Limit: 50})
+		} else if view.Tab == "battles" {
+			@entityBattles("system", view.ID, view.Battles)
+		}
+	</section>
+}
+
+templ systemDashboard(view systemPageView) {
+	<div class="system-dashboard">
+		<div class="system-dashboard-left">
+			if len(view.Chart.Rows) > 0 {
+				@systemActivityPanel(view.Chart)
+			}
+			if len(view.Transitions) > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("archive")
+						Sovereignty History
+					</h2>
+					<div class="system-sov-history">
+						for _, transition := range view.Transitions {
+							<div class="system-sov-change">
+								<span>
+									if transition.From == nil {
+										<em>initial</em>
+									} else {
+										<a href={ idPath(systemSovereigntyKind(*transition.From), systemSovereigntyID(*transition.From)) }>{ systemSovereigntyName(transition.From) }</a>
+									}
+								</span>@icon("arrow-right")
+								<span><a href={ idPath(systemSovereigntyKind(transition.To), systemSovereigntyID(transition.To)) }>{ systemSovereigntyName(&transition.To) }</a></span><time>{ systemSovereigntyDate(transition.To.Date) }</time>
+							</div>
+						}
+					</div>
+				</section>
+			}
+			if len(view.Data.Stations) > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("building-2")
+						Stations <small>({ strconv.Itoa(len(view.Data.Stations)) })</small>
+					</h2>
+					<div class="system-station-list">
+						for _, station := range view.Data.Stations {
+							<div>
+								<span>{ station.StationName }</span>
+								<small>
+									{ station.OperationName }
+									if station.CorporationID > 0 {
+										· <a href={ idPath("corporation", station.CorporationID) }>{ station.CorporationName }</a>
+									}
+								</small>
+							</div>
+						}
+					</div>
+				</section>
+			}
+			if len(view.Data.Structures) > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("building-2")
+						Structures <small>({ strconv.Itoa(len(view.Data.Structures)) })</small>
+					</h2>
+					<div class="system-structure-list">
+						for _, structure := range view.Data.Structures {
+							<div>
+								<span>
+									{ structure.Name }
+									if structure.IsMarket {
+										<em>market</em>
+									}
+								</span>
+								<small>
+									{ structure.TypeName }
+									if structure.OwnerID > 0 {
+										· <a href={ idPath("corporation", structure.OwnerID) }>{ structure.OwnerName }</a>
+									}
+								</small>
+							</div>
+						}
+					</div>
+				</section>
+			}
+		</div>
+		<div class="system-dashboard-right">
+			if len(view.Data.Connections) > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("network")
+						Connected Systems <small>({ strconv.Itoa(len(view.Data.Connections)) })</small>
+					</h2>
+					<div class="system-connections">
+						for _, connection := range view.Data.Connections {
+							<a href={ idPath("system", connection.ToSolarSystemID) }>
+								<span class={ systemSecurityClass(connection.Security) }>{ systemSecurityLabel(connection.Security) }</span><strong>{ connection.SystemName }</strong>
+								if connection.IsRegional {
+									<small>regional</small>
+								}
+							</a>
+						}
+					</div>
+				</section>
+			}
+			if view.Data.Celestials.Planets > 0 || view.Data.Celestials.Belts > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("globe")
+						Celestials
+					</h2>
+					for _, celestial := range view.Data.CelestialList {
+						if celestial.Category == "star" {
+							<div class="system-star"><i></i><span>{ celestial.TypeName }</span></div>
+						}
+					}
+					<div class="system-planets">
+						for _, celestial := range view.Data.CelestialList {
+							if celestial.Category == "planet" {
+								<div><i></i><span>{ celestial.ItemName }</span><small>{ celestial.TypeName }</small></div>
+							}
+						}
+					</div>
+					if view.Data.Celestials.Belts > 0 {
+						<p class="system-belts">{ fullNumber(float64(view.Data.Celestials.Belts)) } Asteroid Belts</p>
+					}
+				</section>
+			}
+		</div>
+	</div>
+}
+
+templ systemActivityPanel(chart systemChartView) {
+	<section class="glass-panel system-panel system-activity" data-system-chart>
+		<h2>
+			@icon("activity")
+			Hourly Activity (24h)<small>EVE time</small>
+		</h2>
+		for _, row := range chart.Rows {
+			<div class={ "system-chart-row " + row.Key } data-chart-series={ row.Key }>
+				<header><strong>{ row.Label }</strong><span>{ fullNumber(float64(row.Total)) } total</span><small>peak { fullNumber(float64(row.Peak)) }</small></header>
+				<div class="system-chart-bars">
+					for index, hour := range chart.Hours {
+						<div class="system-chart-hour" data-chart-hour={ strconv.Itoa(index) } data-hour-label={ hour.Time.UTC().Format("15:00") } data-recorded={ strconv.FormatBool(hour.Recorded) } data-jumps={ strconv.FormatInt(hour.Activity.ShipJumps, 10) } data-ship-kills={ strconv.FormatInt(hour.Activity.ShipKills, 10) } data-npc-kills={ strconv.FormatInt(hour.Activity.NPCKills, 10) } data-pod-kills={ strconv.FormatInt(hour.Activity.PodKills, 10) }>
+							if row.Values[index] != nil {
+								<span class="bar" style={ "height:" + systemChartHeight(row.Values[index], row.Peak) }></span>
+							} else {
+								<span class="missing"></span>
+							}
+						</div>
+					}
+				</div>
+			</div>
+		}
+		<div class="system-chart-axis">
+			for index, hour := range chart.Hours {
+				<span>
+					if index % 3 == 0 {
+						{ hour.Time.UTC().Format("15") }
+					}
+				</span>
+			}
+		</div>
+		<div class="system-chart-readout" data-chart-readout>
+			Hover an hour for exact figures
+			if chart.Missing > 0 {
+				<span>{ strconv.Itoa(chart.Missing) }h not recorded</span>
+			}
+		</div>
+	</section>
+}
+
+func systemLocationImage(kind string, id int64) string {
+	if kind == "faction" {
+		return eveEntityImage("corporation", id, 32)
+	}
+	return eveEntityImage(kind, id, 32)
+}
+
+func systemLocationLink(value api.UniverseSovereignty) string {
+	return idPath(systemSovereigntyKind(value), systemSovereigntyID(value))
+}

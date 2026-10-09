@@ -1,0 +1,30 @@
+new:
+  displayName: Armor Repair Rate
+  category: Armor
+  unit: hitpointsPerSecond
+  highIsGood: true
+
+effects:
+  - name: armorRepairRate
+    on: armorRepairModule
+    category: active
+    rules:
+      - {from: thousand}
+      - {mul: armorDamageAmount}
+      - {div: duration}
+      - {add: armorRepairRate, domain: shipID}
+
+  # A remote repairer reaches the ship it is aimed at. The strength is its
+  # own; the spool multiplier is 1 for everything that does not spool.
+  - name: remoteArmorRepairRate
+    on: remoteArmorRepairModule
+    category: active
+    resistanceAttribute: remoteRepairImpedance
+    rangeAttribute: maxRange
+    falloffAttribute: falloffEffectiveness
+    rules:
+      - {from: thousand}
+      - {mul: armorDamageAmount}
+      - {mul: spoolMultiplier}
+      - {div: duration}
+      - {add: armorRepairRate, domain: targetID}

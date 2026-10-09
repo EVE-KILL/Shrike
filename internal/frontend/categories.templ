@@ -1,0 +1,61 @@
+package frontend
+
+import "strconv"
+
+templ categoriesPage(view categoriesView) {
+	<div class="categories-page" data-controller="categories">
+		<header class="page-header hero-surface glass-panel categories-header">
+			<span class="page-header-icon">
+				@icon("tags")
+			</span>
+			<div>
+				<p class="eyebrow">Explore the killmail archive</p>
+				<h1>Killmail Categories</h1>
+				<p>Browse the killmail archive by activity, location, fleet size, value, ship class, and other useful classifications. A killmail can appear in more than one category.</p>
+				<div class="categories-meta">
+					<span><strong>{ strconv.Itoa(view.LabelCount) }</strong> categories</span>
+					<span><strong id="category-group-count" data-categories-target="count">{ strconv.Itoa(len(view.Groups)) }</strong> groups</span>
+					<span><strong>{ view.MaxCount }</strong> in the largest category</span>
+				</div>
+			</div>
+		</header>
+		<div class="category-search">
+			@icon("search")
+			<input id="category-filter" data-categories-target="input" data-action="input->categories#filter" type="search" aria-label="Filter categories" placeholder="Filter categories..." autocomplete="off"/>
+		</div>
+		<div class="category-groups">
+			for _, group := range view.Groups {
+				<section class="category-group" data-categories-target="group">
+					<div class="category-group-heading">
+						<img src={ group.Image } width="40" height="40" alt={ group.Name } loading="lazy"/>
+						<div>
+							<div class="category-group-title">
+								@icon(group.Icon)
+								<h2>{ group.Name }</h2>
+							</div><span class="category-group-count">{ strconv.Itoa(len(group.Labels)) } categories</span>
+						</div>
+					</div>
+					<div class="category-grid">
+						for _, label := range group.Labels {
+							<article class="category-card" data-category-search={ categorySearchText(label) }>
+								<div class="category-card-head">
+									<div><h3>{ label.Name }</h3><code>{ label.ID }</code></div>
+									<span title={ fullNumber(float64(label.Count)) + " killmails" }>{ fullNumber(float64(label.Count)) }</span>
+								</div>
+								<p>{ label.Description }</p>
+								<div class="category-actions">
+									<a href={ label.ViewURL }>View kills</a>
+									if target := categorySearchURL(label); target != "" {
+										<a class="category-advanced" href={ target }>Advanced search</a>
+									}
+								</div>
+							</article>
+						}
+					</div>
+				</section>
+			}
+		</div>
+		<p class="glass-panel category-empty" id="category-empty" data-categories-target="empty" hidden>No categories match “<span id="category-empty-query" data-categories-target="query"></span>”.</p>
+		<script type="module" src={ assetURL("categories.js") }></script>
+	</div>
+}

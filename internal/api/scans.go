@@ -6,11 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -119,12 +119,6 @@ func registerScanRoutes(a huma.API, opts Options) {
 			handler: getScanHandler(opts, "localscan"),
 		},
 	} {
-		handler := route.handler
-		if route.method == http.MethodGet {
-			handler = routeJSONCache(
-				opts, 24*time.Hour, "public, max-age=86400", handler,
-			)
-		}
 		operation := huma.Operation{
 			OperationID: route.id,
 			Method:      route.method,
@@ -136,7 +130,7 @@ func registerScanRoutes(a huma.API, opts Options) {
 		if route.document != nil {
 			operation = route.document(operation)
 		}
-		registerLegacy(a, operation, handler)
+		registerLegacy(a, operation, route.handler)
 	}
 }
 
@@ -586,17 +580,41 @@ func getScanHandler(opts Options, scanType string) legacyHandler {
 		if hash == "" {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Missing hash")
 		}
-		row, err := queryMap(ctx, opts.DB, `
-			SELECT result
-			FROM scans
-			WHERE hash = $1 AND scan_type = $2
-			LIMIT 1`, hash, scanType)
+		result, found, err := NewHomepageReader(opts.DB).SavedScan(ctx, scanType, hash)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		if row == nil {
+		if !found {
 			return legacyPayload{}, apiError(http.StatusNotFound, "Scan not found")
 		}
-		return jsonPayload(row["result"]), nil
+		// The hash identifies the input, not an immutable result. Repeating a
+		// save refreshes the analysis at this URL; do not retain old snapshots
+		// in browser, proxy, or replica response caches. This is one indexed read.
+		return accountNoStorePayload(result), nil
 	}
+}
+
+// SavedScan returns the public, stored analysis for a shared scan page. The
+// result is kept as JSON text so the HTML renderer can decode the same payload
+// the API returns without depending on pgx's JSONB value representation.
+func (r *HomepageReader) SavedScan(ctx context.Context, scanType, hash string) (json.RawMessage, bool, error) {
+	if r == nil || r.db == nil {
+		return nil, false, fmt.Errorf("homepage database is not configured")
+	}
+	if scanType != "dscan" && scanType != "localscan" {
+		return nil, false, fmt.Errorf("invalid scan type")
+	}
+	row, err := queryMap(ctx, r.db, `
+		SELECT result::text AS result
+		FROM scans
+		WHERE hash = $1 AND scan_type = $2
+		LIMIT 1`, hash, scanType)
+	if err != nil || row == nil {
+		return nil, false, err
+	}
+	value, ok := row["result"].(string)
+	if !ok || !json.Valid([]byte(value)) {
+		return nil, false, fmt.Errorf("invalid stored scan result")
+	}
+	return json.RawMessage(value), true, nil
 }

@@ -7,21 +7,17 @@ It does not change Helm or deploy production.
 
 Pull requests and pushes to `main` run the `CI` workflow.
 
-The workflow runs three lanes in parallel.
+CI requires Go formatting/lint/vet/build, generated API/sqlc checks, database
+race tests, browser interaction/WASM tests and TypeScript checks, native engine
+protocol/cancellation/calculation parity, and security scanning.
 
-The Go lane checks formatting and the generated OpenAPI contract. It runs
-`go vet`, creates fresh Goose and River schemas, and runs the Go tests.
+The browser lane installs npm tooling with lifecycle scripts disabled and checks
+that rebuilding committed bundles/data produces no diff. The native lane builds
+the pinned Rust worker and compares it with the captured engine snapshots.
+The release workflow builds the unified Go/Rust runtime image after source CI;
+there is no Nuxt production build or JavaScript server runtime.
 
-The frontend lane runs the Nuxt and dogma tests and type-checks the Nuxt
-application.
-
-The image lane builds the unified container and runs its version command. The
-container build includes the Nuxt production build.
-
-The workflow does not publish an image.
-
-Configure branch protection to require the `CI / Verify source and unified
-image` check before merging.
+Configure branch protection to require `CI / Verify source checks` before merging.
 
 ## Create a release
 

@@ -1,0 +1,12 @@
+new:
+  displayName: Structure Effective EM Resonance
+  category: Structure
+  unit: "Inverse Absolute Percent"
+  highIsGood: false
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: damageProfileEm}
+      - {mul: emDamageResonance}

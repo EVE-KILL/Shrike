@@ -1,0 +1,238 @@
+package frontend
+
+import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+)
+
+// The three stages and responsive entity lanes are ported from battlegenerator.vue.
+templ battleGeneratorContent(prefill generatorPrefill, authenticated bool) {
+	<div class="go-utility-page battle-generator" data-battle-generator data-controller="battle-generator" data-action="click->battle-generator#click input->battle-generator#input change->battle-generator#change search-pick->battle-generator#pick keydown->battle-generator#keyboard error->battle-generator#imageError:capture focus@window->battle-generator#focus pagehide@window->battle-generator#hide pageshow@window->battle-generator#show">
+		@templ.JSONScript("battle-generator-state", map[string]any{"prefill": prefill, "authenticated": authenticated}).WithType("application/json")
+		@utilityPageHeader("Battle Generator", "Build a battle report", "swords", "Build a custom battle report: pick the systems and the window the fight happened in, sort the participants into sides, then preview and save it.") {
+			<a href="/battles" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-gray-400 bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.07] hover:text-gray-200 transition-colors flex-shrink-0">
+				<span class="text-xs">
+					@icon("arrow-left")
+				</span>All battles
+			</a>
+		}
+		<div data-generator-login hidden?={ authenticated }>
+			@utilityLoginGate("You must be logged in to use the Battle Generator")
+		</div>
+		<div data-generator-editor hidden?={ !authenticated }>
+			<p data-generator-save-message hidden role="status" class="glass-panel p-3 mb-4 text-sm text-isk"></p>
+			@wizardSteps(generatorSteps)
+			<section data-generator-stage="1" class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
+				<div class="space-y-4 min-w-0">
+					<div class="glass-panel p-4">
+						<div class="flex items-center justify-between gap-3 mb-3"><div><div class="text-xs font-semibold text-gray-200">Solar systems</div><div class="text-fine text-gray-600 mt-0.5">Kills in any of these systems are considered.</div></div><span class="text-fine text-gray-600 tabular-nums flex-shrink-0" data-generator-system-count>{ strconv.Itoa(len(prefill.Systems)) }/5</span></div>
+						@searchPicker("generator_system", "Search for a solar system", []string{"system"}, searchPickerOptions{Large: true, LocationImages: true, Placeholder: "Search for a solar system..."})
+						<div data-generator-systems class="flex flex-wrap gap-1.5 mt-3" hidden?={ len(prefill.Systems)==0 }>
+							for _,system:=range prefill.Systems {
+								@generatorSystemChip(system)
+							}
+						</div>
+						<p data-generator-system-empty hidden?={ len(prefill.Systems)>0 } class="text-fine text-gray-600 mt-3">No systems picked yet — start typing above.</p>
+					</div>
+					<div class="glass-panel p-4">
+						<div class="mb-3"><div class="text-xs font-semibold text-gray-200">Time range</div><div class="text-fine text-gray-600 mt-0.5">EVE time (UTC). Up to a 36 hour window.</div></div>
+						<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+							<div>
+								<label class="text-fine text-gray-500 mb-1 block">Start</label>@dateTimePicker(dateTimePickerOptions{Name: "generator_start", Value: prefill.Start, Placeholder: "Pick a start"})
+							</div>
+							<div>
+								<label class="text-fine text-gray-500 mb-1 block">End</label>@dateTimePicker(dateTimePickerOptions{Name: "generator_end", Value: prefill.End, Placeholder: "Pick an end"})
+							</div>
+						</div>
+						<div data-generator-time-error hidden class="mt-2 flex items-center gap-1.5 text-xs text-red-400">
+							<span class="text-xs flex-shrink-0">
+								@icon("circle-alert")
+							</span><span data-generator-error-text></span>
+						</div>
+						<div data-generator-time-span hidden class="mt-2 text-fine text-gray-600 tabular-nums"></div>
+					</div>
+				</div>
+				<aside class="xl:sticky xl:top-4 glass-panel p-4">
+					<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-3">Before loading</div>
+					<ul class="space-y-2">
+						for i,label:=range []string{"Pick up to 5 solar systems","Set a start and end time","Keep the window under 36 hours"} {
+							<li data-generator-check={ strconv.Itoa(i) } class="flex items-start gap-2.5">
+								<span data-generator-check-icon class="text-sm mt-px flex-shrink-0 text-gray-600">
+									<span data-generator-check-empty>
+										@icon("circle")
+									</span>
+									<span data-generator-check-done hidden>
+										@icon("circle-check")
+									</span>
+								</span>
+								<div class="min-w-0"><div data-generator-check-label class="text-xs text-gray-300">{ label }</div><div data-generator-check-detail class="text-fine mt-0.5 text-amber-400/80"></div></div>
+							</li>
+						}
+					</ul>
+					<button type="button" data-generator-load disabled class="w-full mt-4 py-2.5 rounded-lg text-sm font-medium transition-colors bg-white/[0.04] text-gray-600 cursor-not-allowed">
+						<span hidden data-generator-load-spinner class="text-base animate-spin mr-2">
+							@icon("loader-2")
+						</span><span data-generator-load-label>Load Entities</span>
+					</button>
+					<div data-generator-load-error hidden role="alert" class="mt-3 text-xs text-red-400"></div>
+					<p class="text-fine text-gray-600 text-center mt-2">Everyone who shot or died in that window gets pulled in for you to sort.</p>
+				</aside>
+			</section>
+			<section data-generator-stage="2" hidden class="space-y-4">
+				if prefill.BattleID>0 {
+					<div class="rounded-lg border border-blue-500/20 bg-blue-500/[0.06] px-3 py-2.5 text-xs text-blue-300 flex items-start gap-2">
+						<span class="text-sm flex-shrink-0 mt-px">
+							@icon("pencil")
+						</span>
+						<div>Editing the sides of <a href={ idPath("battle", prefill.BattleID) } class="font-medium underline hover:text-blue-200">battle #{ strconv.FormatInt(prefill.BattleID,10) }</a>. Saving overwrites its sides — battles are correctable by anyone signed in.<span data-generator-extra-teams hidden class="block mt-1 text-amber-300"></span></div>
+					</div>
+				}
+				<div class="grid grid-cols-2 gap-3">
+					for i,side:=range []string{"a","b"} {
+						<div class={ "relative rounded-lg p-3 pl-4 overflow-hidden " + killBoolClass(i == 0, "bg-red-500/5 border border-red-500/20", "bg-blue-500/5 border border-blue-500/20") }><div class={ "absolute inset-y-0 left-0 w-[3px] " + killBoolClass(i == 0, "bg-red-500", "bg-blue-500") }></div><label for={ "generator-side-" + side } class={ "text-fine font-bold uppercase tracking-wider mb-1 block " + killBoolClass(i == 0, "text-red-400/60", "text-blue-400/60") }>Side { strconv.Itoa(i+1) } name</label><input id={ "generator-side-" + side } data-generator-side-name={ side } value={ "Team " + strconv.Itoa(i+1) } type="text" class={ "w-full px-2 py-1.5 rounded bg-white/[0.04] border border-white/[0.06] text-sm text-white focus:outline-none " + killBoolClass(i == 0, "focus:border-red-500/40", "focus:border-blue-500/40") }/></div>
+					}
+				</div>
+				<div class="glass-panel flex items-center gap-2 px-3 py-2">
+					<span class="text-sm text-gray-500 flex-shrink-0">
+						@icon("filter")
+					</span><input data-generator-entity-filter type="text" placeholder="Filter entities..." class="flex-1 min-w-0 bg-transparent text-sm text-gray-300 outline-none placeholder-gray-600"/><span data-generator-filter-count class="text-fine text-gray-600 tabular-nums flex-shrink-0">0 unassigned</span>
+				</div>
+				<div class="grid grid-cols-[48px_1fr_48px] md:grid-cols-3 gap-2 md:gap-3">
+					@generatorSideLane("a", 0)
+					<div class="glass-panel p-2 md:p-3 min-h-[300px] max-h-[600px] overflow-y-auto"><div class="text-fine font-bold uppercase tracking-wider text-gray-500 mb-3" data-generator-unassigned-heading>Unassigned (0)</div><div class="space-y-0.5" data-generator-lane="u"></div><div data-generator-unassigned-empty class="text-center py-8 text-xs text-gray-600">No entities found for this window</div></div>
+					@generatorSideLane("b", 1)
+				</div>
+				<div data-generator-preview-error hidden role="alert" class="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 rounded-lg px-4 py-2">
+					<span class="text-base mt-0.5 flex-shrink-0">
+						@icon("circle-alert")
+					</span><span data-generator-error-text class="min-w-0"></span>
+				</div>
+				<div class="sticky bottom-4 z-20 flex items-center gap-3 rounded-lg border border-white/[0.10] bg-black/80 backdrop-blur-xl p-3 shadow-2xl shadow-black/60">
+					<button type="button" data-generator-back="1" class="px-4 py-2.5 rounded-lg text-sm font-medium bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-blue-500/[0.08] transition-colors cursor-pointer flex-shrink-0">Back</button>
+					<div data-generator-assigned-status class="min-w-0 flex-1 text-fine text-amber-400/80">Both sides need at least one entity.</div>
+					<button type="button" data-generator-preview disabled class="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 bg-white/[0.04] text-gray-600 cursor-not-allowed">
+						<span data-generator-preview-spinner hidden class="text-base animate-spin mr-2">
+							@icon("loader-2")
+						</span><span data-generator-preview-label>Generate Preview</span>
+					</button>
+				</div>
+			</section>
+			<section data-generator-stage="3" hidden class="space-y-4">
+				<div data-generator-preview-content></div>
+				<div data-generator-save-error hidden role="alert" class="text-sm text-red-400 bg-red-500/10 rounded-lg px-4 py-2"></div>
+				<div class="sticky bottom-4 z-20 flex items-center gap-3 rounded-lg border border-white/[0.10] bg-black/80 backdrop-blur-xl p-3 shadow-2xl shadow-black/60">
+					<button type="button" data-generator-back="2" class="px-4 py-2.5 rounded-lg text-sm font-medium bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-blue-500/[0.08] transition-colors cursor-pointer flex-shrink-0">Back to sides</button>
+					<div class="min-w-0 flex-1 text-fine text-gray-600">Saving publishes this as a custom battle report at its own URL.</div>
+					<button type="button" data-generator-save class="px-5 py-2.5 rounded-lg text-sm font-medium bg-green-500 text-white hover:bg-green-600 transition-colors cursor-pointer flex-shrink-0 disabled:opacity-60">
+						<span data-generator-save-spinner hidden class="text-base animate-spin mr-2">
+							@icon("loader-2")
+						</span><span data-generator-save-label>{ killBoolClass(prefill.BattleID>0,"Update Battle #"+strconv.FormatInt(prefill.BattleID,10),"Save Battle Report") }</span>
+					</button>
+				</div>
+			</section>
+		</div>
+		@generatorEntityTemplates()
+	</div>
+}
+
+templ generatorSideLane(side string, index int) {
+	<div class={ "relative rounded-lg bg-white/[0.04] border p-1.5 md:p-3 md:pl-4 min-h-[300px] max-h-[600px] overflow-y-auto " + killBoolClass(index == 0, "border-red-500/20", "border-blue-500/20") }>
+		<div class={ "hidden md:block absolute inset-y-0 left-0 w-[3px] " + killBoolClass(index == 0, "bg-red-500", "bg-blue-500") }></div>
+		<div data-generator-side-heading={ side } class={ "hidden md:block text-fine font-bold uppercase tracking-wider mb-3 " + killBoolClass(index == 0, "text-red-400", "text-blue-400") }>{ "Team "+strconv.Itoa(index+1) } (0)</div>
+		<div data-generator-side-count={ side } class={ "md:hidden text-fine font-bold text-center mb-2 " + killBoolClass(index == 0, "text-red-400", "text-blue-400") }>0</div>
+		<div class="space-y-0.5" data-generator-lane={ side }></div>
+		<div data-generator-side-empty={ side } class="text-center py-8 text-xs text-gray-600">
+			<span class={ "text-base mb-1 " + killBoolClass(index == 0, "text-red-500/30", "text-blue-500/30") }>
+				@icon(killBoolClass(index == 0, "arrow-left", "arrow-right"))
+			</span>
+			<br/>
+			<span class="hidden md:inline">Use the arrows to add entities</span>
+		</div>
+	</div>
+}
+
+templ generatorEntityTemplates() {
+	<template data-generator-system-template>
+		@generatorSystemChip(generatorSystem{})
+	</template>
+	<template data-generator-assigned-template>
+		<div class="group flex items-center gap-2 px-1 md:px-2 py-1.5 rounded hover:bg-blue-500/[0.04] transition-colors">
+			<img data-generator-entity-image data-generator-move="u" class="w-7 h-7 md:w-5 md:h-5 rounded flex-shrink-0 bg-gray-900 cursor-pointer" loading="lazy" alt="" width="28" height="28" tabindex="0" role="button"/>
+			<div class="hidden md:block flex-1 min-w-0"><div data-generator-entity-name class="text-xs text-gray-200 truncate"></div><div data-generator-entity-detail class="text-fine text-gray-600 capitalize"></div></div>
+			<button type="button" data-generator-move="u" class="hidden md:block opacity-0 group-hover:opacity-100 px-1 py-0.5 text-fine rounded bg-white/[0.06] text-gray-400 hover:bg-blue-500/[0.15] transition-opacity cursor-pointer">
+				<span class="text-fine">
+					@icon("x")
+				</span>
+			</button>
+		</div>
+	</template>
+	<template data-generator-unassigned-template>
+		<div class="group relative flex items-center gap-1.5 px-1 py-1.5 rounded hover:bg-blue-500/[0.06] transition-colors">
+			<button type="button" data-generator-move="a" class="hidden md:flex flex-shrink-0 w-6 h-6 items-center justify-center rounded bg-red-500/10 text-red-400/40 hover:bg-red-500/20 hover:text-red-400 transition-colors cursor-pointer">
+				<span class="text-xs">
+					@icon("arrow-left")
+				</span>
+			</button><img data-generator-entity-image class="w-8 h-8 md:w-5 md:h-5 rounded flex-shrink-0 bg-gray-900" loading="lazy" width="32" height="32" alt=""/>
+			<div class="flex-1 min-w-0"><div data-generator-entity-name class="text-xs text-gray-300 truncate"></div><div data-generator-entity-detail class="text-fine text-gray-600 capitalize truncate"></div></div>
+			<button type="button" data-generator-move="b" class="hidden md:flex flex-shrink-0 w-6 h-6 items-center justify-center rounded bg-blue-500/10 text-blue-400/40 hover:bg-blue-500/20 hover:text-blue-400 transition-colors cursor-pointer">
+				<span class="text-xs">
+					@icon("arrow-right")
+				</span>
+			</button>
+			<div class="md:hidden flex gap-1 flex-shrink-0">
+				<button type="button" data-generator-move="a" class="w-8 h-8 flex items-center justify-center rounded bg-red-500/20 text-red-400 active:bg-red-500/40 transition-colors">
+					<span class="text-sm">
+						@icon("arrow-left")
+					</span>
+				</button>
+				<button type="button" data-generator-move="b" class="w-8 h-8 flex items-center justify-center rounded bg-blue-500/20 text-blue-400 active:bg-blue-500/40 transition-colors">
+					<span class="text-sm">
+						@icon("arrow-right")
+					</span>
+				</button>
+			</div>
+		</div>
+	</template>
+}
+
+templ generatorSystemChip(system generatorSystem) {
+	<div data-generator-system-id={ strconv.FormatInt(system.ID, 10) } class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-amber-500/30 bg-amber-500/10 text-xs text-amber-400 font-medium">
+		<img data-generator-system-image src={ fmt.Sprintf("/images/systems/%d?size=32", system.ID) } width="16" height="16" class="w-4 h-4 rounded" loading="lazy" alt={ system.Name }/><span data-generator-system-name>{ system.Name }</span>
+		<button type="button" data-generator-remove-system aria-label={ "Remove " + system.Name } class="ml-0.5 opacity-60 hover:opacity-100 cursor-pointer">
+			<span class="text-fine">
+				@icon("x")
+			</span>
+		</button>
+	</div>
+}
+
+templ battleGeneratorPreview(data battleDetailData, raw json.RawMessage) {
+	<div class="battle-detail space-y-4" data-generator-preview-loaded>
+		@templ.JSONScript("battle-generator-preview-data", raw).WithType("application/json")
+		<div class="glass-panel p-5">
+			<div class="flex items-center gap-3 mb-4 pb-3 border-b border-white/[0.06]"><img src={ fmt.Sprintf("/images/systems/%d?size=64", data.SystemID) } alt="" class="w-10 h-10 rounded-lg flex-shrink-0 bg-gray-900" width="40" height="40" loading="eager"/><div class="min-w-0"><span class={ "text-lg font-bold text-white " + killBoolClass(data.RegionID == 10000070, "font-triglavian", "") }>{ data.SystemName }</span><span class={ "ml-2 text-sm text-gray-500 " + killBoolClass(data.RegionID == 10000070, "font-triglavian", "") }>{ data.RegionName }</span></div><span class="ml-auto px-2 py-0.5 text-fine rounded bg-purple-500/20 text-purple-400 font-medium flex-shrink-0">Preview</span></div>
+			<div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+				for _,tile:=range []struct{Label,Icon,Value,Color string}{{"Ships Lost","crosshair",warNumber(data.KillCount),"text-white"},{"ISK Destroyed","coins",warISK(data.Destroyed),"text-yellow-400"},{"Duration","clock",strconv.Itoa(data.Minutes)+"m","text-white"},{"Characters","user-round",warNumber(data.Characters),"text-blue-400"},{"Corporations","building-2",warNumber(data.Corporations),"text-purple-400"},{"Alliances","shield",warNumber(data.Alliances),"text-indigo-400"},{"Damage","zap",warNumber(data.Damage),"text-gray-300"}} {
+					<div class="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-center">
+						<div class={ "text-base font-bold tabular-nums " + tile.Color }>{ tile.Value }</div>
+						<div class="flex items-center justify-center gap-1.5 text-fine text-gray-500 uppercase tracking-wider mt-0.5">
+							<span class="text-fine text-gray-600">
+								@icon(tile.Icon)
+							</span>{ tile.Label }
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+		<div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-center">
+			for i,team:=range data.Teams {
+				if i==1 {
+					<div class="flex flex-col items-center gap-1 px-4"><div class="text-xl font-bold text-gray-600">VS</div></div>
+				}
+				<div class={ "relative rounded-lg bg-white/[0.04] border p-4 pl-5 overflow-hidden " + killBoolClass(i == 0, "border-red-500/20", "border-blue-500/20") }><div class={ "absolute inset-y-0 left-0 w-[3px] " + killBoolClass(i == 0, "bg-red-500", "bg-blue-500") }></div><div class="text-sm font-bold text-white mb-2">{ generatorTeamName(team,i) }</div><div class="grid grid-cols-2 gap-2 text-xs"><div><span class="text-green-400 tabular-nums font-medium">{ warNumber(team.Kills) }</span><div class="text-gray-500">kills</div></div><div><span class="text-red-400 tabular-nums font-medium">{ warNumber(team.Losses) }</span><div class="text-gray-500">losses</div></div><div><span class="text-green-400 tabular-nums font-medium">{ warISK(team.Destroyed) }</span><div class="text-gray-500">destroyed</div></div><div><span class="text-red-400 tabular-nums font-medium">{ warISK(team.Lost) }</span><div class="text-gray-500">lost</div></div></div></div>
+			}
+		</div>
+		@battleSummary(data)
+	</div>
+}

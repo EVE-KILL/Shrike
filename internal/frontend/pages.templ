@@ -1,0 +1,23 @@
+package frontend
+
+templ home() {
+	@pageHeader("house", "EVE-KILL", "The site is being rebuilt. Check back soon.")
+}
+
+templ pageHeader(symbol, title, description string) {
+	<header class="page-header hero-surface glass-panel">
+		<span class="page-header-icon">
+			@icon(symbol)
+		</span>
+		<div>
+			<h1>{ title }</h1>
+			<p>{ description }</p>{ children... }
+		</div>
+	</header>
+}
+
+templ errorPage(title, description string) {
+	@pageHeader("search", title, description) {
+		<a class="return-link" href="/">Return home</a>
+	}
+}

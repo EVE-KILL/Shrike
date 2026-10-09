@@ -1,0 +1,128 @@
+package frontend
+
+templ infoPage(title, subtitle, symbol string) {
+	<div class="info-page">
+		@pageHeader(symbol, title, subtitle)
+		{ children... }
+	</div>
+}
+
+templ aboutPage() {
+	@infoPage("About", "A community-run killboard for EVE Online, going since 2007.", "info") {
+		<div class="glass-panel info-panel">
+			<div class="info-sections">
+				<section>
+					<h2>Our Mission</h2>
+					<p>Our mission is to deliver the most accurate and timely killboard experience for the EVE Online community. We're dedicated to providing comprehensive analytics that illuminate the dynamic landscape of New Eden, offering valuable insights into both PVP and PVE activities across the universe.</p>
+				</section>
+				<section>
+					<h2>History</h2>
+					<p>Founded in 2007 by Ralle030583, Beansman, and Karbowiak, EVE-KILL established itself as a cornerstone of the EVE Online community. Though later rebranded as zKillboard, evolving circumstances led to the end of our collaborative development. Now, EVE-KILL returns with renewed purpose, building on our rich legacy while embracing modern technologies and community needs.</p>
+				</section>
+				<section>
+					<h2>Contact Us</h2>
+					<p>
+						We value your feedback and are here to help. For questions, suggestions, or technical support,
+						join our active <a href="https://discord.gg/Bz5gMHd" target="_blank" rel="noopener noreferrer">Discord community</a>
+						where our team regularly engages with users. Alternatively, you can submit issues or feature requests
+						directly through our <a href="https://github.com/EVE-KILL" target="_blank" rel="noopener noreferrer">GitHub repository</a>
+						<span>{ "for more technical matters." }</span>
+					</p>
+				</section>
+				<div class="info-actions">
+					<a class="info-action info-action-discord" href="https://discord.gg/Bz5gMHd" target="_blank" rel="noopener noreferrer">
+						@icon("message-square")
+						<span>Join our Discord</span>
+					</a>
+					<a class="info-action info-action-github" href="https://github.com/EVE-KILL" target="_blank" rel="noopener noreferrer">
+						@icon("github")
+						<span>GitHub Repository</span>
+					</a>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ donatePage() {
+	@infoPage("Support the Project", "EVE-KILL runs on donated ISK and a few servers. Here is where it goes.", "heart") {
+		<div class="glass-panel info-panel donate-page">
+			<p class="donate-intro">If you value our service and wish to contribute to its continued growth and improvement, please consider supporting our development efforts through one of these options.</p>
+			<div class="donate-note"><p>We firmly believe in providing our services without barriers — using EVE-KILL will always remain completely free. Donations are entirely voluntary expressions of support, and we maintain our commitment to equal access and functionality for all users regardless of contribution status.</p></div>
+			<div class="donate-options">
+				<div class="donate-option">
+					@icon("shopping-cart")
+					<h2>Game Time &amp; PLEX</h2>
+					<p>Support our development while enhancing your EVE Online experience by purchasing game time or PLEX through our official MarkeeDragon affiliate link. Each transaction directly contributes to our ongoing development efforts without any additional cost to you.</p>
+					<a href="https://store.markeedragon.com/affiliate.php?id=1104&amp;redirect=index.php?cat=4" target="_blank" rel="noopener noreferrer">Go to MarkeeDragon — use code <strong>evekill</strong> { "for 3% off" }</a>
+				</div>
+				<div class="donate-option">
+					<svg class="icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 9h12v5a6 6 0 0 1-12 0zM16 10h2a3 3 0 0 1 0 6h-2M2 21h17"></path><path d="M8 2v3m4-3v3"></path></g></svg>
+					<h2>Buy Us a Coffee</h2>
+					<p>Help sustain our infrastructure and fuel future innovations with a direct contribution through Ko-Fi. Choose between one-time donations or recurring support — every contribution, regardless of size, makes a meaningful difference. Donors also get a role on Discord.</p>
+					<a class="donate-kofi" href="https://ko-fi.com/evekill" target="_blank" rel="noopener noreferrer">Tip a Coffee (Ko-fi)</a>
+				</div>
+			</div>
+			<p class="donate-thanks">{ "We extend our sincere gratitude to everyone who supports EVE-KILL. Your contributions directly enable us to enhance our services, maintain reliable infrastructure, and develop new features for the entire EVE Online community. Your generosity makes a tangible difference while keeping our platform accessible to all." }</p>
+		</div>
+	}
+}
+
+templ faqItem(symbol, title string) {
+	<details class="faq-item" name="faq">
+		<summary>
+			<span class="faq-question">
+				@icon(symbol)
+				<span>{ title }</span>
+			</span>
+			@icon("chevron-down")
+		</summary>
+		<div class="faq-answer">
+			{ children... }
+		</div>
+	</details>
+}
+
+templ faqPage() {
+	@infoPage("Frequently Asked Questions", "How killmails get here, where prices come from, and what the API will and won't do.", "circle-help") {
+		<div class="glass-panel faq-panel">
+			@faqItem("file-text", "What is a killmail?") {
+				<p>A killmail is the combat record EVE Online creates when a ship or structure is destroyed. It identifies the victim, participating attackers, damage dealt, location, ship, and destroyed or dropped items.</p>
+			}
+			@faqItem("message-square", "How are kills processed?") {
+				<p>Killmails enter a queue, are validated and enriched with names, ship information, historical prices, categories, combat points, and related statistics. New kills appear on the site and API as soon as processing finishes. Delays can still occur during EVE downtime, unusually heavy traffic, or upstream outages.</p>
+			}
+			@faqItem("swords", "How are combat points awarded?") {
+				<p>Each killmail has one combat-point pool. Ten percent is reserved for participation and divided equally among the player characters on the kill; the remaining ninety percent is divided according to damage dealt.</p>
+				<p>This gives tackle, logistics, and other low-damage participants some credit without making their contribution equal to the pilots dealing most of the damage. NPC attackers do not receive points. Integer rounding is balanced so the complete point pool is always awarded.</p>
+			}
+			@faqItem("trophy", "How do rankings and EVE-KILL Rating work?") {
+				<p>Rankings total combat points within the selected period. The available views cover the last hour, 7, 14, 30, 90, 180, and 365 days, plus all time. Characters, corporations, alliances, ships, systems, and regions are ranked separately.</p>
+				<p>Characters also earn achievement points. A corporation receives the combined achievement points of its current members, and an alliance receives the combined total of its current member characters. Achievement standing can add up to 3/7 of combat points, producing a 70/30 combat-to-achievement weighting at the top of the achievement distribution.</p>
+				<p>EVE-KILL Rating is open-ended: it is not capped at 1,000. Ships, systems, and regions use combat points directly because achievements belong to pilots and their organisations. The hourly view is calculated live; longer periods are generated from the statistics rollups.</p>
+				<p>Explore the <a href="/stats">PvP statistics and leaderboards</a> to compare pilots, corporations and alliances.</p>
+			}
+			@faqItem("wrench", "Where can I find ship fittings?") {
+				<p>Browse <a href="/fits">EVE Online ship fittings</a> recovered from killmails, alliance doctrines and community-shared builds. Use <a href="/fits/search">fitting search</a> to find examples by hull and fitted modules, or <a href="/fits/create">create a fit</a> with the fitting tool.</p>
+			}
+			@faqItem("wallet-cards", "How are item prices calculated?") {
+				<p>EVE-KILL stores daily market prices from The Forge, home of Jita. A killmail is valued using the price snapshot for the date of the loss, so an older kill keeps its historical valuation instead of changing with today's market. Items without usable market data may use an available fallback value.</p>
+			}
+			@faqItem("plug", "Do you offer an API?") {
+				<p>Yes. The public, read-only API powers the website and provides killmails, statistics, rankings, universe data, and other features. Browse the current endpoints, parameters, examples, and response schemas in the <a href="/docs">API documentation</a>.</p>
+			}
+			@faqItem("heart", "Can I support EVE-KILL?") {
+				<p>Yes. The optional <a href="/donate">Support page</a> lists the available ways to help with infrastructure and development costs. The public killboard remains available without a contribution.</p>
+			}
+			@faqItem("shield", "Do you run ads or track visitors?") {
+				<p>EVE-KILL does not use an advertising network or sell visitor data. We use limited first-party analytics to understand site usage and diagnose problems.</p>
+			}
+			@faqItem("users", "Do I need an account?") {
+				<p>No account is required to browse killmails, categories, rankings, battles, campaigns, or the public API. EVE SSO is used for account features such as comments and creating or managing content. The login flow shows the permissions being requested.</p>
+			}
+			@faqItem("message-square", "How can I contact EVE-KILL?") {
+				<p>Join the <a href="https://discord.gg/Bz5gMHd" target="_blank" rel="noopener noreferrer">EVE-KILL Discord</a>{ " for discussion and support. Bugs and technical feature requests can also be reported through the " }<a href="https://github.com/EVE-KILL" target="_blank" rel="noopener noreferrer">EVE-KILL GitHub organisation</a>.</p>
+			}
+		</div>
+	}
+}

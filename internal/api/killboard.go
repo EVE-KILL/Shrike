@@ -258,33 +258,33 @@ func loadNumberedKilllist(
 	rows := make([]map[string]any, 0, limit)
 	remaining := int64(limit)
 	cumulative := int64(0)
-	for _, day := range rollup {
-		if remaining == 0 {
-			break
-		}
-		next := cumulative + day.Count
-		if next <= first {
+	for index := 0; index < len(rollup) && remaining > 0; {
+		// Sparse categories can span dozens of days. Read a bounded batch in
+		// one round trip, retaining each day's rollup offset and count cap.
+		days := make([]killlistDayRequest, 0)
+		expected := int64(0)
+		for index < len(rollup) && expected < remaining {
+			day := rollup[index]
+			index++
+			next := cumulative + day.Count
+			if next > first {
+				offset := max(int64(0), first-cumulative)
+				fetch := min(remaining, day.Count-offset)
+				if fetch > 0 {
+					days = append(days, killlistDayRequest{day.Date, offset, fetch})
+					expected += fetch
+				}
+			}
 			cumulative = next
-			continue
 		}
-		offset := int64(0)
-		if first > cumulative {
-			offset = first - cumulative
-		}
-		fetch := min(remaining, day.Count-offset)
-		if fetch <= 0 {
-			cumulative = next
-			continue
-		}
-		chunk, err := loadKilllistDay(
-			ctx, db, predicate, day.Date, offset, fetch,
-		)
+		chunk, err := loadKilllistDays(ctx, db, kind, predicate, days, remaining)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		rows = append(rows, chunk...)
 		remaining -= int64(len(chunk))
-		cumulative = next
+		// A stale rollup may overcount a day. Continue with older days until
+		// the actual page is full, just as the individual-day reader did.
 	}
 	if err := enrichUniverseKilllist(ctx, db, rows); err != nil {
 		return legacyPayload{}, err
@@ -341,13 +341,89 @@ func loadKilllistDay(
 	if predicate != "" && predicate != "TRUE" {
 		where = append(where, predicate)
 	}
+	// Pick the page before display joins and final-blow lookups. Rare victim
+	// categories can otherwise enrich an entire day's candidates before LIMIT.
 	return queryMaps(ctx, db,
-		campaignKilllistSelect+
-			" WHERE "+strings.Join(where, " AND ")+
-			` ORDER BY k.killmail_time DESC, k.killmail_id DESC
-			  LIMIT $3 OFFSET $4`,
+		`WITH page_kills AS MATERIALIZED (
+			SELECT k.* FROM killmails k WHERE `+strings.Join(where, " AND ")+`
+			ORDER BY k.killmail_time DESC, k.killmail_id DESC
+			LIMIT $3 OFFSET $4
+		)`+strings.Replace(campaignKilllistSelect, "FROM killmails k", "FROM page_kills k", 1)+
+			` ORDER BY k.killmail_time DESC, k.killmail_id DESC`,
 		start, start.AddDate(0, 0, 1), limit, offset,
 	)
+}
+
+type killlistDayRequest struct {
+	Start         time.Time
+	Offset, Limit int64
+}
+
+func loadKilllistDays(
+	ctx context.Context,
+	db Database,
+	kind, predicate string,
+	days []killlistDayRequest,
+	limit int64,
+) ([]map[string]any, error) {
+	if len(days) == 0 {
+		return nil, nil
+	}
+	if len(days) == 1 {
+		day := days[0]
+		return loadKilllistDay(ctx, db, predicate, day.Start, day.Offset, min(limit, day.Limit))
+	}
+	starts, ends := make([]time.Time, len(days)), make([]time.Time, len(days))
+	limits, offsets := make([]int64, len(days)), make([]int64, len(days))
+	for i, day := range days {
+		starts[i], ends[i] = day.Start, day.Start.AddDate(0, 0, 1)
+		limits[i], offsets[i] = day.Limit, day.Offset
+	}
+	where := "k.killmail_time >= requested.start_time AND k.killmail_time < requested.end_time"
+	if predicate != "" && predicate != "TRUE" {
+		where += " AND " + predicate
+	}
+	// Each lateral read keeps its day range, offset and limit. Apply the
+	// overall page limit before any display or final-blow joins, including
+	// when earlier days contain fewer rows than their rollups advertise.
+	selection := `WITH page_kills AS MATERIALIZED (
+		SELECT daily_kills.*
+		FROM unnest($1::timestamptz[], $2::timestamptz[], $3::bigint[], $4::bigint[])
+			AS requested(start_time, end_time, day_limit, day_offset)
+		CROSS JOIN LATERAL (
+			SELECT k.* FROM killmails k WHERE ` + where + `
+			ORDER BY k.killmail_time DESC, k.killmail_id DESC
+			LIMIT requested.day_limit OFFSET requested.day_offset
+		) daily_kills
+		ORDER BY daily_kills.killmail_time DESC, daily_kills.killmail_id DESC
+		LIMIT $5
+	)`
+	if kind == "5b-10b" || kind == "10b-100b" {
+		// With parameterized day bounds, these value bands can scan hundreds
+		// of thousands of historical value-index entries for every day.
+		// Select narrow date candidates first, then fetch full rows only for
+		// the chosen page. Rarer bands retain their cheaper value-index path.
+		selection = `WITH selected_kills AS MATERIALIZED (
+			SELECT daily_kills.*
+			FROM unnest($1::timestamptz[], $2::timestamptz[], $3::bigint[], $4::bigint[])
+				AS requested(start_time, end_time, day_limit, day_offset)
+			CROSS JOIN LATERAL (
+				WITH day_candidates AS MATERIALIZED (
+					SELECT killmail_id, killmail_time, total_value FROM killmails
+					WHERE killmail_time >= requested.start_time AND killmail_time < requested.end_time
+				)
+				SELECT k.killmail_id, k.killmail_time FROM day_candidates k WHERE ` + predicate + `
+				ORDER BY k.killmail_time DESC, k.killmail_id DESC
+				LIMIT requested.day_limit OFFSET requested.day_offset
+			) daily_kills
+			ORDER BY daily_kills.killmail_time DESC, daily_kills.killmail_id DESC
+			LIMIT $5
+		), page_kills AS MATERIALIZED (
+			SELECT k.* FROM selected_kills selected JOIN killmails k USING (killmail_id)
+		)`
+	}
+	return queryMaps(ctx, db, selection+strings.Replace(campaignKilllistSelect, "FROM killmails k", "FROM page_kills k", 1)+
+		` ORDER BY k.killmail_time DESC, k.killmail_id DESC`, starts, ends, limits, offsets, limit)
 }
 
 func loadBoundedKilllist(
@@ -722,11 +798,30 @@ func mostValuableKillsHandler(opts Options) legacyHandler {
 		}
 		limit := boundedQueryInt(req, "limit", 7, 1, 20)
 		days := boundedQueryInt(req, "days", 7, 1, 365)
-		predicate, known := killtype.Predicates()[kind]
-		if !known {
-			predicate = "TRUE"
+		rows, err := loadMostValuableKills(ctx, opts.DB, kind, days, limit)
+		if err != nil {
+			return legacyPayload{}, err
 		}
-		rows, err := queryMaps(ctx, opts.DB, `
+		return jsonPayload(map[string]any{
+			"entries": nonNilUniverseRows(rows),
+		}), nil
+	}
+}
+
+func loadMostValuableKills(ctx context.Context, db Database, kind string, days, limit int) ([]map[string]any, error) {
+	predicate, known := killtype.Predicates()[kind]
+	if !known {
+		predicate = "TRUE"
+	}
+	// Value ranges can stop early in the covering value index. Sparse ship/
+	// location categories must filter recent matches first: ordering them here
+	// can make PostgreSQL scan the whole historical value index for eight rows.
+	selectionOrder := ""
+	switch kind {
+	case "latest", "big", "5b", "10b", "under-1b", "1b-5b", "5b-10b", "10b-100b", "100b-1t", "1t-plus":
+		selectionOrder = " ORDER BY k.total_value DESC, k.killmail_id DESC LIMIT $2"
+	}
+	rows, err := queryMaps(ctx, db, `
 			WITH recent_kills AS MATERIALIZED (
 				SELECT k.killmail_id, k.killmail_hash,
 				       k.victim_ship_type_id, k.total_value,
@@ -734,6 +829,11 @@ func mostValuableKillsHandler(opts Options) legacyHandler {
 				       k.victim_alliance_id
 				FROM killmails k
 				WHERE k.killmail_time >= $1 AND `+predicate+`
+				  AND EXISTS (SELECT 1 FROM inv_types valid_type WHERE valid_type.type_id = k.victim_ship_type_id)
+				`+selectionOrder+`
+			), ranked_kills AS MATERIALIZED (
+				SELECT * FROM recent_kills
+				ORDER BY total_value DESC, killmail_id DESC LIMIT $2
 			)
 			SELECT recent.killmail_id, recent.killmail_hash,
 			       recent.victim_ship_type_id AS ship_type_id,
@@ -742,7 +842,7 @@ func mostValuableKillsHandler(opts Options) legacyHandler {
 			       character.name AS victim_character_name,
 			       corporation.name AS victim_corporation_name,
 			       alliance.name AS victim_alliance_name
-			FROM recent_kills recent
+			FROM ranked_kills recent
 			JOIN inv_types type
 			  ON type.type_id = recent.victim_ship_type_id
 			LEFT JOIN characters character
@@ -751,23 +851,19 @@ func mostValuableKillsHandler(opts Options) legacyHandler {
 			  ON corporation.corporation_id = recent.victim_corporation_id
 			LEFT JOIN alliances alliance
 			  ON alliance.alliance_id = recent.victim_alliance_id
-			ORDER BY recent.total_value DESC
-			LIMIT $2`,
-			time.Now().UTC().AddDate(0, 0, -days), limit,
-		)
-		if err != nil {
-			return legacyPayload{}, err
-		}
-		for _, row := range rows {
-			if stringOrEmpty(row["ship_name"]) == "" {
-				row["ship_name"] = "Unknown"
-			}
-			row["total_value"] = float64OrZero(row["total_value"])
-		}
-		return jsonPayload(map[string]any{
-			"entries": nonNilUniverseRows(rows),
-		}), nil
+			ORDER BY recent.total_value DESC, recent.killmail_id DESC`,
+		time.Now().UTC().AddDate(0, 0, -days), limit,
+	)
+	if err != nil {
+		return nil, err
 	}
+	for _, row := range rows {
+		if stringOrEmpty(row["ship_name"]) == "" {
+			row["ship_name"] = "Unknown"
+		}
+		row["total_value"] = float64OrZero(row["total_value"])
+	}
+	return rows, nil
 }
 
 func sortedInt64Set(values map[int64]struct{}) []int64 {

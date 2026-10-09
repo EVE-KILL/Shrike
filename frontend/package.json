@@ -1,0 +1,36 @@
+{
+  "name": "@evekill/browser-assets",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsx scripts/build-assets.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "generate:api": "npm --prefix tools/api-codegen ci --ignore-scripts && npm --prefix tools/api-codegen run generate",
+    "dev": "tsx scripts/watch-assets.ts"
+  },
+  "dependencies": {
+    "@evekill/dogma": "file:dogma",
+    "@hotwired/stimulus": "3.2.2",
+    "d3-contour": "4.0.2",
+    "d3-delaunay": "6.0.4",
+    "flatbuffers": "25.2.10"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "1.2.129",
+    "@iconify/utils": "3.1.0",
+    "@tailwindcss/node": "4.3.3",
+    "@tailwindcss/oxide": "4.3.3",
+    "@types/d3-contour": "3.0.6",
+    "@types/d3-delaunay": "6.0.4",
+    "@types/node": "24.19.1",
+    "esbuild": "0.28.2",
+    "happy-dom": "20.14.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}

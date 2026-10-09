@@ -1,0 +1,104 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ warIntelContent(data api.WarIntelData) {
+	<div class="war-intel-content">
+		<section class="glass-panel war-intel-summary">
+			@warIntelMetric("Kills", warNumber(data.Summary.Kills), "")
+			@warIntelMetric("ISK Destroyed", warISK(data.Summary.ISKDestroyed), "green")
+			@warIntelMetric("Systems", warNumber(data.Summary.Systems), "")
+			@warIntelMetric("Constellations", warNumber(data.Summary.Constellations), "")
+			@warIntelMetric("Regions", warNumber(data.Summary.Regions), "")
+		</section>
+		if len(data.SecurityBreakdown)>0 {
+			<section class="glass-panel war-intel-security">
+				<h2>Fighting by Security</h2>
+				<div>
+					for _,entry:=range data.SecurityBreakdown {
+						<article><span class={ warSecurityClass(entry.SecClass) }>{ warSecurityLabel(entry.SecClass) }</span><strong>{ warNumber(entry.Kills) } kills</strong><small>{ warISK(entry.ISKDestroyed) }</small></article>
+					}
+				</div>
+			</section>
+		}
+		<div class="war-intel-panels">
+			<section class="glass-panel war-intel-panel">
+				<h2>Top Systems <span>({ strconv.Itoa(len(data.TopSystems)) })</span></h2>
+				<div>
+					for index,entry:=range data.TopSystems {
+						<a href={ idPath("system", entry.SystemID) }><small>{ strconv.Itoa(index+1) }</small><span><strong><em class={ securityClass(entry.Security) }>{ warSystemSecurity(entry.Security) }</em> { entry.SystemName }</strong><sub>{ entry.RegionName }</sub></span><b>{ warNumber(entry.Kills) }</b></a>
+					}
+					if len(data.TopSystems)==0 {
+						<p>No data</p>
+					}
+				</div>
+			</section>
+			<section class="glass-panel war-intel-panel">
+				<h2>Top Constellations <span>({ strconv.Itoa(len(data.TopConstellations)) })</span></h2>
+				<div>
+					for index,entry:=range data.TopConstellations {
+						<div><small>{ strconv.Itoa(index+1) }</small><span><strong>{ entry.ConstellationName }</strong><sub>{ entry.RegionName }</sub></span><b>{ warNumber(entry.Kills) }</b></div>
+					}
+					if len(data.TopConstellations)==0 {
+						<p>No data</p>
+					}
+				</div>
+			</section>
+			<section class="glass-panel war-intel-panel">
+				<h2>Top Regions <span>({ strconv.Itoa(len(data.TopRegions)) })</span></h2>
+				<div>
+					for index,entry:=range data.TopRegions {
+						<a href={ idPath("region", entry.RegionID) }><small>{ strconv.Itoa(index+1) }</small><span><strong>{ entry.RegionName }</strong><sub>{ warISK(entry.ISKDestroyed) }</sub></span><b>{ warNumber(entry.Kills) }</b></a>
+					}
+					if len(data.TopRegions)==0 {
+						<p>No data</p>
+					}
+				</div>
+			</section>
+		</div>
+		<div class="war-intel-panels">
+			@warIntelShips("Ships Destroyed", data.ShipsDestroyed, "destroyed")
+			@warIntelShips("Ships Used by Attackers", data.ShipsUsed, "used")
+			<section class="glass-panel war-intel-panel">
+				<h2 class="groups">Ship Classes Destroyed <span>({ strconv.Itoa(len(data.ShipGroupsDestroyed)) })</span></h2>
+				<div>
+					for index,entry:=range data.ShipGroupsDestroyed {
+						<div><small>{ strconv.Itoa(index+1) }</small><span><a href={ idPath("group", entry.GroupID) }><strong>{ entry.GroupName }</strong></a><sub>{ warISK(entry.ISKDestroyed) }</sub></span><b>{ warNumber(entry.Count) }</b></div>
+					}
+					if len(data.ShipGroupsDestroyed)==0 {
+						<p>No data</p>
+					}
+				</div>
+			</section>
+		</div>
+	</div>
+}
+
+templ warIntelMetric(label, value, color string) {
+	<div><strong class={ color }>{ value }</strong><span>{ label }</span></div>
+}
+
+templ warIntelShips(label string, entries []api.WarIntelShip, kind string) {
+	<section class="glass-panel war-intel-panel">
+		<h2 class={ kind }>{ label } <span>({ strconv.Itoa(len(entries)) })</span></h2>
+		<div>
+			for index,entry:=range entries {
+				<div>
+					<small>{ strconv.Itoa(index+1) }</small><img src={ killImage("item", entry.ShipTypeID) } alt="" width="20" height="20" loading="lazy"/>
+					<span>
+						<a href={ idPath("item", entry.ShipTypeID) }><strong>{ entry.ShipName }</strong></a>
+						if entry.GroupID>0 {
+							<a href={ idPath("group", entry.GroupID) }><sub>{ entry.GroupName }</sub></a>
+						}
+					</span><b>{ warNumber(entry.Count) }</b>
+				</div>
+			}
+			if len(entries)==0 {
+				<p>No data</p>
+			}
+		</div>
+	</section>
+}

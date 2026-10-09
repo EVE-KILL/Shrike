@@ -1,0 +1,21 @@
+<div class="mcp-page" data-controller="mcp" data-action="click->mcp#click input->mcp#filter toggle->mcp#toggle:capture pagehide@window->mcp#hide pageshow@window->mcp#show"><link rel="stylesheet" href="/assets/4c0875553dce7755/mcp.css"><header class="page-header hero-surface glass-panel mcp-header"><span class="page-header-icon"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><use href="/assets/4c0875553dce7755/icons.svg#plug"></use></svg></span><div class="mcp-header-main"><p class="eyebrow">Model Context Protocol</p><h1>MCP Server</h1><p>Plug any MCP-compatible AI client (Claude, ChatGPT's MCP integrations, custom agents) into EVE-KILL. 0 purpose-built tools cover killmail lookup, character intel, corp/alliance analytics, battle reports, Memgraph-backed relationship graphs, and route danger assessment. No API key. No auth. JSON-RPC over streamable HTTP.</p></div><div class="mcp-header-meta"><span>0 tools</span><a href="https://eve-kill.com/api" target="_blank" rel="noopener">https://eve-kill.com/api</a></div></header><section class="glass-panel mcp-connect"><h2><span aria-hidden="true"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><use href="/assets/4c0875553dce7755/icons.svg#plug"></use></svg></span> Connect an AI client</h2><p>MCP clients that speak <code>streamable-HTTP</code> can add EVE-KILL as a server. Endpoint: <code>https://eve-kill.com/api/mcp</code> (POST JSON-RPC, optional SSE on GET). Rate limit: 20 req/s per IP.</p><div class="mcp-config-grid"><div><div class="mcp-config-heading"><span>Claude Code / ChatGPT / native HTTP clients</span><button type="button" data-copy="http">Copy</button></div><pre id="mcp-http-config">{
+  &#34;mcpServers&#34;: {
+    &#34;evekill&#34;: {
+      &#34;type&#34;: &#34;http&#34;,
+      &#34;url&#34;: &#34;https://eve-kill.com/api/mcp&#34;
+    }
+  }
+}</pre><p>Or from the CLI: <code>claude mcp add --scope user --transport http evekill https://eve-kill.com/api/mcp</code></p></div><div><div class="mcp-config-heading"><span>Claude Desktop (via mcp-remote)</span><button type="button" data-copy="desktop">Copy</button></div><pre id="mcp-desktop-config">{
+  &#34;mcpServers&#34;: {
+    &#34;evekill&#34;: {
+      &#34;command&#34;: &#34;npx&#34;,
+      &#34;args&#34;: [
+        &#34;-y&#34;,
+        &#34;mcp-remote&#34;,
+        &#34;https://eve-kill.com/api/mcp&#34;
+      ]
+    }
+  }
+}</pre><p>Desktop uses the <code>mcp-remote</code> adapter to connect over HTTP. Edit the Desktop config file, then restart it.</p></div></div><div><div class="mcp-config-heading"><span>Raw cURL (sanity-check the server)</span><button type="button" data-copy="curl">Copy</button></div><pre id="mcp-curl-example">curl -s -X POST https://eve-kill.com/api/mcp \
+  -H &#39;content-type: application/json&#39; \
+  -d &#39;{&#34;jsonrpc&#34;:&#34;2.0&#34;,&#34;id&#34;:1,&#34;method&#34;:&#34;tools/call&#34;,&#34;params&#34;:{&#34;name&#34;:&#34;search&#34;,&#34;arguments&#34;:{&#34;query&#34;:&#34;Jita&#34;}}}&#39;</pre></div><footer><span>Building an agent? Point it at <a href="/mcp.txt">/mcp.txt</a> — a machine-readable usage guide tailored for AI models.</span><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP spec ↗</a></footer></section><div class="glass-panel mcp-error"><strong>Failed to load tool list</strong><p>Fixture catalog unavailable</p></div><script type="module" src="/assets/4c0875553dce7755/mcp.js"></script></div>

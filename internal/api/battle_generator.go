@@ -267,170 +267,175 @@ func battleGeneratorPreviewHandler(opts Options) bodyHandler[conflictBattleGener
 		ctx context.Context, req *legacyRequest, body *conflictBattleGeneratorPreview,
 	) (legacyPayload, error) {
 		setConflictNoStore(req.Huma)
-		systemIDs, start, end, err := parseConflictGeneratorWindow(
-			body.conflictBattleGeneratorWindow,
+		return loadBattleGeneratorPreview(ctx, opts, body)
+	}
+}
+
+// Shared by the public JSON operation and the Go HTML preview fragment.
+func loadBattleGeneratorPreview(ctx context.Context, opts Options, body *conflictBattleGeneratorPreview) (legacyPayload, error) {
+	systemIDs, start, end, err := parseConflictGeneratorWindow(
+		body.conflictBattleGeneratorWindow,
+	)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	if len(body.Sides) != 2 {
+		return legacyPayload{}, apiError(
+			http.StatusBadRequest, "Exactly two sides are required",
 		)
-		if err != nil {
-			return legacyPayload{}, err
-		}
-		if len(body.Sides) != 2 {
-			return legacyPayload{}, apiError(
-				http.StatusBadRequest, "Exactly two sides are required",
-			)
-		}
-		assignment := battle.TeamAssignment{
-			CorpTeam: map[int32]int{}, CorpAlliance: map[int32]int32{},
-		}
-		allianceTeams := map[int32]int{}
-		factionTeams := map[int32]int{}
-		for index, side := range body.Sides {
-			for _, entity := range side.Entities {
-				if entity.ID <= 0 {
+	}
+	assignment := battle.TeamAssignment{
+		CorpTeam: map[int32]int{}, CorpAlliance: map[int32]int32{},
+	}
+	allianceTeams := map[int32]int{}
+	factionTeams := map[int32]int{}
+	for index, side := range body.Sides {
+		for _, entity := range side.Entities {
+			if entity.ID <= 0 {
+				return legacyPayload{}, apiError(
+					http.StatusBadRequest, "Invalid side entity",
+				)
+			}
+			switch entity.Type {
+			case "corporation":
+				if previous, exists := assignment.CorpTeam[entity.ID]; exists &&
+					previous != index {
 					return legacyPayload{}, apiError(
-						http.StatusBadRequest, "Invalid side entity",
+						http.StatusBadRequest,
+						"A corporation cannot be on both sides",
 					)
 				}
-				switch entity.Type {
-				case "corporation":
-					if previous, exists := assignment.CorpTeam[entity.ID]; exists &&
-						previous != index {
-						return legacyPayload{}, apiError(
-							http.StatusBadRequest,
-							"A corporation cannot be on both sides",
-						)
-					}
-					assignment.CorpTeam[entity.ID] = index
-				case "alliance":
-					if previous, exists := allianceTeams[entity.ID]; exists &&
-						previous != index {
-						return legacyPayload{}, apiError(
-							http.StatusBadRequest,
-							"An alliance cannot be on both sides",
-						)
-					}
-					allianceTeams[entity.ID] = index
-				case "faction":
-					if previous, exists := factionTeams[entity.ID]; exists &&
-						previous != index {
-						return legacyPayload{}, apiError(
-							http.StatusBadRequest,
-							"A faction cannot be on both sides",
-						)
-					}
-					factionTeams[entity.ID] = index
-				default:
+				assignment.CorpTeam[entity.ID] = index
+			case "alliance":
+				if previous, exists := allianceTeams[entity.ID]; exists &&
+					previous != index {
 					return legacyPayload{}, apiError(
-						http.StatusBadRequest, "Invalid side entity type",
+						http.StatusBadRequest,
+						"An alliance cannot be on both sides",
 					)
 				}
-			}
-		}
-		kills, err := loadConflictBattleKillmails(
-			ctx, opts.DB, systemIDs, start, end, false,
-		)
-		if err != nil {
-			return legacyPayload{}, err
-		}
-		if len(kills) == 0 {
-			return legacyPayload{}, apiError(
-				http.StatusNotFound,
-				"No killmails found in the specified window",
-			)
-		}
-		attackers, err := loadConflictBattleAttackers(
-			ctx, opts.DB, systemIDs, start, end,
-		)
-		if err != nil {
-			return legacyPayload{}, err
-		}
-		for _, kill := range kills {
-			if kill.VictimCorporationID != 0 && kill.VictimAllianceID != 0 {
-				assignment.CorpAlliance[kill.VictimCorporationID] =
-					kill.VictimAllianceID
-			}
-		}
-		for _, killAttackers := range attackers {
-			for _, attacker := range killAttackers {
-				if attacker.CorporationID != 0 && attacker.AllianceID != 0 {
-					assignment.CorpAlliance[attacker.CorporationID] =
-						attacker.AllianceID
+				allianceTeams[entity.ID] = index
+			case "faction":
+				if previous, exists := factionTeams[entity.ID]; exists &&
+					previous != index {
+					return legacyPayload{}, apiError(
+						http.StatusBadRequest,
+						"A faction cannot be on both sides",
+					)
 				}
+				factionTeams[entity.ID] = index
+			default:
+				return legacyPayload{}, apiError(
+					http.StatusBadRequest, "Invalid side entity type",
+				)
 			}
 		}
-		for corporationID, allianceID := range assignment.CorpAlliance {
-			if _, directlyAssigned := assignment.CorpTeam[corporationID]; directlyAssigned {
-				continue
-			}
-			if team, exists := allianceTeams[allianceID]; exists {
-				assignment.CorpTeam[corporationID] = team
-			}
-		}
-		if err := assignBattleFactionCorporations(
-			&assignment, factionTeams, kills, attackers,
-		); err != nil {
-			return legacyPayload{}, err
-		}
-		teams := battle.ComputeTeamStats(kills, attackers, assignment)
-		window := conflictBattleWindow{
-			SystemIDs: systemIDs, SystemID: systemIDs[0],
-			RegionID: kills[0].RegionID, Start: start, End: end,
-			IsCustom: true, Assignment: assignment,
-			TeamIndices: []int{0, 1},
-		}
-		names, err := loadBattleNames(
-			ctx, opts.DB, window, teams, kills, attackers,
+	}
+	kills, err := loadConflictBattleKillmails(
+		ctx, opts.DB, systemIDs, start, end, false,
+	)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	if len(kills) == 0 {
+		return legacyPayload{}, apiError(
+			http.StatusNotFound,
+			"No killmails found in the specified window",
 		)
-		if err != nil {
-			return legacyPayload{}, err
+	}
+	attackers, err := loadConflictBattleAttackers(
+		ctx, opts.DB, systemIDs, start, end,
+	)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	for _, kill := range kills {
+		if kill.VictimCorporationID != 0 && kill.VictimAllianceID != 0 {
+			assignment.CorpAlliance[kill.VictimCorporationID] =
+				kill.VictimAllianceID
 		}
-		formatted := formatBattleTeams(teams, names)
-		for index := range formatted {
-			formatted[index]["name"] = body.Sides[index].Name
-			if body.Sides[index].Name == "" {
-				formatted[index]["name"] = fmt.Sprintf("Team %d", index+1)
+	}
+	for _, killAttackers := range attackers {
+		for _, attacker := range killAttackers {
+			if attacker.CorporationID != 0 && attacker.AllianceID != 0 {
+				assignment.CorpAlliance[attacker.CorporationID] =
+					attacker.AllianceID
 			}
 		}
-		participants := battleParticipantCounts(kills, attackers)
-		teamEntities := make([]map[string]any, 0, len(formatted))
-		for _, team := range formatted {
-			corps, alliances := battleTeamEntities(team)
-			teamEntities = append(teamEntities, map[string]any{
-				"corps": corps, "alliances": alliances,
+	}
+	for corporationID, allianceID := range assignment.CorpAlliance {
+		if _, directlyAssigned := assignment.CorpTeam[corporationID]; directlyAssigned {
+			continue
+		}
+		if team, exists := allianceTeams[allianceID]; exists {
+			assignment.CorpTeam[corporationID] = team
+		}
+	}
+	if err := assignBattleFactionCorporations(
+		&assignment, factionTeams, kills, attackers,
+	); err != nil {
+		return legacyPayload{}, err
+	}
+	teams := battle.ComputeTeamStats(kills, attackers, assignment)
+	window := conflictBattleWindow{
+		SystemIDs: systemIDs, SystemID: systemIDs[0],
+		RegionID: kills[0].RegionID, Start: start, End: end,
+		IsCustom: true, Assignment: assignment,
+		TeamIndices: []int{0, 1},
+	}
+	names, err := loadBattleNames(
+		ctx, opts.DB, window, teams, kills, attackers,
+	)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	formatted := formatBattleTeams(teams, names)
+	for index := range formatted {
+		formatted[index]["name"] = body.Sides[index].Name
+		if body.Sides[index].Name == "" {
+			formatted[index]["name"] = fmt.Sprintf("Team %d", index+1)
+		}
+	}
+	participants := battleParticipantCounts(kills, attackers)
+	teamEntities := make([]map[string]any, 0, len(formatted))
+	for _, team := range formatted {
+		corps, alliances := battleTeamEntities(team)
+		teamEntities = append(teamEntities, map[string]any{
+			"corps": corps, "alliances": alliances,
+		})
+	}
+	var totalISK float64
+	for _, kill := range kills {
+		totalISK += kill.TotalValue
+	}
+	systems := make([]map[string]any, 0, len(systemIDs))
+	for _, id := range systemIDs {
+		if system := names.Systems[id]; system != nil {
+			systems = append(systems, map[string]any{
+				"id": id, "name": conflictString(system, "name"),
+				"security": conflictFloat(system, "security"),
 			})
 		}
-		var totalISK float64
-		for _, kill := range kills {
-			totalISK += kill.TotalValue
-		}
-		systems := make([]map[string]any, 0, len(systemIDs))
-		for _, id := range systemIDs {
-			if system := names.Systems[id]; system != nil {
-				systems = append(systems, map[string]any{
-					"id": id, "name": conflictString(system, "name"),
-					"security": conflictFloat(system, "security"),
-				})
-			}
-		}
-		primary := names.Systems[systemIDs[0]]
-		result := map[string]any{
-			"solar_system_id":       systemIDs[0],
-			"solar_system_name":     conflictNullableString(primary, "name"),
-			"solar_system_security": conflictNullableFloat(primary, "security"),
-			"region_id":             nullableConflictInt32(kills[0].RegionID),
-			"region_name":           conflictNullableString(names.Region, "name"),
-			"start_time":            start, "end_time": end,
-			"duration_minutes": int(math.Round(end.Sub(start).Minutes())),
-			"kill_count":       len(kills), "total_isk_destroyed": totalISK,
-			"is_multi_party": false, "is_custom": true,
-			"characters_involved":   conflictInt(participants, "characters"),
-			"corporations_involved": conflictInt(participants, "corporations"),
-			"alliances_involved":    conflictInt(participants, "alliances"),
-			"total_damage":          conflictInt(participants, "total_damage"),
-			"teams":                 formatted, "team_entities": teamEntities,
-			"systems": systems,
-		}
-		return conflictNoStorePayload(result), nil
 	}
+	primary := names.Systems[systemIDs[0]]
+	result := map[string]any{
+		"solar_system_id":       systemIDs[0],
+		"solar_system_name":     conflictNullableString(primary, "name"),
+		"solar_system_security": conflictNullableFloat(primary, "security"),
+		"region_id":             nullableConflictInt32(kills[0].RegionID),
+		"region_name":           conflictNullableString(names.Region, "name"),
+		"start_time":            start, "end_time": end,
+		"duration_minutes": int(math.Round(end.Sub(start).Minutes())),
+		"kill_count":       len(kills), "total_isk_destroyed": totalISK,
+		"is_multi_party": false, "is_custom": true,
+		"characters_involved":   conflictInt(participants, "characters"),
+		"corporations_involved": conflictInt(participants, "corporations"),
+		"alliances_involved":    conflictInt(participants, "alliances"),
+		"total_damage":          conflictInt(participants, "total_damage"),
+		"teams":                 formatted, "team_entities": teamEntities,
+		"systems": systems,
+	}
+	return conflictNoStorePayload(result), nil
 }
 
 func assignBattleFactionCorporations(

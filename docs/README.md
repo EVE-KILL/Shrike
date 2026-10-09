@@ -27,6 +27,11 @@ rules. It favors short, direct, and testable text.
 
 ## Architecture
 
+- [Browser assets](architecture/browser-assets.md): Source ownership, TypeScript, shared modules and automatic rebuilds.
+- [Go frontend](architecture/frontend.md): Page rendering, metadata, assets, and migration conventions.
+- [Homepage rendering](architecture/homepage-rendering.md): Data loading and delivery for the Go homepage.
+- [Kill category pages](architecture/kills-pages.md): Shared `/kills/{type}` rendering and deferred top lists.
+
 - [Cache architecture](architecture/caching.md): L1, Valkey L2, response
   directives, and queue storage boundaries.
 - [API contract](architecture/api-contract.md): Where each part of the OpenAPI

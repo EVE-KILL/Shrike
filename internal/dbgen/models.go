@@ -1237,6 +1237,14 @@ type Region struct {
 	NebulaID        *int32   `json:"nebula_id"`
 }
 
+type RoamReport struct {
+	ID        string             `json:"id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	StartTime pgtype.Timestamptz `json:"start_time"`
+	EndTime   pgtype.Timestamptz `json:"end_time"`
+	Report    []byte             `json:"report"`
+}
+
 type Scan struct {
 	Hash        string             `json:"hash"`
 	ScanType    string             `json:"scan_type"`

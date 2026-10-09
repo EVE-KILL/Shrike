@@ -1,15 +1,17 @@
 # Shrike
 
 The self-contained [EVE-KILL](https://eve-kill.com) application: Go API, queue
-workers, cron runner, WebSocket relay and image service, plus the Nuxt renderer
-and its vendored dogma engine.
+workers, cron runner, WebSocket relay, image service, and Go-rendered frontend.
+Fitting calculations use a persistent native Rust worker on the server and the
+matching Rust WASM engine in the browser. The runtime needs no JavaScript server.
 
 ## Quick start
 
 ```sh
 cp .env.example .env
 docker compose up -d          # postgres 18.3, valkey, memgraph
-make build                    # also symlinks bin/ek
+npm --prefix frontend ci --ignore-scripts
+make build                    # builds browser assets and symlinks bin/ek
 ./bin/shrike doctor
 ./bin/shrike db:migrate --apply
 ```
@@ -26,24 +28,37 @@ docker run evekill work:cron
 docker run evekill work:zkb
 ```
 
-`serve` is the supervisor for the whole site. It starts the Bun/Nuxt renderer,
-starts a private Go HTTP listener for SSR, and then starts Shrike's embedded
-Caddy front door. Caddy-to-Nuxt and Nuxt-to-Go use separate Unix sockets.
-Browser API calls remain relative and same-origin. Every other command runs
-only the Go binary, so worker and cron pods do not start Bun or require a second
-application image. The image is multi-architecture: Docker's target platform
-controls both the Go binary and Nuxt's native image dependencies.
+`serve` runs the site inside one Go process behind embedded Caddy. Pages,
+API, authentication, images, and WebSockets share the same origin. There is no
+separate page renderer or private SSR API listener. Native fitting workers start
+on demand and load the pinned SDE once.
 
-In a source checkout, build the renderer once before running the Go command
-directly:
+## Frontend
+
+All pages render in Go/templ, with retained HTML fragments for slower panels
+and strict TypeScript/Stimulus controllers for interactions. Browser build sources and tests
+live in `frontend/`; generated assets are embedded from `internal/frontend/`.
+The original Nuxt implementation is retained in Git history. Public APIs remain
+available to external clients, the API explorer and MCP.
+
+Install Go, Rust/Cargo, Node 24+ and Air for development. `make build` compiles
+browser assets before Go; `make dev` watches both source layers. A direct
+`go build` can still use the checked-in production bundles. See [development](docs/operations/development.md) and
+[frontend architecture](docs/architecture/frontend.md).
 
 ```sh
-make build-frontend
-go run ./cmd/shrike serve
+make dev                       # http://localhost:4000; requires Air
+# Or without automatic rebuilds:
+go run ./cmd/shrike dev --port 4000
 ```
 
-The renderer process is supervised by Go: an early crash fails startup, and a
-later crash shuts down the service instead of leaving Caddy returning 502s.
+Templates live in `internal/frontend`. `make build-frontend` regenerates them
+with the pinned `go tool templ`; `make build` and Air run this automatically.
+Generated Go files are checked in. Template, Go, CSS, and TypeScript edits rebuild
+the relevant assets and Go, then automatically reload open development pages.
+
+`dev` uses plain HTTP. `serve` retains local HTTPS outside production; use
+`make dev-trust` after running `serve` to trust its local certificate if needed.
 
 ## Documentation
 

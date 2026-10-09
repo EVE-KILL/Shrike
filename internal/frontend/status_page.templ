@@ -1,0 +1,16 @@
+package frontend
+
+templ statusPage() {
+	<div class="info-page status-page" data-status-page data-controller="status" data-action="pagehide@window->status#hide pageshow@window->status#show">
+		<header class="page-header hero-surface glass-panel status-header">
+			<span class="page-header-icon">
+				@icon("activity")
+			</span>
+			<div class="status-heading"><h1>System Status</h1><p>Queues, workers, databases and the killmail pipeline, live.</p></div>
+			<div class="status-connection" role="status"><span class="status-dot"></span><span data-status-connection>Connecting...</span></div>
+		</header>
+		<div class="status-loading" data-status-loading><span class="status-spinner" aria-label="Loading system status"></span></div>
+		<p class="status-error" data-status-error>Unable to connect to backend</p>
+		<div class="status-panels" data-status-panels data-action="mouseover->status#hour mouseout->status#leave focusin->status#hour focusout->status#leave click->status#hour" hidden></div>
+	</div>
+}

@@ -11,12 +11,8 @@ data
 *.md
 !README.md
 
-web/.data
-web/.nuxt
-web/.output
-web/node_modules
-web/.env
-web/.env.*
-
-web/Dockerfile
-web/.dockerignore
+frontend/node_modules
+internal/frontend/static/**/*.js.map
+frontend/tools/api-codegen/node_modules
+engine/dogma/target
+scripts/__pycache__

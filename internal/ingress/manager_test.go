@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -33,6 +32,7 @@ func testSurfaces() map[string]http.Handler {
 	return map[string]http.Handler{
 		SurfaceSameOrigin: h(SurfaceSameOrigin),
 		SurfaceWS:         h(SurfaceWS),
+		SurfaceFrontend:   h(SurfaceFrontend),
 	}
 }
 
@@ -64,7 +64,7 @@ func TestRouteOrder(t *testing.T) {
 			Match:   "path /api, /api/*, /auth, /auth/*, /images, /images/*",
 			Surface: SurfaceSameOrigin,
 		},
-		{Match: "(default)", Surface: "404 — no renderer configured"},
+		{Match: "(default)", Surface: SurfaceFrontend},
 	}
 	if len(routes) != len(want) {
 		t.Fatalf("got %d routes, want %d: %+v", len(routes), len(want), routes)
@@ -76,84 +76,7 @@ func TestRouteOrder(t *testing.T) {
 	}
 }
 
-// Development proxies the catch-all to a `nuxt dev` server over loopback,
-// because that server listens through listhen and cannot offer a socket. The
-// dial string is the only part of the route table that changes.
-func TestCatchAllDialsRendererSocketOrAddress(t *testing.T) {
-	for name, test := range map[string]struct {
-		cfg     Config
-		surface string
-		dial    string
-	}{
-		"socket": {
-			cfg:     Config{Address: "127.0.0.1:0", NuxtSocket: "/tmp/nuxt.sock"},
-			surface: "nuxt:/tmp/nuxt.sock",
-			dial:    "unix//tmp/nuxt.sock",
-		},
-		"address": {
-			cfg:     Config{Address: "127.0.0.1:0", NuxtAddress: "127.0.0.1:3000"},
-			surface: "nuxt-dev:127.0.0.1:3000",
-			dial:    "127.0.0.1:3000",
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			m := newTestManager(t, test.cfg)
-			config, _, routes, err := m.buildConfig()
-			if err != nil {
-				t.Fatalf("buildConfig: %v", err)
-			}
-			last := routes[len(routes)-1]
-			if last.Match != "(default)" || last.Surface != test.surface {
-				t.Errorf("catch-all = %+v, want (default) → %s", last, test.surface)
-			}
-			if got := catchAllDial(t, config); got != test.dial {
-				t.Errorf("dial = %q, want %q", got, test.dial)
-			}
-		})
-	}
-}
-
-// Both set is a configuration mistake with no safe reading, so it is rejected
-// rather than resolved by precedence.
-func TestCatchAllRejectsSocketAndAddressTogether(t *testing.T) {
-	m := newTestManager(t, Config{
-		Address:     "127.0.0.1:0",
-		NuxtSocket:  "/tmp/nuxt.sock",
-		NuxtAddress: "127.0.0.1:3000",
-	})
-	_, _, _, err := m.buildConfig()
-	if err == nil {
-		t.Fatal("buildConfig accepted both a socket and an address")
-	}
-	if !strings.Contains(err.Error(), "NuxtSocket") ||
-		!strings.Contains(err.Error(), "NuxtAddress") {
-		t.Errorf("error %q does not name both fields", err)
-	}
-}
-
-// catchAllDial digs the upstream out of the generated Caddy JSON, so the test
-// asserts what Caddy is actually told rather than what Manager reports.
-func catchAllDial(t *testing.T, config map[string]any) string {
-	t.Helper()
-	apps := config["apps"].(map[string]any)
-	http := apps["http"].(map[string]any)
-	servers := http["servers"].(map[string]any)
-	server := servers["shrike"].(map[string]any)
-	routes := server["routes"].([]any)
-	last := routes[len(routes)-1].(map[string]any)
-	for _, handler := range last["handle"].([]any) {
-		entry := handler.(map[string]any)
-		if entry["handler"] != "reverse_proxy" {
-			continue
-		}
-		upstream := entry["upstreams"].([]any)[0].(map[string]any)
-		return upstream["dial"].(string)
-	}
-	t.Fatal("catch-all route has no reverse_proxy handler")
-	return ""
-}
-
-func TestGoOwnedPathsPrecedeNuxt(t *testing.T) {
+func TestAPIPathsPrecedeFrontend(t *testing.T) {
 	m := newTestManager(t, testConfig())
 
 	_, _, routes, err := m.buildConfig()
@@ -171,26 +94,6 @@ func TestGoOwnedPathsPrecedeNuxt(t *testing.T) {
 	}
 	if site == -1 || fallback == -1 || site >= fallback {
 		t.Fatalf("site route %d and fallback %d are misordered: %+v", site, fallback, routes)
-	}
-}
-
-func TestDevelopmentImageProxyLeavesImagesToNuxt(t *testing.T) {
-	cfg := testConfig()
-	cfg.NuxtAddress = "127.0.0.1:3000"
-	cfg.ProxyImagesToNuxt = true
-	m := newTestManager(t, cfg)
-
-	_, _, routes, err := m.buildConfig()
-	if err != nil {
-		t.Fatalf("buildConfig: %v", err)
-	}
-	for _, route := range routes {
-		if strings.Contains(route.Match, "/images") {
-			t.Fatalf("image path still belongs to Go: %+v", routes)
-		}
-	}
-	if got := routes[len(routes)-1].Surface; got != "nuxt-dev:127.0.0.1:3000" {
-		t.Fatalf("fallback surface = %q, want Nuxt development server", got)
 	}
 }
 
@@ -213,49 +116,26 @@ func TestUnregisteredSurfaceIsAnError(t *testing.T) {
 	}
 }
 
-// Without a renderer socket the catch-all must be an explicit 404. Falling off
-// the end of Caddy's route chain instead produces an empty 200, which tells a
-// crawler the page exists and a developer nothing.
-func TestCatchAllWithoutSocketIsAnExplicit404(t *testing.T) {
+func TestCatchAllUsesFrontendInProcess(t *testing.T) {
 	m := newTestManager(t, testConfig())
-
 	cfg, _, _, err := m.buildConfig()
 	if err != nil {
-		t.Fatalf("buildConfig: %v", err)
+		t.Fatal(err)
 	}
-
-	last := lastRoute(t, cfg)
-	handler := originHandler(t, last)
-	if got := handler["handler"]; got != "static_response" {
-		t.Fatalf("catch-all handler = %v, want static_response", got)
-	}
-	if got := handler["status_code"]; got != 404 {
-		t.Errorf("catch-all status = %v, want 404", got)
+	handler := originHandler(t, lastRoute(t, cfg))
+	if handler["handler"] != "shrike" || handler["surface"] != SurfaceFrontend {
+		t.Fatalf("catch-all = %#v, want in-process frontend", handler)
 	}
 }
 
-func TestCatchAllWithSocketProxiesOverUnix(t *testing.T) {
-	cfg := testConfig()
-	cfg.NuxtSocket = "/run/shrike/nuxt.sock"
-
-	m := newTestManager(t, cfg)
-	built, _, _, err := m.buildConfig()
-	if err != nil {
-		t.Fatalf("buildConfig: %v", err)
-	}
-
-	handler := originHandler(t, lastRoute(t, built))
-	if got := handler["handler"]; got != "reverse_proxy" {
-		t.Fatalf("catch-all handler = %v, want reverse_proxy", got)
-	}
-	upstreams, ok := handler["upstreams"].([]any)
-	if !ok || len(upstreams) != 1 {
-		t.Fatalf("upstreams = %#v, want exactly one", handler["upstreams"])
-	}
-	// The unix// spelling is what caddy.ParseNetworkAddress needs to treat the
-	// remainder as a filesystem path rather than a host:port.
-	if got := upstreams[0].(map[string]any)["dial"]; got != "unix//run/shrike/nuxt.sock" {
-		t.Errorf("dial = %v, want unix//run/shrike/nuxt.sock", got)
+func TestMissingFrontendFailsStartup(t *testing.T) {
+	surfaces := testSurfaces()
+	delete(surfaces, SurfaceFrontend)
+	m := New(surfaces, zerolog.Nop())
+	m.cfg = testConfig()
+	_, _, _, err := m.buildConfig()
+	if err == nil || !strings.Contains(err.Error(), SurfaceFrontend) {
+		t.Fatalf("error = %v, want missing frontend", err)
 	}
 }
 
@@ -478,7 +358,7 @@ func TestServesEachSurface(t *testing.T) {
 		{"frontend images prefix", "eve-kill.test", "/images/types/42/icon", SurfaceSameOrigin, 200},
 		// An unknown host is a frontend request by definition, which is what
 		// makes tenant custom domains work without being enumerated.
-		{"unknown host falls through", "tenant.example.com", "/", "", 404},
+		{"unknown host falls through", "tenant.example.com", "/", SurfaceFrontend, 200},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req, err := http.NewRequest(http.MethodGet, base+tc.path, nil)
@@ -557,70 +437,49 @@ func TestServesLocalHTTPSWithGeneratedCertificate(t *testing.T) {
 	}
 }
 
-func TestCatchAllProxiesToUnixSocket(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Unix sockets are unavailable on Windows")
-	}
-
-	// Darwin's sockaddr_un path limit is short enough that t.TempDir's full
-	// nested path can exceed it. Keep the socket name directly under /tmp.
-	socket := filepath.Join(
-		"/tmp",
-		fmt.Sprintf("shrike-nuxt-%d-%d.sock", os.Getpid(), time.Now().UnixNano()),
-	)
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatalf("listen on Unix socket: %v", err)
-	}
-
-	backend := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-Renderer-Host", r.Host)
-		_, _ = io.WriteString(w, "nuxt:"+r.URL.Path)
-	})}
-	backendDone := make(chan error, 1)
-	go func() { backendDone <- backend.Serve(listener) }()
-	t.Cleanup(func() {
-		_ = backend.Close()
-		if err := <-backendDone; err != nil && err != http.ErrServerClosed {
-			t.Errorf("renderer server: %v", err)
-		}
-	})
-
+func TestFrontendPreservesTenantHostAndPath(t *testing.T) {
 	port := freePort(t)
 	cfg := testConfig()
 	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
-	cfg.NuxtSocket = socket
-
-	m := New(testSurfaces(), zerolog.Nop())
+	surfaces := testSurfaces()
+	surfaces[SurfaceFrontend] = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Frontend-Host", r.Host)
+		_, _ = io.WriteString(w, "frontend:"+r.URL.RequestURI())
+	})
+	m := New(surfaces, zerolog.Nop())
 	if err := m.Start(context.Background(), cfg); err != nil {
-		t.Fatalf("Start: %v", err)
-	}
-	t.Cleanup(func() { _ = m.Close() })
-
-	req, err := http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("http://127.0.0.1:%d/rendered", port),
-		nil,
-	)
-	if err != nil {
 		t.Fatal(err)
 	}
-	req.Host = "tenant.example.com"
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("request through renderer fallback: %v", err)
-	}
-	defer res.Body.Close() //nolint:errcheck // response body of a test request
-
-	body, _ := io.ReadAll(res.Body)
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want 200 (body %q)", res.StatusCode, body)
-	}
-	if got, want := string(body), "nuxt:/rendered"; got != want {
-		t.Errorf("body = %q, want %q", got, want)
-	}
-	if got, want := res.Header.Get("X-Renderer-Host"), "tenant.example.com"; got != want {
-		t.Errorf("renderer Host = %q, want %q", got, want)
+	t.Cleanup(func() { _ = m.Close() })
+	client := &http.Client{Timeout: 5 * time.Second}
+	for _, path := range []string{"/", "/kill/123?tab=items", "/api/site", "/auth/me", "/images/types/1", "/ws", "/health"} {
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d%s", port, path), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Host = "tenant.example.com"
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(res.Body)
+		_ = res.Body.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := SurfaceSameOrigin
+		if path == "/ws" {
+			want = SurfaceWS
+		}
+		if path == "/" || strings.HasPrefix(path, "/kill/") {
+			want = "frontend:" + path
+			if got := res.Header.Get("X-Frontend-Host"); got != req.Host {
+				t.Errorf("host = %q", got)
+			}
+		}
+		if res.StatusCode != 200 || string(body) != want {
+			t.Errorf("%s: status %d, body %q, want %q", path, res.StatusCode, body, want)
+		}
 	}
 }
 

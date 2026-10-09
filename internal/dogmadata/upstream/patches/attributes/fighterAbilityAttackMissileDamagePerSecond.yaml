@@ -1,0 +1,16 @@
+new:
+  displayName: Fighter Attack Missile Damage Per Second
+  category: Fighter Abilities
+  unit: damagePerSecond
+  highIsGood: true
+
+addTo:
+  - effect: fighterAbilityAttackM
+    rules:
+      - {add: fighterAbilityAttackMissileDamageEM}
+      - {add: fighterAbilityAttackMissileDamageTherm}
+      - {add: fighterAbilityAttackMissileDamageKin}
+      - {add: fighterAbilityAttackMissileDamageExp}
+      - {mul: fighterAbilityAttackMissileDamageMultiplier}
+      - {mul: thousand}
+      - {div: fighterAbilityAttackMissileDuration}

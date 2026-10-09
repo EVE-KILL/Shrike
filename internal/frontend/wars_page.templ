@@ -1,0 +1,154 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ warsPageContent(view warsView) {
+	<div class="wars-page" data-wars-page data-controller="wars" data-action="click->wars#click popstate@window->wars#popstate pagehide@window->wars#hide pageshow@window->wars#show" data-tab={ view.Tab } data-sort={ view.Sort } data-page={ strconv.Itoa(view.Page) } data-mutual={ strconv.FormatBool(view.Mutual) } data-has-activity={ strconv.FormatBool(view.HasActivity) } data-has-kills={ strconv.FormatBool(view.HasKills) } data-has-allies={ strconv.FormatBool(view.HasAllies) }>
+		<header class="page-header hero-surface glass-panel wars-header">
+			<span class="page-header-icon">
+				@icon("swords")
+			</span>
+			<div>
+				<p class="wars-eyebrow">Declared conflicts</p>
+				<h1>Wars</h1>
+				<p>Declared wars in EVE Online — aggressors, defenders, allies and the ISK burned. Pick a card below to switch between active, finished and upcoming wars. Explore individual engagements in <a href="/battles">battle reports</a>, or follow a wider conflict through <a href="/campaigns">campaign scoreboards</a>.</p>
+			</div>
+		</header>
+		if !view.DomainMode {
+			<section class="wars-faction" aria-label="Faction Warfare" data-wars-faction>
+				<div class="wars-section-title">
+					@icon("flag")
+					<h2>Faction Warfare</h2><span>Last 30 days</span>
+				</div>
+				<div data-wars-faction-content aria-busy="true">
+					@warsFactionPending()
+				</div>
+				<noscript><p class="wars-faction-status"><a href="/faction-war/caldari-vs-gallente">Caldari vs Gallente</a> · <a href="/faction-war/amarr-vs-minmatar">Amarr vs Minmatar</a></p></noscript>
+			</section>
+		}
+		if view.Overview != nil {
+			<div class="wars-overview" aria-label="War counts">
+				@warsOverviewCard("wars", "Active Wars", "swords", warNumber(view.Overview.ActiveWars), view.Tab)
+				@warsOverviewCard("finished", "Finished Wars", "flag", warNumber(view.Overview.FinishedWars), view.Tab)
+				@warsOverviewCard("upcoming", "Upcoming Wars", "clock", warNumber(view.Overview.UpcomingWars), view.Tab)
+				@warsOverviewCard("eligible-corps", "Eligible Corps", "building-2", warNumber(view.Overview.EligibleCorps), view.Tab)
+				@warsOverviewCard("eligible-alliances", "Eligible Alliances", "building-2", warNumber(view.Overview.EligibleAlliances), view.Tab)
+			</div>
+		}
+		<nav class="wars-tabs" aria-label="War views">
+			@warsTab("wars", "Wars", "swords", view.Tab)
+			@warsTab("finished", "Finished", "flag", view.Tab)
+			@warsTab("upcoming", "Upcoming", "clock", view.Tab)
+			@warsTab("eligible-corps", "War Eligible Corporations", "building-2", view.Tab)
+			@warsTab("eligible-alliances", "War Eligible Alliances", "building-2", view.Tab)
+		</nav>
+		<div class="wars-filters" data-wars-filters hidden?={ view.Tab != "wars" && view.Tab != "finished" }>
+			<button type="button" data-wars-filter="mutual" class={ warFilterClass(view.Mutual) } aria-pressed={ strconv.FormatBool(view.Mutual) }>Mutual</button>
+			<button type="button" data-wars-filter="hasActivity" class={ warFilterClass(view.HasActivity) } aria-pressed={ strconv.FormatBool(view.HasActivity) }>Has ISK</button>
+			<button type="button" data-wars-filter="hasKills" class={ warFilterClass(view.HasKills) } aria-pressed={ strconv.FormatBool(view.HasKills) }>Has Kills</button>
+			<button type="button" data-wars-filter="hasAllies" class={ warFilterClass(view.HasAllies) } aria-pressed={ strconv.FormatBool(view.HasAllies) }>Has Allies</button>
+			<span class="wars-filter-divider"></span><span class="wars-sort-label">Sort</span>
+			<div class="wars-sort" role="group" aria-label="Sort wars">
+				<button type="button" data-wars-sort="recent" class={ warTabClass(view.Sort, "recent") }>Recent</button>
+				<button type="button" data-wars-sort="kills" class={ warTabClass(view.Sort, "kills") }>Most Kills</button>
+				<button type="button" data-wars-sort="isk" class={ warTabClass(view.Sort, "isk") }>Most ISK</button>
+			</div>
+			<button type="button" class="wars-clear" data-wars-clear hidden?={ !view.Mutual && !view.HasActivity && !view.HasKills && !view.HasAllies && view.Sort == "recent" }>
+				@icon("x")
+				Clear
+			</button>
+		</div>
+		<div data-wars-results>
+			if view.Tab == "eligible-corps" || view.Tab == "eligible-alliances" {
+				<div class="glass-panel wars-loading">Loading war-eligible { warEligibleType(view.Tab) }…</div>
+			} else {
+				@warsList(view.List, view.Tab, view.Page)
+			}
+		</div>
+	</div>
+}
+
+templ warsFactionPending() {
+	<div class="wars-faction-grid wars-faction-pending" role="status" aria-label="Loading faction warfare">
+		for range 2 {
+			<div class="glass-panel wars-faction-card wars-faction-skeleton">
+				<div class="wars-faction-side" aria-hidden="true"><i class="wars-faction-skeleton-logo"></i><i class="wars-faction-skeleton-line"></i><i class="wars-faction-skeleton-line"></i><i class="wars-faction-skeleton-line short"></i></div>
+				<span class="wars-faction-versus">Loading…</span>
+				<div class="wars-faction-side" aria-hidden="true"><i class="wars-faction-skeleton-logo"></i><i class="wars-faction-skeleton-line"></i><i class="wars-faction-skeleton-line"></i><i class="wars-faction-skeleton-line short"></i></div>
+			</div>
+		}
+	</div>
+}
+
+templ warsFactionCards(data api.FactionWarsData) {
+	<div class="wars-faction-grid" data-wars-faction-loaded>
+		@warsFactionCard("caldari-vs-gallente", "Caldari", "Gallente", 1000035, 1000120, data.CaldariVsGallente.Caldari, data.CaldariVsGallente.Gallente)
+		@warsFactionCard("amarr-vs-minmatar", "Amarr", "Minmatar", 1000084, 1000051, data.AmarrVsMinmatar.Amarr, data.AmarrVsMinmatar.Minmatar)
+	</div>
+}
+
+templ warsFactionCard(slug, leftName, rightName string, leftCorp, rightCorp int64, left, right api.FactionWarSide) {
+	<a class="glass-panel wars-faction-card" href={ "/faction-war/" + slug }>
+		<div class="wars-faction-side"><img src={ eveEntityImage("corporation", leftCorp, 64) } width="48" height="48" alt="" loading="lazy"/><strong>{ leftName }</strong><span class="wars-faction-isk">{ warISK(left.ISKDestroyed) }</span><span>{ warNumber(left.Kills) } kills</span><small>{ warNumber(left.SystemsControlled) } systems · { warNumber(left.Pilots) } pilots</small></div>
+		<div class="wars-faction-versus"><strong>VS</strong><span><i style={ "width:" + warEfficiency(left.Kills, right.Kills) }></i></span></div>
+		<div class="wars-faction-side"><img src={ eveEntityImage("corporation", rightCorp, 64) } width="48" height="48" alt="" loading="lazy"/><strong>{ rightName }</strong><span class="wars-faction-isk">{ warISK(right.ISKDestroyed) }</span><span>{ warNumber(right.Kills) } kills</span><small>{ warNumber(right.SystemsControlled) } systems · { warNumber(right.Pilots) } pilots</small></div>
+	</a>
+}
+
+templ warsOverviewCard(tab, label, iconName, value, active string) {
+	<button type="button" class={ "wars-overview-card " + tab + " " + warTabClass(active, tab) } data-wars-tab={ tab }>
+		<span>
+			@icon(iconName)
+			<span>{ label }</span>
+		</span><strong>{ value }</strong>
+	</button>
+}
+
+templ warsTab(tab, label, iconName, active string) {
+	<button type="button" class={ warTabClass(active, tab) } data-wars-tab={ tab } aria-pressed={ strconv.FormatBool(active == tab) }>
+		@icon(iconName)
+		<span>{ label }</span>
+	</button>
+}
+
+templ warsList(data api.WarDirectoryData, tab string, page int) {
+	<div class="glass-panel wars-list">
+		<div class="wars-list-header"><span>Aggressor</span><span></span><span>Defender</span><span>{ warStartedLabel(tab) }</span><span>Status</span></div>
+		for _, war := range data.Wars {
+			<a class="wars-row" href={ "/war/" + warID(war.WarID) }>
+				@warsRowSide(war.Aggressor)
+				<span class="wars-versus">VS</span>
+				@warsRowSide(war.Defender)
+				<time>{ warTimeAgo(war.Started) }</time>
+				<span class="wars-row-status">
+					if warUpcoming(war.Started) {
+						<span class="upcoming">Upcoming</span>
+					} else if war.Finished == "" {
+						<span class="active">Active</span>
+					} else {
+						<span>Finished</span>
+					}
+					if war.Mutual {
+						<span class="mutual">Mutual</span>
+					}
+					if war.OpenForAllies {
+						<span class="allies">Allies</span>
+					}
+				</span>
+			</a>
+		}
+		if len(data.Wars) == 0 {
+			<div class="wars-empty">{ warEmptyText(tab) }</div>
+		}
+	</div>
+	if len(data.Wars) >= 50 {
+		<div class="wars-pagination"><button type="button" data-wars-page="previous" disabled?={ page <= 1 }>Previous</button><span>Page { strconv.Itoa(page) }</span><button type="button" data-wars-page="next">Next</button></div>
+	}
+}
+
+templ warsRowSide(side api.EntityWarSide) {
+	<span class="wars-row-side"><img src={ warEntityImage(side) } alt="" width="32" height="32" loading="lazy"/><span><strong>{ side.Name }</strong><small><em>{ warISK(side.ISKDestroyed) }</em><span>· </span>{ warNumber(side.ShipsKilled) } ships</small></span></span>
+}

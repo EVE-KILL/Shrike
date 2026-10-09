@@ -1,0 +1,11 @@
+new:
+  displayName: Drone Bay Used
+  category: Drones
+  unit: Volume
+  highIsGood: true
+
+effects:
+  - on: isDrone
+    category: passive
+    rules:
+      - {add: volume, domain: shipID}

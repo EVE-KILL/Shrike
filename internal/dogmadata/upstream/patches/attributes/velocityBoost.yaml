@@ -1,0 +1,21 @@
+new:
+  displayName: Velocity Boost
+  category: Speed and Travel
+  unit: Acceleration
+  highIsGood: true
+
+effects:
+  - on: isShip
+    category: passive
+    rules:
+      - {div: mass}
+
+addTo:
+  - effect: moduleBonusAfterburner
+    rules:
+      - {add: speedBoostFactor, domain: shipID}
+      - {mul: speedFactor, domain: shipID}
+  - effect: moduleBonusMicrowarpdrive
+    rules:
+      - {add: speedBoostFactor, domain: shipID}
+      - {mul: speedFactor, domain: shipID}
