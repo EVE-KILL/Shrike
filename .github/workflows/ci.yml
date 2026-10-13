@@ -189,6 +189,34 @@ jobs:
           printf 'Testing %d packages in %s\n' "${#packages[@]}" "$LANE"
           go test -race -count=1 "${packages[@]}"
 
+  graph:
+    name: Memgraph schema and query plans
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      memgraph:
+        image: memgraph/memgraph:3.9.0
+        ports:
+          - 7687:7687
+        options: >-
+          --health-cmd "echo 'RETURN 1;' | mgconsole --no-history"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+      # Both packages use the same disposable graph; run them sequentially.
+      - name: Verify indexes, ingestion and anchored intelligence queries
+        env:
+          TEST_MEMGRAPH_URL: bolt://127.0.0.1:7687
+        run: |
+          go test -race -count=1 ./internal/graph
+          go test -race -count=1 ./internal/api -run TestCharacterGraphIntelAnchorsLookupsAndRetainsResults
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -298,6 +326,7 @@ jobs:
       - go-quality
       - go-generated
       - go-race
+      - graph
       - frontend
       - native-engine
       - security
@@ -310,6 +339,7 @@ jobs:
           GO_QUALITY_RESULT: ${{ needs.go-quality.result }}
           GO_GENERATED_RESULT: ${{ needs.go-generated.result }}
           GO_RACE_RESULT: ${{ needs.go-race.result }}
+          GRAPH_RESULT: ${{ needs.graph.result }}
           NATIVE_ENGINE_RESULT: ${{ needs.native-engine.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           SECURITY_RESULT: ${{ needs.security.result }}
@@ -318,12 +348,14 @@ jobs:
           if [[ "$GO_QUALITY_RESULT" != "success" ||
                 "$GO_GENERATED_RESULT" != "success" ||
                 "$GO_RACE_RESULT" != "success" ||
+                "$GRAPH_RESULT" != "success" ||
                 "$NATIVE_ENGINE_RESULT" != "success" ||
                 "$FRONTEND_RESULT" != "success" ||
                 "$SECURITY_RESULT" != "success" ]]; then
             echo "Go quality: $GO_QUALITY_RESULT"
             echo "Go generated: $GO_GENERATED_RESULT"
             echo "Go race: $GO_RACE_RESULT"
+            echo "Memgraph: $GRAPH_RESULT"
             echo "Frontend: $FRONTEND_RESULT"
             echo "Native engine: $NATIVE_ENGINE_RESULT"
             echo "Security: $SECURITY_RESULT"

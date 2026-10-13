@@ -58,9 +58,11 @@ type Client struct {
 var nodeLabels = []string{"Character", "Corporation", "Alliance", "SolarSystem", "Killmail"}
 
 var nodeIndexes = map[string][]string{
-	"Character":   {"corporation_id", "alliance_id"},
-	"Corporation": {"alliance_id"},
-	"Killmail":    {"killmail_time"},
+	"Character":   {"id", "corporation_id", "alliance_id"},
+	"Corporation": {"id", "alliance_id"},
+	"Alliance":    {"id"},
+	"SolarSystem": {"id"},
+	"Killmail":    {"id", "killmail_time"},
 }
 
 // Connect opens a Memgraph connection.
@@ -80,11 +82,11 @@ func Connect(ctx context.Context, url string) (*Client, error) {
 	return &Client{driver: d}, nil
 }
 
-// EnsureSchema installs uniqueness constraints for id lookups and concurrency
-// safety, plus secondary indexes for the actual affiliation and retention scan
-// predicates. Avoid a separate id index: Memgraph backs a uniqueness
-// constraint with its own lookup structure, so both would duplicate memory and
-// write overhead. Equivalent schema creation is a no-op.
+// EnsureSchema installs uniqueness constraints for concurrency safety and
+// explicit indexes for id lookups, affiliation and retention predicates.
+// Memgraph's uniqueness constraints do not supply indexes to the query planner;
+// omitting an id index makes MERGE scan the graph even when ids are unique.
+// Equivalent schema creation is a no-op.
 //
 // This is deliberately explicit rather than part of Connect: adding an index
 // across a production graph is an operational change, and a uniqueness
