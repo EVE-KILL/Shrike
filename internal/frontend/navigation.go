@@ -17,6 +17,7 @@ type navLink struct {
 	Href     string     `json:"href"`
 	Icon     string     `json:"icon"`
 	Children []navGroup `json:"children"`
+	External bool       `json:"external"`
 }
 
 type navGroup struct {

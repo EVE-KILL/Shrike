@@ -296,6 +296,8 @@ func New(options Options) http.Handler {
 		mux.HandleFunc("GET /_fragments/roam/{id}/{tab}", s.roamFragment)
 	}
 	mux.HandleFunc("GET /_fragments/mcp/output/{name}", s.mcpOutputFragment)
+	mux.HandleFunc("GET /_fragments/domain/widgets/{widget}", s.domainWidgetFragment)
+	mux.HandleFunc("GET /_fragments/domain/killlist", s.domainKilllistFragment)
 	if options.Wallet != nil {
 		mux.Handle("GET /wallet", s.pageHandler(s.walletPage))
 		mux.HandleFunc("GET /_fragments/wallet", s.walletFragment)
@@ -440,8 +442,8 @@ func New(options Options) http.Handler {
 			if !validKillsPageType(kind) {
 				return Page{}, ErrNotFound
 			}
-			if options.Production && !canonicalHost(r.Host) {
-				return Page{Metadata: Metadata{Title: killsPageTitle(kind)}, Content: home()}, nil
+			if pageDomain(r.Context()) != nil {
+				return s.domainHomePage(r, kind)
 			}
 			view, err := loadKillsPage(r.Context(), options.Homepage, kind)
 			if err != nil {
@@ -458,8 +460,8 @@ func New(options Options) http.Handler {
 		}
 		mux.Handle(pattern, s.pageHandler(func(r *http.Request) (Page, error) {
 			if route.Path == "/" && options.Homepage != nil {
-				if options.Production && !canonicalHost(r.Host) {
-					return Page{Metadata: Metadata{Title: "Home"}, Content: home()}, nil
+				if pageDomain(r.Context()) != nil {
+					return s.domainHomePage(r, "")
 				}
 				view, err := loadHomepage(r.Context(), options.Homepage)
 				if err != nil {
@@ -475,6 +477,28 @@ func New(options Options) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		if options.Production && options.Homepage != nil && options.Statistics == nil && domainCandidate(r.Host) && (r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/kills/")) {
+			s.pageHandler(func(*http.Request) (Page, error) {
+				return Page{Status: 404, Metadata: Metadata{Title: "No Killboard Found"}, Content: unknownKillboard()}, nil
+			}).ServeHTTP(w, r)
+			return
+		}
+		if options.Statistics != nil && domainCandidate(r.Host) && !strings.HasPrefix(r.URL.Path, "/assets/") && !strings.HasPrefix(r.URL.Path, "/__dev/") {
+			configuration, err := options.Statistics.StatisticsSite(r.Context(), r.Host)
+			if err != nil {
+				s.pageHandler(func(*http.Request) (Page, error) { return Page{}, err }).ServeHTTP(w, r)
+				return
+			}
+			if configuration.IsDomainHost {
+				if configuration.Domain == nil {
+					s.pageHandler(func(*http.Request) (Page, error) {
+						return Page{Status: 404, Metadata: Metadata{Title: "No Killboard Found"}, Content: unknownKillboard()}, nil
+					}).ServeHTTP(w, r)
+					return
+				}
+				r = r.WithContext(context.WithValue(r.Context(), domainPageKey{}, &domainPageContext{Config: configuration.Domain, Request: r}))
+			}
+		}
 		mux.ServeHTTP(w, r)
 	})
 }

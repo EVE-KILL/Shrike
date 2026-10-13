@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/eve-kill/shrike/internal/api"
 )
 
 const canonicalOrigin = "https://eve-kill.com"
@@ -62,6 +64,8 @@ type pageMetadata struct {
 	Stylesheets, ModuleScripts                                               []string
 	CommentEditor                                                            bool
 	AnalyticsHost                                                            string
+	Domain                                                                   *api.SiteDomainConfiguration
+	SiteName                                                                 string
 }
 
 func canonicalURL(relative string) (string, error) {
@@ -89,6 +93,16 @@ func resolveMetadata(r *http.Request, production bool, status int, meta Metadata
 		ImageAlt: meta.ImageAlt, Kind: meta.Kind, Robots: "noindex, nofollow", CSP: contentSecurityPolicy,
 		ThemeColor: "#000000",
 		ImageWidth: meta.ImageWidth, ImageHeight: meta.ImageHeight,
+		SiteName: "EVE-KILL",
+	}
+	result.Domain = pageDomain(r.Context())
+	if result.Domain != nil {
+		result.SiteName = domainSiteName(result.Domain)
+		meta.Stylesheets = append(append([]string(nil), meta.Stylesheets...), "domain-page.css")
+		if meta.Description == "" {
+			meta.Description = domainString(result.Domain.SiteDescription)
+			result.Description = meta.Description
+		}
 	}
 	if len(meta.ImageSources) > 0 {
 		seen := map[string]bool{"https://images.evetech.net": true}
@@ -132,6 +146,12 @@ func resolveMetadata(r *http.Request, production bool, status int, meta Metadata
 	}
 	if meta.Title != "" {
 		result.Title = meta.Title + " - EVE-KILL.com"
+	}
+	if result.Domain != nil {
+		result.Title = result.SiteName
+		if meta.Title != "" {
+			result.Title = meta.Title + " - " + result.SiteName
+		}
 	}
 	result.OGTitle = result.Title
 	if meta.OGTitle != "" {

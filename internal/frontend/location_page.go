@@ -78,7 +78,7 @@ func (s *site) loadLocationPage(ctx context.Context, kind string, id int64, tab 
 	}
 	switch tab {
 	case "kills":
-		kills, err := s.options.Universe.UniverseLocationKills(ctx, kind, id, 50, nil)
+		kills, err := s.locationKilllist(ctx, kind, id, 50, nil)
 		view.Kills = kills
 		if err != nil {
 			return locationPageView{}, err
@@ -234,7 +234,7 @@ func (s *site) locationKillsFragment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid page", http.StatusBadRequest)
 		return
 	}
-	kills, err := s.options.Universe.UniverseLocationKills(r.Context(), kind, id, limit, after)
+	kills, err := s.locationKilllist(r.Context(), kind, id, limit, after)
 	if err != nil {
 		http.Error(w, "Could not load kills", http.StatusServiceUnavailable)
 		return

@@ -21,7 +21,7 @@ export class ShellController extends Controller<HTMLBodyElement> {
     let initial='bg2'
     try{
       const saved=/(?:^|;\s*)siteBackground=([^;]+)/.exec(document.cookie)
-      initial=/^\/backgrounds\/(bg[1-8])\.webp$/.exec(decodeURIComponent(saved?.[1]||''))?.[1]||'bg2'
+      const value=decodeURIComponent(saved?.[1]||this.root.dataset.domainBackground||'');initial=/^\/backgrounds\/(bg[1-8])\.webp$/.exec(value)?.[1]||(/^\/images\/domains\/background\/\d+$/.test(value)?value:'bg2')
     }catch{/* A malformed cookie falls back to the default background. */}
     this.element.querySelectorAll<HTMLElement>('[data-background]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.background===initial)))
     this.scroll()
@@ -81,11 +81,13 @@ export class ShellController extends Controller<HTMLBodyElement> {
   scroll(){this.navbarTarget.classList.toggle('scrolled',window.scrollY>1)}
   selectBackground(event:MouseEvent){
     const name=event.currentTarget instanceof HTMLElement?event.currentTarget.dataset.background:undefined
-    if(name&&/^bg[1-8]$/.test(name))this.pickBackground(name)
+    if(name&&(/^bg[1-8]$/.test(name)||/^\/images\/domains\/background\/\d+$/.test(name)))this.pickBackground(name)
   }
   private pickBackground(name:string){
-    this.root.style.setProperty('--site-bg',`image-set(url("/assets/backgrounds/${name}.avif") type("image/avif"), url("/assets/backgrounds/${name}.webp") type("image/webp"))`)
-    document.cookie=`siteBackground=${encodeURIComponent(`/backgrounds/${name}.webp`)}; Path=/; Max-Age=31536000; SameSite=Lax`
+    const domain=/^\/images\/domains\/background\/\d+$/.test(name)
+    if(domain)this.root.style.setProperty('--site-bg',`url(${JSON.stringify(name)})`)
+    else this.root.style.setProperty('--site-bg',`image-set(url("/assets/backgrounds/${name}.avif") type("image/avif"), url("/assets/backgrounds/${name}.webp") type("image/webp"))`)
+    document.cookie=`siteBackground=${encodeURIComponent(domain?name:`/backgrounds/${name}.webp`)}; Path=/; Max-Age=31536000; SameSite=Lax`
     this.element.querySelectorAll<HTMLElement>('[data-background]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.background===name)))
   }
   shuffle(){

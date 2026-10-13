@@ -47,7 +47,7 @@ func (s *site) loadSystemPage(ctx context.Context, id int64, tab string, valuabl
 	}
 	switch tab {
 	case "kills":
-		view.Kills, err = s.options.Universe.UniverseLocationKills(ctx, "system", id, 50, nil)
+		view.Kills, err = s.locationKilllist(ctx, "system", id, 50, nil)
 	case "battles":
 		if s.options.Entities != nil {
 			view.Battles, err = s.options.Entities.EntityBattles(ctx, "system", id, 1)
@@ -248,7 +248,7 @@ func (s *site) systemKillsFragment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid page", http.StatusBadRequest)
 		return
 	}
-	kills, err := s.options.Universe.UniverseLocationKills(r.Context(), "system", id, limit, after)
+	kills, err := s.locationKilllist(r.Context(), "system", id, limit, after)
 	if err != nil {
 		http.Error(w, "Could not load kills", http.StatusServiceUnavailable)
 		return

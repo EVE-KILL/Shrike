@@ -1,16 +1,18 @@
 package frontend
 
-templ navbar() {
+import "github.com/eve-kill/shrike/internal/api"
+
+templ navbar(config *api.SiteDomainConfiguration) {
 	<nav data-shell-target="navbar" data-controller="account" data-action="click->account#closeMenus" class="navbar" aria-label="Main navigation">
 		<div class="nav-backdrop"></div>
 		<div class="nav-inner">
 			<div class="nav-left">
 				<a href="/" class="nav-button home-link" aria-label="Home">
 					@icon("house")
-					<span>Home</span>
+					<span>{ domainNavbarHome(config) }</span>
 				</a>
 				<div class="desktop-links">
-					for _, link := range navigation {
+					for _, link := range domainNavigation(config) {
 						if len(link.Children) > 0 {
 							<details class="nav-dropdown" name="desktop-nav" data-action="toggle->shell#exclusiveMenu">
 								<summary class="nav-button">
@@ -22,7 +24,7 @@ templ navbar() {
 								</div>
 							</details>
 						} else {
-							<a class="nav-button secondary-link" href={ templ.URL(link.Href) }>
+							<a class="nav-button secondary-link" href={ templ.URL(link.Href) } target={ navTarget(link) } rel={ navRel(link) }>
 								{ link.Label }
 							</a>
 						}
@@ -46,6 +48,14 @@ templ navbar() {
 					<div class="dropdown-panel align-right background-picker">
 						<h2>Background</h2>
 						<p>Personalize the site</p>
+						if config!=nil && len(config.Backgrounds)>0 {
+							<h3>{ domainSiteName(config) } Backgrounds</h3>
+							<div class="background-grid">
+								for _,bg:=range config.Backgrounds {
+									<button data-background={ bg } data-action="click->shell#selectBackground" aria-label="Select killboard background" aria-pressed="false"><img src={ bg } alt="" loading="lazy" width="128" height="72"/></button>
+								}
+							</div>
+						}
 						<h3>Local backgrounds</h3>
 						<div class="background-grid">
 							for _, bg := range backgrounds {
@@ -106,9 +116,9 @@ templ navbar() {
 								<a href="/" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
 									<span class="text-lg opacity-60">
 										@icon("house")
-									</span>Home
+									</span>{ domainNavbarHome(config) }
 								</a>
-								for _,link:=range navigation {
+								for _,link:=range domainNavigation(config) {
 									if len(link.Children)>0 {
 										<details class="mobile-source-section">
 											<summary class="flex items-center justify-between w-full px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
@@ -197,7 +207,7 @@ templ navGroups(groups []navGroup) {
 
 templ navLinks(links []navLink) {
 	for _, link := range links {
-		<a class="menu-link" href={ templ.URL(link.Href) }>
+		<a class="menu-link" href={ templ.URL(link.Href) } target={ navTarget(link) } rel={ navRel(link) }>
 			if link.Icon != "" {
 				@icon(link.Icon)
 			}

@@ -94,9 +94,9 @@ func TestKillsPageDoesNotShowGlobalDataOnTenantHost(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "https://board.example/kills/solo", nil)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, request)
-	if response.Code != http.StatusOK || strings.Contains(response.Body.String(), "data-kill-id=") ||
+	if response.Code != http.StatusNotFound || strings.Contains(response.Body.String(), "data-kill-id=") ||
 		strings.Contains(response.Header().Get("Cache-Control"), "public") {
-		t.Fatalf("tenant placeholder status=%d cache=%s", response.Code, response.Header().Get("Cache-Control"))
+		t.Fatalf("unconfigured tenant status=%d cache=%s", response.Code, response.Header().Get("Cache-Control"))
 	}
 }
 

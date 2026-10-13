@@ -2,15 +2,18 @@ package frontend
 
 templ layout(meta pageMetadata, content templ.Component, development bool) {
 	<!DOCTYPE html>
-	<html lang="en" class="dark">
+	<html lang="en" class="dark" data-domain-theme={ domainThemeJSON(meta.Domain) } data-domain-background={ domainBackground(meta.Domain) }>
 		@pageHead(meta, development)
-		<body data-controller="shell navigation-progress announcements kill-submission" data-action="keydown@document->shell#keyboard click@document->shell#outside scroll@window->shell#scroll:passive click@document->shell#rememberKillNavigation:capture click@document->navigation-progress#click:capture change@document->navigation-progress#remember:capture input@document->navigation-progress#remember:capture keydown@document->navigation-progress#keyboard:capture submit@document->navigation-progress#submit:capture pagehide@window->navigation-progress#pageHide pageshow@window->navigation-progress#pageShow click->announcements#dismissClick visibilitychange@document->announcements#visibility pagehide@window->announcements#pageHide pageshow@window->announcements#pageShow paste@document->kill-submission#paste:capture click->kill-submission#click visibilitychange@document->kill-submission#visibility pagehide@window->kill-submission#hide pageshow@window->kill-submission#show">
+		<body class={ templ.KV("domain-surface", meta.Domain != nil) } data-controller="shell navigation-progress announcements kill-submission" data-action="keydown@document->shell#keyboard click@document->shell#outside scroll@window->shell#scroll:passive click@document->shell#rememberKillNavigation:capture click@document->navigation-progress#click:capture change@document->navigation-progress#remember:capture input@document->navigation-progress#remember:capture keydown@document->navigation-progress#keyboard:capture submit@document->navigation-progress#submit:capture pagehide@window->navigation-progress#pageHide pageshow@window->navigation-progress#pageShow click->announcements#dismissClick visibilitychange@document->announcements#visibility pagehide@window->announcements#pageHide pageshow@window->announcements#pageShow paste@document->kill-submission#paste:capture click->kill-submission#click visibilitychange@document->kill-submission#visibility pagehide@window->kill-submission#hide pageshow@window->kill-submission#show">
 			<div id="navigation-progress" class="navigation-progress" hidden aria-hidden="true"><span></span></div>
 			<div id="navigation-loading-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 			<a class="skip-link" href="#main">Skip to content</a>
-			@navbar()
+			@navbar(meta.Domain)
 			<div class="content-blur" aria-hidden="true"></div>
-			<div class="content" data-shell-target="content">
+			<div class={ "content", templ.KV("domain-content-banner", domainBanner(meta.Domain)), templ.KV("domain-content-transparent", meta.Domain!=nil && domainString(meta.Domain.Theme.BannerURL)=="" && domainBanner(meta.Domain)) } style={ domainContentStyle(meta.Domain) } data-shell-target="content">
+				if domainBanner(meta.Domain) {
+					@domainBannerContent(meta.Domain)
+				}
 				<div class="inner-content">
 					<main id="main" class="main-content" tabindex="-1">
 						@announcementBannerHost()

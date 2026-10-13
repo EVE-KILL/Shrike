@@ -1,0 +1,150 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+	"strings"
+)
+
+templ unknownKillboard() {
+	<div class="glass-panel p-8 text-center my-12"><h1 class="text-2xl font-bold">No Killboard Found</h1><p class="my-6 text-gray-400">There is no killboard configured at this address. Want your own personalized EVE Online killboard?</p><a class="text-blue-400" href="https://eve-kill.com">Visit EVE-KILL →</a></div>
+}
+
+templ domainBannerContent(config *api.SiteDomainConfiguration) {
+	<header class={ "domain-banner", templ.KV("domain-banner-transparent", domainString(config.Theme.BannerURL)=="") }>
+		if domainString(config.Theme.BannerURL)!="" {
+			<img class="domain-banner-image" src={ domainString(config.Theme.BannerURL) } alt={ domainSiteName(config) } width="1280" height="256"/>
+		}
+		<div class="domain-banner-overlay">
+			if domainShow(config.Theme.ShowLogoInBanner)&&domainString(config.Theme.LogoURL)!="" {
+				<img class="domain-logo" src={ domainString(config.Theme.LogoURL) } alt={ domainSiteName(config) } width="64" height="64"/>
+			}
+			<div>
+				if domainShow(config.Theme.ShowNameInBanner) {
+					<h1>{ domainSiteName(config) }</h1>
+				}
+				if domainShow(config.Theme.ShowDescriptionInBanner)&&domainString(config.SiteDescription)!="" {
+					<p>{ domainString(config.SiteDescription) }</p>
+				}
+			</div>
+		</div>
+	</header>
+}
+
+templ domainHome(config *api.SiteDomainConfiguration, kind string) {
+	<div data-controller="domain-page" data-domain-page data-domain-entities={ settingsJSON(config.Entities) } data-action="click->domain-page#click popstate@window->domain-page#syncTab hashchange@window->domain-page#syncTab pagehide@window->domain-page#hide pageshow@window->domain-page#show" class={ "domain-home", templ.KV("kills-page",kind!="") } data-tab="kills" data-title={ killsPageTitle(kind) } data-domain-name={ domainSiteName(config) }>
+		if kind!="" {
+			<h1>{ killsPageTitle(kind) }</h1>
+			<div class="kills-mobile-tabs" role="tablist" aria-label="Kill page sections">
+				<button type="button" role="tab" aria-selected="true" aria-controls="kills-panel" data-kills-tab="kills">
+					@icon("swords")
+					Kills
+				</button>
+				<button type="button" role="tab" aria-selected="false" aria-controls="top-panel" data-kills-tab="top">
+					@icon("list-ordered")
+					Top Lists
+				</button>
+				<button type="button" role="tab" aria-selected="false" aria-controls="valuable-panel" data-kills-tab="valuable">
+					@icon("gem")
+					Valuable
+				</button>
+			</div>
+			<div id="valuable-panel" class="kills-valuable-panel" role="tabpanel" data-domain-widget="valuable" data-domain-key="filtered-valuable" data-domain-killtype={ kind } aria-busy="true">
+				@filteredValuable(nil)
+			</div>
+			<div class="kills-grid">
+				<aside id="top-panel" class="kills-top-panel" role="tabpanel" aria-label="Top killers">
+					for i, widget:= range []string{"topCharacters","topCorporations","topAlliances"} {
+						<div data-domain-widget={ widget } data-domain-key={ "filtered-top" + strconv.Itoa(i) } data-domain-killtype={ kind } aria-busy="true">
+							@domainTopBox(topBoxView{Title: domainTopTitle(widget, kind)})
+						</div>
+					}
+				</aside>
+				<div id="kills-panel" class="kills-list-panel" role="tabpanel" data-private-killfeed data-domain-killtype={ kind }><div class="glass-panel p-8 text-center text-gray-500">Loading kills…</div></div>
+			</div>
+		} else {
+			<h1 class="sr-only">{ domainSiteName(config) } — EVE Online Killboard</h1>
+			<div class="domain-top">
+				for i, widget:= range config.Widgets.Top {
+					if widget.Enabled {
+						@domainWidget(widget, config, "top", i)
+					}
+				}
+			</div>
+			<div class="domain-columns" style={ dashboardColumns(config.Widgets) }>
+				if dashboardHasSection(config.Widgets,"right") {
+					<div class={ "domain-column domain-right", templ.KV("domain-right-paired",dashboardHasSection(config.Widgets,"left")) }>
+						for i, widget:= range config.Widgets.Right {
+							if widget.Enabled {
+								@domainWidget(widget, config, "right", i)
+							}
+						}
+					</div>
+				}
+				if dashboardHasSection(config.Widgets,"left") {
+					<aside class="domain-column domain-left" aria-label="Killboard sidebar">
+						for i, widget:= range config.Widgets.Left {
+							if widget.Enabled {
+								@domainWidget(widget, config, "left", i)
+							}
+						}
+					</aside>
+				}
+			</div>
+		}
+	</div>
+}
+
+templ domainWidget(widget api.SiteDomainWidget, config *api.SiteDomainConfiguration, section string, index int) {
+	switch widget.Type {
+		case "killList":
+			<div data-private-killfeed data-domain-killtype={ dashboardKillType(widget) }><div class="glass-panel p-8 text-center text-gray-500">Loading kills…</div></div>
+		case "mostValuable":
+			<div data-domain-widget="valuable" data-domain-key={ section + strconv.Itoa(index) } data-domain-kind="kills" aria-busy="true">
+				@mostValuable(nil, "kills", false)
+			</div>
+		case "entityInfo":
+			<section class="glass-panel p-3">
+				<h3 class="text-fine uppercase font-bold tracking-widest text-gray-500 mb-2">Tracked Entities</h3>
+				<div class="flex flex-wrap gap-2">
+					for _, entity:= range config.Entities {
+						<a href={ templ.URL("/" + entity.Type + "/" + strconv.Itoa(int(entity.ID))) } class="flex items-center gap-2 p-2 rounded-lg bg-white/[0.03] text-sm"><img src={ eveEntityImage(entity.Type, int64(entity.ID), 64) } class="rounded-full" alt="" width="32" height="32" loading="lazy"/><span class="min-w-0"><strong class="block truncate">{ entity.Name }</strong><span class="block text-xs text-gray-500 capitalize">{ entity.Type }</span></span></a>
+					}
+				</div>
+			</section>
+		case "textBlock":
+			<div class="glass-panel p-4"><p class="text-sm text-gray-300 whitespace-pre-wrap">{ domainString(widget.Content) }</p></div>
+		case "campaigns":
+			<div data-domain-widget="campaigns" data-domain-key={ section + strconv.Itoa(index) } aria-busy="true"><section class="glass-panel p-4"><h3>Campaigns</h3><p class="text-sm text-gray-500">Loading…</p></section></div>
+		default:
+			if trackerWidgetDefinitionFor(widget.Type).DataType!="" {
+				<div data-domain-widget={ widget.Type } data-domain-key={ section + strconv.Itoa(index) } aria-busy="true"><section class="top-box glass-panel"><h3>{ trackerWidgetDefinitionFor(widget.Type).Title }</h3><p class="p-3 text-xs text-gray-500">Loading…</p></section></div>
+			}
+	}
+}
+
+templ domainTopBox(view topBoxView) {
+	if len(view.Entries)>0 {
+		@topBox(view)
+	} else {
+		<section class="top-box glass-panel"><h3>{ view.Title }</h3><p class="p-3 text-xs text-gray-600">No activity in the last 7 days</p></section>
+	}
+}
+
+templ domainCampaigns(items []api.EntityCampaignEntry) {
+	<section class="glass-panel p-3">
+		<div class="flex items-center justify-between mb-2"><h3 class="text-fine uppercase font-bold tracking-widest text-gray-500">Campaigns</h3><a href="/campaigns" class="text-xs text-blue-400">All →</a></div>
+		if len(items)==0 {
+			<p class="py-4 text-xs text-gray-600">No campaigns feature this killboard's entities yet</p><a href="/campaigncreator" class="text-xs text-blue-400">Start one →</a>
+		}
+		for _, item:= range items[:min(5,len(items))] {
+			<a href={ templ.URL("/campaign/" + item.CampaignID) } class="block p-2 rounded-lg hover:bg-white/[0.03] text-sm">
+				<div class="flex items-center justify-between gap-2"><strong class="truncate">{ item.Name }</strong><span class="text-xs text-gray-500">{ campaignStatus(item.Status) }</span></div>
+				if item.Totals!=nil {
+					<span class="text-xs text-gray-500">{ fullNumber(float64(item.Totals.KillCount)) } kills · <span class="text-isk">{ compactNumber(item.Totals.ISKDestroyed)+" ISK" }</span></span>
+				}
+				<p class="text-xs text-gray-600 truncate">{ strings.Join(domainCampaignSides(item.Sides)," vs ") }</p>
+			</a>
+		}
+	</section>
+}

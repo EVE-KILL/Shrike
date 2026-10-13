@@ -20,7 +20,7 @@ templ pageHead(meta pageMetadata, development bool) {
 		<meta property="og:title" content={ meta.OGTitle }/>
 		<meta property="og:description" content={ meta.Description }/>
 		<meta property="og:type" content={ meta.Kind }/>
-		<meta property="og:site_name" content="EVE-KILL"/>
+		<meta property="og:site_name" content={ meta.SiteName }/>
 		<meta property="og:locale" content="en_US"/>
 		if meta.Image != "" {
 			<meta property="og:image" content={ meta.Image }/>
@@ -49,7 +49,7 @@ templ pageHead(meta pageMetadata, development bool) {
 		<link rel="stylesheet" href={ assetURL("utilities.css") }/>
 		<link rel="stylesheet" href={ assetURL("account.css") }/>
 		<link rel="stylesheet" href={ assetURL("announcements.css") }/>
-		<script src={ assetURL("preferences.js") }></script>
+		<script data-cfasync="false" src={ assetURL("preferences.js") }></script>
 		<script type="module" src={ assetURL("site.js") }></script>
 		for _, stylesheet := range meta.Stylesheets {
 			if stylesheet!=assetURL("utilities.css") {

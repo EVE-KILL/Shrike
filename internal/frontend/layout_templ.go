@@ -29,7 +29,33 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" class=\"dark\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\" class=\"dark\" data-domain-theme=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(domainThemeJSON(meta.Domain))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 5, Col: 78}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-domain-background=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var3 string
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(domainBackground(meta.Domain))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 5, Col: 135}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -37,15 +63,78 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<body data-controller=\"shell navigation-progress announcements kill-submission\" data-action=\"keydown@document->shell#keyboard click@document->shell#outside scroll@window->shell#scroll:passive click@document->shell#rememberKillNavigation:capture click@document->navigation-progress#click:capture change@document->navigation-progress#remember:capture input@document->navigation-progress#remember:capture keydown@document->navigation-progress#keyboard:capture submit@document->navigation-progress#submit:capture pagehide@window->navigation-progress#pageHide pageshow@window->navigation-progress#pageShow click->announcements#dismissClick visibilitychange@document->announcements#visibility pagehide@window->announcements#pageHide pageshow@window->announcements#pageShow paste@document->kill-submission#paste:capture click->kill-submission#click visibilitychange@document->kill-submission#visibility pagehide@window->kill-submission#hide pageshow@window->kill-submission#show\"><div id=\"navigation-progress\" class=\"navigation-progress\" hidden aria-hidden=\"true\"><span></span></div><div id=\"navigation-loading-status\" class=\"sr-only\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\"></div><a class=\"skip-link\" href=\"#main\">Skip to content</a>")
+		var templ_7745c5c3_Var4 = []any{templ.KV("domain-surface", meta.Domain != nil)}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = navbar().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<body class=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"content-blur\" aria-hidden=\"true\"></div><div class=\"content\" data-shell-target=\"content\"><div class=\"inner-content\"><main id=\"main\" class=\"main-content\" tabindex=\"-1\">")
+		var templ_7745c5c3_Var5 string
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var4).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" data-controller=\"shell navigation-progress announcements kill-submission\" data-action=\"keydown@document->shell#keyboard click@document->shell#outside scroll@window->shell#scroll:passive click@document->shell#rememberKillNavigation:capture click@document->navigation-progress#click:capture change@document->navigation-progress#remember:capture input@document->navigation-progress#remember:capture keydown@document->navigation-progress#keyboard:capture submit@document->navigation-progress#submit:capture pagehide@window->navigation-progress#pageHide pageshow@window->navigation-progress#pageShow click->announcements#dismissClick visibilitychange@document->announcements#visibility pagehide@window->announcements#pageHide pageshow@window->announcements#pageShow paste@document->kill-submission#paste:capture click->kill-submission#click visibilitychange@document->kill-submission#visibility pagehide@window->kill-submission#hide pageshow@window->kill-submission#show\"><div id=\"navigation-progress\" class=\"navigation-progress\" hidden aria-hidden=\"true\"><span></span></div><div id=\"navigation-loading-status\" class=\"sr-only\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\"></div><a class=\"skip-link\" href=\"#main\">Skip to content</a>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = navbar(meta.Domain).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"content-blur\" aria-hidden=\"true\"></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var6 = []any{"content", templ.KV("domain-content-banner", domainBanner(meta.Domain)), templ.KV("domain-content-transparent", meta.Domain != nil && domainString(meta.Domain.Theme.BannerURL) == "" && domainBanner(meta.Domain))}
+		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var6...)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var6).String())
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 1, Col: 0}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" style=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var8 string
+		templ_7745c5c3_Var8, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(domainContentStyle(meta.Domain))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 13, Col: 265}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" data-shell-target=\"content\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if domainBanner(meta.Domain) {
+			templ_7745c5c3_Err = domainBannerContent(meta.Domain).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"inner-content\"><main id=\"main\" class=\"main-content\" tabindex=\"-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -57,7 +146,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</main>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</main>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -65,7 +154,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</div></div><div class=\"background-controls\"><button class=\"floating-button\" id=\"background-view\" data-shell-target=\"view\" data-action=\"click->shell#toggleBackgroundView\" aria-label=\"View background image\" title=\"View background image\" aria-pressed=\"false\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div><div class=\"background-controls\"><button class=\"floating-button\" id=\"background-view\" data-shell-target=\"view\" data-action=\"click->shell#toggleBackgroundView\" aria-label=\"View background image\" title=\"View background image\" aria-pressed=\"false\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -73,7 +162,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</button> <button class=\"floating-button\" id=\"background-shuffle\" data-action=\"click->shell#shuffle\" aria-label=\"Choose a random background\" title=\"Choose a random background\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</button> <button class=\"floating-button\" id=\"background-shuffle\" data-action=\"click->shell#shuffle\" aria-label=\"Choose a random background\" title=\"Choose a random background\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -81,7 +170,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</button></div><a class=\"powered-badge\" href=\"/\" aria-label=\"Powered by EVE-KILL\"><span class=\"powered-badge-icon\">E</span><span class=\"powered-badge-text\">Powered by EVE-KILL</span></a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</button></div><a class=\"powered-badge\" href=\"/\" aria-label=\"Powered by EVE-KILL\"><span class=\"powered-badge-icon\">E</span><span class=\"powered-badge-text\">Powered by EVE-KILL</span></a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -105,7 +194,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"kill-ready-toasts\" data-kill-ready-host aria-live=\"polite\"></div><div class=\"kill-submit-toasts\" data-kill-submit-host aria-live=\"polite\"></div></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"kill-ready-toasts\" data-kill-ready-host aria-live=\"polite\"></div><div class=\"kill-submit-toasts\" data-kill-submit-host aria-live=\"polite\"></div></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -129,25 +218,25 @@ func icon(name string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var2 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var2 == nil {
-			templ_7745c5c3_Var2 = templ.NopComponent
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<svg class=\"icon\" aria-hidden=\"true\" viewBox=\"0 0 24 24\" focusable=\"false\"><use href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<svg class=\"icon\" aria-hidden=\"true\" viewBox=\"0 0 24 24\" focusable=\"false\"><use href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(iconURL(name))
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(iconURL(name))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 46, Col: 101}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 49, Col: 101}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\"></use></svg>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"></use></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

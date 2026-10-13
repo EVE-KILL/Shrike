@@ -178,7 +178,7 @@ func statisticsPeriodClass(active bool) string {
 }
 
 func (s *site) statisticsPage(r *http.Request) (Page, error) {
-	config, err := s.options.Statistics.StatisticsSite(r.Context(), r.Host)
+	config, err := s.statisticsSite(r)
 	if err != nil {
 		return Page{}, err
 	}
@@ -211,7 +211,7 @@ func (s *site) statisticsPage(r *http.Request) (Page, error) {
 }
 
 func (s *site) statisticsCardFragment(w http.ResponseWriter, r *http.Request) {
-	config, err := s.options.Statistics.StatisticsSite(r.Context(), r.Host)
+	config, err := s.statisticsSite(r)
 	if err != nil {
 		http.Error(w, "Could not load statistics", http.StatusServiceUnavailable)
 		return
