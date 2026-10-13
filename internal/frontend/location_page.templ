@@ -1,0 +1,200 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ locationPage(view locationPageView) {
+	<div class="system-page location-page" data-location-kind={ view.Kind } data-location-id={ strconv.FormatInt(view.ID, 10) } data-controller="location" data-action="click->location#click mouseover->location#hover mouseout->location#leave popstate@window->location#history pagehide@window->location#hide pageshow@window->location#show">
+		<link rel="stylesheet" href={ assetURL("entity.css") }/>
+		<link rel="stylesheet" href={ assetURL("system.css") }/>
+		@locationHeader(view)
+		<div class="system-valuable" data-system-valuable>
+			@mostValuable(view.Valuable, "kills", false)
+		</div>
+		<nav class="entity-tabs system-tabs" aria-label={ view.Name + " pages" }>
+			<a class={ entityTabClass(view.Tab, "dashboard") } href={ fmt.Sprintf("/%s/%d", view.Kind, view.ID) } data-system-tab="dashboard" aria-label="Dashboard">
+				@icon("activity")
+				<span>Dashboard</span>
+			</a>
+			<a class={ entityTabClass(view.Tab, "kills") } href={ fmt.Sprintf("/%s/%d/kills", view.Kind, view.ID) } data-system-tab="kills" aria-label="Kills">
+				@icon("skull")
+				<span>Kills</span>
+			</a>
+			<a class={ entityTabClass(view.Tab, "battles") } href={ fmt.Sprintf("/%s/%d/battles", view.Kind, view.ID) } data-system-tab="battles" aria-label="Battles">
+				@icon("swords")
+				<span>Battles</span>
+			</a>
+			<a class={ entityTabClass(view.Tab, "map") } href={ fmt.Sprintf("/map/region/%d", view.RegionID) } aria-label="Map">
+				@icon("map")
+				<span>Map</span>
+			</a>
+		</nav>
+		@locationMain(view)
+		<script type="module" src={ assetURL("system.js") }></script>
+	</div>
+}
+
+templ locationHeader(view locationPageView) {
+	<header class="hero-surface glass-panel system-hero">
+		<img class="system-hero-background" src={ locationImage(view, 1024) } alt="" width="1024" height="1024" loading="lazy"/>
+		<div class="system-hero-shade"></div>
+		<div class="system-hero-content">
+			if locationDominantImage(view.Dominant,256) != "" {
+				if locationDominantHref(view.Dominant) != "" {
+					<a class="system-hero-logo" href={ locationDominantHref(view.Dominant) }><img src={ locationDominantImage(view.Dominant, 256) } alt={ locationDominantName(view.Dominant) } width="160" height="160" fetchpriority="high"/></a>
+				} else {
+					<img class="system-hero-logo" src={ locationDominantImage(view.Dominant, 256) } alt={ locationDominantName(view.Dominant) } width="160" height="160" fetchpriority="high"/>
+				}
+			}
+			<div class="system-hero-identity">
+				<div class="system-title-row">
+					<h1>{ view.Name }</h1>
+					if locationDominantName(view.Dominant) != "" {
+						<span class="system-sov-badge">{ locationDominantName(view.Dominant) }</span>
+					}
+				</div>
+				<nav class="system-breadcrumb" aria-label="Breadcrumb">
+					<a href="/map">Map</a><span>/</span>
+					if view.Kind == "constellation" {
+						<a href={ idPath("region", view.RegionID) }>{ view.RegionName }</a><span>/</span>
+					}
+					<strong>{ view.Name }</strong>
+				</nav>
+				if view.Description != "" {
+					<div class="location-description">
+						@templ.Raw(view.Description)
+					</div>
+				}
+			</div>
+			<div class="system-external-links">
+				if view.Kind == "region" {
+					<a href={ "https://evemaps.dotlan.net/map/" + view.Name } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/dotlan.png") } alt="" width="16" height="16"/>DOTLAN</a>
+					<a href={ "https://eveeye.com/?m=" + view.Name } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/eveeye.svg") } alt="" width="16" height="16"/>EVEEye</a>
+					<a href={ fmt.Sprintf("https://evemissioneer.com/r/%d", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/evemissioneer.png") } alt="" width="16" height="16"/>Missioneer</a>
+					<a href={ fmt.Sprintf("https://www.jita.space/region/%d", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/jita-space.png") } alt="" width="16" height="16"/>Jita.Space</a>
+					<a href={ fmt.Sprintf("https://zkillboard.com/region/%d/", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/zkillboard.png") } alt="" width="16" height="16"/>zKillboard</a>
+				} else {
+					<a href={ "https://evemaps.dotlan.net/map/" + view.RegionName + "/" + view.Name } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/dotlan.png") } alt="" width="16" height="16"/>DOTLAN</a>
+					<a href={ fmt.Sprintf("https://www.jita.space/constellation/%d", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/jita-space.png") } alt="" width="16" height="16"/>Jita.Space</a>
+					<a href={ fmt.Sprintf("https://zkillboard.com/constellation/%d/", view.ID) } target="_blank" rel="noopener noreferrer"><img src={ assetURL("remotes/zkillboard.png") } alt="" width="16" height="16"/>zKillboard</a>
+				}
+			</div>
+		</div>
+		<div class="system-stat-grid">
+			@systemStat("Kills (7d)", fullNumber(float64(locationStatistics(view).Kills)), "green")
+			@systemStat("ISK Destroyed (7d)", compactNumber(locationStatistics(view).TotalValue), "gold")
+			@systemStat("NPC Kills (7d)", fullNumber(float64(locationStatistics(view).NPCKills)), "")
+			@systemStat("Pod Kills (7d)", fullNumber(float64(locationStatistics(view).PodKills)), "red")
+			if view.Kind == "region" {
+				@systemStat("Constellations", fullNumber(float64(view.Region.Region.ConstellationCount)), "blue")
+				@systemStat("Systems", fullNumber(float64(view.Region.Region.SystemCount)), "")
+			} else {
+				@systemStat("Systems", strconv.Itoa(len(view.Constellation.Systems)), "blue")
+			}
+		</div>
+	</header>
+}
+
+templ locationMain(view locationPageView) {
+	<section class="system-main" data-system-main data-location-kind={ view.Kind } data-location-id={ strconv.FormatInt(view.ID, 10) } data-system-tab={ view.Tab } data-page-title={ locationMetadata(view).Title + " - EVE-KILL.com" } data-page-description={ locationMetadata(view).Description } data-page-canonical={ locationMetadata(view).CanonicalPath }>
+		if view.Tab == "dashboard" {
+			@locationDashboard(view)
+		} else if view.Tab == "kills" {
+			@killList(view.Kills, killListOptions{Kind: view.Kind, Page: 1, Limit: 50})
+		} else if view.Tab == "battles" {
+			@entityBattles(view.Kind, view.ID, view.Battles)
+		}
+	</section>
+}
+
+templ locationDashboard(view locationPageView) {
+	<div class="system-dashboard location-dashboard">
+		<div class="system-dashboard-left">
+			if view.Kind == "region" && len(view.Region.SovDistribution) > 0 {
+				@locationSovereignty(view.Region.SovDistribution)
+			} else if view.Kind == "constellation" && len(view.Constellation.SovDistribution) > 0 {
+				@locationSovereignty(view.Constellation.SovDistribution)
+			}
+			if view.Kind == "region" && len(view.Region.TopSystems) > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("swords")
+						Most Active Systems (7d)
+					</h2>
+					<div class="location-active-systems">
+						for index, system := range view.Region.TopSystems {
+							<a href={ idPath("system", system.SolarSystemID) }><small>{ strconv.Itoa(index+1) }</small><span class={ systemSecurityClass(system.Security) }>{ systemSecurityLabel(system.Security) }</span><strong>{ system.SystemName }</strong><em>{ fullNumber(float64(system.Kills)) } kills</em><b>{ compactNumber(system.TotalValue) }</b></a>
+						}
+					</div>
+				</section>
+			}
+		</div>
+		<div class="system-dashboard-right">
+			if view.Kind == "region" && len(view.Region.Constellations) > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("network")
+						Constellations <small>({ strconv.Itoa(len(view.Region.Constellations)) })</small>
+					</h2>
+					<div class="location-list">
+						for _, constellation := range view.Region.Constellations {
+							<a href={ idPath("constellation", constellation.ConstellationID) }>
+								<img src={ fmt.Sprintf("/images/constellations/%d?size=32", constellation.ConstellationID) } alt="" width="24" height="24" loading="lazy"/><span><strong>{ constellation.ConstellationName }</strong><small>{ fullNumber(float64(constellation.SystemCount)) } systems</small></span>
+								if constellation.AllianceID > 0 {
+									<img src={ eveEntityImage("alliance", constellation.AllianceID, 32) } alt="" width="16" height="16" loading="lazy"/><em>{ constellation.AllianceName }</em>
+								} else if constellation.FactionID > 0 {
+									<img src={ eveEntityImage("corporation", constellation.FactionID, 32) } alt="" width="16" height="16" loading="lazy"/><em>{ constellation.FactionName }</em>
+								}
+							</a>
+						}
+					</div>
+				</section>
+			} else if view.Kind == "constellation" && len(view.Constellation.Systems) > 0 {
+				<section class="glass-panel system-panel">
+					<h2>
+						@icon("globe")
+						Systems <small>({ strconv.Itoa(len(view.Constellation.Systems)) })</small>
+					</h2>
+					<div class="location-list">
+						for _, system := range view.Constellation.Systems {
+							<a href={ idPath("system", system.SolarSystemID) }>
+								<img src={ fmt.Sprintf("/images/systems/%d?size=32", system.SolarSystemID) } alt="" width="24" height="24" loading="lazy"/><small class={ "security " + systemSecurityClass(system.Security) }>{ systemSecurityLabel(system.Security) }</small><span><strong>{ system.SystemName }</strong></span>
+								if system.AllianceID > 0 {
+									<img src={ eveEntityImage("alliance", system.AllianceID, 32) } alt="" width="16" height="16" loading="lazy"/><em>{ system.AllianceName }</em>
+								} else if system.FactionID > 0 {
+									<img src={ eveEntityImage("corporation", system.FactionID, 32) } alt="" width="16" height="16" loading="lazy"/><em>{ system.FactionName }</em>
+								}
+							</a>
+						}
+					</div>
+				</section>
+			}
+		</div>
+	</div>
+}
+
+templ locationSovereignty(rows []api.UniverseLocationSovereignty) {
+	<section class="glass-panel system-panel">
+		<h2>
+			@icon("flag")
+			Sovereignty
+		</h2>
+		<div class="location-sovereignty">
+			for _, holder := range rows {
+				<div>
+					<span>
+						<img src={ locationDominantImage(&holder, 32) } alt="" width="20" height="20" loading="lazy"/>
+						if holder.AllianceID > 0 {
+							<a href={ idPath("alliance", holder.AllianceID) }>{ holder.AllianceName }</a>
+						} else {
+							{ holder.FactionName }
+						}
+					</span><small>{ fullNumber(float64(holder.SystemCount)) } systems</small>
+				</div>
+			}
+		</div>
+	</section>
+}

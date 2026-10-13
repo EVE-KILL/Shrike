@@ -1,0 +1,652 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ entityPage(view entityPageView) {
+	<div class="entity-page" style={ entityHeaderStyle(view) } data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-old-portrait={ strconv.FormatBool(view.HasOldPortrait) } data-entity-ready="false" data-controller="entity-navigation" data-action="click->entity-navigation#click error->entity-navigation#imageError:capture resize@window->entity-navigation#reveal popstate@window->entity-navigation#history pagehide@window->entity-navigation#hide pageshow@window->entity-navigation#show">
+		<link rel="stylesheet" href={ assetURL("entity.css") }/>
+		@entityHeader(view)
+		if view.Kind != "faction" {
+			<section class="valuable glass-panel entity-valuable" data-kind="kills" data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-controller="entity-valuable" data-action="click->entity-valuable#click pagehide@window->entity-valuable#hide pageshow@window->entity-valuable#show">
+				<div class="valuable-tabs" role="tablist" aria-label="Most valuable kills">
+					<button type="button" class="valuable-tab active" data-entity-valuable="kills"><span class="tab-long">Most Valuable Kills</span><span class="tab-short">Kills</span></button>
+					<button type="button" class="valuable-tab" data-entity-valuable="ships"><span class="tab-long">Most Valuable Ships</span><span class="tab-short">Ships</span></button>
+					<button type="button" class="valuable-tab" data-entity-valuable="structures"><span class="tab-long">Most Valuable Structures</span><span class="tab-short">Structures</span></button>
+				</div>
+				<div class="entity-valuable-content" data-entity-valuable-content><p>Loading valuable kills…</p></div>
+			</section>
+			<details class="glass-panel entity-ship-classes" data-entity-ship-classes data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-controller="entity-classes" data-action="pagehide@window->entity-classes#hide pageshow@window->entity-classes#show">
+				<summary>
+					@icon("tags")
+					<span><strong>Ship Classes</strong><small data-entity-ship-summary>Loading…</small></span>@icon("chevron-down")
+				</summary>
+				<div data-entity-ship-content></div>
+			</details>
+		}
+		<nav class="entity-tabs" aria-label={ view.Name + " pages" }>
+			for _, tab := range view.Tabs {
+				<a href={ entityTabURL(view, tab) } class={ entityTabClass(view.Tab, tab.ID) } aria-current={ entityTabCurrent(view.Tab, tab.ID) } aria-label={ tab.Label }>
+					@icon(tab.Icon)
+					<span>{ tab.Label }</span>
+				</a>
+			}
+		</nav>
+		@entityMain(view)
+		<script type="module" src={ assetURL("entity.js") }></script>
+	</div>
+}
+
+templ entityMain(view entityPageView) {
+	<section class="entity-main" data-entity-tab={ view.Tab } data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-page-title={ entityPageMetadata(view).Title + " - EVE-KILL.com" } data-page-description={ entityPageMetadata(view).Description } data-controller="entity-content" data-action="entity-activate->entity-content#activate click->entity-content#click input->entity-content#input keydown->entity-content#keydown toggle->entity-content#toggle:capture click@document->entity-content#outside resize@window->entity-content#resize visibilitychange@document->entity-content#visibility pagehide@window->entity-content#hide pageshow@window->entity-content#show">
+		if view.Tab == "dashboard" {
+			@entityDashboard(view)
+		} else if view.Tab == "combined" || view.Tab == "kills" || view.Tab == "losses" {
+			<div class="entity-kill-layout">
+				if view.Kind != "faction" {
+					<aside class="entity-top-lists" data-entity-top-lists><p>Loading top lists…</p></aside>
+				}
+				@entityKillList(view, view.Killlist, view.KillPage, view.KillLimit)
+			</div>
+		} else if view.Tab == "top" {
+			<div class={ entityTopPageClass(view.Kind) }>
+				if view.Kind != "character" {
+					@entityTopSlice(view.Kind, "left", "7", view.TopLeft)
+				}
+				@entityTopSlice(view.Kind, "right", "7", view.TopRight)
+			</div>
+		} else if view.Tab == "history" {
+			@entityHistory(view)
+		} else if view.Tab == "achievements" {
+			@entityAchievements(view.Achievements)
+		} else if view.Tab == "members" {
+			@entityMembers(entityMembersView{Kind: view.Kind, ID: view.ID, Sort: "name", Data: view.Members, Corps: view.Corporations})
+		} else if view.Tab == "corporations" {
+			@entityCorporations(entityCorporationsView{ID: view.ID, Sort: "members", Dir: "desc", Data: view.Corporations})
+		} else if view.Tab == "battles" {
+			@entityBattles(view.Kind, view.ID, view.Battles)
+		} else if view.Tab == "wars" {
+			@entityWars(view.Kind, view.ID, view.Wars, "recent")
+		} else if view.Tab == "campaigns" {
+			@entityCampaigns(view.Kind, view.ID, view.Campaigns)
+		} else {
+			<div class="glass-panel entity-loading">Loading { view.Tab }…</div>
+		}
+	</section>
+}
+
+templ entityAchievements(rows []api.EntityAchievement) {
+	<div class="entity-achievements">
+		<div class="achievement-summary">
+			<section>
+				@icon("trophy")
+				<strong>{ fullNumber(float64(achievementTotalPoints(rows))) }</strong><span>Total Points</span>
+			</section>
+			<section><svg class="achievement-summary-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m8 12 2 2 4-4"></path></svg><strong>{ strconv.Itoa(achievementCompletedCount(rows)) } <small>/ { strconv.Itoa(len(rows)) }</small></strong><span>Completed</span></section>
+			<section><span>Completion</span><progress max={ strconv.Itoa(len(rows)) } value={ strconv.Itoa(achievementCompletedCount(rows)) } aria-label="Achievement completion"></progress><strong>{ strconv.Itoa(achievementPercent(rows)) }%</strong></section>
+		</div>
+		<div class="achievement-filters">
+			<div role="group" aria-label="Achievement status">
+				<button type="button" class="active" data-achievement-status="all">All</button>
+				<button type="button" data-achievement-status="completed">Completed</button>
+				<button type="button" data-achievement-status="in_progress">In Progress</button>
+			</div>
+			<div role="group" aria-label="Achievement category">
+				<button type="button" class="active" data-achievement-category="">All</button>
+				for _, category := range achievementCategories(rows) {
+					<button type="button" data-achievement-category={ category }>{ category }</button>
+				}
+			</div>
+		</div>
+		<div class="achievement-grid">
+			for _, item := range rows {
+				<article class={ achievementClass(item) } data-completed={ strconv.FormatBool(item.IsCompleted) } data-progress={ strconv.FormatInt(item.CurrentCount, 10) } data-category={ item.Category } data-type={ item.Type } data-points-modifier={ item.PointsModifier }>
+					<header>
+						<div><strong>{ item.Name }</strong><p>{ item.Description }</p></div>
+						<div class="achievement-points">
+							<strong>{ signedNumber(item.Points) }</strong>
+							if item.MaxLevel > 1 {
+								<small>Level { strconv.FormatInt(item.Level, 10) } / { strconv.FormatInt(item.MaxLevel, 10) }</small>
+							}
+						</div>
+					</header>
+					<div class="achievement-badges">
+						<span>{ item.Rarity }</span><span>{ item.Type }</span>
+						if item.IsCompleted {
+							<span class="achievement-done"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m8 12 2 2 4-4"></path></svg></span>
+						} else if item.CurrentCount > 0 {
+							<span class="achievement-progress-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg></span>
+						}
+					</div>
+					<progress max="100" value={ strconv.FormatInt(achievementProgress(item), 10) } aria-label={ item.Name + " progress" }></progress>
+					<footer>
+						<span>{ fullNumber(float64(item.CurrentCount)) } / { fullNumber(float64(achievementNextThreshold(item))) }</span>
+						<span>
+							if item.IsCompleted && item.CompletedAt != "" {
+								{ entityDate(item.CompletedAt) }
+							} else {
+								{ strconv.FormatInt(achievementProgress(item), 10) }%
+							}
+						</span>
+					</footer>
+				</article>
+			}
+		</div>
+		<p class="achievement-empty" hidden>No achievements match the current filters</p>
+	</div>
+}
+
+templ entityHistory(view entityPageView) {
+	<div class="entity-history">
+		if len(view.History) == 0 {
+			if view.HistoryQueued {
+				<p>Corporation history has been queued for retrieval. Refresh in a moment to see the data.</p>
+			} else {
+				<p>No history available</p>
+			}
+		} else {
+			for index, entry := range view.History {
+				<a class={ entityHistoryClass(index) } href={ idPath(entityHistoryKind(view), entityHistoryID(view, entry)) }>
+					if entityHistoryID(view, entry) > 0 {
+						<img src={ eveEntityImage(entityHistoryKind(view), entityHistoryID(view, entry), 128) } alt={ entityHistoryName(view, entry) } width="48" height="48" loading="lazy"/>
+					} else {
+						<span class="entity-history-empty">
+							if view.Kind == "corporation" {
+								<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 14.14 14.14"></path></svg>
+							} else {
+								—
+							}
+						</span>
+					}
+					<div class="entity-history-main">
+						<div>
+							<strong>{ entityHistoryName(view, entry) }</strong>
+							if entityHistoryTicker(view, entry) != "" {
+								<small>[{ entityHistoryTicker(view, entry) }]</small>
+							}
+							if index == 0 {
+								<span class="entity-history-current">Current</span>
+							}
+						</div>
+						<p>
+							{ entityDate(entry.StartDate) }
+							if view.Kind != "corporation" {
+								— { entityHistoryEnd(view.History, index) }
+							}
+						</p>
+					</div>
+					if view.Kind == "character" && (entry.Kills > 0 || entry.Losses > 0) {
+						<div class="entity-history-stats"><span>{ fullNumber(float64(entry.Kills)) } kills</span><span>{ fullNumber(float64(entry.Losses)) } losses</span></div>
+					}
+					<div class="entity-history-duration"><strong>{ entityHistoryDuration(entityHistoryDays(view.History, index)) }</strong><small>{ fullNumber(float64(entityHistoryDays(view.History, index))) } days</small></div>
+				</a>
+			}
+		}
+	</div>
+}
+
+templ entityTopSlice(kind, slice, days string, data api.EntityTopData) {
+	<section class="entity-top-slice" data-entity-top-slice={ slice } data-days={ days } data-entity-kind={ kind }>
+		<header class="glass-panel">
+			<h2>
+				if slice == "left" {
+					<span>Members &amp; Engagement</span>
+				} else {
+					<span>Activity &amp; Locations</span>
+				}
+			</h2>
+			<div>
+				for _, period := range entityTopPeriods(slice) {
+					<button type="button" class={ entityTopPeriodClass(period.Value, days) } data-focus-key={ "top-period:" + period.Value } data-top-period={ period.Value }>{ period.Label }</button>
+				}
+			</div>
+		</header>
+		<div class="entity-top-widgets">
+			if slice == "left" {
+				@topBox(topBoxView{Title: "Top Members (Kills)", DataType: "characters", Entries: data.CharactersByKills})
+				@topBox(topBoxView{Title: "Top Members (Points)", DataType: "characters", Entries: data.CharactersByPoints})
+				@topBox(topBoxView{Title: "Top Members (ISK Destroyed)", DataType: "characters", Entries: data.CharactersByISK, CountFormat: "isk"})
+				@topBox(topBoxView{Title: "Top Solo Killers", DataType: "characters", Entries: data.SoloKillers})
+				if kind == "alliance" {
+					@topBox(topBoxView{Title: "Top Corporations (Kills)", DataType: "corporations", Entries: data.CorporationsByKills})
+				}
+				@topBox(topBoxView{Title: "Top Achievement Points (Lifetime)", DataType: "characters", Entries: data.AchievementPoints})
+				if kind == "corporation" {
+					@topBox(topBoxView{Title: "Latest Members to Join (Lifetime)", DataType: "characters", Entries: data.RecentMembers, CountFormat: "age"})
+				}
+			} else {
+				@topBox(topBoxView{Title: "Most Used Ships", DataType: "ships", Entries: data.ShipsUsed})
+				@topBox(topBoxView{Title: "Most Fought-In Systems", DataType: "systems", Entries: data.Systems})
+				@topBox(topBoxView{Title: "Most Fought-In Constellations", DataType: "constellations", Entries: data.Constellations})
+				@topBox(topBoxView{Title: "Most Fought-In Regions", DataType: "regions", Entries: data.Regions})
+				@topBox(topBoxView{Title: "Most Killed Corporations", DataType: "corporations", Entries: data.KilledCorporations})
+				@topBox(topBoxView{Title: "Most Killed Alliances", DataType: "alliances", Entries: data.KilledAlliances})
+				@topBox(topBoxView{Title: "Most Killed By (Corporations)", DataType: "corporations", Entries: data.KilledByCorporations})
+				@topBox(topBoxView{Title: "Most Killed By (Alliances)", DataType: "alliances", Entries: data.KilledByAlliances})
+			}
+		</div>
+	</section>
+}
+
+templ entityKillList(view entityPageView, page api.KilllistPage, pageNumber, limit int) {
+	<section class="kill-list entity-kill-list" id="entity-kill-list" data-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-role={ view.Tab } data-page={ strconv.Itoa(pageNumber) } data-limit={ strconv.Itoa(limit) } data-total-pages={ strconv.Itoa(page.TotalPages) } data-next-cursor={ cursorString(page.Cursor) } data-ship-group={ strconv.FormatInt(view.ShipGroup, 10) }>
+		<div class="kill-toolbar">
+			<div class="kill-toolbar-left">
+				<span class="kill-live-dot" title="Connecting to live feed" aria-label="Live feed connecting"></span><button class="new-kills" type="button" hidden>+<span>0</span> new</button>
+				<div class="kill-limits" aria-label="Kills per page">
+					for _, count := range []int{10, 25, 50, 100} {
+						<button type="button" class={ killLimitClass(count, limit) } data-focus-key={ "kill-limit:" + strconv.Itoa(count) } data-entity-kill-limit={ strconv.Itoa(count) }>{ strconv.Itoa(count) }</button>
+					}
+				</div>
+			</div>
+			<div class="kill-day-heading">
+				if len(page.Kills) > 0 {
+					{ dayLabel(page.Kills[0].KillmailTime) }
+				}
+			</div>@killPager(page, killListOptions{Kind: "latest", Page: pageNumber, Limit: limit})
+		</div>
+		if len(page.Kills) == 0 {
+			<p class="kill-empty">No kills found</p>
+		} else {
+			<div class="kill-rows">
+				<div class="kill-head"><span>Ship</span><span>Victim</span><span>Final Blow</span><span>Location</span><span>Details</span></div>
+				for index, kill := range page.Kills {
+					if index > 0 && !sameUTCDay(page.Kills[index-1].KillmailTime, kill.KillmailTime) {
+						<div class="kill-day-divider"><span></span><strong>{ dayLabel(kill.KillmailTime) }</strong><span></span></div>
+					}
+					@killRow(kill, index, killListOptions{Kind: "entity"})
+				}
+			</div>
+		}
+		if len(page.Kills) > 0 {
+			<div class="kill-bottom-pager">
+				@killPager(page, killListOptions{Kind: "latest", Page: pageNumber, Limit: limit})
+			</div>
+		}
+	</section>
+}
+
+templ entityTopLists(view entityPageView, lists api.EntityTopLists) {
+	<div class="entity-top-lists-body">
+		if view.Tab == "combined" || view.Tab == "kills" {
+			@topBox(topBoxView{Title: "Most Killed Characters", DataType: "characters", Entries: lists.Killed.Characters})
+			@topBox(topBoxView{Title: "Most Killed Corps", DataType: "corporations", Entries: lists.Killed.Corporations})
+			@topBox(topBoxView{Title: "Most Killed Alliances", DataType: "alliances", Entries: lists.Killed.Alliances})
+		}
+		if view.Tab == "combined" || view.Tab == "losses" {
+			@topBox(topBoxView{Title: "Most Killed By (Characters)", DataType: "characters", Entries: lists.KilledBy.Characters})
+			@topBox(topBoxView{Title: "Most Killed By (Corps)", DataType: "corporations", Entries: lists.KilledBy.Corporations})
+			@topBox(topBoxView{Title: "Most Killed By (Alliances)", DataType: "alliances", Entries: lists.KilledBy.Alliances})
+		}
+	</div>
+}
+
+templ entityHeader(view entityPageView) {
+	<header class="hero-surface glass-panel entity-hero">
+		if view.Background != "" {
+			<img class="entity-hero-background" src={ view.Background } alt="" loading="lazy"/>
+			<div class="entity-hero-shade"></div>
+		}
+		<div class="entity-hero-top">
+			<button class="entity-portrait" type="button" data-entity-portrait aria-label={ "View " + view.Identity.Name + " full size" }>
+				<img src={ view.Image } alt={ view.Identity.Name } width="160" height="160" fetchpriority="high"/>
+				if view.Kind == "character" {
+					if view.Identity.RaceName != "" {
+						<span class="entity-race">{ view.Identity.RaceName }</span>
+					}
+					if view.Identity.BloodlineName != "" {
+						<span class="entity-bloodline">{ view.Identity.BloodlineName }</span>
+					}
+					<span class="entity-security">{ fmt.Sprintf("%.2f", view.Identity.SecurityStatus) }</span>
+				}
+			</button>
+			<div class="entity-identity">
+				<h1>
+					{ view.Identity.Name }
+					if view.Identity.Ticker != "" {
+						<span class="entity-ticker">[{ view.Identity.Ticker }]</span>
+					}
+					if view.Identity.State == "closed" {
+						<span class="entity-closed">Closed</span>
+					}
+					if view.Kind == "corporation" && len(entityPaletteSwatches(view.Identity.Palette)) > 0 {
+						<span class="entity-palette-swatches">
+							for _, color := range entityPaletteSwatches(view.Identity.Palette) {
+								<span style={ "background-color:" + color } title={ color }></span>
+							}
+						</span>
+					}
+				</h1>
+				if view.Identity.CorporationID > 0 && view.Kind == "character" {
+					<a href={ idPath("corporation", view.Identity.CorporationID) }><img src={ eveEntityImage("corporation", view.Identity.CorporationID, 64) } alt="" width="20" height="20"/>{ view.Identity.CorporationName } <small>[{ view.Identity.CorporationTicker }]</small></a>
+				}
+				if view.Identity.AllianceID > 0 && (view.Kind == "character" || view.Kind == "corporation") {
+					<a href={ idPath("alliance", view.Identity.AllianceID) }><img src={ eveEntityImage("alliance", view.Identity.AllianceID, 64) } alt="" width="20" height="20"/>{ view.Identity.AllianceName } <small>[{ view.Identity.AllianceTicker }]</small></a>
+				}
+				if view.Kind != "faction" && view.Identity.FactionID > 0 {
+					<a href={ idPath("faction", view.Identity.FactionID) }>
+						@icon("flag") {
+							view.Identity.FactionName 
+						}
+					</a>
+				}
+				if view.Identity.Title != "" {
+					<p class="entity-title">{ view.Identity.Title }</p>
+				}
+				if view.Kind == "corporation" && view.Identity.CEOId > 0 {
+					<a href={ idPath("character", view.Identity.CEOId) }>
+						@icon("crown")
+						<span>CEO: { view.Identity.CEOName }</span>
+					</a>
+				}
+				if view.Kind == "alliance" && view.Identity.ExecutorCorporationID > 0 {
+					<a href={ idPath("corporation", view.Identity.ExecutorCorporationID) }>
+						<img src={ eveEntityImage("corporation", view.Identity.ExecutorCorporationID, 64) } alt="" width="20" height="20"/>
+						<span>Executor: { view.Identity.ExecutorName }</span>
+						if view.Identity.ExecutorTicker != "" {
+							<small>[{ view.Identity.ExecutorTicker }]</small>
+						}
+					</a>
+				}
+			</div>
+			<div class="entity-dates">
+				if view.Kind == "corporation" {
+					<div>
+						<span>
+							@icon("users")
+							Members
+						</span><strong>{ fullNumber(float64(view.Identity.MemberCount)) }</strong>
+					</div>
+					if view.Identity.DateFounded != "" {
+						<div>
+							<span>
+								@icon("calendar")
+								Founded
+							</span><strong>{ entityDate(view.Identity.DateFounded) } ({ strconv.Itoa(entityAge(view.Identity.DateFounded)) } years)</strong>
+						</div>
+					}
+					<div>
+						<span>
+							@icon("percent")
+							Tax Rate
+						</span>
+						<strong>
+							{ entityTaxRate(view.Identity.TaxRate) }
+							if view.Identity.LPTaxRate > 0 {
+								· { entityLPTaxRate(view.Identity.LPTaxRate) }
+							}
+						</strong>
+					</div>
+					if view.Identity.WarEligible {
+						<div class="entity-war-eligible">
+							@icon("swords")
+							<span>War Eligible</span>
+						</div>
+					}
+				} else if view.Kind == "alliance" {
+					<div>
+						<span>
+							@icon("building-2")
+							Corporations
+						</span><strong>{ fullNumber(float64(view.Identity.CorporationCount)) }</strong>
+					</div>
+					<div>
+						<span>
+							@icon("users")
+							Members
+						</span><strong>{ fullNumber(float64(view.Identity.MemberCount)) }</strong>
+					</div>
+					if view.Identity.DateFounded != "" {
+						<div>
+							<span>
+								@icon("calendar")
+								Founded
+							</span><strong>{ entityDate(view.Identity.DateFounded) } ({ strconv.Itoa(entityAge(view.Identity.DateFounded)) } years)</strong>
+						</div>
+					}
+				} else {
+					if view.Identity.LastActive != "" {
+						<div><span>Last Active</span><strong>{ entityTimeAgo(view.Identity.LastActive) }</strong></div>
+					}
+					if view.Identity.Birthday != "" {
+						<div><span>Birthday</span><strong>{ entityDate(view.Identity.Birthday) } ({ strconv.Itoa(entityAge(view.Identity.Birthday)) } years old)</strong></div>
+						<div><span>Next Birthday</span><strong>{ entityNextBirthday(view.Identity.Birthday) }</strong></div>
+					}
+					if view.Identity.DateFounded != "" {
+						<div><span>Founded</span><strong>{ entityDate(view.Identity.DateFounded) } ({ strconv.Itoa(entityAge(view.Identity.DateFounded)) } years)</strong></div>
+					}
+					if view.Identity.MemberCount > 0 {
+						<div><span>Members</span><strong>{ fullNumber(float64(view.Identity.MemberCount)) }</strong></div>
+					}
+					if view.Identity.CorporationCount > 0 {
+						<div><span>Corporations</span><strong>{ fullNumber(float64(view.Identity.CorporationCount)) }</strong></div>
+					}
+					if view.Kind == "faction" && view.Identity.StationCount > 0 {
+						<div><span>Stations</span><strong>{ fullNumber(float64(view.Identity.StationCount)) }</strong></div>
+					}
+					if view.Kind == "faction" && view.Identity.StationSystemCount > 0 {
+						<div><span>Systems</span><strong>{ fullNumber(float64(view.Identity.StationSystemCount)) }</strong></div>
+					}
+				}
+			</div>
+			<div class="entity-hero-right">
+				if view.Ranking.Population > 0 {
+					<a class="entity-ranking" href="/rankings"><span>EVE-KILL Rating</span><strong>{ fullNumber(float64(view.Ranking.Rating)) }</strong><small>#{ fullNumber(float64(view.Ranking.Rank)) } of { fullNumber(float64(view.Ranking.Population)) }</small></a>
+				}
+				if view.Kind == "character" && view.Identity.CorporationID > 0 {
+					<a href={ idPath("corporation", view.Identity.CorporationID) }><img src={ eveEntityImage("corporation", view.Identity.CorporationID, 128) } alt={ view.Identity.CorporationName } width="80" height="80"/></a>
+				}
+				if (view.Kind == "character" || view.Kind == "corporation") && view.Identity.AllianceID > 0 {
+					<a href={ idPath("alliance", view.Identity.AllianceID) }><img src={ eveEntityImage("alliance", view.Identity.AllianceID, 128) } alt={ view.Identity.AllianceName } width="80" height="80"/></a>
+				}
+				if view.Kind == "alliance" && view.Identity.ExecutorCorporationID > 0 {
+					<a href={ idPath("corporation", view.Identity.ExecutorCorporationID) }><img src={ eveEntityImage("corporation", view.Identity.ExecutorCorporationID, 128) } alt="Executor corporation" width="80" height="80"/></a>
+				}
+			</div>
+		</div>
+		@entityStatGrid(view)
+	</header>
+}
+
+templ entityStatGrid(view entityPageView) {
+	<div class="entity-stat-grid">
+		if view.Kind == "faction" {
+			@entityStatBox("Losses (All Time)", "skull", []entityStatRow{{"Losses", fullNumber(float64(view.Stats.Losses)), "loss"}, {"ISK Lost", compactNumber(view.Stats.ISKLost), "loss"}})
+			@entityStatBox("Last 90 Days", "clock", []entityStatRow{{"Losses", fullNumber(float64(view.Recent.Losses)), "loss"}, {"ISK Lost", compactNumber(view.Recent.ISKLost), "loss"}})
+		} else if view.Kind == "character" {
+			@entityStatBox("Combat", "swords", []entityStatRow{{"Kills", fullNumber(float64(view.Stats.Kills)), "kill"}, {"Losses", fullNumber(float64(view.Stats.Losses)), "loss"}, {"Efficiency", strconv.FormatInt(view.Stats.Efficiency, 10) + "%", ""}, entityDangerRow(view.Stats)})
+			@entityStatBox("ISK", "gem", []entityStatRow{{"Destroyed", compactNumber(view.Stats.ISKDestroyed), "kill"}, {"Lost", compactNumber(view.Stats.ISKLost), "loss"}, {"ISK Efficiency", strconv.FormatInt(view.Stats.ISKEfficiency, 10) + "%", ""}, entityBalanceRow(view.Stats.ISKDestroyed - view.Stats.ISKLost)})
+			@entityStatBox("Solo", "users", []entityStatRow{{"Solo Kills", fullNumber(float64(view.Stats.SoloKills)), "kill"}, {"Solo Ratio", strconv.FormatInt(entitySoloRatio(view.Stats), 10) + "%", ""}, {"Final Blows", fullNumber(float64(view.Stats.FinalBlows)), ""}, {"Combat Points", fullNumber(float64(view.Stats.Points)), ""}})
+			@entityStatBox("Other", "activity", []entityStatRow{{"NPC Losses", fullNumber(float64(view.Stats.NPCLosses)), ""}, {"NPC Loss Ratio", entityNPCLossRatio(view.Stats), ""}, {"Avg Kills/Day", entityAvgKills(view.Stats, view.Identity.Birthday), ""}, {"Activity", entityActivity(view.Recent), "kill"}})
+		} else {
+			@entityStatBox("Combat", "swords", []entityStatRow{{"Kills", fullNumber(float64(view.Stats.Kills)), "kill"}, {"Losses", fullNumber(float64(view.Stats.Losses)), "loss"}, {"Efficiency", strconv.FormatInt(view.Stats.Efficiency, 10) + "%", ""}, entityDangerRow(view.Stats)})
+			@entityStatBox("ISK", "gem", []entityStatRow{{"Destroyed", compactNumber(view.Stats.ISKDestroyed), "kill"}, {"Lost", compactNumber(view.Stats.ISKLost), "loss"}, {"ISK Efficiency", strconv.FormatInt(view.Stats.ISKEfficiency, 10) + "%", ""}, entityBalanceRow(view.Stats.ISKDestroyed - view.Stats.ISKLost)})
+			@entityStatBox("Activity", "users", []entityStatRow{{"Solo Kills", fullNumber(float64(view.Stats.SoloKills)), "kill"}, {"Final Blows", fullNumber(float64(view.Stats.FinalBlows)), ""}, {"Combat Points", fullNumber(float64(view.Stats.Points)), ""}, {entityMembershipLabel(view.Kind), entityCorpsMembers(view), ""}})
+			@entityStatBox("Last 90 Days", "activity", []entityStatRow{{"Kills", fullNumber(float64(view.Recent.Kills)), "kill"}, {"Losses", fullNumber(float64(view.Recent.Losses)), "loss"}, {"ISK Destroyed", compactNumber(view.Recent.ISKDestroyed), "kill"}, {"ISK Lost", compactNumber(view.Recent.ISKLost), "loss"}})
+		}
+	</div>
+}
+
+templ entityStatBox(title, symbol string, rows []entityStatRow) {
+	<section class="entity-stat-box" data-stat={ title }>
+		<h2>
+			@icon(symbol)
+			<span>{ title }</span>
+		</h2>
+		<div>
+			for _, row := range rows {
+				<p><span>{ row.Label }</span><strong class={ row.Class }>{ row.Value }</strong></p>
+				if row.Label == "Efficiency" || row.Label == "ISK Efficiency" {
+					<div class="entity-efficiency-bar" role="progressbar" aria-label={ row.Label } aria-valuemin="0" aria-valuemax="100" aria-valuenow={ entityProgressValue(row.Value) }><span style={ "width:" + entityProgressValue(row.Value) + "%" }></span></div>
+				}
+			}
+		</div>
+	</section>
+}
+
+templ entityDashboard(view entityPageView) {
+	<div class="entity-dashboard">
+		<section class="glass-panel entity-bio">
+			<h2>
+				if view.Kind == "faction" {
+					<span>About</span>
+				} else {
+					<span>Bio</span>
+				}
+			</h2>
+			if view.BioHTML != "" {
+				<div class="entity-bio-content">
+					@templ.Raw(view.BioHTML)
+				</div>
+			} else {
+				if view.Kind == "alliance" {
+					<p class="muted">No bio set. The executor corporation's CEO can set one from the settings page.</p>
+				} else {
+					<p class="muted">No bio available</p>
+				}
+			}
+		</section>
+		if view.Kind == "faction" {
+			<section class="entity-dashboard-stats">
+				if factionMatchupID(view.ID) != "" {
+					<div data-faction-overview aria-busy="true"><p class="entity-intel-loading">Loading warzone…</p></div>
+				}
+				<div class="glass-panel entity-faction-links">
+					<h2>Leadership &amp; Space</h2>
+					if view.Identity.CorporationID > 0 {
+						<a href={ idPath("corporation", view.Identity.CorporationID) }><img src={ eveEntityImage("corporation", view.Identity.CorporationID, 64) } alt="" width="32" height="32"/><span><strong>{ view.Identity.CorporationName }</strong><small>Executor corporation</small></span></a>
+					}
+					if view.Identity.MilitiaCorporationID > 0 {
+						<a href={ idPath("corporation", view.Identity.MilitiaCorporationID) }><img src={ eveEntityImage("corporation", view.Identity.MilitiaCorporationID, 64) } alt="" width="32" height="32"/><span><strong>{ view.Identity.MilitiaCorporationName }</strong><small>Militia corporation</small></span></a>
+					}
+					if view.Identity.SolarSystemID > 0 {
+						<a href={ idPath("system", view.Identity.SolarSystemID) }><img src={ fmt.Sprintf("/images/systems/%d?size=64", view.Identity.SolarSystemID) } alt="" width="32" height="32"/><span><strong>{ view.Identity.SolarSystemName }</strong><small>Capital system</small></span></a>
+					}
+				</div>
+			</section>
+		} else if view.Kind == "corporation" || view.Kind == "alliance" {
+			<section class="entity-dashboard-stats">
+				<div data-entity-dashboard-stats>
+					@organizationDashboardContent(view.Dashboard, 90)
+				</div>
+			</section>
+		} else {
+			<section class="entity-dashboard-stats">
+				<header>
+					<h2>Dashboard</h2>
+					<div>
+						for _, period := range []entityPeriod{{"14d", 14}, {"30d", 30}, {"90d", 90}, {"180d", 180}, {"1y", 365}, {"All Time", 0}} {
+							<button type="button" class={ entityPeriodClass(period.Days, 90) } data-entity-period={ strconv.Itoa(period.Days) }>{ period.Label }</button>
+						}
+					</div>
+				</header>
+				<div data-entity-dashboard-stats>
+					@entityDashboardContent(view.Dashboard, 90)
+				</div>
+				<div data-entity-intel aria-busy="true"><p class="entity-intel-loading">Loading intel…</p></div>
+			</section>
+		}
+	</div>
+}
+
+templ organizationDashboardContent(data api.EntityDashboard, days int) {
+	<div class="entity-dashboard-content organization-dashboard-content" data-days={ strconv.Itoa(days) }>
+		<div data-entity-intel data-entity-intel-slot="active" aria-busy="true"><p class="entity-intel-loading">Loading active members…</p></div>
+		<section class="glass-panel entity-dashboard-table">
+			<header class="entity-dashboard-period-header">
+				<h3>Stats</h3>
+				<div>
+					for _, period := range []entityPeriod{{"14d", 14}, {"30d", 30}, {"90d", 90}, {"All Time", 0}} {
+						<button type="button" class={ entityPeriodClass(period.Days, days) } data-entity-period={ strconv.Itoa(period.Days) }>{ period.Label }</button>
+					}
+				</div>
+			</header>
+			if days > 0 && data.Stats.Kills == 0 && data.Stats.Losses == 0 {
+				<div class="entity-period-empty"><p>No activity in the selected period</p><button type="button" data-entity-show-all>Show all time</button></div>
+			} else {
+				@entityDashboardRow("Kills", fullNumber(float64(data.Stats.Kills)), "kill")
+				@entityDashboardRow("Losses", fullNumber(float64(data.Stats.Losses)), "loss")
+				@entityDashboardRow("Efficiency", strconv.FormatInt(data.Stats.Efficiency, 10)+"%", "")
+				<progress max="100" value={ strconv.FormatInt(data.Stats.Efficiency, 10) } aria-label="Kill efficiency"></progress>
+				@entityDashboardRow("ISK Destroyed", compactNumber(data.Stats.ISKDestroyed), "kill")
+				@entityDashboardRow("ISK Lost", compactNumber(data.Stats.ISKLost), "loss")
+				@entityDashboardRow("ISK Efficiency", strconv.FormatInt(data.Stats.ISKEfficiency, 10)+"%", "")
+				<progress max="100" value={ strconv.FormatInt(data.Stats.ISKEfficiency, 10) } aria-label="ISK efficiency"></progress>
+				@entityDashboardRow("Solo Kills", fullNumber(float64(data.Stats.SoloKills)), "")
+				@entityDashboardRow("NPC Losses", fullNumber(float64(data.Stats.NPCLosses)), "")
+				@entityDashboardRow("Final Blows", fullNumber(float64(data.Stats.FinalBlows)), "")
+				@entityDashboardRow("Points", fullNumber(float64(data.Stats.Points)), "")
+			}
+		</section>
+		if len(data.TopShipsUsed) > 0 || len(data.TopShipsLost) > 0 {
+			<div class="entity-dashboard-tops">
+				@topBox(topBoxView{Title: "Most Used Ships", DataType: "ships", Entries: entityShipEntries(data.TopShipsUsed), CountClass: "ship-used"})
+				@topBox(topBoxView{Title: "Most Lost Ships", DataType: "ships", Entries: entityShipEntries(data.TopShipsLost), CountClass: "loss"})
+			</div>
+		}
+		<div data-entity-intel-slot="relations"></div>
+		if len(data.DiesToCorporations) > 0 || len(data.DiesToAlliances) > 0 {
+			<div class="entity-dashboard-tops">
+				@topBox(topBoxView{Title: "Dies To (Corps)", DataType: "corporations", Entries: data.DiesToCorporations, CountClass: "loss"})
+				@topBox(topBoxView{Title: "Dies To (Alliances)", DataType: "alliances", Entries: data.DiesToAlliances, CountClass: "loss"})
+			</div>
+		}
+		<div data-entity-intel-slot="recent"></div>
+	</div>
+}
+
+templ entityDashboardContent(data api.EntityDashboard, days int) {
+	<div class="entity-dashboard-content" data-days={ strconv.Itoa(days) }>
+		<section class="glass-panel entity-dashboard-table">
+			<h3>Stats</h3>
+			if days > 0 && data.Stats.Kills == 0 && data.Stats.Losses == 0 {
+				<div class="entity-period-empty"><p>No activity in the selected period</p><button type="button" data-entity-show-all>Show all time</button></div>
+			} else {
+				@entityDashboardRow("Kills", fullNumber(float64(data.Stats.Kills)), "kill")
+				@entityDashboardRow("Losses", fullNumber(float64(data.Stats.Losses)), "loss")
+				@entityDashboardRow("Efficiency", strconv.FormatInt(data.Stats.Efficiency, 10)+"%", "")
+				<progress max="100" value={ strconv.FormatInt(data.Stats.Efficiency, 10) } aria-label="Kill efficiency"></progress>
+				@entityDashboardRow("ISK Destroyed", compactNumber(data.Stats.ISKDestroyed), "kill")
+				@entityDashboardRow("ISK Lost", compactNumber(data.Stats.ISKLost), "loss")
+				@entityDashboardRow("ISK Efficiency", strconv.FormatInt(data.Stats.ISKEfficiency, 10)+"%", "")
+				<progress max="100" value={ strconv.FormatInt(data.Stats.ISKEfficiency, 10) } aria-label="ISK efficiency"></progress>
+				@entityDashboardRow("Solo Kills", fullNumber(float64(data.Stats.SoloKills)), "")
+				@entityDashboardRow("Solo Losses", fullNumber(float64(data.Stats.SoloLosses)), "")
+				@entityDashboardRow("NPC Losses", fullNumber(float64(data.Stats.NPCLosses)), "")
+				@entityDashboardRow("Blob Factor", strconv.FormatFloat(data.Stats.BlobFactor, 'f', -1, 64), "")
+				@entityDashboardRow("Active Timezone", data.Stats.ActiveTimezone, "")
+				@entityDashboardRow("Final Blows", fullNumber(float64(data.Stats.FinalBlows)), "")
+				@entityDashboardRow("Points", fullNumber(float64(data.Stats.Points)), "")
+			}
+		</section>
+		if entityHeatMax(data.HeatMap) > 0 {
+			<section class="glass-panel entity-heat">
+				<h3>Activity Heat Map (EVE Time)</h3>
+				<div>
+					for hour := range 24 {
+						<div class={ entityHeatClass(data.HeatMap, hour) }><span>{ fmt.Sprintf("%02d", hour) }</span><strong>{ strconv.FormatInt(data.HeatMap[strconv.Itoa(hour)], 10) }</strong></div>
+					}
+				</div>
+			</section>
+		}
+		if len(data.FliesWithCorporations) > 0 || len(data.FliesWithAlliances) > 0 {
+			<div class="entity-dashboard-tops">
+				@topBox(topBoxView{Title: "Flies With (Corps)", DataType: "corporations", Entries: data.FliesWithCorporations})
+				@topBox(topBoxView{Title: "Flies With (Alliances)", DataType: "alliances", Entries: data.FliesWithAlliances})
+			</div>
+		}
+		if len(data.DiesToCorporations) > 0 || len(data.DiesToAlliances) > 0 {
+			<div class="entity-dashboard-tops">
+				@topBox(topBoxView{Title: "Dies To (Corps)", DataType: "corporations", Entries: data.DiesToCorporations})
+				@topBox(topBoxView{Title: "Dies To (Alliances)", DataType: "alliances", Entries: data.DiesToAlliances})
+			</div>
+		}
+	</div>
+}
+
+templ entityDashboardRow(label, value, className string) {
+	<p><span>{ label }</span><strong class={ className }>{ value }</strong></p>
+}

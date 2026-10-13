@@ -1,0 +1,77 @@
+package frontend
+
+templ settingsAppearance() {
+	<div class="space-y-4" data-settings-appearance data-controller="settings-appearance" data-action="click->settings-appearance#click input->settings-appearance#input pagehide@window->settings-appearance#hide">
+		<div class="sticky top-2 z-20 glass-panel px-4 py-2.5 flex items-center gap-3">
+			<span class="text-base text-blue-400 flex-shrink-0">
+				@icon("palette")
+			</span>
+			<div class="min-w-0 flex-1"><div class="text-sm font-medium text-white">Appearance</div><div class="text-fine truncate text-gray-600" data-settings-theme-status>Previewing your saved theme</div></div>
+			<span hidden data-settings-theme-saved class="text-xs text-green-400 flex-shrink-0">Saved</span>
+			<button type="button" disabled data-settings-save-theme class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex-shrink-0 disabled:cursor-not-allowed bg-white/[0.04] text-gray-500">Save Theme</button>
+		</div>
+		<p hidden data-settings-theme-error role="alert" class="rounded-md border border-red-500/25 bg-red-500/[0.06] px-3 py-2 text-xs text-red-300 flex items-center gap-2"></p>
+		<div class="glass-panel p-5">
+			<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Theme Presets</h2>
+			<p class="text-xs text-gray-600 mb-4">Pick a preset or customize individual colors below. Changes preview instantly — click Save to persist across sessions.</p>
+			<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+				for _,preset:=range settingsData.Presets {
+					<button type="button" data-settings-preset={ preset.ID } class={ "relative flex flex-col items-center gap-2 p-3 rounded-lg border transition-all cursor-pointer " + killBoolClass(preset.ID == "default", "border-blue-500/50 bg-blue-500/10", "border-white/[0.08] bg-white/[0.02] hover:bg-blue-500/[0.04] hover:border-white/[0.15]") }>
+						<div class="flex gap-1">
+							for _,key:=range []string{"brandPrimary","brandAccent","brandSecondary"} {
+								<span class="w-5 h-5 rounded-full border border-white/10" style={ "background-color:" + settingsPresetColor(preset, key) }></span>
+							}
+						</div>
+						<div class="text-center"><div class="text-xs font-medium text-white">{ preset.Name }</div><div class="text-fine text-gray-500 leading-tight">{ preset.Description }</div></div>
+						<span data-settings-preset-selected hidden?={ preset.ID!="default" } class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-400"></span>
+					</button>
+				}
+			</div>
+		</div>
+		<div class="glass-panel p-5">
+			<div class="flex items-center justify-between mb-4"><h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Custom Colors</h2><button type="button" hidden data-settings-theme-reset class="px-2 py-1 rounded text-xs text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors cursor-pointer">Reset All</button></div>
+			<div class="space-y-5">
+				for _,group:=range settingsData.Colors {
+					<div>
+						<h3 class="text-xs font-medium text-gray-400 mb-2">{ group.Label }</h3>
+						<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+							for _,color:=range group.Colors {
+								<div class="flex items-center gap-2" data-settings-color-row={ color.Key }>
+									<input type="color" data-settings-color={ color.Key } aria-label={ group.Label + " — " + color.Label } value={ settingsHex(settingsData.Defaults[color.Key]) } class="w-8 h-8 rounded border border-white/[0.08] bg-transparent cursor-pointer flex-shrink-0"/>
+									<div class="flex-1 min-w-0"><div class="text-xs text-gray-300 truncate">{ color.Label }</div><div data-settings-color-value class="text-fine text-gray-600 font-mono truncate">{ settingsData.Defaults[color.Key] }</div></div>
+									<button type="button" hidden data-settings-color-reset={ color.Key } title="Reset to default" aria-label={ "Reset " + group.Label + " — " + color.Label } class="p-1 text-gray-600 hover:text-blue-400 transition-colors flex-shrink-0 cursor-pointer">
+										<span class="text-xs">
+											@icon("rotate-ccw")
+										</span>
+									</button>
+								</div>
+							}
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+		<div class="glass-panel p-5">
+			<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Preview</h2>
+			<div class="space-y-3">
+				<div class="flex flex-wrap gap-2">
+					for _,item:=range []struct{Key,Label string}{{"brandPrimary","Primary Button"},{"brandSecondary","Secondary"},{"brandAccent","Accent"}} {
+						<button type="button" data-settings-preview-bg={ item.Key } class="px-3 py-1.5 rounded-md text-xs font-medium text-white transition-colors" style={ "background-color:" + settingsData.Defaults[item.Key] }>{ item.Label }</button>
+					}
+				</div>
+				<div class="flex flex-wrap gap-2">
+					for _,item:=range []struct{Key,Label string}{{"colorSuccess","Success"},{"colorWarning","Warning"},{"colorError","Error"},{"colorInfo","Info"}} {
+						<span class="px-2 py-0.5 rounded text-xs" data-settings-preview-status={ item.Key } style={ "background-color:" + settingsData.Defaults[item.Key] + "20;color:" + settingsData.Defaults[item.Key] }>{ item.Label }</span>
+					}
+				</div>
+				<div class="flex items-center gap-3 px-3 py-2 rounded-md border" data-settings-preview-loss style={ "background-color:" + settingsData.Defaults["lossBg"] + ";border-color:" + settingsData.Defaults["lossBorder"] }><span class="text-xs" data-settings-preview-color="textPrimary" style={ "color:" + settingsData.Defaults["textPrimary"] }>Loss Row Preview</span><span class="text-fine" data-settings-preview-color="textSecondary" style={ "color:" + settingsData.Defaults["textSecondary"] }>-1.5B ISK</span></div>
+				<div class="flex gap-3">
+					for _,item:=range []struct{Key,Label string}{{"colorHighsec","Highsec 1.0"},{"colorLowsec","Lowsec 0.4"},{"colorNullsec","Nullsec -1.0"}} {
+						<span class="text-xs font-medium" data-settings-preview-color={ item.Key } style={ "color:" + settingsData.Defaults[item.Key] }>{ item.Label }</span>
+					}
+				</div>
+				<div class="space-y-1"><div class="text-sm" data-settings-preview-color="textPrimary">Primary text — headings and important content</div><div class="text-xs" data-settings-preview-color="textSecondary">Secondary text — labels and descriptions</div><div class="text-fine" data-settings-preview-color="textTertiary">Muted text — timestamps and metadata</div></div>
+			</div>
+		</div>
+	</div>
+}

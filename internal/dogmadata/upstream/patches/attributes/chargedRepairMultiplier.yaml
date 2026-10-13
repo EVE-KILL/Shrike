@@ -1,0 +1,13 @@
+new:
+  displayName: Charged Repair Multiplier
+  category: Armor
+  unit: Multiplier
+  default: 1
+  highIsGood: true
+  published: false
+
+effects:
+  - on: ancillaryArmorRepairModule
+    category: passive
+    rules:
+      - {from: chargedArmorDamageMultiplier, domain: otherID}

@@ -1,0 +1,234 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ trackerDashboardPageContent(view trackerDashboardView) {
+	<div class="go-utility-page" data-tracker-dashboard data-controller="tracker-dashboard" data-action="click->tracker-dashboard#click change->tracker-dashboard#change input->tracker-dashboard#input search-pick->tracker-dashboard#pick pagehide@window->tracker-dashboard#hide pageshow@window->tracker-dashboard#show">
+		@utilityPageHeader("Tracker", "Your private killboard", "scan-eye", "A personal EVE-KILL dashboard built from the entities and locations you choose to track.") {
+			if view.User!=nil {
+				<div hidden?={ !view.Config.Configured } data-dashboard-actions class="flex items-center gap-2">
+					<a href="/trackers" class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-semibold text-gray-300 hover:border-blue-400/25 hover:text-blue-300">Manage trackers</a>
+					<button type="button" data-dashboard-customize class="inline-flex items-center gap-1.5 rounded-md bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/25">
+						@icon("layout-dashboard")
+						Customize
+					</button>
+				</div>
+			}
+		}
+		if view.User==nil {
+			@utilityLoginGate("Log in to build your personal Tracker dashboard.")
+		} else {
+			<div hidden data-dashboard-error role="alert" class="mb-4 rounded-lg border border-red-400/20 bg-red-500/[0.08] px-4 py-3 text-sm text-red-300"></div>
+			@trackerDashboardBody(view)
+		}
+		<template data-dashboard-widget-template>
+			@trackerDashboardEditorWidget(api.SiteDomainWidget{}, "left", 0, 1)
+		</template>
+		<template data-dashboard-empty-template><div class="rounded border border-dashed border-white/[0.08] px-3 py-6 text-center text-xs text-gray-700">No widgets</div></template>
+	</div>
+}
+
+templ trackerDashboardBody(view trackerDashboardView) {
+	<div data-dashboard-body data-dashboard-config={ settingsJSON(view.Config) } data-dashboard-trackers={ settingsJSON(view.Trackers) } data-dashboard-limit={ strconv.Itoa(view.Limit) }>
+		if view.ConfigError || view.TrackersError {
+			<div class="glass-panel py-16 text-center text-sm text-red-300" role="alert">Could not load your killboard. <button type="button" data-dashboard-refresh class="ml-2 text-blue-400">Retry</button></div>
+		} else {
+			<div data-dashboard-editor hidden?={ view.Config.Configured } class="space-y-5">
+				<div class="glass-panel p-5">
+					<div class="mb-4 flex items-start gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-300">1</span><div><h2 class="font-semibold text-white">Choose what this killboard tracks</h2><p class="mt-1 text-xs text-gray-500">Add entities or locations here. Alert settings remain separate and default to off.</p></div></div>
+					@searchPicker("dashboard-tracker", "Add an entity or location", []string{"alliance", "corporation", "character", "region", "constellation", "system"}, searchPickerOptions{Placeholder: "Add an entity or location..."})
+					<p hidden data-dashboard-tracker-error role="alert" class="mt-2 text-xs text-red-300"></p>
+					<div data-dashboard-tracker-chips class="mt-3 flex flex-wrap gap-2" hidden?={ len(view.Trackers)==0 }>
+						for _,tracker:=range view.Trackers {
+							<span class={ "inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-xs",templ.KV("text-gray-300",tracker.Enabled),templ.KV("text-gray-600",!tracker.Enabled) }>
+								<span class="capitalize text-gray-600">{ tracker.Type }</span>{ tracker.Name }
+								if !tracker.Enabled {
+									<span class="text-fine uppercase">paused</span>
+								}
+							</span>
+						}
+					</div>
+					<div class="mt-3 flex items-center justify-between text-fine text-gray-600"><span data-dashboard-tracker-count>{ strconv.Itoa(len(view.Trackers)) }/{ strconv.Itoa(view.Limit) } trackers</span><a href="/trackers" class="text-blue-400 hover:text-blue-300">Advanced tracker and alert settings →</a></div>
+				</div>
+				<div class="glass-panel p-5">
+					<div class="mb-4 flex items-start gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-300">2</span><div><h2 class="font-semibold text-white">Arrange your dashboard</h2><p class="mt-1 text-xs text-gray-500">Top spans the page; left and right form the two-column area below it.</p></div></div>
+					<div class="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-white/[0.06] bg-black/20 p-3">
+						<label class="min-w-44 flex-1">
+							<span class="mb-1 block text-fine font-bold uppercase tracking-wider text-gray-600">Widget</span>
+							<select data-dashboard-add-type class="w-full rounded-md border border-white/[0.08] bg-gray-950 px-3 py-2 text-xs text-gray-300">
+								<option value="">Choose a widget…</option>
+								for _,definition:=range trackerWidgetCatalog {
+									<option value={ definition.Type }>{ definition.Title }</option>
+								}
+							</select>
+						</label>
+						<label><span class="mb-1 block text-fine font-bold uppercase tracking-wider text-gray-600">Place in</span><select data-dashboard-add-section class="rounded-md border border-white/[0.08] bg-gray-950 px-3 py-2 text-xs text-gray-300"><option value="top">Top</option><option value="left" selected>Left column</option><option value="right">Right column</option></select></label>
+						<button type="button" disabled data-dashboard-add class="rounded-md bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/25 disabled:opacity-40">Add widget</button>
+						<label><span class="mb-1 block text-fine font-bold uppercase tracking-wider text-gray-600">Columns</span><select data-dashboard-ratio class="rounded-md border border-white/[0.08] bg-gray-950 px-3 py-2 text-xs text-gray-300"><option value="250px_1fr">250px / flexible</option><option value="300px_1fr">300px / flexible</option><option value="1fr_1fr">50% / 50%</option><option value="1fr_2fr">33% / 66%</option><option value="1fr_3fr">25% / 75%</option></select></label>
+					</div>
+					<div class="grid gap-4 lg:grid-cols-3">
+						for _,section:=range []string{"top","left","right"} {
+							<section class="rounded-lg border border-white/[0.06] bg-black/20 p-3">
+								<h3 class="mb-2 text-fine font-bold uppercase tracking-[0.15em] text-blue-300">
+									if section=="top" {
+										Top · full width
+									} else {
+										{ section+" column" }
+									}
+								</h3>
+								<div class="space-y-2" data-dashboard-editor-section={ section }>
+									for index,widget:=range dashboardSection(view.Config.Widgets,section) {
+										@trackerDashboardEditorWidget(widget, section, index, len(dashboardSection(view.Config.Widgets, section)))
+									}
+									if len(dashboardSection(view.Config.Widgets,section))==0 {
+										<div class="rounded border border-dashed border-white/[0.08] px-3 py-6 text-center text-xs text-gray-700">No widgets</div>
+									}
+								</div>
+							</section>
+						}
+					</div>
+				</div>
+				<div class="flex justify-end gap-2">
+					<button hidden?={ !view.Config.Configured } type="button" data-dashboard-cancel class="rounded-md border border-white/10 px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+					<button type="button" data-dashboard-save class="rounded-md bg-blue-500 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
+						if view.Config.Configured {
+							Save dashboard
+						} else {
+							Create my killboard
+						}
+					</button>
+				</div>
+			</div>
+			<div data-dashboard-board hidden?={ !view.Config.Configured }>
+				@trackerDashboardSummaryCards(view)
+				<div class="mb-4 space-y-4" hidden?={ !dashboardHasSection(view.Config.Widgets,"top") }>
+					for _,widget:=range view.Config.Widgets.Top {
+						if widget.Enabled {
+							@trackerDashboardWidget(widget, view.Trackers)
+						}
+					}
+				</div>
+				<div class="dashboard-columns grid gap-4" style={ dashboardColumns(view.Config.Widgets) } hidden?={ !dashboardHasSection(view.Config.Widgets,"left")&&!dashboardHasSection(view.Config.Widgets,"right") }>
+					if dashboardHasSection(view.Config.Widgets,"left") {
+						<div class="order-2 min-w-0 space-y-0 lg:order-1">
+							for _,widget:=range view.Config.Widgets.Left {
+								if widget.Enabled {
+									@trackerDashboardWidget(widget, view.Trackers)
+								}
+							}
+						</div>
+					}
+					if dashboardHasSection(view.Config.Widgets,"right") {
+						<div class="order-1 min-w-0 space-y-4 lg:order-2">
+							for _,widget:=range view.Config.Widgets.Right {
+								if widget.Enabled {
+									@trackerDashboardWidget(widget, view.Trackers)
+								}
+							}
+						</div>
+					}
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ trackerDashboardEditorWidget(widget api.SiteDomainWidget, section string, index, length int) {
+	<div data-dashboard-widget-row data-widget-section={ section } data-widget-index={ strconv.Itoa(index) } class={ "rounded-md border border-white/[0.06] bg-white/[0.025] p-2.5",templ.KV("opacity-50",!widget.Enabled) }>
+		<div class="flex items-center gap-2">
+			<span data-widget-icon>
+				@icon(trackerWidgetDefinitionFor(widget.Type).Icon)
+			</span><span data-widget-title class="min-w-0 flex-1 truncate text-xs font-semibold text-gray-300">{ trackerWidgetDefinitionFor(widget.Type).Title }</span>
+			<button type="button" data-widget-action="up" class="text-gray-600 hover:text-white disabled:opacity-20" disabled?={ index==0 } aria-label="Move widget up">
+				@icon("chevron-up")
+			</button>
+			<button type="button" data-widget-action="down" class="text-gray-600 hover:text-white disabled:opacity-20" disabled?={ index==length-1 } aria-label="Move widget down">
+				@icon("chevron-down")
+			</button>
+			<label class="flex cursor-pointer items-center" title="Enabled"><input data-widget-enabled aria-label="Enable widget" checked?={ widget.Enabled } type="checkbox" class="rounded border-white/10 bg-black"/></label>
+			<button type="button" data-widget-action="remove" class="text-gray-600 hover:text-red-400" aria-label="Remove widget">
+				@icon("x")
+			</button>
+		</div>
+		<div class="mt-2 flex gap-2">
+			<select data-widget-destination aria-label="Widget section" class="min-w-0 flex-1 rounded border border-white/[0.06] bg-gray-950 px-2 py-1 text-fine text-gray-500"><option value="top" selected?={ section=="top" }>Top</option><option value="left" selected?={ section=="left" }>Left</option><option value="right" selected?={ section=="right" }>Right</option></select>
+			<select hidden?={ widget.Type!="killList" } data-widget-killtype aria-label="Killlist type" class="min-w-0 flex-1 rounded border border-white/[0.06] bg-gray-950 px-2 py-1 text-fine text-gray-500">
+				for _,option:=range []struct{Value,Label string}{{"latest","Latest"},{"big","Big kills"},{"solo","Solo"},{"npc","NPC"}} {
+					<option value={ option.Value } selected?={ dashboardKillType(widget)==option.Value }>{ option.Label }</option>
+				}
+			</select>
+		</div>
+		<textarea hidden?={ widget.Type!="textBlock" } data-widget-content maxlength="2000" rows="3" placeholder="Write a note for your dashboard…" class="mt-2 w-full resize-y rounded border border-white/[0.06] bg-black/30 px-2 py-1.5 text-xs text-gray-300 outline-none focus:border-blue-400/30">
+			if widget.Content!=nil {
+				{ *widget.Content }
+			}
+		</textarea>
+	</div>
+}
+
+templ trackerDashboardSummaryCards(view trackerDashboardView) {
+	if view.SummaryError {
+		<div role="alert" class="glass-panel mb-4 p-4 text-sm text-red-300">Could not load your summary. <button type="button" data-dashboard-refresh class="ml-2 text-blue-400">Retry</button></div>
+	}
+	<div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+		<div class="glass-panel px-4 py-3"><div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-600">Tracked scope</div><div class="mt-1 text-lg font-bold tabular-nums text-white">{ fullNumber(float64(view.Summary.Active)) } <span class="text-xs font-normal text-gray-600">active</span></div><div class="text-fine text-gray-700">{ fullNumber(float64(view.Summary.Trackers)) } configured</div></div>
+		<div class="glass-panel px-4 py-3"><div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-600">Kills recorded</div><div class="mt-1 text-lg font-bold tabular-nums text-white">{ fullNumber(float64(view.Summary.Kills)) }</div><div class="text-fine text-gray-700">Last 7 days</div></div>
+		<div class="glass-panel px-4 py-3"><div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-600">Tracked value</div><div class="mt-1 text-lg font-bold tabular-nums text-isk">{ compactNumber(view.Summary.Value) }</div><div class="text-fine text-gray-700">Last 7 days</div></div>
+		<div class="glass-panel px-4 py-3">
+			<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-600">Last activity</div>
+			<div class="mt-1 truncate text-sm font-semibold text-white" data-dashboard-last-activity>
+				if view.Summary.LastKill!=nil {
+					<time datetime={ view.Summary.LastKill.Format("2006-01-02T15:04:05Z07:00") }>{ view.Summary.LastKill.Format("2006-01-02 15:04") }</time>
+				} else {
+					Waiting for activity
+				}
+			</div>
+			<div class="text-fine text-gray-700">Recorded by your trackers</div>
+		</div>
+	</div>
+}
+
+templ trackerDashboardWidget(widget api.SiteDomainWidget, trackers []entityTracker) {
+	switch widget.Type {
+		case "mostValuable":
+			<div data-dashboard-remote="valuable" data-dashboard-kind="kills" aria-busy="true">
+				@mostValuable(nil, "kills", false)
+			</div>
+		case "killList":
+			<div data-private-killfeed data-dashboard-killtype={ dashboardKillType(widget) }><div class="glass-panel p-8 text-center text-sm text-gray-500">Loading kills…</div></div>
+		case "entityInfo":
+			<div data-dashboard-scope class="glass-panel mb-4 p-2">
+				<div class="mb-1 border-b border-white/[0.08] px-1 pb-2 text-fine font-bold uppercase tracking-[0.15em] text-blue-300">Tracked Scope</div>
+				<div data-dashboard-scope-links class="space-y-px">
+					for _,tracker:=range trackers {
+						<a href={ templ.URL("/" + tracker.Type + "/" + strconv.FormatInt(tracker.TargetID, 10)) } class={ "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-blue-500/[0.06] hover:text-blue-300",templ.KV("text-gray-300",tracker.Enabled),templ.KV("text-gray-600",!tracker.Enabled) }>
+							@icon(trackerIcon(tracker.Type))
+							<span class="min-w-0 flex-1 truncate">{ tracker.Name }</span>
+							if !tracker.Enabled {
+								<span class="text-fine uppercase text-gray-700">Paused</span>
+							}
+						</a>
+					}
+				</div>
+				<a href="/trackers" class="mt-2 flex items-center gap-1 px-2 py-1 text-fine text-blue-400 hover:text-blue-300">
+					@icon("settings-2")
+					Manage trackers
+				</a>
+			</div>
+		case "textBlock":
+			<div class="glass-panel mb-4 p-4">
+				<p class="whitespace-pre-wrap text-sm leading-relaxed text-gray-400">
+					if widget.Content!=nil {
+						{ *widget.Content }
+					}
+				</p>
+			</div>
+		default:
+			if trackerWidgetDefinitionFor(widget.Type).DataType!="" {
+				<div data-dashboard-remote={ widget.Type } aria-busy="true"><div class="top-box glass-panel"><h3>{ trackerWidgetDefinitionFor(widget.Type).Title }</h3><p class="p-3 text-xs text-gray-600">Loading…</p></div></div>
+			}
+	}
+}

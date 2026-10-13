@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"context"
 	"image"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -11,6 +15,55 @@ type socialLoaderStub struct {
 	value SocialKillmail
 	found bool
 	calls int
+}
+
+func TestKillmailSocialFetchesEntityImagesWithoutStoringThem(t *testing.T) {
+	var mu sync.Mutex
+	paths := []string{}
+	icon := solidPNG(t, 64, 64, colorValue(40, 80, 120))
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		paths = append(paths, r.URL.RequestURI())
+		mu.Unlock()
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write(icon)
+	}))
+	defer upstream.Close()
+	store := newMemoryStore()
+	service := New(Options{
+		Store: store, UpstreamURL: upstream.URL,
+		Social: &socialLoaderStub{found: true, value: SocialKillmail{
+			Victim: SocialParty{
+				CharacterID: 1, CorporationID: 2, AllianceID: 3,
+			},
+		}},
+	})
+	if _, err := service.KillmailSocial(context.Background(), 987654321); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{
+		"/characters/1/portrait?size=64",
+		"/corporations/2/logo?size=64",
+		"/alliances/3/logo?size=64",
+	} {
+		if !containsString(paths, path) {
+			t.Errorf("missing EVE image request %q: %v", path, paths)
+		}
+	}
+	for _, key := range store.puts {
+		if strings.HasPrefix(key, "entities/") {
+			t.Errorf("stored a dynamic entity image at %q", key)
+		}
+	}
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *socialLoaderStub) LoadKillmailSocial(

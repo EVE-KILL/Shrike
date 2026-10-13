@@ -1,0 +1,226 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+)
+
+templ battlesDirectoryPage(view battleDirectoryView) {
+	<div class="go-utility-page battles-directory" data-battles-root data-controller="battles" data-action="click->battles#click keydown->battles#keyboard change->battles#change input->battles#input focusin->battles#focus focusout->battles#blur popstate@window->battles#popstate pagehide@window->battles#hide pageshow@window->battles#show">
+		@utilityPageHeader("Battles", "Fleet engagements", "swords", "", battleDirectoryDescription()) {
+			<div class="flex flex-wrap items-center justify-end gap-2">
+				if view.DomainMode {
+					<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-fine font-medium text-indigo-300 shrink-0" title="Scoped to the entities this killboard tracks">
+						@icon("shield")
+						This killboard only
+					</span>
+				}
+				<a href="/battlegenerator" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors shrink-0">
+					@icon("plus")
+					Battle Report
+				</a>
+			</div>
+		}
+		<div class="battles-time-window" aria-label="Battle time window">
+			<span>Started within</span>
+			for _,window:=range []struct{ Hours int; Label string }{{24,"24 hours"},{48,"2 days"},{168,"7 days"},{720,"30 days"}} {
+				<button type="button" data-battles-hours={ strconv.Itoa(window.Hours) } class={ killBoolClass(view.Filters.Hours == window.Hours, "active", "") } aria-pressed={ strconv.FormatBool(view.Filters.Hours == window.Hours) }>{ window.Label }</button>
+			}
+			<button type="button" data-battles-hours="" class={ killBoolClass(view.Filters.Hours == 0 && view.Filters.Year == 0, "active", "") } aria-pressed={ strconv.FormatBool(view.Filters.Hours == 0 && view.Filters.Year == 0) }>All time</button>
+		</div>
+		<div class="battles-years glass-panel">
+			<div class="battles-years-heading"><strong>Browse by year</strong><button type="button" data-battles-clear-year hidden?={ view.Filters.Year==0 }>Clear year</button></div>
+			<div class="battles-years-list">
+				for _,year:=range view.Data.Years {
+					<button type="button" data-battles-year={ strconv.Itoa(year.Year) } class={ killBoolClass(view.Filters.Year == year.Year, "active", "") } aria-pressed={ strconv.FormatBool(view.Filters.Year == year.Year) }><span>{ strconv.Itoa(year.Year) }</span><small>{ fullNumber(float64(year.Count)) }</small></button>
+				}
+			</div>
+		</div>
+		<div class="battles-toolbar">
+			<button type="button" data-battles-custom class={ "battles-custom" + killBoolClass(view.Filters.Custom, " active", "") } aria-pressed={ strconv.FormatBool(view.Filters.Custom) }>
+				@icon("user-pen")
+				Custom
+			</button>
+			<span class="battles-toolbar-divider"></span>
+			<span class="battles-toolbar-label">Kills</span>
+			<div class="battles-segmented">
+				for _,kills:=range []int{10,25,50,100,200} {
+					<button type="button" data-battles-kills={ strconv.Itoa(kills) } class={ killBoolClass(view.Filters.MinKills == kills, "active", "") } aria-pressed={ strconv.FormatBool(view.Filters.MinKills == kills) }>{ strconv.Itoa(kills) }+</button>
+				}
+			</div>
+			<span class="battles-toolbar-label">ISK</span>
+			<div class="battles-segmented isk">
+				for _,amount:=range []string{"1b","10b","50b","100b","1t"} {
+					<button type="button" data-battles-isk={ amount } class={ killBoolClass(view.Filters.MinISK == amount, "active", "") } aria-pressed={ strconv.FormatBool(view.Filters.MinISK == amount) }>{ amount }+</button>
+				}
+			</div>
+			<div class="battles-search">
+				<label>
+					@icon("search")
+					<input type="search" placeholder="Filter by alliance, corp, system…" aria-label="Filter battles by entity" data-battles-search autocomplete="off"/>
+					<span data-battles-search-loading hidden class="animate-spin">
+						@icon("loader-2")
+					</span>
+				</label>
+				<div class="battles-search-results" data-battles-search-results hidden></div>
+			</div>
+		</div>
+		@battleDirectoryFilterChips(view.Filters)
+		<div class="battles-view-tabs" role="tablist" aria-label="Battle view">
+			<button type="button" role="tab" id="battle-tab-list" data-battles-view="list" aria-controls="battle-panel-list" aria-selected={ strconv.FormatBool(view.Filters.View == "list") } class={ killBoolClass(view.Filters.View == "list", "active", "") }>
+				@icon("list")
+				Battles
+			</button>
+			<button type="button" role="tab" id="battle-tab-map" data-battles-view="map" aria-controls="battle-panel-map" aria-selected={ strconv.FormatBool(view.Filters.View == "map") } class={ killBoolClass(view.Filters.View == "map", "active", "") }>
+				@icon("map")
+				Map
+			</button>
+		</div>
+		<div class="battles-error glass-panel" data-battles-error role="alert" hidden>Unable to load battles. <button type="button" data-battles-retry>Retry</button></div>
+		@battlesDirectoryResults(view)
+	</div>
+}
+
+templ battleDirectoryDescription() {
+	Explore EVE Online fleet engagements, battle reports, maps, timelines and ISK destroyed. Filter by alliance, corporation, system or region. For longer conflicts, browse <a href="/wars" class="text-blue-400 hover:underline">declared wars</a> or <a href="/campaigns" class="text-blue-400 hover:underline">campaign scoreboards</a>.
+}
+
+templ battleDirectoryFilterChips(filters battleDirectoryFilters) {
+	<div data-battles-chips>
+		if battleDirectoryHasFilters(filters) {
+			<div class="battles-filter-chips">
+				if filters.EntityType!="" {
+					<span class="entity">
+						@icon(battleDirectoryEntityIcon(filters.EntityType))
+						{ filters.EntityName }
+						<button type="button" data-battles-clear="entity" aria-label="Remove entity filter">
+							@icon("x")
+						</button>
+					</span>
+				}
+				if filters.Year>0 {
+					<span>
+						{ strconv.Itoa(filters.Year) }
+						<button type="button" data-battles-clear="year" aria-label="Remove year filter">
+							@icon("x")
+						</button>
+					</span>
+				}
+				if filters.MinKills>0 {
+					<span>
+						{ strconv.Itoa(filters.MinKills) }+ kills
+						<button type="button" data-battles-clear="kills" aria-label="Remove kill filter">
+							@icon("x")
+						</button>
+					</span>
+				}
+				if filters.MinISK!="" {
+					<span>
+						{ filters.MinISK }+ ISK
+						<button type="button" data-battles-clear="isk" aria-label="Remove ISK filter">
+							@icon("x")
+						</button>
+					</span>
+				}
+				<button type="button" class="clear-all" data-battles-clear="all">Clear all</button>
+			</div>
+		}
+	</div>
+}
+
+templ battleDirectoryFragment(view battleDirectoryView) {
+	@battleDirectoryFilterChips(view.Filters)
+	@battlesDirectoryResults(view)
+}
+
+templ battlesDirectoryResults(view battleDirectoryView) {
+	<div class="battles-results" data-battles-results>
+		if view.Filters.View=="map" {
+			<div role="tabpanel" id="battle-panel-map" aria-labelledby="battle-tab-map" data-battles-map-panel>
+				<div class="battles-map-controls"><label>Space <select data-battles-map-scope><option value="new-eden">New Eden</option><option value="wormhole">Wormhole</option><option value="zarzakh">Zarzakh</option><option value="abyssal">Abyssal</option><option value="proving">Proving</option></select></label><button type="button" data-battles-map-back hidden>All regions</button><span data-battles-map-title></span><span data-battles-map-status role="status">Loading matching battles…</span></div>
+				<div hidden data-battles-markers-error role="alert" class="glass-panel battles-map-message error">Unable to load battle markers. <button type="button" data-battles-map-retry>Retry</button></div>
+				<p hidden data-battles-map-empty class="glass-panel battles-map-message">No battles match these filters.</p>
+				<p>Select a region’s swords to explore its systems, then select a system to browse its matching battles. Markers use each battle’s primary system.</p>
+				<div class="battles-map-surface" data-battles-map-surface aria-busy="true"><div class="battles-map-loading" role="status">Loading map data…</div></div>
+				<div hidden data-battles-geography-error role="alert" class="glass-panel battles-map-message error">Unable to load map data. <button type="button" data-battles-map-retry>Retry</button></div>
+			</div>
+		} else {
+			<div role="tabpanel" id="battle-panel-list" aria-labelledby="battle-tab-list">
+				<div class="battles-grid">
+					for _,battle:=range view.Data.Battles {
+						@battleDirectoryCard(battle)
+					}
+					if len(view.Data.Battles)==0 {
+						<div class="battles-empty glass-panel">
+							@icon("swords")
+							<p>No battles match these filters</p>
+							if battleDirectoryHasFilters(view.Filters) {
+								<button type="button" data-battles-clear="all">Clear filters</button>
+							}
+						</div>
+					}
+				</div>
+				if view.Filters.Page>1 || len(view.Data.Battles)>=battleDirectoryPageSize {
+					<nav class="battles-pagination" aria-label="Battle pages"><button type="button" data-battles-page={ strconv.Itoa(view.Filters.Page - 1) } disabled?={ view.Filters.Page<=1 }>Previous</button><span>Page { strconv.Itoa(view.Filters.Page) }</span><button type="button" data-battles-page={ strconv.Itoa(view.Filters.Page + 1) } disabled?={ len(view.Data.Battles)<battleDirectoryPageSize }>Next</button></nav>
+				}
+			</div>
+		}
+	</div>
+}
+
+templ battleDirectoryCard(battle battleDirectoryEntry) {
+	<a class="battle-directory-card" href={ fmt.Sprintf("/battle/%d", battle.BattleID) }>
+		<span class={ "battle-directory-rail" + killBoolClass(len(battle.Teams) >= 2, " split", "") }></span>
+		<div class="battle-directory-card-header"><div><img src={ fmt.Sprintf("/images/systems/%d?size=32", battle.SolarSystemID) } alt="" width="20" height="20" loading="lazy"/><strong class={ killBoolClass(battle.RegionID != nil && *battle.RegionID == 10000070, "pochven", "") }>{ battle.SolarSystemName }</strong><span class={ "security " + battleDirectorySecurityClass(battle.SolarSystemSecurity) }>{ battleDirectorySecurity(battle.SolarSystemSecurity) }</span><span class="separator">·</span><span class={ "region" + killBoolClass(battle.RegionID != nil && *battle.RegionID == 10000070, " pochven", "") }>{ battle.RegionName }</span></div><time datetime={ battle.StartTime }>{ battleDirectoryDate(battle.StartTime) }</time></div>
+		<div class="battle-directory-card-body">
+			if len(battle.Teams)>0 {
+				@battleDirectoryTeamRow(battle.Teams[0], 1)
+			}
+			<div class="battle-directory-midline">
+				if len(battle.Teams)==2 {
+					<div class="battle-directory-efficiency"><span style={ fmt.Sprintf("width:%d%%", battleDirectoryISKShare(battle)) }></span></div>
+				}
+				<div>{ strconv.Itoa(battle.KillCount) } kills <span>·</span> { warISK(battle.TotalISKDestroyed) } <span>·</span> { battleDirectoryDuration(battle.DurationMinutes) }</div>
+			</div>
+			if len(battle.Teams)>1 {
+				@battleDirectoryTeamRow(battle.Teams[1], 2)
+			}
+		</div>
+		if battle.IsMultiParty || battle.KillCount>=100 || battle.TotalISKDestroyed>=1e12 {
+			<div class="battle-directory-badges">
+				if battle.IsMultiParty {
+					<span class="multi">Multi-party</span>
+				}
+				if battle.KillCount>=100 {
+					<span class="large">Large Battle</span>
+				}
+				if battle.TotalISKDestroyed>=1e12 {
+					<span class="trillion">1T+ ISK</span>
+				}
+			</div>
+		}
+	</a>
+}
+
+templ battleDirectoryTeamRow(team battleDirectoryTeam, number int) {
+	<div class={ "battle-directory-team team-" + strconv.Itoa(number) }>
+		<span class="team-rail"></span>
+		<div class="team-logos">
+			for index,entity:=range team.TopAlliances {
+				if index<3 {
+					if image:=battleDirectoryTeamImage(entity); image!="" {
+						<img src={ image } alt="" title={ battleDirectoryTeamName(battleDirectoryTeam{TopAlliances: []battleDirectoryTeamEntity{entity}}, number) } width="32" height="32" loading="lazy"/>
+					}
+				}
+			}
+		</div>
+		<div class="team-text">
+			<div>
+				{ battleDirectoryTeamName(team,number) }
+				if team.AllianceCount>1 {
+					<span>+{ strconv.Itoa(team.AllianceCount-1) }</span>
+				}
+			</div><small>{ strconv.Itoa(team.TotalKills) } kills <span>·</span> { warISK(team.TotalISKDestroyed) }</small>
+		</div>
+	</div>
+}

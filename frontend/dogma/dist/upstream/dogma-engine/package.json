@@ -1,0 +1,6 @@
+{
+  "name": "@evekill/dogma-wasm",
+  "version": "13.6.0+ek.1",
+  "type": "module",
+  "private": true
+}

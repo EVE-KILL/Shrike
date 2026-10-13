@@ -1,0 +1,620 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+templ campaignDetailPage(view campaignDetailView) {
+	<article class="campaign-detail" data-campaign-detail data-controller="campaign-detail campaign-owner campaign-prize" data-action="click->campaign-detail#click popstate@window->campaign-detail#popstate pagehide@window->campaign-detail#hide pageshow@window->campaign-detail#show click->campaign-owner#click change->campaign-owner#change search-pick->campaign-owner#pick submit->campaign-owner#submit pagehide@window->campaign-owner#hide pageshow@window->campaign-owner#show click->campaign-prize#click input->campaign-prize#input submit->campaign-prize#submit pagehide@window->campaign-prize#hide pageshow@window->campaign-prize#show" data-campaign-id={ view.Data.ID } data-campaign-tab={ view.Tab } data-campaign-computing={ strconv.FormatBool(!view.Data.Processing.Paused && (view.Data.Status == 0 || view.Data.Stats == nil)) }>
+		@templ.JSONScript("campaign-kill-sides", campaignKillSidePayload(view.Data)).WithType("application/json")
+		<header class="campaign-detail-header hero-surface glass-panel">
+			<div class="campaign-detail-top">
+				<div class="campaign-detail-heading">
+					<div class="campaign-detail-title">
+						<h1>{ view.Data.Name }</h1>
+						if view.Data.Processing.Paused {
+							<span class="campaign-detail-badge paused">
+								@icon("pause")
+								Processing paused
+							</span>
+						} else {
+							<span class={ "campaign-detail-badge " + campaignStatusClass(view.Data.Status) }>
+								if view.Data.Status==0 {
+									@icon("loader-2")
+								}
+								{ campaignStatus(view.Data.Status) }
+							</span>
+						}
+						if view.Data.Visibility == 1 {
+							<span class="campaign-detail-badge private">
+								@icon("lock")
+								Private
+							</span>
+						} else if view.Data.Visibility == 2 {
+							<span class="campaign-detail-badge domain">
+								@icon("shield")
+								Killboard only
+							</span>
+						}
+					</div>
+					<div class="campaign-detail-meta">
+						<time datetime={ view.Data.StartTime } data-campaign-local-date>{ warDate(view.Data.StartTime) }</time> —
+						if view.Data.EndTime != "" {
+							<time datetime={ view.Data.EndTime } data-campaign-local-date>{ warDate(view.Data.EndTime) }</time>
+						} else {
+							ongoing
+						}
+						if view.Data.Creator.Name != "" {
+							· created by <a href={ idPath("character", view.Data.Creator.CharacterID) }>{ view.Data.Creator.Name }</a>
+						}
+						if view.Data.StatsUpdatedAt != "" {
+							· updated <time datetime={ view.Data.StatsUpdatedAt } data-campaign-local-time>{ campaignDetailDateTime(view.Data.StatsUpdatedAt) }</time>
+						}
+						if view.Data.Processing.EstimatedKillmails != nil {
+							· estimated { fullNumber(float64(*view.Data.Processing.EstimatedKillmails)) } killmails
+						}
+					</div>
+					if view.Data.Description != "" {
+						<p>{ view.Data.Description }</p>
+					}
+					if len(view.Data.Locations.Systems)+len(view.Data.Locations.Constellations)+len(view.Data.Locations.Regions)>0 {
+						<div class="campaign-detail-locations">
+							for _,location:=range view.Data.Locations.Systems {
+								<a href={ idPath("system", location.ID) }>
+									@icon("map-pin")
+									{ location.Name }
+								</a>
+							}
+							for _,location:=range view.Data.Locations.Constellations {
+								<a href={ idPath("constellation", location.ID) }>
+									@icon("map")
+									{ location.Name }
+								</a>
+							}
+							for _,location:=range view.Data.Locations.Regions {
+								<a href={ idPath("region", location.ID) }>
+									@icon("map")
+									{ location.Name }
+								</a>
+							}
+						</div>
+					}
+				</div>
+				<div class="campaign-detail-actions">
+					if view.Data.PrizePool!=nil {
+						<button type="button" class="campaign-prize-open" data-campaign-prize-open>
+							@icon("trophy")
+							<span>Prize pool</span><strong data-campaign-prize-total>{ campaignPrizeISK(view.Data.PrizePool.FundedTotal) }</strong>
+						</button>
+					}
+					<div class="campaign-detail-owner-actions" data-campaign-owner-actions hidden data-campaign-owner-id={ strconv.FormatInt(view.Data.Creator.CharacterID, 10) } data-campaign-status={ strconv.Itoa(view.Data.Status) } data-campaign-has-prize={ strconv.FormatBool(view.Data.PrizePool != nil) }>
+						<button type="button" data-campaign-edit title="Edit campaign" aria-label="Edit campaign">
+							@icon("pencil")
+						</button>
+						if view.Data.PrizePool==nil {
+							<button type="button" data-campaign-archive title="Archive or reactivate campaign" aria-label="Archive or reactivate campaign">
+								if view.Data.Status==2 {
+									@icon("archive-restore")
+								} else {
+									@icon("archive")
+								}
+							</button>
+						}
+						if view.Data.PrizePool==nil || campaignPrizeFundedValue(view.Data.PrizePool.FundedTotal)==0 {
+							<button type="button" data-campaign-delete title="Delete campaign" aria-label="Delete campaign">
+								@icon("trash-2")
+							</button>
+						}
+					</div>
+				</div>
+			</div>
+			if view.Data.Mode!="area" && len(view.Data.Sides)>0 && view.Data.Status!=0 && view.Data.Stats!=nil {
+				@campaignDetailBalance(view.Data)
+			}
+			<div data-campaign-edit-slot></div>
+			<p class="campaign-detail-action-message" data-campaign-action-message hidden role="status"></p>
+			<p class="campaign-detail-action-error" data-campaign-action-error hidden role="alert"></p>
+		</header>
+		<dialog class="campaign-delete-dialog" data-campaign-delete-dialog><h2>Delete campaign</h2><p>Delete <strong>{ view.Data.Name }</strong>? This permanently removes the campaign and its computed statistics.</p><small>This cannot be undone.</small><p data-campaign-delete-error role="alert" hidden></p><div><button type="button" data-campaign-delete-cancel>Cancel</button><button type="button" data-campaign-delete-confirm>Delete campaign</button></div></dialog>
+		if view.Data.PrizePool!=nil {
+			@campaignPrizeDialog(*view.Data.PrizePool)
+		}
+		if view.Data.Processing.Paused {
+			<div class="campaign-detail-processing glass-panel">
+				<strong>Campaign processing was stopped by a workload safety limit.</strong>
+				if view.Data.Processing.Note != "" {
+					<p>{ view.Data.Processing.Note }</p>
+				}
+				<div data-campaign-paused-actions hidden><button type="button" data-campaign-edit>Narrow campaign</button><button type="button" data-campaign-resume>Resume processing</button></div>
+			</div>
+		}
+		if !view.Data.Processing.Paused && (view.Data.Status==0 || view.Data.Stats==nil) {
+			<div class="campaign-detail-computing glass-panel">
+				@icon("loader-2")
+				<p>Crunching killmails for this campaign…</p><small>Large campaigns can take a couple of minutes. This page refreshes automatically.</small>
+			</div>
+		}
+		if campaignHasStats(view.Data) {
+			@campaignDetailSummary(view.Data)
+		}
+		<nav class="campaign-detail-tabs" aria-label="Campaign sections">
+			<a class={ killBoolClass(view.Tab == "overview", "active", "") } href={ campaignDetailPath(view.Data.ID, "overview") } data-campaign-detail-tab="overview">
+				@icon("layout-dashboard")
+				Overview
+			</a>
+			if view.Data.Mode!="area" {
+				<a class={ killBoolClass(view.Tab == "intel", "active", "") } href={ campaignDetailPath(view.Data.ID, "intel") } data-campaign-detail-tab="intel">
+					@icon("radar")
+					Intel
+				</a>
+			}
+			<a class={ killBoolClass(view.Tab == "comments", "active", "") } href={ campaignDetailPath(view.Data.ID, "comments") } data-campaign-detail-tab="comments">
+				@icon("message-square")
+				Comments
+			</a>
+		</nav>
+		<div class="campaign-detail-tab-content" data-campaign-detail-content>
+			@campaignDetailTabContent(view)
+		</div>
+	</article>
+}
+
+templ campaignDetailBalance(data campaignDetailData) {
+	<div class="campaign-detail-balance">
+		<h2>
+			if len(data.Sides)==1 {
+				ISK destroyed vs lost
+			} else {
+				Share of ISK destroyed
+			}
+		</h2>
+		<div class="campaign-detail-balance-track">
+			if len(data.Sides)==1 {
+				<span style={ fmt.Sprintf("width:%.2f%%;background-color:%s", campaignDetailShare(data, 0), campaignDetailColor(data, 0)) } title={ fmt.Sprintf("Destroyed — %s ISK", compactNumber(data.Sides[0].ISKDestroyed)) }></span>
+				<span style={ fmt.Sprintf("width:%.2f%%;background-color:#ef4444", 100-campaignDetailShare(data, 0)) } title={ fmt.Sprintf("Lost — %s ISK", compactNumber(data.Sides[0].ISKLost)) }></span>
+			} else {
+				for index,side:=range data.Sides {
+					<span style={ fmt.Sprintf("width:%.2f%%;background-color:%s", campaignDetailShare(data, index), campaignDetailColor(data, index)) } title={ fmt.Sprintf("%s — %s ISK", side.Name, compactNumber(side.ISKDestroyed)) }></span>
+				}
+			}
+		</div>
+		<div class="campaign-detail-balance-labels" style={ fmt.Sprintf("grid-template-columns:repeat(%d,minmax(0,1fr))", max(2, len(data.Sides))) }>
+			if len(data.Sides)==1 {
+				<span><i style={ "background-color:" + campaignDetailColor(data, 0) }></i>Destroyed { fmt.Sprintf("%.0f%%",campaignDetailShare(data,0)) }</span>
+				<span><i style="background-color:#ef4444"></i>Lost { fmt.Sprintf("%.0f%%",100-campaignDetailShare(data,0)) }</span>
+			} else {
+				for index,side:=range data.Sides {
+					<span><i style={ "background-color:" + campaignDetailColor(data, index) }></i>{ side.Name } { fmt.Sprintf("%.0f%%",campaignDetailShare(data,index)) }</span>
+				}
+			}
+		</div>
+	</div>
+}
+
+templ campaignPrizeDialog(pool campaignPrizePool) {
+	<dialog class="campaign-prize-dialog" data-campaign-prize-dialog>
+		<div class="campaign-prize-header">
+			<span class="campaign-prize-header-icon">
+				@icon("trophy")
+			</span>
+			<div><h2>Prize pool <small class={ "campaign-prize-status status-" + strconv.Itoa(pool.Status) + killBoolClass(pool.Status == 0 && !campaignPrizeFundingOpen(&pool), " settling", "") }>{ campaignPrizeStatus(&pool) }</small></h2><p>Top { strconv.Itoa(pool.WinnerCount) } by { strings.ToLower(pool.MetricLabel) }</p></div>
+			<button type="button" data-campaign-prize-close aria-label="Close prize pool">
+				@icon("x")
+			</button>
+		</div>
+		<div class="campaign-prize-body">
+			<div class="campaign-prize-columns">
+				<div class="campaign-prize-main">
+					<div class="campaign-prize-summary">
+						<div><small>Current pool</small><strong>{ campaignPrizeISK(pool.FundedTotal) }</strong><p>{ strconv.Itoa(pool.ContributionCount) } confirmed contribution{ killBoolClass(pool.ContributionCount==1,"","s") }</p></div>
+						<div class="campaign-prize-payouts">
+							for index,percentage:=range pool.PayoutPercentages {
+								<span>#{ strconv.Itoa(index+1) } <b>{ fmt.Sprintf("%.0f",percentage) }%</b></span>
+							}
+						</div>
+					</div>
+					<section class="campaign-prize-results">
+						<h3>
+							if pool.Status==0 {
+								Current leaders
+							} else {
+								Official winners
+							}
+						</h3>
+						if len(pool.Results)==0 {
+							<p>Standings will appear after qualifying campaign activity is processed.</p>
+						} else {
+							for _,result:=range pool.Results {
+								<div class="campaign-prize-result">
+									<strong class={ killBoolClass(result.Rank == 1, "first", "") }>#{ strconv.Itoa(result.Rank) }</strong><img src={ eveEntityImage("character", result.CharacterID, 64) } alt={ result.CharacterName } width="32" height="32" loading="lazy"/><a href={ idPath("character", result.CharacterID) }>{ fallbackName(result.CharacterName,fmt.Sprintf("Character %d",result.CharacterID)) }</a>
+									<div><span>{ campaignPrizeScore(&pool,result) }</span><small>{ fmt.Sprintf("%.0f",result.PayoutPercentage) }% · { compactNumber(result.PayoutAmount) }</small></div>
+									if pool.Status!=0 {
+										if result.Paid {
+											<span class="paid">Paid</span>
+										} else if result.Claimed {
+											<span class="claimed">Claimed</span>
+										} else if result.CanClaim {
+											<button type="button" data-campaign-prize-claim>Claim</button>
+										} else {
+											<span class="unclaimed">Unclaimed</span>
+										}
+									}
+								</div>
+							}
+						}
+					</section>
+					if campaignPrizeFundingOpen(&pool) {
+						<section class="campaign-prize-funding">
+							<h3>
+								@icon("circle-plus")
+								Add to the prize pool
+							</h3>
+							<form data-campaign-wallet-form hidden novalidate><div class="campaign-prize-wallet-label"><label for="campaign-prize-amount">Fund instantly from your EK Wallet</label><button type="button" data-campaign-wallet-max disabled>Loading balance…</button></div><div><div class="campaign-prize-amount"><input id="campaign-prize-amount" type="text" inputmode="decimal" placeholder="Amount" data-campaign-wallet-amount aria-label="Wallet contribution amount"/><span>ISK</span></div><button type="submit" data-campaign-wallet-contribute disabled>Add ISK</button></div></form>
+							<button type="button" data-campaign-prize-login>Sign in to fund from your EK Wallet</button>
+							<div class="campaign-prize-separator"><span>or send in-game</span></div>
+							<p>Send ISK to <strong>EVE-KILL.com</strong> with this exact reason:</p>
+							<div class="campaign-prize-reference">
+								<code>{ pool.FundingReference }</code>
+								<button type="button" data-campaign-prize-copy>
+									@icon("copy")
+									Copy
+								</button>
+							</div>
+							<div class="campaign-prize-funding-dates">
+								<span>Closes <time datetime={ pool.FundingClosesAt } data-campaign-local-time>{ campaignDetailDateTime(pool.FundingClosesAt) }</time></span>
+								<span>
+									Wallet checked
+									if pool.LastWalletSync!="" {
+										<time datetime={ pool.LastWalletSync } data-campaign-local-time>{ campaignDetailDateTime(pool.LastWalletSync) }</time>
+									} else {
+										not yet
+									}
+								</span>
+							</div>
+						</section>
+					} else if pool.Status==0 {
+						<div class="campaign-prize-settling">
+							@icon("hourglass")
+							Official winners will be announced <time datetime={ pool.SettlesAt } data-campaign-local-time>{ campaignDetailDateTime(pool.SettlesAt) }</time> after the 24-hour killmail catch-up period.
+							if pool.ProjectedLeadPercent!=nil && *pool.ProjectedLeadPercent>=25 && len(pool.Results)>0 {
+								<p>Projected winner: { fallbackName(pool.Results[0].CharacterName, strconv.FormatInt(pool.Results[0].CharacterID,10)) } leads second place by { fmt.Sprintf("%.0f",*pool.ProjectedLeadPercent) }%.</p>
+							}
+						</div>
+					}
+					<p class="campaign-prize-action-message" data-campaign-prize-message role="status" hidden></p>
+					<p class="campaign-prize-action-error" data-campaign-prize-error role="alert" hidden></p>
+				</div>
+				<aside class="campaign-prize-contributors">
+					<header>Contributors <span>{ strconv.Itoa(pool.ContributionCount) }</span></header>
+					if len(pool.Contributions)==0 {
+						<p>No confirmed contributions yet.</p>
+					} else {
+						for _,contribution:=range pool.Contributions {
+							<div class="campaign-prize-contributor">
+								if image:=campaignPrizeContributorImage(contribution); image!="" {
+									<img src={ image } alt="" width="32" height="32" loading="lazy"/>
+								} else {
+									<span class="image-placeholder">
+										@icon("user-round")
+									</span>
+								}
+								<div>
+									if target:=campaignPrizeContributorPath(contribution); target!="#" {
+										<a href={ target }>{ contribution.ContributorName }</a>
+									} else {
+										<strong>{ contribution.ContributorName }</strong>
+									}
+									<small>
+										if contribution.Source=="ek_wallet" {
+											EK Wallet
+										} else {
+											EVE transfer
+										}
+										· <time datetime={ contribution.ContributedAt } data-campaign-local-time>{ campaignDetailDateTime(contribution.ContributedAt) }</time>
+									</small>
+								</div><b>{ campaignPrizeISK(contribution.Amount) }</b>
+							</div>
+						}
+						if pool.ContributionCount>len(pool.Contributions) {
+							<p>Showing the latest { strconv.Itoa(len(pool.Contributions)) } contributions.</p>
+						}
+					}
+				</aside>
+			</div>
+		</div>
+		<footer>
+			Payouts are handled manually by EVE-KILL.com staff. Sign in with the winning character and
+			if pool.DiscordURL!="" {
+				<a href={ pool.DiscordURL } target="_blank" rel="noopener noreferrer">join our Discord</a>
+			} else {
+				join our Discord
+			}
+			to arrange payment. Staff will never ask you to send ISK to release winnings.
+		</footer>
+	</dialog>
+}
+
+templ campaignDetailSummary(data campaignDetailData) {
+	<div class="campaign-detail-tiles">
+		<div class="glass-panel">
+			<strong>{ fullNumber(float64(data.Stats.Totals.KillCount)) }</strong>
+			<small>
+				@icon("crosshair")
+				Killmails
+			</small>
+		</div>
+		<div class="glass-panel">
+			<strong class="isk">{ compactNumber(data.Stats.Totals.ISKDestroyed) }</strong>
+			<small>
+				@icon("coins")
+				ISK Destroyed
+			</small>
+		</div>
+		<div class="glass-panel">
+			<strong class="characters">{ fullNumber(float64(data.Stats.Totals.CharactersInvolved)) }</strong>
+			<small>
+				@icon("user-round")
+				Characters
+			</small>
+		</div>
+		<div class="glass-panel">
+			<strong class="corporations">{ fullNumber(float64(data.Stats.Totals.CorporationsInvolved)) }</strong>
+			<small>
+				@icon("building-2")
+				Corporations
+			</small>
+		</div>
+		<div class="glass-panel">
+			<strong class="alliances">{ fullNumber(float64(data.Stats.Totals.AlliancesInvolved)) }</strong>
+			<small>
+				@icon("shield")
+				Alliances
+			</small>
+		</div>
+	</div>
+	if len(data.Sides)>0 {
+		<div class={ fmt.Sprintf("campaign-detail-sides sides-%d", len(data.Sides)) }>
+			for index,side:=range data.Sides {
+				<section class="campaign-detail-side" style={ "border-color:" + campaignDetailBorderColor(data, index) }>
+					<header><strong style={ "color:" + campaignDetailTextColor(data, index) }>{ side.Name }</strong><span>{ campaignDetailEfficiency(side) }% efficiency</span></header>
+					<div class="campaign-detail-side-metrics">
+						<div><strong>{ fullNumber(float64(side.Kills)) }</strong><small>Kills</small></div>
+						<div><strong class="losses">{ fullNumber(float64(side.Losses)) }</strong><small>Losses</small></div>
+						<div><strong class="isk">{ compactNumber(side.ISKDestroyed) }</strong><small>Destroyed</small></div>
+						<div><strong class="isk-lost">{ compactNumber(side.ISKLost) }</strong><small>Lost</small></div>
+					</div>
+					<div class="campaign-detail-efficiency"><span style={ "width:" + campaignDetailEfficiency(side) + "%;background-color:" + campaignDetailEfficiencyColor(side) }></span></div>
+					<div class="campaign-detail-members">
+						for _,member:=range side.Entities {
+							<a href={ campaignDetailMemberPath(member) }><img src={ campaignDetailMemberImage(member) } alt="" width="20" height="20" loading="lazy"/><span>{ campaignDetailMemberName(member) }</span><small><b>{ fullNumber(float64(member.Kills)) }</b> / <em>{ fullNumber(float64(member.Losses)) }</em></small></a>
+						}
+					</div>
+				</section>
+			}
+		</div>
+	}
+}
+
+templ campaignDetailTabContent(view campaignDetailView) {
+	if view.Tab=="comments" {
+		<section class="campaign-detail-comments glass-panel">
+			<div class="blog-comment-thread" data-comment-thread data-controller="comment-thread" data-action="click->comment-thread#click pagehide@window->comment-thread#hide pageshow@window->comment-thread#show" data-target-type="10" data-target-id="0" data-target-slug={ view.Data.ID }><p data-comments-status>Loading comments…</p><div data-comments-list></div><div data-comments-composer></div></div>
+		</section>
+	} else if view.Tab=="intel" {
+		<div class="campaign-detail-intel-grid" data-campaign-intel>
+			for index,side:=range view.Data.Sides {
+				<section class="campaign-detail-intel glass-panel">
+					<h2 style={ "color:" + campaignDetailTextColor(view.Data, index) }>{ side.Name }</h2>
+					if view.Data.Stats!=nil {
+						if intel,ok:=view.Data.Stats.IntelBySide[strconv.FormatInt(side.SideIndex,10)]; ok {
+							@campaignIntelSection("Fleet Commanders", "flew a Monitor", intel.FCs, int64(len(intel.FCs)), 20)
+							@campaignIntelSection("Logistics", "", intel.Logistics, intel.LogisticsCount, 12)
+							@campaignIntelSection("Capital Pilots", "", intel.Capitals, intel.CapitalsCount, 15)
+						} else {
+							<p>Intel is generated with the next stats refresh.</p>
+						}
+					} else {
+						<p>Intel is generated with the next stats refresh.</p>
+					}
+				</section>
+			}
+		</div>
+	} else {
+		if campaignHasStats(view.Data) && len(view.Data.Stats.MostValuable)>0 {
+			<section class="campaign-detail-valuable glass-panel">
+				<h2>Most Valuable Kills</h2>
+				<div class="campaign-detail-valuable-grid">
+					for index,kill:=range view.Data.Stats.MostValuable {
+						if index<8 {
+							<a href={ idPath("kill", kill.KillmailID) } class={ killBoolClass(index >= 6, "valuable-secondary", "") } style={ campaignMostValuableStyle(view.Data, kill.VictimSide) }>
+								if kill.ShipTypeID>0 {
+									<img src={ fmt.Sprintf("/images/types/%d/overlayrender?size=256", kill.ShipTypeID) } alt={ kill.ShipName } width="128" height="128" loading="lazy"/>
+								}
+								<strong>{ compactNumber(kill.Value) }</strong>
+								<div>
+									<b>{ fallbackName(kill.ShipName,"Unknown") }</b>
+									if kill.VictimCharacterName!="" {
+										<small>{ kill.VictimCharacterName }</small>
+									}
+									if kill.VictimCorporationName!="" {
+										<small>{ kill.VictimCorporationName }</small>
+									}
+								</div>
+							</a>
+						}
+					}
+				</div>
+			</section>
+		}
+		if campaignHasStats(view.Data) && len(view.Data.Daily.Rows)>1 {
+			<section class="campaign-detail-activity glass-panel" data-campaign-activity data-controller="campaign-activity" data-action="click->campaign-activity#click pointerover->campaign-activity#hover">
+				@templ.JSONScript("campaign-activity-data", campaignActivityPayload(view.Data)).WithType("application/json")
+				<div class="campaign-detail-activity-heading"><h2>Activity — ships destroyed per { view.Data.Daily.Granularity }</h2><div><button type="button" class="active" data-campaign-chart-metric="ships">Ships</button><button type="button" data-campaign-chart-metric="isk">ISK</button></div></div>
+				<div class="campaign-detail-chart" data-action="pointerleave->campaign-activity#leave"><svg viewBox="0 0 960 190" role="img" aria-label="Campaign activity over time" data-campaign-chart></svg><div class="campaign-detail-chart-tooltip" data-campaign-chart-tooltip hidden></div></div>
+				<div class="campaign-detail-chart-legend" data-campaign-chart-legend></div>
+			</section>
+		}
+		if campaignHasStats(view.Data) {
+			@campaignOverviewBreakdowns(view.Data)
+		}
+		<section class="campaign-detail-killfeed glass-panel" data-campaign-killfeed data-campaign-id={ view.Data.ID }>
+			<div class="campaign-detail-killfeed-toolbar">
+				<div class="campaign-detail-killfeed-tabs">
+					<button type="button" class="active" data-campaign-side="">
+						if view.Data.Mode=="area" {
+							All activity
+						} else {
+							Combined
+						}
+					</button>
+					for index,side:=range view.Data.Sides {
+						<button type="button" data-campaign-side={ strconv.FormatInt(side.SideIndex, 10) } style={ "--campaign-side-color:" + campaignDetailColor(view.Data, index) }>{ side.Name } kills</button>
+					}
+				</div>
+				<div class="campaign-detail-killfeed-legend">
+					for index,side:=range view.Data.Sides {
+						<span><i style={ "background-color:" + campaignDetailColor(view.Data, index) }></i>{ side.Name } losses</span>
+					}
+				</div>
+			</div>
+			<div data-campaign-killlist>Loading killmails…</div>
+		</section>
+	}
+}
+
+templ campaignOverviewBreakdowns(data campaignDetailData) {
+	if data.Mode=="area" {
+		<div class="campaign-detail-breakdowns area">
+			<section class="glass-panel">
+				<h2>Top Killers</h2>
+				if len(data.Stats.TopKillersOverall)==0 {
+					<p>No kills yet</p>
+				}
+				for index,pilot:=range data.Stats.TopKillersOverall {
+					if index<10 {
+						@campaignTopPilotRow(pilot, false)
+					}
+				}
+			</section>
+			<section class="glass-panel">
+				<h2>Top Victims</h2>
+				if len(data.Stats.TopVictimsOverall)==0 {
+					<p>No losses yet</p>
+				}
+				for index,pilot:=range data.Stats.TopVictimsOverall {
+					if index<10 {
+						@campaignTopPilotRow(pilot, true)
+					}
+				}
+			</section>
+			<section class="glass-panel">
+				<h2>Ships Lost by Class</h2>
+				if len(data.Stats.ShipClassesOverall)==0 {
+					<p>No losses yet</p>
+				}
+				for index,shipClass:=range data.Stats.ShipClassesOverall {
+					if index<10 {
+						@campaignShipClassRow(shipClass)
+					}
+				}
+			</section>
+		</div>
+	} else {
+		<div class="campaign-detail-breakdowns sides">
+			for index,side:=range data.Sides {
+				<section class="glass-panel">
+					<h2 style={ "color:" + campaignDetailTextColor(data, index) }>{ side.Name }</h2>
+					<div class="campaign-detail-side-breakdowns">
+						<div>
+							<h3>Top Killers</h3>
+							if pilots,ok:=data.Stats.TopKillersBySide[strconv.FormatInt(side.SideIndex,10)]; ok && len(pilots)>0 {
+								for pilotIndex,pilot:=range pilots {
+									if pilotIndex<8 {
+										@campaignTopPilotRow(pilot, false)
+									}
+								}
+							} else {
+								<p>No kills yet</p>
+							}
+						</div>
+						<div>
+							<h3>Ships Lost by Class</h3>
+							if classes,ok:=data.Stats.ShipClassesBySide[strconv.FormatInt(side.SideIndex,10)]; ok && len(classes)>0 {
+								for classIndex,shipClass:=range classes {
+									if classIndex<8 {
+										@campaignShipClassRow(shipClass)
+									}
+								}
+							} else {
+								<p>No losses yet</p>
+							}
+						</div>
+					</div>
+				</section>
+			}
+		</div>
+	}
+	if len(data.Stats.TopSystems)>0 {
+		<section class="campaign-detail-systems glass-panel">
+			<h2>Hottest Systems</h2>
+			<div>
+				for _,system:=range data.Stats.TopSystems {
+					<a href={ idPath("system", system.SystemID) }><img src={ fmt.Sprintf("/images/systems/%d?size=64", system.SystemID) } alt="" width="28" height="28" loading="lazy"/><span><b>{ system.Name }</b><small>{ system.RegionName }</small></span><em>{ fullNumber(float64(system.Kills)) } kills</em><strong>{ compactNumber(system.ISKDestroyed) }</strong></a>
+				}
+			</div>
+		</section>
+	}
+}
+
+templ campaignTopPilotRow(pilot campaignTopPilot, victim bool) {
+	<a class="campaign-detail-pilot" href={ idPath("character", pilot.CharacterID) }>
+		<img src={ eveEntityImage("character", pilot.CharacterID, 32) } alt="" width="20" height="20" loading="lazy"/>
+		<span>{ fallbackName(pilot.Name,fmt.Sprintf("#%d",pilot.CharacterID)) }</span>
+		if pilot.CorporationTicker!="" {
+			<small class="corporation" title={ pilot.CorporationName }>{ pilot.CorporationTicker }</small>
+		}
+		if pilot.AllianceTicker!="" {
+			<small class="alliance" title={ pilot.AllianceName }>{ pilot.AllianceTicker }</small>
+		}
+		if victim {
+			<strong class="losses">{ fullNumber(float64(pilot.Losses)) }</strong>
+		} else {
+			<strong>{ fullNumber(float64(pilot.Kills)) }</strong>
+		}
+	</a>
+}
+
+templ campaignShipClassRow(shipClass campaignShipClass) {
+	<div class="campaign-detail-ship-class"><span>{ fallbackName(shipClass.Name,fmt.Sprintf("Group %d",shipClass.GroupID)) }</span><strong>{ fullNumber(float64(shipClass.Losses)) }</strong><small>{ compactNumber(shipClass.ISKLost) }</small></div>
+}
+
+templ campaignIntelSection(label, hint string, pilots []campaignIntelPilot, total int64, limit int) {
+	<div class="campaign-detail-intel-section">
+		<h3>
+			{ label } <span>{ fullNumber(float64(total)) }</span>
+			if hint!="" {
+				<small>· { hint }</small>
+			}
+		</h3>
+		if len(pilots)==0 {
+			<p>None spotted</p>
+		} else {
+			for index,pilot:=range pilots {
+				if index<limit {
+					<a href={ idPath("character", pilot.CharacterID) }>
+						<img src={ eveEntityImage("character", pilot.CharacterID, 32) } alt="" width="20" height="20" loading="lazy"/><span>{ fallbackName(pilot.Name,fmt.Sprintf("#%d",pilot.CharacterID)) }<small>{ pilot.ShipName }</small></span>
+						if pilot.Died {
+							@icon("skull")
+						}
+						<em>{ campaignDetailDamage(pilot.Damage) } dmg</em>
+					</a>
+				}
+			}
+			if total>int64(limit) {
+				<small class="campaign-detail-intel-more">+{ fullNumber(float64(total-int64(limit))) } more</small>
+			}
+		}
+	</div>
+}

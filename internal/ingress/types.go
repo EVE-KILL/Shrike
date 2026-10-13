@@ -9,8 +9,7 @@
 //
 // The part that makes it worth the dependency is that Shrike's own handlers
 // are Caddy modules rather than a proxy target. Caddy calls them directly, in
-// process. Only the Nuxt renderer, which is genuinely a separate Bun process,
-// is reached over a socket.
+// process, including the frontend.
 //
 // This package exposes Shrike-shaped configuration and status. Caddy's JSON
 // schema stays an implementation detail behind Manager so that pinning a new
@@ -27,6 +26,8 @@ const (
 	SurfaceSameOrigin = "same-origin"
 	// SurfaceWS backs /ws and /ws/* on the frontend origin.
 	SurfaceWS = "ws"
+	// SurfaceFrontend serves pages and frontend assets on every hostname.
+	SurfaceFrontend = "frontend"
 )
 
 // Config describes the listener and where each surface lives.
@@ -54,32 +55,6 @@ type Config struct {
 	// Java, and Firefox trust stores. Tests use this to exercise real TLS
 	// without changing the host; normal local development leaves it false.
 	SkipLocalTrustInstall bool
-
-	// ProxyImagesToNuxt leaves /images out of the Go-owned route so the Nuxt
-	// development server can proxy it to a configured remote image origin.
-	// Production leaves this false and always serves images inside Shrike.
-	ProxyImagesToNuxt bool
-
-	// NuxtSocket is the Unix socket the Nitro renderer listens on. Every
-	// request that matches no surface is proxied there, which is what makes
-	// tenant custom domains work without enumerating them: an unrecognised
-	// host is a frontend request by definition.
-	//
-	// Empty disables the fallback, and unmatched requests get a plain 404
-	// instead. That is the right shape for an API-only deployment and for
-	// tests, which should not need a renderer to assert on routing.
-	NuxtSocket string
-
-	// NuxtAddress is the host:port of an already-running `nuxt dev`, used
-	// instead of NuxtSocket during development.
-	//
-	// The dev server cannot offer a socket: it listens through listhen, whose
-	// options carry a port and a hostname and nothing else. Loopback costs
-	// nothing here — the socket exists in production so that the origin needs
-	// no second TCP listener, which is not a development concern.
-	//
-	// Set at most one of NuxtSocket and NuxtAddress.
-	NuxtAddress string
 }
 
 // ListenerStatus describes one bound listener for the status endpoint.

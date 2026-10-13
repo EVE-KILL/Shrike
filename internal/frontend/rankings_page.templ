@@ -1,0 +1,79 @@
+package frontend
+
+import "github.com/eve-kill/shrike/internal/api"
+
+templ rankingsPage(view rankingsView) {
+	<div class="rankings-page" data-rankings-page data-controller="rankings" data-action="click->rankings#click popstate@window->rankings#history visibilitychange@document->rankings#visibility pagehide@window->rankings#hide pageshow@window->rankings#show">
+		<header class="page-header hero-surface glass-panel rankings-header">
+			<span class="page-header-icon">
+				@icon("trophy")
+			</span>
+			<div><p class="eyebrow">The combat ladder</p><h1>EVE-KILL Rankings</h1><p>Compare the most active characters, corporations, alliances, ships, systems, and regions across eight time periods.</p></div>
+		</header>
+		<div class="rankings-controls">
+			<div role="group" aria-label="Ranked entities">
+				for _, choice := range rankingEntities {
+					<button type="button" data-ranking-entity={ choice.Value } class={ rankingButtonClass(view.Entity == choice.Value, "entity") }>{ choice.Label }</button>
+				}
+			</div>
+			<div role="group" aria-label="Ranking period">
+				for _, choice := range rankingWindows {
+					<button type="button" data-ranking-window={ choice.Value } class={ rankingButtonClass(view.Window == choice.Value, "window") }>{ choice.Label }</button>
+				}
+			</div>
+		</div>
+		<div data-ranking-results>
+			@rankingsResults(view)
+		</div>
+	</div>
+}
+
+templ rankingsResults(view rankingsView) {
+	if len(view.Entries)>0 {
+		<section class="ranking-podium">
+			for index, entry := range view.Entries {
+				if index<3 {
+					@rankingPodiumCard(view.Entity, entry)
+				}
+			}
+		</section>
+	}
+	<section class="ranking-table" data-ranking-result-entity={ view.Entity } data-ranking-result-window={ view.Window }>
+		<header><div><strong>{ view.EntityLabel }</strong><span>{ view.WindowLabel }</span></div><small>Top 50</small></header>
+		<div class="ranking-table-head"><span>Rank</span><span>Entity</span><span>Rating</span><span>Combat Points</span><span>Achievements</span></div>
+		if len(view.Entries)==0 {
+			<div class="ranking-empty">
+				if view.Window=="hourly" {
+					{ "No scored combat activity in the last hour." }
+				} else {
+					{ "Rankings are being generated." }
+				}
+			</div>
+		} else {
+			for index, entry := range view.Entries {
+				if index>=3 {
+					@rankingTableRow(view.Entity, entry)
+				}
+			}
+		}
+	</section>
+}
+
+templ rankingPodiumCard(entity string, entry api.RankingEntry) {
+	<a class={ rankingPodiumClass(entry) } href={ rankingEntityPath(entity, entry.EntityID) }>
+		<div class="ranking-podium-inner">
+			<span class="ranking-podium-image"><img src={ rankingEntityImage(entity, entry.EntityID, 128) } alt={ entry.Name } width="56" height="56" loading="lazy"/><b>#{ rankingRank(entry.OverallRank) }</b></span>
+			<div class="ranking-podium-copy"><strong>{ entry.Name }</strong><span>{ rankingNumber(entry.EveKillRating) }</span><small>EVE-KILL rating</small></div>
+		</div>
+	</a>
+}
+
+templ rankingTableRow(entity string, entry api.RankingEntry) {
+	<a class="ranking-table-row" href={ rankingEntityPath(entity, entry.EntityID) }>
+		<span class="ranking-rank">#{ rankingRank(entry.OverallRank) }</span>
+		<span class="ranking-entity"><img src={ rankingEntityImage(entity, entry.EntityID, 64) } alt={ entry.Name } width="32" height="32" loading="lazy"/><span>{ entry.Name }</span></span>
+		<strong>{ rankingNumber(entry.EveKillRating) }</strong>
+		<span>{ rankingNumber(entry.CombatPoints) }</span>
+		<span>{ rankingNumber(entry.AchievementPoints) }</span>
+	</a>
+}

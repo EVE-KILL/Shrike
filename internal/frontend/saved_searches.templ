@@ -1,0 +1,33 @@
+package frontend
+
+templ savedSearches() {
+	<div data-saved-searches class="relative flex gap-2">
+		<button type="button" class="saved-button" data-saved-create>
+			@icon("bookmark")
+			<span>Save</span>
+		</button>
+		<button type="button" class="saved-button" data-saved-toggle aria-expanded="false">
+			@icon("folder-open")
+			<span data-saved-count>Saved (0)</span>
+		</button>
+	</div>
+}
+
+templ savedSearchPanel() {
+	<div data-saved-panel hidden popover="manual" role="dialog" aria-label="Saved searches" class="fixed z-[100] overflow-y-auto rounded-lg bg-[#10131a] border border-white/10 shadow-2xl p-3">
+		<div class="flex items-center justify-between mb-3">
+			<span data-saved-title class="text-sm font-medium text-gray-200">Browser searches</span>
+			<button type="button" aria-label="Close saved searches" data-saved-close class="text-gray-400">
+				@icon("x")
+			</button>
+		</div>
+		<p data-saved-error hidden role="alert" class="text-xs text-red-400 mb-3"></p>
+		<p data-saved-message hidden role="status" class="text-xs text-green-400 mb-3"></p>
+		<p data-saved-loading hidden class="text-xs text-gray-400">Loading searches…</p><button type="button" data-saved-refresh hidden class="text-xs text-blue-400 mb-3">Refresh account searches</button>
+		<form data-saved-editor hidden class="mb-3 p-3 rounded bg-white/[0.04]"><p data-saved-editor-title class="text-xs text-gray-300 mb-2">Save current search</p><label class="block text-xs text-gray-400 mb-1" for="saved-search-name">Search name</label><input id="saved-search-name" name="name" maxlength="100" required class="w-full px-2 py-2 text-sm bg-black/30 border border-white/10 rounded text-gray-200"/><p class="text-xs text-gray-500 mt-2"><span data-saved-owner-note>Stored in this browser. Sign in to save across devices.</span> Rolling dates update each time you open the search.</p><div class="flex gap-2 mt-3"><button class="saved-button" data-saved-submit>Save search</button><button type="button" class="saved-button" data-saved-cancel>Cancel</button></div></form>
+		<div data-saved-deleting hidden class="mb-3 p-3 rounded bg-red-500/10"><p class="text-xs text-gray-300 mb-2">Delete this saved search?</p><div class="flex gap-2"><button type="button" class="saved-button" data-saved-delete-confirm>Delete search</button><button type="button" class="saved-button" data-saved-delete-cancel>Cancel</button></div></div>
+		<div data-saved-account-rows></div>
+		<p data-saved-import-note hidden class="text-xs text-gray-400 mt-4 mb-1">Browser searches — import individually; existing account searches are never overwritten.</p>
+		<div data-saved-browser-rows><p class="text-xs text-gray-500 py-2">No browser searches yet.</p></div>
+	</div>
+}

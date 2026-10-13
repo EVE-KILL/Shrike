@@ -1,0 +1,202 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+// Ported from pages/faction-war/[matchup].vue; tab content is retained in place.
+templ factionWarContent(v factionWarView) {
+	<article class="go-utility-page faction-war" data-faction-war data-controller="faction-war" data-action="click->faction-war#click popstate@window->faction-war#popstate pagehide@window->faction-war#hide pageshow@window->faction-war#show" data-matchup={ v.Data.Matchup } data-side1-id={ warID(v.Data.Side1.ID) } data-side2-id={ warID(v.Data.Side2.ID) } data-side1-name={ v.Data.Side1.Name } data-side2-name={ v.Data.Side2.Name }>
+		<h1 class="sr-only">{ factionWarTitle(v.Data) }</h1>
+		<header class="hero-surface glass-panel p-6 mb-6">
+			<div class="text-fine font-bold uppercase tracking-[0.15em] text-amber-400/80 mb-4 text-center">Faction Warfare — Last 30 Days</div>
+			<div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 items-center">
+				@factionWarSide(v.Data.Side1, v.Data.Overview.FactionStats.Side1, "bg-red-500/[0.04] border-red-500/20")
+				<div class="flex flex-col items-center gap-2 px-4">
+					<div class="text-2xl font-bold text-gray-600">VS</div>
+					<div class="w-32 h-2 bg-blue-500/30 rounded-full overflow-hidden"><div class="h-full bg-red-500 rounded-full" style={ fmt.Sprintf("width:%d%%", factionWarShare(v.Data.Side1.ISKDestroyed, v.Data.Side2.ISKDestroyed)) }></div></div>
+					<div class="text-fine text-gray-500 tabular-nums">{ strconv.Itoa(factionWarShare(v.Data.Side1.ISKDestroyed,v.Data.Side2.ISKDestroyed)) }% — { strconv.Itoa(100-factionWarShare(v.Data.Side1.ISKDestroyed,v.Data.Side2.ISKDestroyed)) }%</div>
+				</div>
+				@factionWarSide(v.Data.Side2, v.Data.Overview.FactionStats.Side2, "bg-blue-500/[0.04] border-blue-500/20")
+			</div>
+		</header>
+		@factionWarControl(v.Data)
+		if len(v.Data.Overview.FlipDays)>0 {
+			<section class="glass-panel p-3 mb-4" aria-label="Recent System Flips">
+				<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">Recent System Flips</div>
+				<div class="space-y-3">
+					for _,group:=range v.Data.Overview.FlipDays {
+						<div>
+							<div class="text-fine font-semibold uppercase tracking-[0.1em] text-gray-400 mb-1">{ factionWarFlipDay(group.Day) }<span class="text-gray-600 font-normal normal-case tracking-normal ml-1">· { strconv.Itoa(len(group.Items)) }</span></div>
+							<div class="space-y-1">
+								for _,flip:=range group.Items {
+									<div class="flex items-center gap-2 text-xs py-1">
+										<a href={ idPath("system", flip.SystemID) } class="text-blue-400 hover:text-blue-300 font-medium">{ flip.SystemName }</a><span class="text-gray-600">flipped</span><span class="text-red-400">{ flip.OldFaction }</span>
+										<span class="text-fine text-gray-600">
+											@icon("arrow-right")
+										</span><span class="text-green-400">{ flip.NewFaction }</span><span class="ml-auto text-fine text-gray-600 tabular-nums">{ factionWarFlipTime(flip.Time) }</span>
+									</div>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			</section>
+		}
+		<nav class="flex overflow-x-auto border-b border-white/[0.08] mb-4 scrollbar-hide" aria-label="Faction war views">
+			for _,tab:=range factionWarTabs(v.Data) {
+				<button type="button" data-fw-tab={ tab.ID } aria-label={ tab.Label } class="flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 whitespace-nowrap" aria-pressed={ strconv.FormatBool(tab.ID == "combined") }>
+					@icon(tab.Icon)
+					<span class="truncate max-w-[150px]">{ tab.Label }</span>
+				</button>
+			}
+		</nav>
+		<div class="grid grid-cols-1 md:grid-cols-[250px_1fr] gap-4" data-fw-overview>
+			<aside class="space-y-3">
+				<div class="glass-panel flex gap-1 p-1">
+					for _,period:=range []string{"yesterday","last_week","active_total"} {
+						<button type="button" data-fw-period={ period } class="flex-1 px-2 py-1 text-fine rounded-md font-medium transition-colors" aria-pressed={ strconv.FormatBool(period == "last_week") }>{ factionWarPeriod(period) }</button>
+					}
+				</div>
+				<div data-fw-sidebar>
+					@factionWarSidebar(v.Data, "combined", "last_week")
+				</div>
+			</aside>
+			<div data-fw-kills>
+				@killList(v.Kills, killListOptions{Kind: "faction-war", Page: 1, Limit: 50, Filtered: true})
+			</div>
+		</div>
+		<section data-fw-members hidden>
+			<div class="war-member-filters">
+				<span>Side:</span><button type="button" class="active" data-member-side="combined">Both</button><button type="button" data-member-side="aggressor">{ v.Data.Side1.Name }</button><button type="button" data-member-side="defender">{ v.Data.Side2.Name }</button><span class="war-filter-divider"></span>
+				<div class="inline-flex items-center gap-2" data-fw-member-sort-controls>
+					<span>Sort:</span>
+					for _,sort:=range []string{"activity","kills","losses","isk"} {
+						<button type="button" data-member-sort={ sort } class={ warTabClass("activity", sort) }>{ map[string]string{"activity":"Activity","kills":"Kills","losses":"Losses","isk":"ISK"}[sort] }</button>
+					}
+				</div>
+			</div>
+			<div data-fw-member-results></div>
+		</section>
+		<section data-fw-intel hidden></section>
+		<section data-fw-systems hidden></section>
+	</article>
+}
+
+templ factionWarSide(side api.FactionWarSideData, stats *api.FactionWarFactionStats, tone string) {
+	<div class={ "text-center p-4 rounded-lg border " + tone }>
+		<img src={ eveEntityImage("corporation", side.CorpID, 128) } class="w-20 h-20 mx-auto rounded-lg mb-2" alt="" width="80" height="80" loading="eager"/>
+		<div class="text-xl font-bold text-white mb-2">{ side.Name }</div>
+		if stats!=nil {
+			<div class="flex items-center justify-center gap-3 text-fine text-gray-500 mb-2"><span><span class="text-gray-300 tabular-nums">{ warNumber(stats.Pilots) }</span> pilots</span><span><span class="text-gray-300 tabular-nums">{ warNumber(stats.Systems) }</span> systems</span></div>
+		}
+		<div class="grid grid-cols-2 gap-2 text-xs">
+			<div><span class="text-green-400 tabular-nums font-medium">{ warNumber(side.Kills) }</span><div class="text-gray-500">kills</div></div>
+			<div><span class="text-red-400 tabular-nums font-medium">{ warNumber(side.Losses) }</span><div class="text-gray-500">losses</div></div>
+			<div><span class="text-green-400 tabular-nums font-medium">{ warISK(side.ISKDestroyed) }</span><div class="text-gray-500">destroyed</div></div>
+			<div><span class="text-red-400 tabular-nums font-medium">{ warISK(side.ISKLost) }</span><div class="text-gray-500">lost</div></div>
+		</div>
+		if stats!=nil {
+			<div class="grid grid-cols-2 gap-2 text-xs mt-2 pt-2 border-t border-white/[0.06]"><div><span class="text-amber-400 tabular-nums font-medium">{ warNumber(stats.WeekVP) }</span><div class="text-gray-500">VP this week</div></div><div><span class="text-amber-400 tabular-nums font-medium">{ warNumber(stats.WeekKills) }</span><div class="text-gray-500">kills this week</div></div></div>
+		}
+	</div>
+}
+
+templ factionWarControl(data api.FactionWarData) {
+	<section class="glass-panel p-4 mb-4" aria-label="Warzone Control">
+		<div class="flex items-center justify-between mb-2"><div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Warzone Control</div><div class="text-fine text-gray-500">{ warNumber(data.Overview.Warzone.Total) } systems</div></div>
+		<div class="relative h-6 rounded-full overflow-hidden mb-3" style={ "background:" + factionWarColor(data.Side2.ID) + "4d" }><div class="absolute inset-y-0 left-0 rounded-l-full transition-all duration-500" style={ "background:" + factionWarColor(data.Side1.ID) + "cc;width:" + strconv.Itoa(factionWarControlPct(data.Overview)) + "%" }></div><div class="absolute inset-0 flex items-center justify-center text-fine font-bold text-white">{ warNumber(data.Overview.Warzone.Side1.Total) } — { warNumber(data.Overview.Warzone.Side2.Total) }</div></div>
+		<div class="grid grid-cols-2 gap-4 text-xs">
+			@factionWarStatus(data.Side1.Name, data.Overview.Warzone.Side1.Uncontested, data.Overview.Warzone.Side1.Contested, data.Overview.Warzone.Side1.Vulnerable, false)
+			@factionWarStatus(data.Side2.Name, data.Overview.Warzone.Side2.Uncontested, data.Overview.Warzone.Side2.Contested, data.Overview.Warzone.Side2.Vulnerable, true)
+		</div>
+		if data.Overview.Warzone.Side1.Vulnerable+data.Overview.Warzone.Side2.Vulnerable>0 {
+			<div class="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2 text-xs">
+				<span class="text-red-400 flex-shrink-0">
+					@icon("triangle-alert")
+				</span><span class="text-red-400 font-medium">Frontline:</span>
+				<span class="text-gray-400">
+					if data.Overview.Warzone.Side1.Vulnerable>0 {
+						@factionWarVulnerable(data.Side1.Name, data.Overview.Warzone.Side1.Vulnerable)
+					}
+					if data.Overview.Warzone.Side1.Vulnerable>0&&data.Overview.Warzone.Side2.Vulnerable>0 {
+						<span>· </span>
+					}
+					if data.Overview.Warzone.Side2.Vulnerable>0 {
+						@factionWarVulnerable(data.Side2.Name, data.Overview.Warzone.Side2.Vulnerable)
+					}
+				</span>
+			</div>
+		} else if data.Overview.Warzone.Side1.Contested+data.Overview.Warzone.Side2.Contested>0 {
+			<div class="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2 text-xs">
+				<span class="text-yellow-400 flex-shrink-0">
+					@icon("swords")
+				</span><span class="text-yellow-400 font-medium">Active fighting:</span><span class="text-gray-400"><span class="text-yellow-400 tabular-nums font-medium">{ warNumber(data.Overview.Warzone.Side1.Contested+data.Overview.Warzone.Side2.Contested) }</span> systems contested across the warzone</span>
+			</div>
+		}
+	</section>
+}
+
+templ factionWarStatus(name string, stable, contested, vulnerable int64, right bool) {
+	<div class={ "flex flex-wrap gap-x-3 gap-y-1 " + map[bool]string{true: "justify-end"}[right] }>
+		<span class="text-gray-400">{ name }:</span>
+		if stable>0 {
+			<span class="text-green-400 tabular-nums">{ warNumber(stable) } stable</span>
+		}
+		if contested>0 {
+			<span class="text-yellow-400 tabular-nums">{ warNumber(contested) } contested</span>
+		}
+		if vulnerable>0 {
+			<span class="text-red-400 tabular-nums">{ warNumber(vulnerable) } vulnerable</span>
+		}
+	</div>
+}
+
+templ factionWarVulnerable(name string, count int64) {
+	<span><span class="text-red-400 tabular-nums font-medium">{ warNumber(count) }</span> { name } system{ map[bool]string{true:"s"}[count>1] } vulnerable</span>
+}
+
+templ factionWarSidebar(data api.FactionWarData, side, period string) {
+	<div class="space-y-3" data-fw-sidebar-loaded>
+		@factionWarLeaderboard("Top Pilots ("+factionWarPeriod(period)+")", "character", factionWarLeaders(data.Overview.Leaderboards.Characters, side))
+		@factionWarLeaderboard("Top Corps ("+factionWarPeriod(period)+")", "corporation", factionWarLeaders(data.Overview.Leaderboards.Corporations, side))
+		if len(data.TopShips)>0 {
+			<section class="glass-panel p-2">
+				<div class="px-1 pb-2 mb-1 text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 border-b border-white/[0.08]">Top Ships Destroyed</div>
+				<div class="space-y-px">
+					for i,ship:=range data.TopShips {
+						<div class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400"><span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{ strconv.Itoa(i+1) }</span><img src={ killImage("item", ship.ID) } class="w-6 h-6 rounded flex-shrink-0" alt="" width="24" height="24" loading="lazy"/><span class="flex-1 text-xs truncate">{ ship.Name }</span><span class="text-xs text-gray-500 tabular-nums">{ warNumber(ship.Kills) }</span></div>
+					}
+				</div>
+			</section>
+		}
+	</div>
+}
+
+templ factionWarLeaderboard(title, kind string, rows []api.FactionWarLeaderboardEntry) {
+	if len(rows)>0 {
+		<section class="glass-panel p-2">
+			<div class="px-1 pb-2 mb-1 text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 border-b border-white/[0.08]">{ title }</div>
+			<div class="space-y-px">
+				for i,row:=range rows {
+					<a href={ idPath(kind, row.ID) } class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors">
+						<span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{ strconv.Itoa(i+1) }</span><img src={ eveEntityImage(kind, row.ID, 64) } class="w-6 h-6 rounded flex-shrink-0" alt="" width="24" height="24" loading="lazy"/>
+						if kind=="character" {
+							<div class="flex-1 min-w-0">
+								<div class="text-xs truncate">{ row.Name }</div>
+								if row.CorporationName!="" {
+									<div class="text-fine text-gray-600 truncate">{ row.CorporationName }</div>
+								}
+							</div>
+						} else {
+							<span class="flex-1 text-xs truncate">{ row.Name }</span>
+						}
+						<span class="text-xs text-gray-500 tabular-nums flex-shrink-0">{ strconv.FormatInt(row.Kills,10) }</span>
+					</a>
+				}
+			</div>
+		</section>
+	}
+}

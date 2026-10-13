@@ -10,8 +10,8 @@ import (
 
 // Announcement and comment events.
 //
-// Both are produced by the frontend rather than by anything here — the Nitro
-// server enqueues one whenever an admin posts an announcement or a user leaves
+// Both are produced by the API rather than by anything here — it
+// enqueues one whenever an admin posts an announcement or a user leaves
 // a comment — and both do nothing but forward the payload to the relay.
 //
 // The payload is therefore carried as raw JSON and republished byte for byte.

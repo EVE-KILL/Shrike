@@ -1,0 +1,115 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+// Faithful compact FitPreview.vue card, reusable by later fitting pages.
+templ fitPreviewCard(fit api.AdvancedSearchFit) {
+	{{ editorURL := observedFitEditorURL(fit.ShipTypeID, fit.ShipName, "", fit.Modules, fit.Drones) }}
+	<div
+		data-fit-preview
+		data-fit-editor-url={ editorURL }
+		class="rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.12] transition-colors overflow-hidden relative cursor-pointer"
+	>
+		if fit.Count>1 {
+			<button
+				type="button"
+				data-fit-show-kills={ fit.Hash }
+				data-fit-dedup={ fit.DedupMode }
+				data-fit-ship-name={ fit.ShipName }
+				title={ fmt.Sprintf("Show all %d killmails with this fitting", fit.Count) }
+				class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-xs font-bold text-blue-400 tabular-nums hover:bg-blue-500/30 hover:border-blue-400/50 transition-colors"
+			>
+				{ fullNumber(float64(fit.Count)) }×
+			</button>
+		}
+		<div class="flex gap-3 p-3 pb-2">
+			<img
+				src={ fmt.Sprintf("/images/types/%d/render?size=128", fit.ShipTypeID) }
+				alt={ fit.ShipName }
+				width="64"
+				height="64"
+				class="w-16 h-16 rounded-lg flex-shrink-0 bg-black/30"
+				loading="lazy"
+			/>
+			<div class="flex-1 min-w-0">
+				<a
+					href={ editorURL }
+					class="text-sm font-medium text-white truncate block"
+					aria-label={ "Open " + fit.ShipName + " fitting in editor" }
+				>
+					{ fit.ShipName }
+				</a>
+				<div class="text-fine text-isk/80 tabular-nums">
+					{ killBoolClass(fit.Count>1,"avg ","") }{ compactNumber(fit.TotalValue) } ISK
+				</div>
+				<div class="text-fine text-gray-500 tabular-nums">
+					{ killBoolClass(fit.Count>1,"avg ","") }{ strconv.Itoa(fit.AttackerCount) } { roamPlural(fit.AttackerCount,"attacker","attackers") }
+					<span class="mx-1 text-gray-700">·</span>{ " " + fit.KillmailTime.UTC().Format("Jan 2 15:04") }
+				</div>
+			</div>
+		</div>
+		<div class="px-3 pb-2 space-y-1">
+			for _,group:=range fitPreviewSlots(fit) {
+				<div class="flex items-center gap-1.5">
+					<span class={ "text-fine font-medium w-7 flex-shrink-0 tabular-nums " + group.Tone }>
+						{ group.Label }
+					</span>
+					<div class="flex flex-wrap gap-0.5">
+						for _,module:=range group.Modules {
+							<img
+								src={ fmt.Sprintf("/images/types/%d/icon?size=32", module.TypeID) }
+								alt=""
+								title={ module.Name }
+								width="24"
+								height="24"
+								class="w-6 h-6 rounded border border-white/[0.06] bg-black/30"
+								loading="lazy"
+							/>
+						}
+					</div>
+				</div>
+			}
+			if len(fit.Drones)>0 {
+				<div class="flex items-center gap-1.5">
+					<span class="text-fine font-medium w-7 flex-shrink-0 tabular-nums text-teal-400">Drn</span>
+					<div class="flex flex-wrap gap-0.5">
+						for _,drone:=range fit.Drones {
+							<div
+								class="relative"
+								title={ fmt.Sprintf("%s ×%d", drone.Name, drone.Quantity) }
+							>
+								<img
+									src={ fmt.Sprintf("/images/types/%d/icon?size=32", drone.TypeID) }
+									alt=""
+									width="24"
+									height="24"
+									class="w-6 h-6 rounded border border-white/[0.06] bg-black/30"
+									loading="lazy"
+								/>
+								if drone.Quantity>1 {
+									<span class="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold text-white bg-black/70 rounded px-0.5 leading-tight">
+										{ strconv.Itoa(drone.Quantity) }
+									</span>
+								}
+							</div>
+						}
+					</div>
+				</div>
+			}
+		</div>
+		<div class="flex items-center justify-end px-3 pb-2">
+			<a
+				href={ idPath("kill", fit.KillmailID) }
+				class="inline-flex items-center gap-0.5 text-fine text-gray-600 hover:text-blue-400 transition-colors"
+				title="View killmail"
+			>
+				@icon("external-link")
+				<span>kill</span>
+			</a>
+		</div>
+	</div>
+}

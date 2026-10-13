@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -10,6 +11,48 @@ import (
 )
 
 const labelsCacheTTL = 15 * time.Minute
+
+type LabelEntry struct {
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Description   string         `json:"description"`
+	Category      string         `json:"category"`
+	Count         int64          `json:"count"`
+	ViewURL       string         `json:"view_url"`
+	SearchFilters map[string]any `json:"search_filters"`
+}
+
+// Labels serves the API and the Go categories page from one catalogue and
+// one count query. The response cache is shared with other HTML read models.
+func (r *HomepageReader) Labels(ctx context.Context) ([]LabelEntry, error) {
+	if r == nil || r.db == nil {
+		return nil, fmt.Errorf("homepage database is not configured")
+	}
+	return cachedHomepage(ctx, r, "labels", labelsCacheTTL, func(ctx context.Context) ([]LabelEntry, error) {
+		rows, err := queryMaps(ctx, r.db, `
+			SELECT type, COALESCE(SUM(count), 0)::bigint AS count
+			FROM kills_daily_count
+			WHERE type = ANY($1::text[])
+			GROUP BY type`, publicLabelIDs())
+		if err != nil {
+			return nil, err
+		}
+		counts := make(map[string]int64, len(rows))
+		for _, row := range rows {
+			counts[stringOrEmpty(row["type"])] = int64OrZero(row["count"])
+		}
+		labels := make([]LabelEntry, 0, len(killtype.Labels))
+		for _, label := range killtype.Labels {
+			labels = append(labels, LabelEntry{
+				ID: label.ID, Name: label.Name, Description: label.Description,
+				Category: label.Category, Count: counts[label.ID],
+				ViewURL:       "/kills/" + label.ID,
+				SearchFilters: map[string]any{"label": label.ID},
+			})
+		}
+		return labels, nil
+	})
+}
 
 func registerLabelRoutes(a huma.API, opts Options) {
 	registerLegacy(a, huma.Operation{
@@ -49,26 +92,9 @@ func labelsResponseSchema() *huma.Schema {
 
 func labelsHandler(opts Options) legacyHandler {
 	return func(ctx context.Context, _ *legacyRequest) (legacyPayload, error) {
-		rows, err := queryMaps(ctx, opts.DB, `
-			SELECT type, COALESCE(SUM(count), 0)::bigint AS count
-			FROM kills_daily_count
-			WHERE type = ANY($1::text[])
-			GROUP BY type`, publicLabelIDs())
+		labels, err := NewHomepageReader(opts.DB).Labels(ctx)
 		if err != nil {
 			return legacyPayload{}, err
-		}
-		counts := make(map[string]int64, len(rows))
-		for _, row := range rows {
-			counts[stringOrEmpty(row["type"])] = int64OrZero(row["count"])
-		}
-		labels := make([]map[string]any, 0, len(killtype.Labels))
-		for _, label := range killtype.Labels {
-			labels = append(labels, map[string]any{
-				"id": label.ID, "name": label.Name,
-				"description": label.Description, "category": label.Category,
-				"count": counts[label.ID], "view_url": "/kills/" + label.ID,
-				"search_filters": map[string]any{"label": label.ID},
-			})
 		}
 		return jsonPayload(map[string]any{"labels": labels}), nil
 	}

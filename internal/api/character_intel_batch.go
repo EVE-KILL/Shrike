@@ -342,7 +342,10 @@ func loadGraphIntelBatch(ctx context.Context, graph GraphDatabase, ids []int32) 
 	}
 	params := map[string]any{"ids": graphIDs}
 	partners, err := graph.Read(ctx, `
-		UNWIND $ids AS cid MATCH (c:Character {id: cid})-[r:FLEW_WITH]-(p:Character)
+		UNWIND $ids AS cid
+		MATCH (c:Character {id: cid})
+		WITH cid,c
+		MATCH (c)-[r:FLEW_WITH]-(p:Character)
 		WITH cid,p,r ORDER BY cid,r.weight DESC
 		WITH cid,collect({id:p.id,corp_id:p.corporation_id,alliance_id:p.alliance_id,weight:r.weight})[..10] AS partners
 		RETURN cid,partners`, params)
@@ -350,7 +353,10 @@ func loadGraphIntelBatch(ctx context.Context, graph GraphDatabase, ids []int32) 
 		return result
 	}
 	groups, err := graph.Read(ctx, `
-		UNWIND $ids AS cid MATCH (c:Character {id: cid})-[:FLEW_WITH]-(p:Character)
+		UNWIND $ids AS cid
+		MATCH (c:Character {id: cid})
+		WITH cid,c
+		MATCH (c)-[:FLEW_WITH]-(p:Character)
 		WHERE p.alliance_id IS NOT NULL
 		WITH cid,p.alliance_id AS alliance_id,count(DISTINCT p) AS shared_partners
 		ORDER BY cid,shared_partners DESC

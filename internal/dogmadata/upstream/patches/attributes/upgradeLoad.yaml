@@ -1,0 +1,8 @@
+change:
+  highIsGood: false
+
+effects:
+  - on: isModule and attribute("upgradeCost")
+    category: passive
+    rules:
+      - {add: upgradeCost, domain: shipID}

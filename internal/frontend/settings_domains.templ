@@ -1,0 +1,160 @@
+package frontend
+
+templ settingsDomains(view settingsView) {
+	<div class="space-y-4" data-settings-domains data-controller="settings-domains" data-action="input->settings-domains#input change->settings-domains#change click->settings-domains#click dragover->settings-domains#dragover drop->settings-domains#drop pagehide@window->settings-domains#hide pageshow@window->settings-domains#show" data-domains={ settingsJSON(view.Domains.Domains) }>
+		<div hidden?={ !view.DomainsError } data-domain-error role="alert" class="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">Could not load your custom domains. <button type="button" data-domain-refresh class="text-blue-400">Retry</button></div>
+		<div class="space-y-4" data-domain-list>
+			<div class="flex items-center justify-between"><h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Custom Domains</h2><button type="button" data-domain-create class="px-3 py-1.5 rounded-md text-xs font-medium bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors">+ Create Domain</button></div>
+			<div data-domain-cards>
+				if !view.DomainsError&&len(view.Domains.Domains)==0 {
+					@settingsDomainsEmpty()
+				}
+				for _,domain:=range view.Domains.Domains {
+					<div class="glass-panel p-4" data-domain-card={ warID(domain.ID) }>
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center gap-2 mb-1">
+									<a href={ "https://" + domain.Subdomain + ".eve-kill.com" } target="_blank" rel="noopener" class="text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">{ domain.Subdomain }.eve-kill.com</a>
+									<span class={ "px-1.5 py-0.5 rounded text-fine font-medium " + killBoolClass(domain.Active, "bg-green-500/20 text-green-400", "bg-red-500/20 text-red-400") }>
+										{ killBoolClass(domain.Active,"Active","Inactive") }
+									</span>
+								</div>
+								if domain.Name!="" {
+									<div class="text-xs text-gray-400 mb-2">
+										{ domain.Name }
+									</div>
+								}
+								<div class="flex flex-wrap gap-1.5">
+									for _,entity:=range domain.Entities {
+										<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-fine bg-white/[0.06] text-gray-300">
+											<img src={ settingsEntityImage(entity) } width="16" height="16" alt="" class="w-4 h-4 rounded-full"/>{ entity.Name }
+										</span>
+									}
+								</div>
+							</div>
+							<div class="flex items-center gap-1 flex-shrink-0">
+								<button type="button" data-domain-edit={ warID(domain.ID) } aria-label={ "Edit " + domain.Subdomain } class="p-1.5 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors">
+									@icon("pencil")
+								</button>
+								<button type="button" data-domain-delete={ warID(domain.ID) } aria-label={ "Delete " + domain.Subdomain } class="p-1.5 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+									@icon("trash-2")
+								</button>
+							</div>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+		<div hidden data-domain-editor class="space-y-4">
+			<div class="flex items-center gap-3 mb-2">
+				<button type="button" data-domain-close aria-label="Back to domains" class="p-1.5 rounded text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors">
+					@icon("arrow-left")
+				</button>
+				<h2 data-domain-title class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Create Domain</h2>
+			</div>
+			<div class="flex gap-1 mb-2" data-domain-tabs>
+				for _,tab:=range []struct{ID,Label string}{{"general","General"},{"campaigns","Campaigns"},{"appearance","Appearance"},{"widgets","Widgets"},{"navigation","Navigation"}} {
+					<button type="button" data-domain-tab={ tab.ID } class="px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.04]">
+						{ tab.Label }
+					</button>
+				}
+			</div>
+			<div data-domain-pane="general" class="space-y-4">
+				<div class="glass-panel p-4"><label for="domain-subdomain" class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">Subdomain</label><div class="flex items-center gap-0"><input id="domain-subdomain" data-domain-field="subdomain" type="text" placeholder="mysite" class="flex-1 px-3 py-2 rounded-l-md bg-white/[0.04] border text-sm text-white placeholder-gray-600 focus:outline-none disabled:opacity-50 border-white/[0.08] focus:border-blue-500/50"/><span class="px-3 py-2 rounded-r-md bg-white/[0.02] border border-l-0 border-white/[0.08] text-sm text-gray-500">.eve-kill.com</span></div><div hidden data-domain-subdomain-status class="mt-1.5 text-xs text-gray-500"></div></div>
+				<div class="glass-panel p-4"><label data-domain-entities-label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">Entities (0/5)</label><div data-domain-entities class="flex flex-wrap gap-1.5 mb-3"></div><p hidden data-domain-entities-full class="text-xs text-yellow-400/80">Maximum of 5 entities reached.</p><div data-domain-entity-picker class="relative"><input data-domain-entity-search type="text" placeholder="Search characters, corporations, alliances..." class="w-full px-3 py-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"/><div hidden data-domain-entity-results class="absolute z-10 mt-1 w-full rounded-lg bg-gray-900 border border-white/[0.1] shadow-xl max-h-64 overflow-y-auto"></div></div></div>
+				<div class="glass-panel p-4 space-y-3"><label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Site Info</label><input data-domain-field="site_name" type="text" placeholder="Site name (e.g. My Corp Killboard)" class="w-full px-3 py-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"/><textarea data-domain-field="site_description" placeholder="Site description..." rows="2" class="w-full px-3 py-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 resize-none"></textarea></div>
+			</div>
+			<div hidden data-domain-pane="campaigns" class="space-y-4">
+				@settingsDomainCampaigns()
+			</div>
+			<div hidden data-domain-pane="appearance" class="space-y-4">
+				@settingsDomainAppearance()
+			</div>
+			<div hidden data-domain-pane="widgets" class="space-y-4"><div class="glass-panel p-4 space-y-3"><label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Column Layout</label><p class="text-fine text-gray-600">Width ratio between the left sidebar and right main content.</p><select data-domain-column aria-label="Column Layout" class="px-3 py-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-blue-500/50"></select></div><div data-domain-widgets class="space-y-4"></div></div>
+			<div hidden data-domain-pane="navigation" class="space-y-4"><div class="glass-panel p-4 space-y-3"><div class="flex items-center justify-between"><label class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Navigation Menu</label><div class="flex items-center gap-2"><button type="button" data-domain-nav-reset class="px-2 py-1 rounded text-fine text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10 transition-colors">Reset to Default</button><button type="button" data-domain-nav-clear class="px-2 py-1 rounded text-fine text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">Clear All</button><button type="button" data-domain-nav-add class="px-2 py-1 rounded text-fine text-blue-400 hover:bg-blue-500/10 transition-colors">+ Add Item</button></div></div><p class="text-fine text-gray-600">Configure the navigation bar. Items can be plain links or dropdowns with grouped sub-items. Empty = default EVE-KILL navigation.</p><div data-domain-nav-preview class="flex items-center gap-1 p-2 rounded-lg bg-black/30 border border-white/[0.06] overflow-x-auto"></div><div data-domain-nav-items class="space-y-3"></div></div></div>
+			<div class="flex items-center gap-3"><button type="button" data-domain-save class="px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 cursor-pointer bg-blue-500 text-white hover:bg-blue-600" disabled>Create Domain</button><button type="button" data-domain-close class="px-4 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors">Cancel</button></div>
+		</div>
+	</div>
+}
+
+templ settingsDomainsEmpty() {
+	<div class="glass-panel p-8 text-center">
+		<span class="text-3xl text-gray-600 mb-3">
+			@icon("globe")
+		</span>
+		<p class="text-sm text-gray-500">No custom domains yet.</p>
+		<p class="text-xs text-gray-600 mt-1">Create a subdomain to get your own personalized killboard.</p>
+	</div>
+}
+
+templ settingsDomainCampaigns() {
+	<div class="glass-panel p-4 space-y-4">
+		<div><label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">Campaign display policy</label><div class="grid grid-cols-1 md:grid-cols-2 gap-3"><button type="button" data-domain-policy="0" class="rounded-lg border p-3 text-left transition-colors"><div class="text-sm font-medium text-white">Automatic + selected</div><p class="text-fine text-gray-600 mt-1">Show campaigns involving this killboard’s entities, plus campaigns selected below.</p></button><button type="button" data-domain-policy="1" class="rounded-lg border p-3 text-left transition-colors"><div class="text-sm font-medium text-white">Selected only</div><p class="text-fine text-gray-600 mt-1">Reject every campaign from this killboard unless it is explicitly selected below.</p></button></div></div>
+		<div class="pt-4 border-t border-white/[0.06]">
+			<div class="flex items-center justify-between mb-2"><label data-domain-campaign-count class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Selected campaigns (0/50)</label></div>
+			<p class="text-fine text-gray-600 mb-3">Your own campaigns are listed below — or paste a campaign ID / search by name to find others. Your private campaigns become visible here only to signed-in members of this domain’s entities.</p>
+			<div data-domain-campaign-create-warning class="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.06] p-3 text-xs text-yellow-400">Create the domain first, then reopen it to select campaigns.</div>
+			<div hidden data-domain-campaign-picker class="relative">
+				<div class="relative">
+					<span class="absolute left-3 top-2.5 text-sm text-gray-600">
+						@icon("search")
+					</span><input data-domain-campaign-search type="text" placeholder="Campaign name or ID…" class="w-full pl-9 pr-3 py-2 rounded-md bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50"/>
+					<span hidden data-domain-campaign-loading class="absolute right-3 top-2.5 text-sm text-gray-500 animate-spin">
+						@icon("loader-2")
+					</span>
+				</div>
+				<div hidden data-domain-campaign-results class="absolute z-20 mt-1 w-full rounded-lg bg-gray-900 border border-white/[0.1] shadow-xl max-h-72 overflow-y-auto"></div>
+			</div>
+			<div hidden data-domain-own-campaigns class="mt-3"><div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-600 mb-1.5">Your campaigns</div><div data-domain-campaign-suggestions class="rounded-lg border border-white/[0.06] divide-y divide-white/[0.04] max-h-60 overflow-y-auto"></div></div>
+			<div data-domain-campaign-empty class="py-6 text-center text-xs text-gray-600">No campaigns selected.</div>
+			<div data-domain-selected-campaigns class="space-y-1.5 mt-4"></div>
+		</div>
+	</div>
+}
+
+templ settingsDomainAppearance() {
+	<div class="glass-panel p-4 space-y-3">
+		<label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Default Theme</label>
+		<p class="text-fine text-gray-600">The default color theme visitors will see. They can still override it with their own preference.</p>
+		<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+			for _,preset:=range settingsData.Presets {
+				<button type="button" data-domain-preset={ preset.ID } class="relative flex flex-col items-center gap-1.5 p-2.5 rounded-lg border transition-all cursor-pointer border-white/[0.06] hover:border-white/[0.12] bg-white/[0.02]">
+					<div class="flex gap-0.5"><div class="w-4 h-4 rounded-full border border-white/10" style={ "background-color:" + domainDefault(preset.Overrides["brandPrimary"], "#3b82f6") }></div><div class="w-4 h-4 rounded-full border border-white/10" style={ "background-color:" + domainDefault(preset.Overrides["brandAccent"], "#00aaff") }></div><div class="w-4 h-4 rounded-full border border-white/10" style={ "background-color:" + domainDefault(preset.Overrides["colorSuccess"], "#10b981") }></div></div>
+					<span class="text-fine text-gray-400 text-center leading-tight">
+						{ preset.Name }
+					</span>
+					<div hidden data-domain-preset-active class="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-400"></div>
+				</button>
+			}
+		</div>
+	</div>
+	for _,asset:=range []struct{ID,Label string}{{"banner","Banner Image"},{"logo","Logo"},{"background","Backgrounds"}} {
+		<div class="glass-panel p-4 space-y-3">
+			<div class="flex items-center justify-between">
+				<label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500">
+					{ asset.Label }
+				</label>
+				if asset.ID=="background" {
+					<span data-domain-background-count class="text-fine text-gray-600">0 / 8</span>
+				}
+			</div>
+			if asset.ID=="background" {
+				<p class="text-fine text-gray-600">Upload up to 8 backgrounds your visitors can pick from in the navbar background dropdown. The first approved one is the domain default.</p>
+			}
+			<div data-domain-assets={ asset.ID }></div><input hidden type="file" data-domain-file={ asset.ID } accept="image/jpeg,image/png,image/webp,image/gif"/>
+		</div>
+	}
+	<div class="glass-panel p-4 space-y-3"><div class="flex items-baseline justify-between gap-3"><label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Content Opacity</label><span data-domain-opacity-label class="text-sm text-gray-300 tabular-nums">100%</span></div><p class="text-fine text-gray-600">How solid the content panels are. 100% is the standard look; lower lets more of your background image through. Worth checking against a busy background — your text sits on these panels, and it stops being readable well before the slider runs out.</p><input data-domain-opacity aria-label="Content Opacity" type="range" min="20" max="100" step="5" class="w-full accent-blue-500 cursor-pointer"/><div class="flex justify-between text-fine text-gray-600"><span>20% · see-through</span><button hidden type="button" data-domain-opacity-reset class="text-blue-400 hover:text-blue-300 cursor-pointer">Reset to default</button><span>100% · solid</span></div></div>
+	<div class="glass-panel p-4 space-y-3">
+		<label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Banner Display</label>
+		<p class="text-fine text-gray-600">Choose what to show overlaid on the banner image.</p>
+		<div class="flex flex-col gap-2">
+			for _,toggle:=range []struct{Key,Label string}{{"showLogoInBanner","Show logo"},{"showNameInBanner","Show site name"},{"showDescriptionInBanner","Show description"}} {
+				<label class="flex items-center gap-2.5 text-sm text-gray-300 cursor-pointer">
+					<input data-domain-theme-toggle={ toggle.Key } type="checkbox" class="rounded border-white/[0.08]"/>{ toggle.Label }
+				</label>
+			}
+		</div>
+		<div class="pt-3 border-t border-white/[0.06] space-y-2"><label data-domain-transparent-label class="flex items-center gap-2.5 text-sm text-gray-300 cursor-pointer"><input data-domain-theme-toggle="transparentBanner" type="checkbox" class="rounded border-white/[0.08] disabled:opacity-40"/>Show transparent banner</label><p data-domain-transparent-help class="text-fine text-gray-600">Keeps the header without an image: the same logo, name and description sit in a banner-shaped strip, with your background bleeding through and fading into the page.</p></div>
+	</div>
+}

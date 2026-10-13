@@ -1,0 +1,19 @@
+.navbar [hidden]{display:none!important}
+.navbar .account-panel,.navbar .notification-panel{padding:6px;min-width:12rem;max-height:70vh}
+.navbar .account-panel .login-form,.navbar .mobile-account .login-form{display:block;gap:0}
+.navbar .account-panel .icon,.navbar .mobile-account .icon,.navbar .notification-panel .icon{width:1em;height:1em}
+.navbar .account-panel [data-account-picture],.navbar .mobile-account [data-account-picture]{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}
+.navbar [data-account-avatar]{width:32px;height:32px;border-radius:50%;object-fit:cover}
+.navbar .nav-account[open]>summary{background:color-mix(in srgb,var(--color-brand-primary) 10%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--color-brand-primary) 20%,transparent)}
+.navbar [data-notifications]>summary{height:36px}
+.navbar .mobile-account{padding-top:0}
+.navbar .notification-panel [data-notification-row]{font:inherit}
+.navbar .notification-panel [data-notification-row] img{height:32px;width:32px;object-fit:cover}
+.navbar .notification-panel p.text-gray-300{color:#d1d5db}
+
+.navbar .login-form{margin-top:0}
+.navbar .login-form input[type=range]{width:100%;height:auto}
+.navbar .mobile-panel{padding:0;background:#030712;z-index:10001}
+.navbar .mobile-panel .icon{width:1em;height:1em}
+.navbar .mobile-source-section>summary{list-style:none;cursor:pointer}
+.navbar .mobile-source-section[open] .mobile-expand-icon{transform:rotate(180deg)}

@@ -211,6 +211,7 @@ func registerRoamReportRoutes(a huma.API, opts Options) {
 		Path:        "/tools/roam-report/{id}",
 		Summary:     "Update the pilots or time range of a saved roam report",
 		Tags:        []string{"tools", "battles"},
+		Parameters:  roamReportPathParameters(),
 	}, roamMaxInputBytes+1024, func(ctx context.Context, req *legacyRequest, body *roamReportCreateBody) (legacyPayload, error) {
 		id := req.Param("id")
 		if !validRoamID(id) {
@@ -256,54 +257,18 @@ func registerRoamReportRoutes(a huma.API, opts Options) {
 		Path:        "/tools/roam-report/{id}",
 		Summary:     "Get a saved roam report",
 		Tags:        []string{"tools", "battles"},
+		Parameters:  roamReportPathParameters(),
 	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		id := req.Param("id")
 		if !validRoamID(id) {
 			return legacyPayload{}, apiError(http.StatusNotFound, "Roam report not found")
 		}
-		db := opts.DB
-		if opts.Primary != nil {
-			db = opts.Primary
-		}
-		if db == nil {
-			return legacyPayload{}, apiError(http.StatusServiceUnavailable, "API database is not configured")
-		}
-		var raw []byte
-		if err := db.QueryRow(ctx, `SELECT report FROM roam_reports WHERE id = $1`, id).Scan(&raw); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return legacyPayload{}, apiError(http.StatusNotFound, "Roam report not found")
-			}
+		report, found, err := readRoamReport(ctx, primaryDatabase(opts), id)
+		if err != nil {
 			return legacyPayload{}, err
 		}
-		var report roamReport
-		if err := json.Unmarshal(raw, &report); err != nil {
-			return legacyPayload{}, fmt.Errorf("decode roam report: %w", err)
-		}
-		if total := report.Summary.IskDestroyed + report.Summary.IskLost; total > 0 {
-			report.Summary.Efficiency = math.Round(report.Summary.IskDestroyed/total*10000) / 100
-		} else {
-			report.Summary.Efficiency = 0
-		}
-		if len(report.Roster) > 0 && report.Roster[0].Ships == nil {
-			killIDs := make([]int32, 0)
-			for _, engagement := range report.Engagements {
-				for _, kill := range engagement.Killmails {
-					killIDs = append(killIDs, kill.KillmailID)
-				}
-			}
-			pilotIDs := make([]int32, 0, len(report.Roster))
-			for _, pilot := range report.Roster {
-				pilotIDs = append(pilotIDs, pilot.CharacterID)
-			}
-			var attackers []roamAttacker
-			if len(killIDs) > 0 {
-				var queryErr error
-				attackers, queryErr = loadRoamAttackers(ctx, db, killIDs, pilotIDs)
-				if queryErr != nil {
-					return legacyPayload{}, queryErr
-				}
-			}
-			addRoamShips(&report, attackers)
+		if !found {
+			return legacyPayload{}, apiError(http.StatusNotFound, "Roam report not found")
 		}
 		payload := jsonPayload(report)
 		payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
@@ -316,6 +281,7 @@ func registerRoamReportRoutes(a huma.API, opts Options) {
 		Path:        "/tools/roam-report/{id}/killlist",
 		Summary:     "Paginated killlist for the killmails saved in a roam report",
 		Tags:        []string{"tools", "battles"},
+		Parameters:  roamReportPathParameters(),
 	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		id := req.Param("id")
 		if !validRoamID(id) {
@@ -329,41 +295,27 @@ func registerRoamReportRoutes(a huma.API, opts Options) {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid role")
 		}
 		db := primaryDatabase(opts)
-		if db == nil {
-			return legacyPayload{}, apiError(http.StatusServiceUnavailable, "API database is not configured")
-		}
-		var raw []byte
-		if err := db.QueryRow(ctx, `SELECT report FROM roam_reports WHERE id = $1`, id).Scan(&raw); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return legacyPayload{}, apiError(http.StatusNotFound, "Roam report not found")
-			}
+		report, found, err := loadSavedRoamReport(ctx, db, id)
+		if err != nil {
 			return legacyPayload{}, err
 		}
-		var report roamReport
-		if err := json.Unmarshal(raw, &report); err != nil {
-			return legacyPayload{}, fmt.Errorf("decode roam report: %w", err)
+		if !found {
+			return legacyPayload{}, apiError(http.StatusNotFound, "Roam report not found")
 		}
-		killIDs := make([]int32, 0)
-		for _, engagement := range report.Engagements {
-			for _, kill := range engagement.Killmails {
-				if role == "all" || role == "kills" && kill.Role == "kill" || role == "losses" && kill.Role == "loss" {
-					killIDs = append(killIDs, kill.KillmailID)
-				}
-			}
-		}
-		if len(killIDs) == 0 {
-			payload := jsonPayload(map[string]any{"kills": []any{}, "hasMore": false, "cursor": nil, "totalPages": 1})
-			payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
-			return payload, nil
-		}
-		payload, err := loadConflictKilllist(ctx, db, req.Query,
-			[]string{"k.killmail_id = ANY($1::int[])"}, []any{killIDs})
+		payload, err := loadRoamReportKilllist(ctx, db, report, req.Query)
 		if err != nil {
 			return legacyPayload{}, err
 		}
 		payload.Headers = http.Header{"Cache-Control": []string{"no-store"}}
 		return payload, nil
 	})
+}
+
+func roamReportPathParameters() []*huma.Param {
+	return []*huma.Param{{Name: "id", In: "path", Required: true,
+		Description: "The 32-character lowercase hexadecimal ID in the report's share link.",
+		Schema:      &huma.Schema{Type: huma.TypeString, Pattern: "^[0-9a-f]{32}$"},
+	}}
 }
 
 func validRoamID(id string) bool {

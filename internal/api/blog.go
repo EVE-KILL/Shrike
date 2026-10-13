@@ -76,7 +76,7 @@ type blogCreate struct {
 type blogStore interface {
 	PublicList(
 		context.Context,
-		*time.Time,
+		*BlogCursor,
 		*string,
 		int,
 	) ([]map[string]any, error)
@@ -316,10 +316,10 @@ func (s *blogService) publicListHandler() legacyHandler {
 			return legacyPayload{}, err
 		}
 		limit := boundedContentInt(req.Query.Get("limit"), 20, 1, 50)
-		var cursor *time.Time
+		var cursor *BlogCursor
 		if raw := req.Query.Get("cursor"); raw != "" {
-			value, ok := parseContentTime(raw)
-			if !ok {
+			value, err := ParseBlogCursor(raw)
+			if err != nil {
 				return legacyPayload{}, apiError(
 					http.StatusBadRequest,
 					"invalid cursor",
@@ -346,8 +346,8 @@ func (s *blogService) publicListHandler() legacyHandler {
 		}
 		var next any
 		if hasMore && len(rows) > 0 {
-			if value, ok := timeFrom(rows[len(rows)-1]["published_at"]); ok {
-				next = javascriptTimestamp(value)
+			if value := blogRowCursor(rows[len(rows)-1]); value != "" {
+				next = value
 			}
 		}
 		return jsonPayload(map[string]any{
@@ -777,10 +777,15 @@ func isUniqueViolation(err error) bool {
 
 func (s *postgresBlogStore) PublicList(
 	ctx context.Context,
-	cursor *time.Time,
+	cursor *BlogCursor,
 	tag *string,
 	limit int,
 ) ([]map[string]any, error) {
+	return publicBlogList(ctx, s.db, cursor, tag, limit)
+}
+
+// publicBlogList is shared by the JSON API and the Go-rendered blog page.
+func publicBlogList(ctx context.Context, db Database, cursor *BlogCursor, tag *string, limit int) ([]map[string]any, error) {
 	filters := []string{"status = 1"}
 	args := []any{}
 	add := func(value any) string {
@@ -788,13 +793,17 @@ func (s *postgresBlogStore) PublicList(
 		return fmt.Sprintf("$%d", len(args))
 	}
 	if cursor != nil {
-		filters = append(filters, "published_at < "+add(*cursor))
+		if cursor.ID > 0 {
+			filters = append(filters, "(published_at, id) < ("+add(cursor.PublishedAt)+", "+add(cursor.ID)+")")
+		} else {
+			filters = append(filters, "published_at < "+add(cursor.PublishedAt))
+		}
 	}
 	if tag != nil {
 		filters = append(filters, "tags @> ARRAY["+add(*tag)+"]::text[]")
 	}
 	limitArg := add(limit)
-	return queryMaps(ctx, s.db, `
+	return queryMaps(ctx, db, `
 		SELECT
 			id,
 			slug,
@@ -811,7 +820,7 @@ func (s *postgresBlogStore) PublicList(
 			published_at
 		FROM blog_posts
 		WHERE `+strings.Join(filters, " AND ")+`
-		ORDER BY published_at DESC
+		ORDER BY published_at DESC, id DESC
 		LIMIT `+limitArg,
 		args...,
 	)
@@ -821,7 +830,11 @@ func (s *postgresBlogStore) PublicBySlug(
 	ctx context.Context,
 	slug string,
 ) (map[string]any, error) {
-	return queryMap(ctx, s.db, `
+	return publicBlogPostBySlug(ctx, s.db, slug)
+}
+
+func publicBlogPostBySlug(ctx context.Context, db Database, slug string) (map[string]any, error) {
+	return queryMap(ctx, db, `
 		SELECT `+blogColumns+`
 		FROM blog_posts
 		WHERE slug = $1
@@ -848,7 +861,7 @@ func (s *postgresBlogStore) AdminList(
 	case "archived":
 		query += ` WHERE status = 2`
 	}
-	query += ` ORDER BY created_at DESC LIMIT $1`
+	query += ` ORDER BY created_at DESC, id DESC LIMIT $1`
 	args = append(args, limit)
 	return queryMaps(ctx, s.db, query, args...)
 }

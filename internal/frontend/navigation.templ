@@ -1,0 +1,268 @@
+package frontend
+
+templ navbar() {
+	<nav data-shell-target="navbar" data-controller="account" data-action="click->account#closeMenus" class="navbar" aria-label="Main navigation">
+		<div class="nav-backdrop"></div>
+		<div class="nav-inner">
+			<div class="nav-left">
+				<a href="/" class="nav-button home-link" aria-label="Home">
+					@icon("house")
+					<span>Home</span>
+				</a>
+				<div class="desktop-links">
+					for _, link := range navigation {
+						if len(link.Children) > 0 {
+							<details class="nav-dropdown" name="desktop-nav" data-action="toggle->shell#exclusiveMenu">
+								<summary class="nav-button">
+									{ link.Label }
+									@icon("chevron-down")
+								</summary>
+								<div class={ "dropdown-panel", templ.KV("mega-menu", link.Label == "Kills"), templ.KV("explore-menu", link.Label == "Menu") }>
+									@navGroups(link.Children)
+								</div>
+							</details>
+						} else {
+							<a class="nav-button secondary-link" href={ templ.URL(link.Href) }>
+								{ link.Label }
+							</a>
+						}
+					}
+				</div>
+			</div>
+			<div class="nav-search">
+				<button class="search-trigger" data-open-search data-action="click->shell#openSearch" aria-label="Search">
+					@icon("search")
+					<span>Search...</span><kbd>⌘</kbd><kbd>K</kbd>
+				</button>
+			</div>
+			<div class="desktop-actions">
+				<a class="icon-button" href="/post" aria-label="Post killmail" title="Post killmail">
+					@icon("upload")
+				</a>
+				<details class="nav-dropdown" name="desktop-nav" data-action="toggle->shell#exclusiveMenu">
+					<summary class="icon-button" aria-label="Change background" title="Change background">
+						@icon("image")
+					</summary>
+					<div class="dropdown-panel align-right background-picker">
+						<h2>Background</h2>
+						<p>Personalize the site</p>
+						<h3>Local backgrounds</h3>
+						<div class="background-grid">
+							for _, bg := range backgrounds {
+								<button data-background={ bg } data-action="click->shell#selectBackground" aria-label={ "Select background " + bg } aria-pressed="false"><img src={ assetURL("backgrounds/" + bg + ".webp") } alt="" loading="lazy" width="128" height="72"/></button>
+							}
+						</div>
+					</div>
+				</details>
+				<details class="nav-dropdown info-dropdown" name="desktop-nav" data-action="toggle->shell#exclusiveMenu">
+					<summary class="icon-button" aria-label="Information" title="Information">
+						@icon("info")
+					</summary>
+					<div class="dropdown-panel align-right">
+						@navLinks(information)
+					</div>
+				</details>
+				<a hidden data-account-authenticated class="icon-button" href="/tracker" aria-label="Tracker" title="Tracker">
+					@icon("scan-eye")
+				</a>
+				@notificationBell()
+				<details class="nav-dropdown nav-account" data-account-menu name="desktop-nav" data-action="toggle->shell#exclusiveMenu toggle->account#refreshBalance">
+					<summary class="icon-button" data-account-trigger aria-label="Login with EVE Online" title="Login with EVE Online">
+						<span data-account-login-icon>
+							@icon("log-in")
+						</span>
+						<img hidden data-account-avatar width="32" height="32" alt=""/>
+					</summary>
+					<div class="dropdown-panel align-right account-panel go-utility-page">
+						<div data-account-guest>
+							@loginPanel(false)
+						</div>
+						<div hidden data-account-user class="w-72">
+							@accountCard(false)
+							<div class="mt-1 border-t border-white/[0.08] pt-1">
+								@accountLinks(false)
+							</div>
+						</div>
+					</div>
+				</details>
+			</div>
+			<details class="mobile-navigation" id="mobile-navigation" data-shell-target="mobile" data-action="toggle->shell#toggleMobile toggle->account#refreshBalance">
+				<summary class="icon-button" aria-label="Menu">
+					@icon("menu")
+				</summary>
+				<div class="mobile-panel go-utility-page">
+					<div class="flex items-center justify-between h-16 px-6 border-b border-white/[0.08]">
+						<h2 class="text-xl font-bold text-white">Menu</h2>
+						<button class="flex items-center justify-center w-10 h-10 rounded-lg text-white hover:bg-blue-500/10" data-close-mobile data-action="click->shell#closeMobile" aria-label="Close menu">
+							<span class="text-xl">
+								@icon("x")
+							</span>
+						</button>
+					</div>
+					<div class="p-6 space-y-8">
+						<section>
+							<h3 class="text-lg font-bold text-white mb-3">Navigation</h3>
+							<div class="space-y-1">
+								<a href="/" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
+									<span class="text-lg opacity-60">
+										@icon("house")
+									</span>Home
+								</a>
+								for _,link:=range navigation {
+									if len(link.Children)>0 {
+										<details class="mobile-source-section">
+											<summary class="flex items-center justify-between w-full px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
+												<span class="flex items-center gap-3">
+													if link.Icon!="" {
+														<span class="text-lg opacity-60">
+															@icon(link.Icon)
+														</span>
+													}
+													{ link.Label }
+												</span>
+												<span class="text-sm opacity-50 mobile-expand-icon">
+													@icon("chevron-down")
+												</span>
+											</summary>
+											<div class="ml-4 mt-1 pl-4 border-l border-white/10 space-y-0.5">
+												@mobileNavGroups(link.Children)
+											</div>
+										</details>
+									} else {
+										<a href={ templ.URL(link.Href) } class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
+											if link.Icon!="" {
+												<span class="text-lg opacity-60">
+													@icon(link.Icon)
+												</span>
+											}
+											{ link.Label }
+										</a>
+									}
+								}
+								<a href="/post" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
+									<span class="text-lg opacity-60">
+										@icon("upload")
+									</span>Post Killmail
+								</a>
+							</div>
+						</section>
+						<section>
+							<h3 class="text-lg font-bold text-white mb-3">Information</h3>
+							<div class="space-y-1">
+								for _,link:=range information {
+									<a href={ templ.URL(link.Href) } class="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-blue-500/[0.06]">
+										<span class="text-lg opacity-60">
+											@icon(link.Icon)
+										</span>{ link.Label }
+									</a>
+								}
+							</div>
+						</section>
+						<section class="mobile-account">
+							<h3 class="text-lg font-bold text-white mb-3">Account</h3>
+							<div class="space-y-1">
+								<div data-account-guest>
+									@loginPanel(true)
+								</div>
+								<div hidden data-account-user class="space-y-1">
+									@accountCard(true)
+									@accountLinks(true)
+								</div>
+							</div>
+						</section>
+						<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-blue-500/[0.06]" id="mobile-background" data-action="click->shell#shuffle">
+							<span class="text-lg opacity-60">
+								@icon("shuffle")
+							</span>Change background
+						</button>
+					</div>
+				</div>
+			</details>
+		</div>
+	</nav>
+}
+
+templ navGroups(groups []navGroup) {
+	for _, group := range groups {
+		<div class="menu-group">
+			if group.Label != "" {
+				<h3>
+					{ group.Label }
+				</h3>
+			}
+			@navLinks(group.Items)
+		</div>
+	}
+}
+
+templ navLinks(links []navLink) {
+	for _, link := range links {
+		<a class="menu-link" href={ templ.URL(link.Href) }>
+			if link.Icon != "" {
+				@icon(link.Icon)
+			}
+			{ link.Label }
+		</a>
+	}
+}
+
+templ loginPanel(mobile bool) {
+	<form data-account-target="loginForm" data-action="submit->shell#login input->account#preferences change->account#preferences" class={ "login-form",templ.KV("p-1",mobile),templ.KV("w-72 p-3",!mobile) }>
+		if !mobile {
+			<div class="mb-3 flex items-center gap-2.5">
+				<span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.035] text-blue-400/70">
+					@icon("log-in")
+				</span>
+				<div><div class="text-sm font-medium text-gray-300">Login with EVE Online</div><div class="text-fine text-gray-600">Choose what to synchronize</div></div>
+			</div>
+		}
+		<button type="submit" class="block w-full mb-4 hover:opacity-90 transition-opacity" aria-label="Log in with EVE Online"><img src={ assetURL("eve-sso-login-white-large.png") } alt="Log in with EVE Online" width="270" height="45" class="w-full h-auto"/></button>
+		<div class="space-y-2 mb-4"><label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"><input type="checkbox" name="charKm" checked class="w-4 h-4 accent-blue-500"/>Character killmails</label><label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"><input type="checkbox" name="corpKm" checked class="w-4 h-4 accent-blue-500"/>Corporation killmails</label></div>
+		<div class="border-t border-white/[0.08] pt-3">
+			<div class="flex items-center justify-between mb-2"><span class="text-xs text-gray-400">Killmail delay</span><span data-login-delay-label class="text-xs text-blue-400 font-medium tabular-nums">No delay</span></div><input data-login-delay aria-label="Killmail delay" type="range" min="0" max="6" step="1" value="0" class="w-full accent-blue-500"/><input type="hidden" name="delay" value="0"/>
+			<div class="flex justify-between mt-1 px-0.5">
+				for _,label:=range []string{"0","1","3","6","12","24","72"} {
+					<span class="text-fine text-gray-600 tabular-nums">
+						{ label }
+					</span>
+				}
+			</div>
+		</div>
+		<p hidden class="login-error text-xs text-red-300 mt-2" role="status"></p>
+	</form>
+}
+
+templ searchDialog() {
+	<dialog id="search-dialog" data-shell-target="dialog" data-action="click->shell#backdrop close->shell#cancelSearch" aria-labelledby="search-title">
+		<form method="dialog" class="dialog-heading">
+			<h2 id="search-title">Search New Eden</h2>
+			<button class="icon-button" aria-label="Close search">
+				@icon("x")
+			</button>
+		</form>
+		<div class="search-field">
+			@icon("search")
+			<input id="search-input" data-shell-target="searchInput" data-action="input->shell#search keydown->shell#searchKeys" type="search" placeholder="Search characters, corporations, ships, systems..." aria-label="Search New Eden" autocomplete="off"/>
+		</div>
+		<div id="search-results" data-shell-target="searchResults" data-action="keydown->shell#resultKeys" aria-live="polite"><p>Type at least two characters to search.</p></div>
+		<div class="dialog-footer"><span>Characters, corporations, alliances, ships &amp; locations</span><kbd>ESC</kbd> to close</div>
+	</dialog>
+}
+
+templ mobileNavGroups(groups []navGroup) {
+	for _,group:=range groups {
+		if group.Label!="" {
+			<div class="pt-2 pb-1 px-3 text-fine font-bold uppercase tracking-wider text-blue-400/60">{ group.Label }</div>
+		}
+		for _,link:=range group.Items {
+			<a href={ templ.URL(link.Href) } class="flex items-center gap-2 px-3 py-2 rounded text-sm text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06]">
+				if link.Icon!="" {
+					<span class="opacity-60">
+						@icon(link.Icon)
+					</span>
+				}
+				{ link.Label }
+			</a>
+		}
+	}
+}

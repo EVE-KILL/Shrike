@@ -1,0 +1,95 @@
+package frontend
+
+import (
+	"encoding/json"
+	"strconv"
+)
+
+templ campaignEditorForm(view campaignEditView) {
+	<div class="go-utility-page" data-campaign-edit-boundary>
+		<form data-campaign-edit-form novalidate class="campaign-editor mt-4 pt-4 border-t border-white/[0.06] space-y-3">
+			{{ encoded, _ := json.Marshal(view) }}
+			<input type="hidden" data-edit-state value={ string(encoded) }/>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+				<div><label for="campaign-edit-name" class="text-fine text-gray-500 mb-1 block">Name</label><input id="campaign-edit-name" data-edit-name type="text" value={ view.Name } class="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:border-blue-500/40 focus:outline-none"/></div>
+				<div>
+					<label class="text-fine text-gray-500 mb-1 block">End time (UTC)</label>
+					<div class="flex items-center gap-2">
+						<div class="flex-1 min-w-0">
+							@dateTimePicker(dateTimePickerOptions{Name: "campaign_edit_end", Value: view.EndTime, Placeholder: "Pick an end", Disabled: view.Ongoing || view.Locked})
+						</div><label class="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer"><input data-edit-ongoing type="checkbox" checked?={ view.Ongoing } disabled?={ view.HasPrize } class="accent-blue-500 disabled:opacity-40"/> Ongoing</label>
+					</div>
+				</div>
+			</div>
+			<div><label for="campaign-edit-description" class="text-fine text-gray-500 mb-1 block">Description</label><textarea id="campaign-edit-description" data-edit-description rows="3" class="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-gray-300 focus:border-blue-500/40 focus:outline-none">{ view.Description }</textarea></div>
+			if view.Mode!="area" {
+				<div class="space-y-2">
+					<div class="flex items-center justify-between gap-3"><div><label class="text-fine text-gray-500 block">Sides and participants</label><p class="text-fine text-gray-600 mt-0.5">Changing participants triggers a full campaign recompute.</p></div><button type="button" data-edit-add-side hidden?={ len(view.Sides)>=4||view.Locked } class="px-2 py-1 rounded bg-white/[0.05] text-fine text-gray-400 hover:text-blue-300">Add side</button></div>
+					if view.Locked {
+						<div class="rounded border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-xs text-amber-300">Participants are locked because this prize campaign has received funding.</div>
+					}
+					<div data-edit-side-list class="space-y-2">
+						for index,side:=range view.Sides {
+							@campaignEditorSide(index, side, view.Locked, len(view.Sides))
+						}
+					</div>
+				</div>
+			}
+			<div><label for="campaign-edit-visibility" class="text-fine text-gray-500 mb-1 block">Visibility</label><select id="campaign-edit-visibility" data-edit-visibility class="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-gray-300 focus:border-blue-500/40 focus:outline-none [&>option]:bg-gray-900"><option value="0" selected?={ view.Visibility==0 }>Public — listed on EVE-KILL for everyone</option><option value="1" selected?={ view.Visibility==1 }>Private — owner and selected-domain members only</option><option value="2" selected?={ view.Visibility==2 }>Killboard only — shown on involved or allowed custom killboards</option></select></div>
+			if view.Mode=="area" {
+				<div data-edit-grants hidden?={ view.Visibility!=2 }>
+					<label class="text-fine text-gray-500 mb-1 block">Allow these entities to see it on their custom killboard</label>@searchPicker("edit-allowed", "Add allowed entity", []string{"alliance", "corporation", "character"})
+					<div data-edit-allowed-list class="flex flex-wrap gap-1.5 mt-2">
+						for index,entity:=range view.Allowed {
+							@campaignEditorEntity(entity, index, "allowed", false)
+						}
+					</div>
+					<p data-edit-no-grants hidden?={ len(view.Allowed)>0 } class="text-fine text-gray-600 mt-1.5">No grants yet — only your own killboards can list this campaign.</p>
+				</div>
+			}
+			<div data-edit-error hidden class="flex items-center gap-2 text-xs text-red-400" role="alert"><span data-error-text></span><button type="button" data-edit-reauth hidden class="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 font-medium">Sign in again</button></div>
+			<div class="flex items-center gap-2"><button type="submit" data-edit-save class="px-4 py-2 rounded-lg text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-40">Save changes</button><button type="button" data-edit-cancel class="glass-panel px-4 py-2 text-xs text-gray-400">Cancel</button><span class="text-fine text-gray-600">Changing the end time or participants triggers a full recompute</span></div>
+			<template data-edit-side-template>
+				@campaignEditorSide(0, campaignEditSide{Entities: []campaignEditEntity{}}, false, 2)
+			</template>
+			<template data-edit-entity-template>
+				@campaignEditorEntity(campaignEditEntity{}, 0, "side", false)
+			</template>
+		</form>
+	</div>
+}
+
+templ campaignEditorSide(index int, side campaignEditSide, locked bool, count int) {
+	<div data-edit-side={ strconv.Itoa(index) } class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-3 space-y-2">
+		<div class="flex items-center gap-2">
+			<input type="text" data-edit-side-name={ strconv.Itoa(index) } value={ side.Name } aria-label={ "Side " + strconv.Itoa(index+1) + " name" } maxlength="50" disabled?={ locked } class="flex-1 min-w-0 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/[0.08] text-xs text-white focus:border-blue-500/40 focus:outline-none disabled:opacity-50"/><span data-edit-side-count class="text-fine text-gray-600 tabular-nums">{ strconv.Itoa(len(side.Entities)) }/15</span>
+			<button type="button" data-edit-remove-side={ strconv.Itoa(index) } hidden?={ count<=1||locked } aria-label={ "Remove side " + strconv.Itoa(index+1) } class="text-gray-600 hover:text-red-400">
+				<span class="text-xs">
+					@icon("trash-2")
+				</span>
+			</button>
+		</div>
+		if !locked {
+			@searchPicker("edit-side", "Add side participant", []string{"alliance", "corporation", "character"})
+		}
+		<div data-edit-side-entities class="flex flex-wrap gap-1.5">
+			for entityIndex,entity:=range side.Entities {
+				@campaignEditorEntity(entity, entityIndex, "side", locked)
+			}
+			<span data-edit-empty-side hidden?={ len(side.Entities)>0 } class="text-fine text-red-400">This side needs at least one participant.</span>
+		</div>
+	</div>
+}
+
+templ campaignEditorEntity(entity campaignEditEntity, index int, kind string, locked bool) {
+	<div class={ "inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs font-medium " + killBoolClass(kind == "allowed", "border-indigo-500/30 bg-indigo-500/10 text-indigo-300", "border-white/[0.08] bg-white/[0.04] text-gray-300") }>
+		<span data-edit-entity-name>{ entity.Name }</span>
+		if !locked {
+			<button type="button" data-edit-remove={ kind } data-edit-index={ strconv.Itoa(index) } aria-label={ "Remove " + entity.Name } class="text-gray-600 hover:text-red-400">
+				<span class="text-fine">
+					@icon("x")
+				</span>
+			</button>
+		}
+	</div>
+}

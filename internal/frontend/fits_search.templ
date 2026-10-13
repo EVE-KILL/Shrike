@@ -1,0 +1,410 @@
+package frontend
+
+import (
+	"fmt"
+	"math"
+	"strconv"
+	"time"
+
+	"github.com/eve-kill/shrike/internal/api"
+)
+
+templ fitsSearchPage(view fitSearchView) {
+	<div class="go-utility-page fits-search" data-fits-search data-controller="fits-search" data-action="click->fits-search#click change->fits-search#change input->fits-search#input submit->fits-search#submit search-pick->fits-search#pick keydown->fits-search#keyboard toggle->fits-search#toggle:capture resize@window->fits-search#positionMenus scroll@window->fits-search#positionMenus popstate@window->fits-search#back pagehide@window->fits-search#hide pageshow@window->fits-search#show">
+		@templ.JSONScript("fit-search-state", view.State).WithType("application/json")
+		@templ.JSONScript("fit-search-roles", view.Roles).WithType("application/json")
+		@utilityHeader(utilityHeaderView{Title: "Find killmail-derived fits", Eyebrow: "Fit Search", Symbol: "search", DescriptionContent: fitSearchDescription()}) {
+			<a href="/fits" class="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] rounded-md bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors">
+				@icon("arrow-left")
+				<span>Back to Fits</span>
+			</a>
+		}
+		<div class="mb-2 text-fine font-bold uppercase tracking-[0.15em] text-gray-500" data-fit-search-selected-only hidden?={ view.State.Ship==nil }>Search Criteria</div>
+		<div class={ templ.KV("fit-search-criteria", view.State.Ship != nil) } data-fit-search-criteria>
+			<section data-fit-search-hull>
+				<div data-fit-search-unselected hidden?={ view.State.Ship!=nil }>
+					<label class="block text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">Ship</label>
+					<div class="relative fit-search-hull-picker">
+						@searchPicker("fit-ship", "Search for a hull", []string{"ship"}, searchPickerOptions{Large: true, Placeholder: "Search for a hull — Rifter, Stabber, Vargur…", TypeImages: true, Compact: true, Limit: 12, Debounce: 200})
+					</div>
+					<div data-fit-search-popular>
+						@fitSearchPopular(view)
+					</div>
+				</div>
+				<div data-fit-search-selected-card hidden?={ view.State.Ship==nil } class="relative h-full min-h-40 overflow-hidden rounded-xl border border-blue-500/25 bg-black/35 p-4">
+					<img data-fit-search-hull-background width="256" height="256" alt="" class="pointer-events-none absolute -right-10 -top-20 h-56 w-56 opacity-20 blur-xl"/>
+					<div class="relative flex h-full flex-col items-start gap-3">
+						<img data-fit-search-hull-image width="64" height="64" alt="" class="h-16 w-16 flex-shrink-0 object-contain"/>
+						<div class="min-w-0 flex-1">
+							<div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80">Selected hull</div>
+							<div class="mt-1 truncate text-xl font-bold text-white" data-fit-search-hull-name>
+								if view.State.Ship!=nil {
+									{ view.State.Ship.Name }
+								}
+							</div>
+							<div class="mt-1 text-xs text-gray-500">Observed fitting families from the last 90 days</div>
+						</div>
+						<div class="flex w-full items-center gap-2">
+							<a data-fit-search-hull-link class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-gray-400 transition-colors hover:border-blue-500/30 hover:text-blue-300">
+								@icon("layers-3")
+								<span>Hull fittings</span>
+							</a>
+							<button type="button" data-fit-search-clear-ship class="flex items-center justify-center w-8 h-8 rounded-md text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors" aria-label="Change ship">
+								@icon("x")
+							</button>
+						</div>
+					</div>
+				</div>
+			</section>
+			<section data-fit-search-selected-only hidden?={ view.State.Ship==nil }>
+				<div class="glass-panel h-full p-3 space-y-2">
+					<div class="border-b border-white/[0.06] pb-3">
+						<div class="flex flex-wrap items-center gap-2">
+							@fitSearchChoice("sort", "Sort by", fitSearchSorts, view.State.Sort)
+							<label class="inline-flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-gray-400"><input type="checkbox" data-fit-search-cap-stable checked?={ view.State.CapStable } class="accent-blue-500"/> Capacitor stable</label>
+							<div class="contents" data-fit-search-stat-chips>
+								for index,filter:=range view.State.Statistics {
+									@fitSearchStatChip(filter, index)
+								}
+							</div>
+							<button type="button" data-fit-search-clear-stats hidden?={ len(view.State.Statistics)==0 && !view.State.CapStable } class="ml-auto inline-flex items-center gap-1 text-xs text-gray-500 hover:text-red-300">
+								@icon("rotate-ccw")
+								<span>Clear statistics</span>
+							</button>
+						</div>
+						<form data-fit-search-stat-form class="mt-3 grid gap-2 border-t border-white/[0.06] pt-3 sm:grid-cols-2 xl:grid-cols-[minmax(170px,1.5fr)_minmax(150px,1.2fr)_1fr_1fr_auto]">
+							<div>
+								<span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">Statistic</span>
+								@fitSearchChoice("metric", "", fitMetricLabels, fitSearchDraftMetric(view.State))
+							</div>
+							<div data-fit-search-npc-field hidden?={ fitSearchDraftMetric(view.State)!="npc_ehp" }>
+								<span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">NPC damage</span>
+								@fitSearchChoice("npc", "", fitNPCProfiles, fitSearchDraftNPC(view.State))
+							</div>
+							<div data-fit-search-npc-spacer hidden?={ fitSearchDraftMetric(view.State)=="npc_ehp" } class="hidden xl:block"></div>
+							<label><span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">Minimum</span><input name="minimum" inputmode="decimal" placeholder="e.g. 50k" class="w-full rounded-md border border-white/[0.08] bg-black/35 px-2.5 py-2 text-xs tabular-nums text-gray-300 outline-none placeholder:text-gray-700 focus:border-blue-500/40"/></label>
+							<label><span class="mb-1 block text-fine uppercase tracking-wide text-gray-600">Maximum</span><input name="maximum" inputmode="decimal" placeholder="optional" class="w-full rounded-md border border-white/[0.08] bg-black/35 px-2.5 py-2 text-xs tabular-nums text-gray-300 outline-none placeholder:text-gray-700 focus:border-blue-500/40"/></label>
+							<button type="submit" class="self-end rounded-md border border-blue-500/30 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:bg-blue-500/25">Apply range</button>
+						</form>
+					</div>
+					<p data-fit-search-no-requirements class="text-fine text-gray-500 py-1" hidden?={ len(view.State.Filters)>0 }>No filters yet — leave empty to see the most-flown fits for this hull.</p>
+					<div class="space-y-2" data-fit-search-requirements>
+						for index,filter:=range view.State.Filters {
+							@fitSearchRequirement(filter, index, view.Roles)
+						}
+					</div>
+					<div class="relative">
+						<button type="button" data-fit-search-add-requirement popovertarget="fit-search-requirement-picker" class="fit-search-requirement-trigger flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-xs font-medium text-gray-300 hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors" disabled?={ len(view.State.Filters)>=8 }>
+							@icon("plus")
+							<span>Add module requirement</span><span data-fit-search-requirement-count class="text-fine text-gray-500"></span>
+						</button>
+						<div id="fit-search-requirement-picker" popover="auto" class="fit-search-requirement-picker">
+							<input data-fit-search-role-query type="text" placeholder="Search role (pulse, rep, web) or specific item (Damage Control II)…" class="w-full h-9 px-3 mb-3 rounded-md bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-500/50" autocomplete="off" aria-label="Search roles or specific modules"/>
+							<p data-fit-search-availability-pending hidden class="mb-2 flex items-center gap-2 px-2 text-fine text-blue-300/70">
+								@icon("loader-circle")
+								<span>Updating available requirements…</span>
+							</p>
+							<div data-fit-search-role-error hidden?={ !view.RolesError } class="text-fine text-red-300">Unable to load module roles. <button type="button" data-fit-search-retry-roles class="underline">Retry</button></div>
+							<div data-fit-search-role-results></div>
+							<div data-fit-search-item-results></div>
+							<p data-fit-search-item-pending hidden class="text-fine text-gray-500 px-2 py-1 flex items-center gap-2">
+								@icon("loader-2")
+								<span>Searching items…</span>
+							</p>
+							<p data-fit-search-no-matches hidden class="text-fine text-gray-500 px-2 py-2">No matches — try a different word.</p>
+							<p data-fit-search-role-tip class="text-fine text-gray-500 px-1 pt-1 border-t border-white/[0.06]">Tip: type the start of a module name to search for specific items (e.g. <span class="text-amber-300/80">Damage Control II</span>).</p>
+						</div>
+					</div>
+				</div>
+			</section>
+		</div>
+		<section class="mb-6" data-fit-search-profiles hidden?={ view.State.Ship==nil } aria-live="polite"><p class="text-fine text-blue-300/60">Loading observed fit profiles…</p></section>
+		<section data-fit-search-results hidden?={ view.State.Ship==nil } aria-live="polite">
+			<div class="glass-panel flex items-center justify-center py-20">
+				@icon("loader-2")
+				<span class="sr-only">Loading fits…</span>
+			</div>
+		</section>
+		<section data-fit-search-empty hidden?={ view.State.Ship!=nil } class="glass-panel py-16 text-center">
+			<span class="fit-search-empty-icon block text-gray-600 mx-auto mb-3">
+				@icon("ship")
+			</span>
+			<div class="text-sm text-gray-300 mb-1">Pick a ship to start</div>
+			<div class="text-fine text-gray-500">Once you pick a hull, you can layer on role filters.</div>
+		</section>
+		<template data-fit-search-requirement-template>
+			@fitSearchRequirement(fitRequirement{}, 0, nil)
+		</template>
+		<template data-fit-search-stat-template>
+			@fitSearchStatChip(fitStatisticFilter{}, 0)
+		</template>
+	</div>
+}
+
+templ fitSearchDescription() {
+	Pick a ship, then add role filters like <span class="text-blue-400/80">2 armor reps</span> or <span class="text-blue-400/80">1 stasis webifier</span>. We surface the most-flown matching fits from the last 90 days of killmails.
+}
+
+templ fitSearchChoice(name, caption string, options []struct{ Key, Label string }, current string) {
+	<div class={ "fit-search-choice",templ.KV("fit-search-choice-wide",name!="sort") } data-fit-search-choice-control={ name }>
+		<button type="button" popovertarget={ "fit-search-choice-" + name } aria-label={ killBoolClass(caption != "", caption, "Choose "+name) } class="fit-search-choice-trigger" style={ "anchor-name:--fit-search-" + name }>
+			if caption!="" {
+				<span class="text-gray-600">
+					{ caption }
+				</span>
+			}
+			<span data-fit-search-choice-label>
+				{ fitSearchChoiceLabel(options,current) }
+			</span>
+			@icon("chevron-down")
+		</button>
+		<div id={ "fit-search-choice-" + name } popover="auto" class="fit-search-choice-menu" style={ "position-anchor:--fit-search-" + name }>
+			for _,option:=range options {
+				<button type="button" data-fit-search-choice={ name } data-fit-search-value={ option.Key } aria-pressed={ strconv.FormatBool(option.Key == current) } class={ templ.KV("active", option.Key == current) }>
+					@icon("check")
+					<span>
+						{ option.Label }
+					</span>
+				</button>
+			}
+		</div>
+	</div>
+}
+
+templ fitSearchRequirement(filter fitRequirement, index int, roles []fitSearchRole) {
+	<div class="flex items-center gap-2 flex-wrap" data-fit-search-requirement={ strconv.Itoa(index) }>
+		<div class="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-blue-500/[0.08] border border-blue-500/30 text-sm">
+			<img data-fit-search-requirement-image hidden?={ filter.Kind!="type" } width="16" height="16" alt=""/>
+			<span data-fit-search-requirement-symbol hidden?={ filter.Kind=="type" } class="text-blue-400">
+				@icon(fitSearchRoleIcon(roles, filter))
+			</span>
+			<span data-fit-search-requirement-label class="text-gray-200 font-medium">
+				{ fitSearchRoleName(roles,filter) }
+			</span>
+		</div>
+		<div class="flex items-center rounded-md overflow-hidden border border-white/[0.08]">
+			for _,op:=range []string{">=","=","<="} {
+				<button type="button" data-fit-search-op={ op } aria-pressed={ strconv.FormatBool(filter.Op == op) } class={ "fit-search-op px-2 py-1 text-xs font-medium transition-colors",templ.KV("active",filter.Op==op) }>
+					{ op }
+				</button>
+			}
+		</div>
+		<div class="flex items-center rounded-md overflow-hidden border border-white/[0.08]">
+			<button type="button" data-fit-search-count-step="-1" aria-label="Decrement" class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.08]">
+				@icon("minus")
+			</button>
+			<span data-fit-search-count class="px-2.5 text-sm tabular-nums text-white min-w-[2rem] text-center">
+				{ strconv.Itoa(filter.Count) }
+			</span>
+			<button type="button" data-fit-search-count-step="1" aria-label="Increment" class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.08]">
+				@icon("plus")
+			</button>
+		</div>
+		<button type="button" data-fit-search-remove-requirement aria-label="Remove filter" class="flex items-center justify-center w-7 h-7 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10">
+			@icon("x")
+		</button>
+	</div>
+}
+
+templ fitSearchStatChip(filter fitStatisticFilter, index int) {
+	<button type="button" data-fit-search-remove-stat={ strconv.Itoa(index) } title={ "Remove " + fitSearchStatLabel(filter) } class="inline-flex items-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/[0.08] px-2.5 py-2 text-xs text-blue-300">
+		<span data-fit-search-stat-label>
+			{ fitSearchStatLabel(filter) }
+		</span>
+		@icon("x")
+	</button>
+}
+
+templ fitSearchPopular(view fitSearchView) {
+	if view.PopularError {
+		<div class="glass-panel mt-3 p-4 text-sm text-red-300">Unable to load popular hulls. <button type="button" data-fit-search-retry-popular class="underline">Retry</button></div>
+	} else if len(view.Popular)>0 {
+		<div class="mt-3">
+			<div class="mb-3 flex items-end justify-between gap-3"><div><div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80">Popular hulls</div><div class="mt-1 text-sm text-gray-400">Ships participating in the most kills over the last { strconv.Itoa(view.PopularDays) } days</div></div><div class="hidden text-fine text-gray-600 sm:block">Click a hull to explore its fits</div></div>
+			<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+				for index,ship:=range view.Popular {
+					<button type="button" data-fit-search-pick-ship={ strconv.FormatInt(ship.ShipID, 10) } data-fit-search-ship-name={ catalogShipName(ship.ShipName, ship.ShipID) } class="group relative flex min-w-0 items-center gap-3 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025] p-3 text-left transition-all hover:-translate-y-0.5 hover:border-blue-500/30 hover:bg-blue-500/[0.06]">
+						<span class="absolute right-2 top-1 text-[10px] font-bold tabular-nums text-white/[0.08]">
+							{ fmt.Sprintf("%02d",index+1) }
+						</span><img src={ catalogShipRender(ship.ShipID, 256) } alt={ ship.ShipName } width="48" height="48" class="h-12 w-12 flex-shrink-0 object-contain transition-transform duration-200 group-hover:scale-110" loading="lazy"/>
+						<span class="min-w-0 flex-1">
+							<span class="block truncate text-sm font-semibold text-gray-200 group-hover:text-blue-300">
+								{ catalogShipName(ship.ShipName,ship.ShipID) }
+							</span>
+							<span class="mt-0.5 block text-fine text-gray-500">
+								<span class="font-semibold tabular-nums text-gray-300">
+									{ fitSearchCompact(float64(ship.Uses)) }
+								</span> kill participations
+							</span><span class="block text-[10px] text-gray-600">{ fullNumber(float64(ship.Families)) } observed fit families</span>
+						</span>
+					</button>
+				}
+			</div>
+		</div>
+	}
+}
+
+templ fitSearchResults(data fitSearchResponse, now time.Time) {
+	@templ.JSONScript("fit-search-result-state", map[string]any{"total": data.Total, "more": data.More, "offset": data.Offset, "shipName": data.ShipName}).WithType("application/json")
+	<div class="flex items-end justify-between mb-3">
+		<div>
+			<div class="text-fine font-bold uppercase tracking-[0.15em] text-blue-400/80 mb-1">Last 90 Days</div>
+			<h2 class="text-lg font-bold text-white" data-fit-search-total>
+				{ fullNumber(float64(data.Total)) } matching fit{ killBoolClass(data.Total==1,"","s") }
+			</h2>
+		</div>
+		<div class="text-fine text-gray-500 hidden md:block">Click a fit to open it in the editor</div>
+	</div>
+	<div class="space-y-2.5 transition-opacity" data-fit-search-rows>
+		for index,fit:=range data.Fits {
+			@fitSearchResultCard(fit, index+data.Offset, now)
+		}
+	</div>
+	if len(data.Fits)==0 {
+		<div class="glass-panel py-12 text-center text-sm text-gray-500">No fits match — try loosening a filter.</div>
+	}
+	<div class="mt-4 flex justify-center" data-fit-search-more-wrap hidden?={ !data.More }>
+		<button type="button" data-fit-search-more class="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] rounded-md bg-white/[0.04] text-gray-300 border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors">
+			@icon("plus")
+			<span>Show more fits</span>
+		</button>
+	</div>
+}
+
+templ fitSearchResultCard(fit fitSearchResult, index int, now time.Time) {
+	<article data-fit-search-hash={ fit.Hash } class="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] transition-colors hover:border-blue-500/25 hover:bg-blue-500/[0.035]">
+		<div class="flex min-w-0 items-center gap-2.5 px-3.5 pb-0 pt-3">
+			<span class="text-[10px] font-bold tabular-nums text-white/20">
+				{ fmt.Sprintf("%02d",index+1) }
+			</span>
+			<h3 class="min-w-0 flex-1 truncate text-sm font-semibold text-gray-100 transition-colors group-hover:text-blue-300">
+				{ fitFamilyName(fit.UniverseFitFamily,"") }
+			</h3>
+			<div class="flex flex-shrink-0 items-center gap-1.5">
+				<a href={ fitSearchEditorURL(fit) } aria-label="Open editor" class="inline-flex items-center justify-center gap-1.5 rounded-md border border-blue-500/25 bg-blue-500/[0.08] px-2.5 py-1.5 text-fine font-semibold text-blue-300 transition-colors hover:bg-blue-500/[0.15]">
+					@icon("wrench")
+					<span class="hidden sm:inline">Open editor</span>
+				</a>
+				<a href={ fmt.Sprintf("/item/%d/fittings", fit.ShipID) } aria-label="All variants" class="inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-fine text-gray-500 transition-colors hover:bg-white/[0.04] hover:text-gray-300">
+					@icon("layers-3")
+					<span class="hidden sm:inline">All variants</span>
+				</a>
+			</div>
+		</div>
+		<div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 pt-1.5 text-fine">
+			<span class="font-bold tabular-nums text-blue-400">{ fullNumber(float64(fit.TotalUses)) } exact uses</span><span class="tabular-nums text-purple-300/80">{ fullNumber(float64(fit.FamilyUses)) } family uses</span>
+			<span class="text-gray-500">
+				{ strconv.Itoa(fit.VariantCount) } variant{ killBoolClass(fit.VariantCount==1,"","s") }
+			</span>
+			if stats:=fit.Statistics;stats!=nil {
+				if stats.DPS!=nil {
+					<span class="tabular-nums text-red-300/80">{ fmt.Sprintf("%.0f",math.Round(*stats.DPS)) } DPS</span>
+				}
+				if stats.EHP!=nil {
+					<span class="tabular-nums text-emerald-300/80">{ fitSearchCompact(*stats.EHP) } EHP</span>
+				}
+				if repair:=fitSearchRepair(stats);repair>0 {
+					<span class="tabular-nums text-cyan-300/80">{ fmt.Sprintf("%.0f",math.Round(repair)) } EHP/s</span>
+				}
+				if stats.Speed!=nil {
+					<span class="tabular-nums text-sky-300/80">{ fullNumber(*stats.Speed) } m/s</span>
+				}
+				if stats.NPCEHP!=nil && stats.NPCProfile!="" {
+					<span class="tabular-nums text-amber-300/80">
+						{ fitSearchCompact(*stats.NPCEHP) } EHP vs { fitSearchNPCLabel(stats.NPCProfile) }
+					</span>
+				}
+				if stats.CapStable {
+					<span class="text-blue-300/80">Cap stable</span>
+				}
+			}
+			for _,insight:=range fitSearchInsights(fit) {
+				<span class="inline-flex items-center gap-1 text-gray-500">
+					<span class="text-white/10">·</span>{ insight }
+				</span>
+			}
+		</div>
+		<div class="flex flex-col gap-3 p-3.5 lg:flex-row lg:items-stretch">
+			<div class="flex min-w-0 items-center gap-3 lg:w-72 lg:flex-shrink-0">
+				<div class="relative flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-black/30"><img src={ catalogShipRender(fit.ShipID, 256) } alt={ fit.ShipName } width="56" height="56" class="h-14 w-14 object-contain" loading="lazy"/></div>
+				<div class="min-w-0 flex-1">
+					<div class="truncate text-xs font-medium text-gray-400">
+						{ catalogShipName(fit.ShipName,fit.ShipID) }
+					</div>
+					<div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-fine">
+						<span class="tabular-nums text-yellow-400/80">{ compactNumber(fit.FitCost+fitHullCost(fit.HullCost)) } ISK</span>
+						<span class="text-gray-600">
+							seen { catalogAge(now,fit.LastUsed) }
+						</span>
+					</div>
+				</div>
+			</div>
+			<div class="grid min-w-0 flex-1 grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-flow-col xl:auto-cols-fr xl:grid-cols-none">
+				for _,slot:=range []int{1,2,3,4,5,6} {
+					if modules:=fitSearchModules(fit,slot);len(modules)>0 {
+						<div class="min-w-0 rounded-md border border-white/[0.05] bg-black/15 px-2 py-1.5">
+							<div class="mb-1 text-[9px] font-bold uppercase tracking-[0.12em] text-gray-600">
+								{ fitSearchSlotLabel(slot) } · { strconv.Itoa(len(modules)) }
+							</div>
+							<div class="space-y-1">
+								for index,module:=range modules {
+									if index<3 {
+										<div class="flex min-w-0 items-center gap-1.5" title={ catalogShipName(module.Name, module.TypeID) }>
+											<img src={ fmt.Sprintf("/images/types/%d/icon?size=32", module.TypeID) } width="16" height="16" alt="" class="h-4 w-4 flex-shrink-0 rounded-sm" loading="lazy"/>
+											<span class="truncate text-[10px] text-gray-400">
+												if module.ChargeName!="" {
+													<span class="mr-1 text-gray-600">
+														{ module.ChargeName }
+													</span>
+												}
+												{ catalogShipName(module.Name,module.TypeID) }
+											</span>
+										</div>
+									}
+								}
+								if len(modules)>3 {
+									<div class="pl-5 text-[9px] text-gray-600">+{ strconv.Itoa(len(modules)-3) } more</div>
+								}
+							</div>
+						</div>
+					}
+				}
+			</div>
+		</div>
+	</article>
+}
+
+templ fitSearchProfiles(data api.UniverseFitDistributions, state fitSearchState) {
+	if len(data.Metrics)>0 {
+		<div class="mb-2 flex items-center justify-between gap-3"><div><div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Observed Fit Profiles</div><div class="mt-0.5 text-fine text-gray-600">Click a range to filter the current results</div></div></div>
+		<div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+			for _,key:=range []string{"ehp","dps","repair","speed"} {
+				for _,metric:=range data.Metrics {
+					if metric.Metric==key {
+						<div class="rounded-lg border border-white/[0.08] bg-gradient-to-br from-blue-500/[0.04] to-transparent px-2.5 py-2">
+							<div class="flex items-center justify-between gap-2">
+								<div class="min-w-0">
+									<div class="truncate text-fine font-semibold uppercase tracking-wide text-gray-500">
+										{ fitDistributionLabel(metric.Metric) }
+									</div>
+									<div class="text-sm font-bold tabular-nums text-white">
+										{ fitMetricValue(metric.Metric,metric.Median) }
+										<span class="font-normal text-gray-600">median</span>
+									</div>
+								</div>
+								<div class="shrink-0 text-right text-fine tabular-nums text-blue-200/55">
+									{ fitMetricValue(metric.Metric,metric.P10) }–{ fitMetricValue(metric.Metric,metric.P90) }
+								</div>
+							</div>
+							<div class="mt-1.5 flex h-7 items-end gap-px border-b border-white/[0.08]" aria-label={ fitDistributionLabel(metric.Metric) + " histogram" }>
+								for _,bucket:=range metric.Buckets {
+									<button type="button" data-fit-search-bucket={ metric.Metric } data-fit-search-bucket-min={ strconv.FormatFloat(bucket.LowerBound, 'f', -1, 64) } data-fit-search-bucket-max={ strconv.FormatFloat(bucket.UpperBound, 'f', -1, 64) } style={ "height:" + fitSearchBucketHeight(bucket, metric.Buckets) } aria-label={ fitMetricValue(metric.Metric, bucket.LowerBound) + "–" + fitMetricValue(metric.Metric, bucket.UpperBound) + " · " + fullNumber(float64(bucket.ObservationCount)) + " losses" } class={ "group relative min-w-0 flex-1 rounded-t-[1px] transition-all hover:bg-blue-300/90",killBoolClass(fitSearchBucketActive(state,metric.Metric,bucket),"bg-blue-300","bg-blue-400/45") }><span class="fit-search-bucket-tooltip">{ fitMetricValue(metric.Metric,bucket.LowerBound) }–{ fitMetricValue(metric.Metric,bucket.UpperBound) } · { fullNumber(float64(bucket.ObservationCount)) } losses</span></button>
+								}
+							</div>
+						</div>
+					}
+				}
+			}
+		</div>
+	}
+}

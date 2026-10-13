@@ -15,17 +15,6 @@ pre-commit:
     - name: secrets
       run: ./scripts/check-secrets.sh
 
-    # Bun blocks dependency lifecycle scripts unless a package is explicitly
-    # trusted. Adding this escape hatch must be a deliberate policy change.
-    - name: bun trusted dependencies
-      glob: "web/package.json"
-      run: |
-        if grep -q '"trustedDependencies"' web/package.json; then
-          echo "web/package.json introduces trustedDependencies." >&2
-          echo "Remove it or intentionally update this guard after review." >&2
-          exit 1
-        fi
-
     - name: gofmt
       glob: "*.go"
       # stage_fixed re-stages what gofmt rewrites, so formatting never fails a
@@ -60,27 +49,28 @@ pre-commit:
     # committed. CI repeats them because hooks can be bypassed or absent.
     - name: frontend
       glob:
-        - "web/**/*.{ts,vue,js,mjs}"
-        - "web/package.json"
-        - "web/bun.lock"
+        - "frontend/**/*.{ts,js,mjs}"
+        - "frontend/package.json"
+        - "frontend/package-lock.json"
       run: |
-        bun run --cwd web test
-        bun run --cwd web typecheck
+        npm --prefix frontend run build
+        npm --prefix frontend test
+        npm --prefix frontend run typecheck
 
-    # The Nuxt renderer imports the generated Huma contract directly. Any API
+    # Browser helpers import the generated Huma contract directly. Any API
     # registration or schema change must therefore regenerate and stage both
     # the OpenAPI document and its TypeScript types in the same commit.
     - name: openapi contract up to date
       glob:
         - "internal/api/*.go"
         - "internal/cli/openapi.go"
-        - "web/tools/api-codegen/*"
+        - "frontend/tools/api-codegen/*"
       run: |
         make gen-api-client >/dev/null
-        if ! git diff --quiet -- web/shared/api.openapi.json web/shared/api/; then
+        if ! git diff --quiet -- frontend/shared/api.openapi.json frontend/shared/api/; then
           echo "OpenAPI spec or generated TypeScript contract is stale." >&2
           echo "Run 'make gen-api-client' and stage the generated files." >&2
-          git diff --stat -- web/shared/api.openapi.json web/shared/api/ >&2
+          git diff --stat -- frontend/shared/api.openapi.json frontend/shared/api/ >&2
           exit 1
         fi
 
@@ -121,6 +111,11 @@ pre-push:
 
     - name: tests
       run: go test ./...
+
+    - name: native fitting engine
+      run: |
+        make build-dogma
+        go test -race ./internal/dogma
 
     # Production runs linux; catching a build failure here beats catching it in
     # CI after the push.

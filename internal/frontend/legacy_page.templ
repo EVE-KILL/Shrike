@@ -1,0 +1,89 @@
+package frontend
+
+import "strconv"
+
+templ legacyPage(view legacyPageView) {
+	<div class="legacy-page" data-legacy-page data-controller="legacy" data-action="click->legacy#click input->legacy#input submit->legacy#submit mousedown->legacy#suggestionDown focusout->legacy#focusout popstate@window->legacy#mobile pagehide@window->legacy#hide pageshow@window->legacy#show">
+		<header class="page-header hero-surface glass-panel legacy-header">
+			<span class="page-header-icon">
+				@icon("archive")
+			</span>
+			<div><p class="eyebrow">The old days of EVE</p><h1>Legacy Kills</h1><p>Explore the manually posted killmail archive from before XMLAPI, CREST, and ESI. This historical collection is isolated from modern statistics.</p></div>
+		</header>
+		<div class="legacy-nostalgia">
+			<p>Wanna experience the old days of EVE? Now you can — with this killmail dump from before XMLAPI / CREST / ESI, back when killmails were manually posted from the client.</p>
+			<p>There are bound to be fakes and mails of dubious quality — but none of it is calculated into the stats on the rest of the site. It is completely isolated and provided as pure nostalgia.</p>
+		</div>
+		<div class="legacy-stats">
+			@legacyStat("Killmails", view.Stats.Killmails)
+			@legacyStat("Characters", view.Stats.Characters)
+			@legacyStat("Corporations", view.Stats.Corporations)
+			@legacyStat("Alliances", view.Stats.Alliances)
+		</div>
+		<div class="legacy-presets">
+			<div><span>Ships</span><button type="button" data-legacy-preset="capitals">Capitals</button><button type="button" data-legacy-preset="battleships">Battleships</button><button type="button" data-legacy-preset="pods">Pods</button></div>
+			<div>
+				<span>Space</span>
+				for _, name := range []string{"Jita","Rancer","Amamake","HED-GP","EC-P8R"} {
+					<button type="button" data-legacy-preset={ name }>{ name }</button>
+				}
+			</div>
+			<div>
+				<span>Year</span>
+				for year := 2003; year <= 2007; year++ {
+					<button type="button" data-legacy-preset={ strconv.Itoa(year) }>{ strconv.Itoa(year) }</button>
+				}
+			</div>
+		</div>
+		<form class="legacy-filters" data-legacy-form>
+			<div class="legacy-filter-grid">
+				@legacyFilter("Victim", "victim", "Character name", "text", true)
+				@legacyFilter("Attacker", "attacker", "Character name", "text", true)
+				@legacyFilter("Corporation", "corp", "Corporation name", "text", true)
+				@legacyFilter("Alliance", "alliance", "Alliance name", "text", true)
+				@legacyFilter("System", "system", "System name", "text", true)
+				@legacyFilter("Ship", "ship", "Ship type", "text", false)
+				@legacyFilter("From", "from", "", "date", false)
+				@legacyFilter("To", "to", "", "date", false)
+			</div>
+			<div class="legacy-filter-actions"><button type="submit">Search</button><button type="button" data-legacy-clear hidden>Clear</button></div>
+		</form>
+		<div class="legacy-mobile-tabs"><button type="button" data-legacy-mobile="kills" class="active">Kills</button><button type="button" data-legacy-mobile="top">Top Lists</button></div>
+		<div class="legacy-results">
+			<aside data-legacy-sidebar>
+				@legacyTopSidebar(view.TopBoxes, 0)
+			</aside>
+			<div data-legacy-kill-panel>
+				<div class="legacy-sort">
+					<span>Sort</span>
+					for _, option := range []struct{ Value, Label string }{{"id_desc","Newest"},{"id_asc","Oldest"},{"value_desc","Value (high)"},{"value_asc","Value (low)"},{"time_desc","Date (new)"},{"time_asc","Date (old)"}} {
+						<button type="button" data-legacy-sort={ option.Value } class={ legacyButtonClass(option.Value == "id_desc") }>{ option.Label }</button>
+					}
+				</div>
+				<div data-legacy-kills>
+					@killList(view.Kills, killListOptions{Kind: "legacy", Page: 1, Limit: 50})
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ legacyStat(label string, value int64) {
+	<div><strong>{ fullNumber(float64(value)) }</strong><span>{ label }</span></div>
+}
+
+templ legacyFilter(label, field, placeholder, kind string, autocomplete bool) {
+	<div class="legacy-filter-field"><label for={ "legacy-" + field }>{ label }</label><input id={ "legacy-" + field } name={ field } type={ kind } placeholder={ placeholder } autocomplete="off" min={ legacyDateMin(kind) } max={ legacyDateMax(kind) } data-legacy-field={ field }/><div class="legacy-autocomplete" data-legacy-options={ field } hidden></div></div>
+}
+
+templ legacyTopSidebar(boxes []topBoxView, year int) {
+	<div class="legacy-year-picker">
+		<button type="button" class={ legacyYearClass(year == 0) } data-legacy-year="0">All</button>
+		for selected := 2003; selected <= 2007; selected++ {
+			<button type="button" class={ legacyYearClass(year == selected) } data-legacy-year={ strconv.Itoa(selected) }>{ strconv.Itoa(selected) }</button>
+		}
+	</div>
+	for _, box := range boxes {
+		@topBox(box)
+	}
+}

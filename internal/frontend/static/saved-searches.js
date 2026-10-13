@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+import{a}from"./chunks/chunk-VSN6Y5KW.js";import"./chunks/chunk-CMJY4B6V.js";import"./chunks/chunk-CI37WPT3.js";import"./chunks/chunk-WIEBY656.js";import"./chunks/chunk-H553WCDW.js";import"./chunks/chunk-IZK4QBMY.js";import"./chunks/chunk-4J6UO44V.js";import"./chunks/chunk-MDMCUDTC.js";import"./chunks/chunk-T3H5KXSH.js";export{a as SavedSearchesController};

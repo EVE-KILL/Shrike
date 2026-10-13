@@ -1,0 +1,5 @@
+.battle-generator [hidden]{display:none!important}
+.battle-generator [data-generator-stage="1"] .icon{width:1em;height:1em}
+.battle-generator [data-generator-stage="2"] .icon,.battle-generator [data-generator-stage="3"] .icon{width:1em;height:1em}
+.battle-generator .page-header .icon{width:1em;height:1em}
+.battle-generator [data-generator-lane] img{object-fit:contain}

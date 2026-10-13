@@ -13,85 +13,148 @@ LDFLAGS := -s -w \
 .DEFAULT_GOAL := build
 
 .PHONY: build
-build: build-frontend
+build: build-browser-assets build-frontend build-dogma
 	go build -ldflags "$(LDFLAGS)" -o bin/$(BINARY) $(PKG)
 	@ln -sf $(BINARY) bin/$(ALIAS)
 
 .PHONY: build-frontend
 build-frontend:
-	cd web && bun install --frozen-lockfile
-	cd web && bun run build
+	go tool templ generate -path internal/frontend
+
+# Native fitting worker; the browser retains the matching WASM engine.
+CARGO ?= cargo
+DOGMA_SOURCES := $(shell rg --files engine/dogma -g '*.rs' -g 'Cargo.toml' -g 'Cargo.lock' -g 'compat.json')
+.PHONY: build-dogma
+build-dogma: bin/shrike-dogma
+
+bin/shrike-dogma: $(DOGMA_SOURCES)
+	$(CARGO) build --locked --release --manifest-path engine/dogma/Cargo.toml
+	@mkdir -p bin
+	@cp engine/dogma/target/release/shrike-dogma bin/shrike-dogma.next
+	@mv bin/shrike-dogma.next bin/shrike-dogma
+
+# Rebuild after changing the shared Rust adapter or upstream calculation source.
+# Requires rustup target wasm32-unknown-unknown and wasm-bindgen-cli 0.2.128.
+.PHONY: build-dogma-wasm
+build-dogma-wasm:
+	CARGO="$(CARGO)" bash engine/dogma/build-wasm.sh
+	npm --prefix frontend run build -- dogma
+
+# Browser bundles are checked in. Install tooling once with npm --prefix frontend ci.
+.PHONY: build-browser-assets test-frontend
+build-browser-assets:
+	npm --prefix frontend run build
+
+test-frontend:
+	npm --prefix frontend test
+	npm --prefix frontend run typecheck
+
+.PHONY: build-dogma-frontend
+build-dogma-frontend:
+	npm --prefix frontend run build -- dogma
+
+.PHONY: build-map-frontend
+build-map-frontend:
+	npm --prefix frontend run build -- map
+
+.PHONY: build-fit-table-frontend
+build-fit-table-frontend:
+	npm --prefix frontend run build -- fit-table
+
+.PHONY: build-fit-drag-frontend
+build-fit-drag-frontend:
+	npm --prefix frontend run build -- fit-drag
+
+.PHONY: build-fit-document-frontend
+build-fit-document-frontend:
+	npm --prefix frontend run build -- fit-document
+
+.PHONY: build-css-frontend
+build-css-frontend:
+	npm --prefix frontend run build -- css
+
+.PHONY: build-formatters-frontend
+build-formatters-frontend:
+	npm --prefix frontend run build -- formatters
+
+.PHONY: build-settings-frontend
+build-settings-frontend:
+	npm --prefix frontend run build -- settings
+
+.PHONY: build-account-frontend
+build-account-frontend:
+	npm --prefix frontend run build -- account
+
+.PHONY: build-esi-frontend
+build-esi-frontend:
+	npm --prefix frontend run build -- esi
+
+.PHONY: build-admin-frontend
+build-admin-frontend:
+	npm --prefix frontend run build -- admin
+
+.PHONY: build-announcement-frontend
+build-announcement-frontend:
+	npm --prefix frontend run build -- announcement
+
+.PHONY: build-icons-frontend
+build-icons-frontend:
+	npm --prefix frontend run build -- icons
+
+.PHONY: build-search-frontend
+build-search-frontend:
+	npm --prefix frontend run build -- search
+
+.PHONY: build-campaign-frontend
+build-campaign-frontend:
+	npm --prefix frontend run build -- campaign
+
+.PHONY: build-comment-frontend
+build-comment-frontend:
+	npm --prefix frontend run build -- comment
+
+.PHONY: build-battle-frontend
+build-battle-frontend:
+	npm --prefix frontend run build -- battle
+
+.PHONY: build-faction-war-frontend
+build-faction-war-frontend:
+	npm --prefix frontend run build -- faction-war
+
+.PHONY: build-battle-generator-frontend
+build-battle-generator-frontend:
+	npm --prefix frontend run build -- battle-generator
+
+.PHONY: fmt-frontend
+fmt-frontend:
+	go tool templ fmt internal/frontend
 
 .PHONY: gen-api-client
 gen-api-client:
-	go run $(PKG) openapi-spec --format json -o web/shared/api.openapi.json
-	cd web/tools/api-codegen && bun install --frozen-lockfile
-	cd web/tools/api-codegen && bun run generate
+	go run $(PKG) openapi-spec --format json -o frontend/shared/api.openapi.json
+	cd frontend/tools/api-codegen && npm ci --ignore-scripts
+	cd frontend/tools/api-codegen && npm run generate
 
 .PHONY: check-api-client
 check-api-client: gen-api-client
-	git diff --exit-code -- web/shared/api.openapi.json web/shared/api/
-	@test -z "$$(git ls-files --others --exclude-standard -- web/shared/api.openapi.json web/shared/api/)" || \
+	git diff --exit-code -- frontend/shared/api.openapi.json frontend/shared/api/
+	@test -z "$$(git ls-files --others --exclude-standard -- frontend/shared/api.openapi.json frontend/shared/api/)" || \
 		(echo "Untracked generated API contract files found; stage them." >&2; exit 1)
 
 .PHONY: run
 run:
 	go run $(PKG) $(ARGS)
 
-# Development stack: air rebuilds Go, `nuxt dev` serves the frontend, and Caddy
-# fronts both on DEV_PORT.
-#
-# The two run as siblings rather than parent and child. If shrike supervised the
-# development server, every Go rebuild would kill Vite — losing hot module
-# replacement state and paying a cold Nuxt start on each edit. Air restarts the
-# Go binary alone and Caddy re-attaches to the renderer that stayed up.
-#
-# Server-side rendering reaches Go on DEV_API_PORT rather than the production
-# Unix socket. `nuxt dev` runs under Node, and Node's fetch ignores the `unix`
-# request option that Bun implements and that web/shared/utils/serverApi.ts
-# uses, so a socket would resolve shrike.internal through DNS and fail. The
-# listener is loopback-only and serves the same handler.
-DEV_PORT     ?= 4001
-DEV_API_PORT ?= 4002
-DATA_DIR     ?= data
-DEV_IMAGE_ORIGIN ?= https://eve-kill.com
-
-# Nuxt silently moves to another port when its requested port is occupied, but
-# Shrike cannot discover that choice and would keep proxying to the old port.
-# Resolve the first free development port ourselves so both processes receive
-# the same value. An explicit DEV_NUXT_PORT still wins.
-ifndef DEV_NUXT_PORT
-DEV_NUXT_PORT := $(shell \
-	port=3000; \
-	while [ $$port -le 3009 ]; do \
-		if ! lsof -nP -iTCP:$$port -sTCP:LISTEN -t 2>/dev/null | grep -q .; then \
-			echo $$port; \
-			break; \
-		fi; \
-		port=$$((port + 1)); \
-	done)
-endif
+# Development is one Go process. Air regenerates templates and rebuilds it.
+DEV_PORT ?= 4000
+DATA_DIR ?= data
 
 .PHONY: dev
-dev:
+dev: build-dogma
 	@command -v air >/dev/null || { \
 		echo "air is required: go install github.com/air-verse/air@latest" >&2; exit 1; }
-	@command -v bun >/dev/null || { echo "bun is required" >&2; exit 1; }
-	@command -v lsof >/dev/null || { echo "lsof is required" >&2; exit 1; }
-	@test -n "$(DEV_NUXT_PORT)" || { \
-		echo "no free Nuxt port found in 3000-3009; set DEV_NUXT_PORT explicitly" >&2; exit 1; }
-	@echo "dev: https://localhost:$(DEV_PORT)  (nuxt :$(DEV_NUXT_PORT), ssr api :$(DEV_API_PORT))"
-	@NUXT_API_ORIGIN=http://127.0.0.1:$(DEV_API_PORT) \
-	NUXT_DEV_PROXY_PORT=$(DEV_PORT) \
-	NUXT_DEV_IMAGE_PROXY_ORIGIN=$(DEV_IMAGE_ORIGIN) \
-		bun --cwd=$(CURDIR)/web run dev \
-			--host 127.0.0.1 --port $(DEV_NUXT_PORT) & \
-	nuxt_pid=$$!; \
-	trap 'kill $$nuxt_pid 2>/dev/null' INT TERM EXIT; \
-	SHRIKE_DEV_RENDERER=127.0.0.1:$(DEV_NUXT_PORT) \
-	SHRIKE_DEV_API_ADDR=127.0.0.1:$(DEV_API_PORT) \
-	NUXT_DEV_IMAGE_PROXY_ORIGIN=$(DEV_IMAGE_ORIGIN) \
-	PORT=$(DEV_PORT) air
+	@echo "dev: http://localhost:$(DEV_PORT) (Go frontend)"
+	PORT=$(DEV_PORT) ./scripts/dev.sh
 
 .PHONY: dev-trust
 dev-trust:
@@ -102,7 +165,7 @@ dev-trust:
 	@cert_path="$(DATA_DIR)/caddy/pki/authorities/local/root.crt"; \
 	case "$$cert_path" in /*) ;; *) cert_path="$(CURDIR)/$$cert_path" ;; esac; \
 	test -f "$$cert_path" || { \
-		echo "local CA not found; start make dev once to generate it" >&2; exit 1; }; \
+		echo "local CA not found; start shrike serve once to generate it" >&2; exit 1; }; \
 	echo "Installing Shrike's local development CA into the macOS system keychain."; \
 	sudo security add-trusted-cert -d -r trustRoot \
 		-k /Library/Keychains/System.keychain "$$cert_path"

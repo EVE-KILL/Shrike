@@ -1,0 +1,59 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ entityFactionOverview(id int64, data api.EntityFactionOverview) {
+	<div class="entity-faction-overview" data-entity-id={ strconv.FormatInt(id, 10) }>
+		<section class="glass-panel entity-warzone">
+			<header><h2>Warzone</h2><a href={ "/faction-war/" + data.Matchup }>Full report →</a></header>
+			<div class="entity-warzone-hold"><span>{ fullNumber(float64(entityFactionMine(data).SystemsControlled)) } of { fullNumber(float64(data.Warzone.TotalSystems)) } systems</span><span>{ strconv.FormatInt(entityFactionHoldPercent(data), 10) }%</span></div>
+			<div class="entity-warzone-bar"><span style={ entityFactionHoldStyle(data) }></span></div>
+			<div class="entity-warzone-facts"><div><strong>{ fullNumber(float64(entityFactionZone(data).Contested)) }</strong><span>Contested</span></div><div><strong>{ fullNumber(float64(entityFactionZone(data).Vulnerable)) }</strong><span>Vulnerable</span></div><div><strong>{ fullNumber(float64(entityFactionMine(data).Pilots)) }</strong><span>Pilots</span></div></div>
+			<div class="entity-warzone-stats"><p><span>Kills yesterday</span><strong>{ fullNumber(float64(entityFactionMine(data).KillsYesterday)) } <small>vs { fullNumber(float64(entityFactionTheirs(data).KillsYesterday)) }</small></strong></p><p><span>Kills last week</span><strong>{ fullNumber(float64(entityFactionMine(data).KillsLastWeek)) } <small>vs { fullNumber(float64(entityFactionTheirs(data).KillsLastWeek)) }</small></strong></p><p><span>Victory points (week)</span><strong>{ fullNumber(float64(entityFactionMine(data).VPLastWeek)) }</strong></p></div>
+		</section>
+		if len(entityFactionFlips(id, data)) > 0 {
+			<section class="glass-panel entity-faction-flips">
+				<header><h2>Recent Flips (7d)</h2><span><b>+{ strconv.Itoa(entityFactionFlipCount(entityFactionFlips(id, data), true)) }</b> / <em>−{ strconv.Itoa(entityFactionFlipCount(entityFactionFlips(id, data), false)) }</em></span></header>
+				<div>
+					for _, flip := range entityFactionFlips(id, data) {
+						<a href={ idPath("system", flip.ID) }>
+							<span class={ entityFactionFlipClass(flip.Gained) }>
+								@icon(killBoolClass(flip.Gained, "arrow-up-right", "arrow-down-right"))
+							</span><strong>{ flip.Name }</strong><time>{ eveDate(flip.At) }</time>
+						</a>
+					}
+				</div>
+			</section>
+		}
+		<div class="entity-faction-rankings">
+			<div data-faction-militia hidden></div>
+			<section class="glass-panel entity-faction-rank-card">
+				<h2>Top Pilots</h2>
+				for i, pilot := range entityFactionPilots(data) {
+					<a href={ idPath("character", pilot.ID) }><span>{ strconv.Itoa(i + 1) }</span><img src={ eveEntityImage("character", pilot.ID, 32) } alt="" width="16" height="16" loading="lazy"/><strong>{ pilot.Name }</strong><b>{ fullNumber(pilot.Count) }</b></a>
+				}
+			</section>
+		</div>
+	</div>
+}
+
+templ entityFactionMilitiaCorps(corps []api.EntityFactionMilitiaCorp) {
+	if len(corps) > 0 {
+		<section class="glass-panel entity-faction-rank-card" data-faction-militia>
+			<h2>Militia Corps (30d)</h2>
+			for i, corp := range corps {
+				<a href={ idPath("corporation", corp.ID) }><span>{ strconv.Itoa(i + 1) }</span><img src={ eveEntityImage("corporation", corp.ID, 32) } alt="" width="16" height="16" loading="lazy"/><strong>{ corp.Name }</strong><b>{ strconv.Itoa(corp.Pilots) }</b></a>
+			}
+		</section>
+	}
+}
+
+func entityFactionFlipClass(gained bool) string {
+	if gained {
+		return "gain"
+	}
+	return "loss"
+}

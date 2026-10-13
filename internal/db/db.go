@@ -34,19 +34,23 @@ const (
 // after a successful round trip, so callers never receive a pool that merely
 // looks valid.
 func New(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
-	return newPool(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConnections, "primary")
+	return newPool(ctx, cfg.DatabaseURL, cfg.DatabaseMaxConnections, "primary", !cfg.IsProduction())
 }
 
 // NewRead opens the API's read pool. DATABASE_READ_URL deliberately falls back
 // to DATABASE_URL, allowing the application change to ship before replicas do.
 func NewRead(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
-	return newPool(ctx, cfg.DatabaseReadURL, cfg.DatabaseReadMaxConnections, "read")
+	return newPool(ctx, cfg.DatabaseReadURL, cfg.DatabaseReadMaxConnections, "read", !cfg.IsProduction())
 }
 
-func newPool(ctx context.Context, url string, configuredMax int, role string) (*pgxpool.Pool, error) {
+func newPool(ctx context.Context, url string, configuredMax int, role string, tracing bool) (*pgxpool.Pool, error) {
 	poolCfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		return nil, fmt.Errorf("parse %s database URL: %w", role, err)
+	}
+
+	if tracing {
+		poolCfg.ConnConfig.Tracer = queryTracer{}
 	}
 
 	maxConns := configuredMax

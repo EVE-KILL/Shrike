@@ -1,0 +1,10 @@
+{
+  "data": "12.3579973.0",
+  "data_converter_commit": "2ee8ea5334ed5f90da800fddc90a6fab0d6c2178",
+  "dogma_engine": "13.6.0",
+  "dogma_engine_commit": "08ae0ac9ebdd4d69390770181d4e291cf92a0cce",
+  "shrike_adapter": "ek.1",
+  "sde_build": 3579973,
+  "data_major": 12,
+  "wasm_bindgen": "0.2.128"
+}

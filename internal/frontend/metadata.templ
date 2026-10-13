@@ -1,0 +1,69 @@
+package frontend
+
+import "strconv"
+
+templ pageHead(meta pageMetadata, development bool) {
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<meta name="color-scheme" content="dark"/>
+		<meta name="theme-color" content={ meta.ThemeColor }/>
+		<title>
+			{ meta.Title }
+		</title>
+		<meta name="description" content={ meta.Description }/>
+		<meta name="robots" content={ meta.Robots }/>
+		if meta.CanonicalURL != "" {
+			<link rel="canonical" href={ meta.CanonicalURL }/>
+			<meta property="og:url" content={ meta.CanonicalURL }/>
+		}
+		<meta property="og:title" content={ meta.OGTitle }/>
+		<meta property="og:description" content={ meta.Description }/>
+		<meta property="og:type" content={ meta.Kind }/>
+		<meta property="og:site_name" content="EVE-KILL"/>
+		<meta property="og:locale" content="en_US"/>
+		if meta.Image != "" {
+			<meta property="og:image" content={ meta.Image }/>
+			<meta property="og:image:alt" content={ meta.ImageAlt }/>
+			if meta.ImageWidth > 0 {
+				<meta property="og:image:width" content={ strconv.Itoa(meta.ImageWidth) }/>
+				<meta property="og:image:height" content={ strconv.Itoa(meta.ImageHeight) }/>
+			}
+		}
+		if meta.TwitterCard != "" {
+			<meta name="twitter:card" content={ meta.TwitterCard }/>
+		}
+		<meta name="twitter:site" content="@eve_kill"/>
+		<meta name="twitter:title" content={ meta.TwitterTitle }/>
+		<meta name="twitter:description" content={ meta.Description }/>
+		if meta.Image != "" {
+			<meta name="twitter:image" content={ meta.Image }/>
+			<meta name="twitter:image:alt" content={ meta.ImageAlt }/>
+		}
+		if len(meta.StructuredData) > 0 {
+			@templ.JSONScript("structured-data", meta.StructuredData).WithType("application/ld+json")
+		}
+		<link rel="icon" type="image/svg+xml" href={ assetURL("favicon.svg") }/>
+		<link rel="preload" href={ assetURL("fonts/Exo2-Latin-v1.woff2") } as="font" type="font/woff2" crossorigin/>
+		<link rel="stylesheet" href={ assetURL("site.css") }/>
+		<link rel="stylesheet" href={ assetURL("utilities.css") }/>
+		<link rel="stylesheet" href={ assetURL("account.css") }/>
+		<link rel="stylesheet" href={ assetURL("announcements.css") }/>
+		<script src={ assetURL("preferences.js") }></script>
+		<script type="module" src={ assetURL("site.js") }></script>
+		for _, stylesheet := range meta.Stylesheets {
+			if stylesheet!=assetURL("utilities.css") {
+				<link rel="stylesheet" href={ stylesheet }/>
+			}
+		}
+		for _, script := range meta.ModuleScripts {
+			<script type="module" src={ script }></script>
+		}
+		if development {
+			<meta name="shrike-dev-instance" content={ devInstanceID }/>
+			<link rel="stylesheet" href={ assetURL("diagnostics.css") }/>
+			<script type="module" src={ assetURL("diagnostics.js") }></script>
+			<script type="module" src={ assetURL("reload.js") }></script>
+		}
+	</head>
+}

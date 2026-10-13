@@ -1,0 +1,35 @@
+package frontend
+
+templ searchPage(query string) {
+	<div class="search-page" data-controller="search-page" data-action="input->search-page#input click->search-page#click keydown->search-page#key popstate@window->search-page#history pagehide@window->search-page#hide pageshow@window->search-page#show">
+		<link rel="stylesheet" href={ assetURL("search.css") }/>
+		<h1 class="sr-only">Search — EVE-KILL</h1>
+		<div class="search-page-header">
+			<div class="search-page-field">
+				@icon("search")
+				<input id="search-page-input" type="search" value={ query } placeholder="Search pilots, corporations, alliances, ships, systems..." aria-label="Search New Eden" autocomplete="off"/><span class="search-page-spinner" id="search-page-spinner" hidden aria-label="Searching">◌</span>
+				<button type="button" id="search-page-clear" aria-label="Clear search" hidden>
+					@icon("x")
+				</button>
+			</div>
+			<div class="search-page-stats" id="search-page-stats" hidden></div>
+			<p class="widget-error" data-search-error role="alert" hidden></p>
+		</div>
+		<div class="search-page-filters" id="search-page-filters" role="group" aria-label="Filter results" hidden></div>
+		<div class="search-page-grid" id="search-page-grid" aria-live="polite"></div>
+		<div class="search-page-state" id="search-page-empty" hidden>
+			@icon("search")
+			<p id="search-page-empty-message"></p><small>Try a different search term or check your spelling</small>
+		</div>
+		<div class="search-page-state" id="search-page-initial">
+			@icon("map")
+			<p>Search across all of New Eden</p>
+			<div class="search-page-suggestions">
+				for _, suggestion := range []string{"Pandemic Legion", "Goonswarm", "Jita", "Hel", "Ishtar", "Delve"} {
+					<button type="button" data-suggestion={ suggestion }>{ suggestion }</button>
+				}
+			</div>
+		</div>
+		<script type="module" src={ assetURL("search.js") }></script>
+	</div>
+}

@@ -18,6 +18,7 @@ func TestRequestDeadlineExemptsSSE(t *testing.T) {
 	}{
 		{path: "/api/killmail/42", wantDeadline: true},
 		{path: "/api/feed/stream", wantDeadline: false},
+		{path: "/__dev/reload", wantDeadline: false},
 	}
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {
@@ -32,39 +33,6 @@ func TestRequestDeadlineExemptsSSE(t *testing.T) {
 			))
 			if gotDeadline != test.wantDeadline {
 				t.Fatalf("deadline = %t, want %t", gotDeadline, test.wantDeadline)
-			}
-		})
-	}
-}
-
-func TestDevRendererHostAdoptsForwardedHost(t *testing.T) {
-	for _, test := range []struct {
-		name      string
-		forwarded string
-		want      string
-	}{
-		{"renderer host", "void.localhost:4001", "void.localhost:4001"},
-		{"first of a chain", "void.localhost, proxy", "void.localhost"},
-		{"no header", "", "127.0.0.1:4002"},
-		{"blank header", "   ", "127.0.0.1:4002"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			var got string
-			handler := devRendererHost(http.HandlerFunc(
-				func(_ http.ResponseWriter, r *http.Request) { got = r.Host },
-			))
-
-			request := httptest.NewRequest(
-				http.MethodGet, "http://127.0.0.1:4002/api/site", nil,
-			)
-			request.Host = "127.0.0.1:4002"
-			if test.forwarded != "" {
-				request.Header.Set("X-Forwarded-Host", test.forwarded)
-			}
-			handler.ServeHTTP(httptest.NewRecorder(), request)
-
-			if got != test.want {
-				t.Errorf("host = %q, want %q", got, test.want)
 			}
 		})
 	}

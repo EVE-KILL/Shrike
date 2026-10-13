@@ -387,6 +387,12 @@ var operationQueryParameters = map[string][]*huma.Param{
 	"constellation-most-valuable-compat":   mostValuableParams(),
 
 	// --- Battles -------------------------------------------------------------
+	"roam-report-killlist": {
+		enumQuery("role", "Recorded kills, losses, or both.", "kills", "kills", "losses", "all"),
+		limitQuery(conflictDefaultLimit, 10, conflictMaximumLimit),
+		intQuery("after", "Return killmails below this killmail ID. "+cursorAdvice),
+		offsetPageQuery(conflictMaximumPage),
+	},
 	"battles":             battleListParams(),
 	"alliance-battles":    battleListParams(),
 	"corporation-battles": battleListParams(),
@@ -847,7 +853,7 @@ var operationQueryParameters = map[string][]*huma.Param{
 	// --- Blog ----------------------------------------------------------------
 	"blog-posts": {
 		limitQuery(20, 1, 50),
-		cursorQuery(),
+		textQuery("cursor", "Opaque publication-time and ID cursor. "+cursorAdvice+" Legacy ISO timestamps are also accepted."),
 		textQuery("tag", "Restrict to one tag."),
 	},
 

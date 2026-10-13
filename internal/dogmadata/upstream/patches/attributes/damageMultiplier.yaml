@@ -1,0 +1,4 @@
+addTo:
+  - effect: droneDmgBonus
+    rules:
+      - {percent: damageMultiplierBonus, domain: charID, func: ownerRequiredSkillModifier, skill: "*"}

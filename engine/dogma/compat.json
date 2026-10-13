@@ -1,0 +1,31 @@
+{
+  "aliases": {
+    "maxLockedTargets": "maxTargets"
+  },
+  "customAttributes": [
+    {
+      "id": -1001,
+      "name": "remoteShieldBoostRate"
+    },
+    {
+      "id": -1002,
+      "name": "remoteArmorRepairRate"
+    },
+    {
+      "id": -1003,
+      "name": "remoteHullRepairRate"
+    },
+    {
+      "id": -1004,
+      "name": "energyNeutralizerRate"
+    },
+    {
+      "id": -1005,
+      "name": "energyNosferatuRate"
+    },
+    {
+      "id": -1006,
+      "name": "remoteCapTransferRate"
+    }
+  ]
+}

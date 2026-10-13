@@ -1,0 +1,11 @@
+new:
+  displayName: Maximum Locked Targets
+  category: Targeting
+  highIsGood: true
+  max: maxTargetsCharacter
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: maxLockedTargets}

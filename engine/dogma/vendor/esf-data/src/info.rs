@@ -1,0 +1,72 @@
+//! The lookups the engine and the importers do, as traits, so the data does
+//! not have to come from [`Sde`](crate::Sde).
+
+use std::collections::BTreeMap;
+
+use flatbuffers::Vector;
+
+use crate::sde::eve;
+
+/// What the dogma engine looks up while calculating a fit.
+///
+/// [`InfoSde`](crate::InfoSde) answers these from `sde.dat`.
+pub trait Info {
+    /// The attribute values a type starts with.
+    fn get_dogma_attributes(&self, type_id: i32) -> Option<Vector<'_, eve::TypeDogmaAttribute>>;
+    /// An attribute by id.
+    fn get_dogma_attribute(&self, attribute_id: i32) -> Option<eve::DogmaAttribute<'_>>;
+    /// The effects a type has.
+    fn get_dogma_effects(&self, type_id: i32) -> Option<Vector<'_, eve::TypeDogmaEffect>>;
+    /// An effect by id.
+    fn get_dogma_effect(&self, effect_id: i32) -> Option<eve::DogmaEffect<'_>>;
+    /// A type by id.
+    fn get_type(&self, type_id: i32) -> Option<eve::Type<'_>>;
+    /// A buff by id.
+    fn get_dbuff_collection(&self, buff_id: i32) -> Option<eve::DbuffCollection<'_>>;
+    /// The id of the attribute with exactly this name, like `"cycleTime"`.
+    fn attribute_name_to_id(&self, name: &str) -> Option<i32>;
+}
+
+/// What an exporter looks up on top of [`Info`] to write a fit back out.
+///
+/// [`InfoSde`](crate::InfoSde) answers it from `sde.dat`.
+pub trait InfoExport: Info {
+    /// The type id of a mutaplasmid that turns `base` into `result` with
+    /// these rolled attribute values. Several mutaplasmids may, differing
+    /// only in how far they roll, so this answers the narrowest one the rolls
+    /// fit in; when none of them hold every roll, the widest.
+    fn find_mutaplasmid(&self, base: i32, result: i32, rolls: &BTreeMap<i32, f64>) -> Option<i32>;
+}
+
+/// What an importer looks up to turn a fit written with names into type ids.
+///
+/// [`InfoNameSde`](crate::InfoNameSde) answers these from `sde.dat`, and
+/// optionally `names.dat`.
+pub trait InfoName {
+    /// The effects a type has.
+    fn get_dogma_effects(&self, type_id: i32) -> Option<Vector<'_, eve::TypeDogmaEffect>>;
+    /// The attribute values a type starts with.
+    fn get_dogma_attributes(&self, type_id: i32) -> Option<Vector<'_, eve::TypeDogmaAttribute>>;
+    /// A type by id.
+    fn get_type(&self, type_id: i32) -> Option<eve::Type<'_>>;
+    /// The id of the type with this name.
+    fn type_name_to_id(&self, name: &str) -> Option<i32>;
+    /// The id of the attribute with exactly this name, like `"cycleTime"`.
+    fn attribute_name_to_id(&self, name: &str) -> Option<i32>;
+    /// A mutaplasmid by its type id.
+    fn get_mutaplasmid(&self, type_id: i32) -> Option<eve::Mutaplasmid<'_>>;
+}
+
+/// What the esf/1 format looks up on top of [`InfoExport`].
+pub trait InfoEsf: InfoExport {
+    /// The id of the type with this English name, ignoring case.
+    fn type_name_to_id(&self, name: &str) -> Option<i32>;
+    /// The id of the attribute with this name, ignoring case.
+    fn attribute_name_to_id_ignoring_case(&self, name: &str) -> Option<i32>;
+    /// The ids of the modes of a ship, lowest first.
+    fn mode_type_ids(&self, hull: i32) -> impl Iterator<Item = i32>;
+    /// The type ids of the mutaplasmids that apply to `base`, lowest first.
+    fn mutaplasmids_of(&self, base: i32) -> &[i32];
+    /// A mutaplasmid by its type id.
+    fn get_mutaplasmid(&self, type_id: i32) -> Option<eve::Mutaplasmid<'_>>;
+}

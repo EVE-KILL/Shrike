@@ -396,6 +396,23 @@ var allowedBioElements = valuesSet(
 	"td", "img", "div", "span", "font",
 )
 
+// Preserve the bio renderer's styles and internal links while revalidating
+// historical stored previews before they reach an administrative page.
+func SafeAccountBioHTML(raw string) string {
+	contextNode := &xhtml.Node{Type: xhtml.ElementNode, Data: "div", DataAtom: atom.Div}
+	nodes, err := xhtml.ParseFragment(strings.NewReader(raw), contextNode)
+	if err != nil {
+		return ""
+	}
+	var output bytes.Buffer
+	for _, node := range nodes {
+		if clean := sanitizeBioNode(node); clean != nil {
+			_ = xhtml.Render(&output, clean)
+		}
+	}
+	return output.String()
+}
+
 func sanitizeBioNode(node *xhtml.Node) *xhtml.Node {
 	switch node.Type {
 	case xhtml.TextNode:
@@ -486,18 +503,21 @@ func nodeAttribute(node *xhtml.Node, name string) string {
 }
 
 func sanitizeBioStyle(value string) string {
-	value = strings.TrimSpace(value)
-	if safeColorStyle.MatchString(value) {
-		return strings.TrimSuffix(value, ";")
-	}
-	match := safeFontSizeStyle.FindStringSubmatch(value)
-	if len(match) == 2 {
-		size, _ := strconv.Atoi(match[1])
-		if size >= 1 && size <= 48 {
-			return "font-size: " + strconv.Itoa(size) + "px"
+	var styles []string
+	for _, declaration := range strings.Split(value, ";") {
+		declaration = strings.TrimSpace(declaration)
+		if safeColorStyle.MatchString(declaration) {
+			styles = append(styles, declaration)
+			continue
+		}
+		if match := safeFontSizeStyle.FindStringSubmatch(declaration); len(match) == 2 {
+			size, _ := strconv.Atoi(match[1])
+			if size >= 1 && size <= 48 {
+				styles = append(styles, "font-size: "+strconv.Itoa(size)+"px")
+			}
 		}
 	}
-	return ""
+	return strings.Join(styles, "; ")
 }
 
 func rewriteEVEHref(value string) string {

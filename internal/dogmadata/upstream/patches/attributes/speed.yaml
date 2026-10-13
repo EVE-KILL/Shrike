@@ -1,0 +1,4 @@
+addTo:
+  - effect: selfRof
+    rules:
+      - {percent: rofBonus, domain: shipID, func: locationRequiredSkillModifier, skill: "*"}

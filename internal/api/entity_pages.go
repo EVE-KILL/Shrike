@@ -722,11 +722,18 @@ func loadFactionPage(
 	results, err := queryMapsConcurrent(ctx, db,
 		databaseQuery{
 			SQL: `
-				SELECT faction_id, name, description, corporation_id,
-				       militia_corporation_id, solar_system_id,
-				       COALESCE(station_count, 0)::int AS station_count,
-				       COALESCE(station_system_count, 0)::int AS station_system_count
-				FROM factions WHERE faction_id = $1 LIMIT 1`,
+				SELECT f.faction_id, f.name, f.description, f.corporation_id,
+				       executor.name AS corporation_name,
+				       f.militia_corporation_id,
+				       militia.name AS militia_corporation_name,
+				       f.solar_system_id, system.system_name AS solar_system_name,
+				       COALESCE(f.station_count, 0)::int AS station_count,
+				       COALESCE(f.station_system_count, 0)::int AS station_system_count
+				FROM factions f
+				LEFT JOIN corporations executor ON executor.corporation_id = f.corporation_id
+				LEFT JOIN corporations militia ON militia.corporation_id = f.militia_corporation_id
+				LEFT JOIN solar_systems system ON system.solar_system_id = f.solar_system_id
+				WHERE f.faction_id = $1 LIMIT 1`,
 			Args: []any{id},
 		},
 		databaseQuery{

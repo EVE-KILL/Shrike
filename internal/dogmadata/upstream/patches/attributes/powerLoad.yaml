@@ -1,0 +1,8 @@
+change:
+  highIsGood: false
+
+effects:
+  - on: isModule
+    category: online
+    rules:
+      - {add: power, domain: shipID}

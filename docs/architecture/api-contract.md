@@ -4,8 +4,8 @@ This document states where each part of the OpenAPI document comes from, and
 what to change when you add a route or a parameter.
 
 Shrike serves one OpenAPI 3.1 document at `/api/openapi.json`. Scalar renders it
-at `/api/docs`. The Nuxt reference page at `/docs` reads the same document. The
-generated TypeScript client in `web/shared/api/` is built from it.
+at `/api/docs`. The Go reference page at `/docs` reads the same document. The
+generated TypeScript client in `frontend/shared/api/` is built from it.
 
 ## Contract
 
@@ -62,7 +62,7 @@ Follow these steps when a handler reads a new query parameter.
 4. Copy the default and the bounds from the parsing site.
 5. Set the entity kind with `entityQuery` when the value is an entity ID.
 6. Run `make gen-api-client` to regenerate the committed contract.
-7. Commit `web/shared/api.openapi.json` and `web/shared/api/`.
+7. Commit `frontend/shared/api.openapi.json` and `frontend/shared/api/`.
 
 ## Verification
 
@@ -84,7 +84,7 @@ Run `go test ./internal/api/`. The core tests guarding the query table are:
 - `TestOpenAPIDocumentsRedirectsAndDomainImagesByMediaType` checks that browser
   redirects have no JSON body and that domain images are binary image media.
 
-Run `bun test test` in `web/` to check the reference page still reads them.
+Run `npm --prefix frontend test` to check the reference page still reads them.
 
 Run `make check-api-client` to confirm the committed contract matches the code.
 

@@ -1,0 +1,11 @@
+new:
+  displayName: Alpha Damage
+  category: Miscellaneous
+  unit: Hitpoints
+  highIsGood: true
+
+effects:
+  - on: damagingModule
+    category: active
+    rules:
+      - {add: damageVolley, domain: shipID}

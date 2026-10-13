@@ -1,0 +1,140 @@
+package frontend
+
+import "strconv"
+
+templ entityMembers(view entityMembersView) {
+	<section class="entity-members" data-entity-members data-kind={ view.Kind } data-id={ strconv.FormatInt(view.ID, 10) } data-page={ strconv.Itoa(view.Data.Page) } data-sort={ view.Sort } data-activity={ strconv.Itoa(view.Activity) } data-corp={ strconv.FormatInt(view.CorpID, 10) }>
+		<div class="entity-member-controls">
+			if view.Kind == "alliance" && len(view.Corps.Corporations) > 0 {
+				<details class="entity-corp-filter">
+					<summary>
+						if view.CorpID > 0 {
+							<img src={ eveEntityImage("corporation", view.CorpID, 32) } alt="" width="16" height="16"/>
+						} else {
+							@icon("building-2")
+						}
+						{ entitySelectedCorpTrigger(view.Corps.Corporations, view.CorpID) } <span>▾</span>
+					</summary>
+					<div class="entity-corp-filter-menu">
+						<input type="search" placeholder="Filter corporations…" aria-label="Filter corporations" data-corp-search/>
+						<div class="entity-corp-filter-list">
+							<button type="button" data-member-corp="0">All Corporations</button>
+							for _, corp := range view.Corps.Corporations {
+								<button type="button" data-member-corp={ strconv.FormatInt(corp.CorporationID, 10) } data-corp-name={ corp.Name } data-corp-ticker={ corp.Ticker }><img src={ eveEntityImage("corporation", corp.CorporationID, 32) } alt="" width="16" height="16" loading="lazy"/><span>{ corp.Name }</span><small>[{ corp.Ticker }]</small></button>
+							}
+						</div>
+					</div>
+				</details>
+			}
+			<div class="entity-member-control-group">
+				<span>Active:</span>
+				for _, days := range []int{7, 30, 90} {
+					<button type="button" class={ entityMemberButtonClass(view.Activity == days) } data-focus-key={ "member-activity:" + strconv.Itoa(days) } data-member-activity={ strconv.Itoa(days) }>{ strconv.Itoa(days) }d</button>
+				}
+				if view.Activity > 0 {
+					<button type="button" aria-label="Clear activity filter" data-member-activity="0">×</button>
+				}
+			</div>
+			<div class="entity-member-control-group entity-member-sort">
+				<span>Sort:</span>
+				for _, sort := range []struct{ Value, Label string }{{"name", "Name"}, {"last_active", "Last Active"}, {"security_status", "Sec Status"}} {
+					<button type="button" class={ entityMemberButtonClass(view.Sort == sort.Value) } data-focus-key={ "member-sort:" + sort.Value } data-member-sort={ sort.Value }>{ sort.Label }</button>
+				}
+			</div>
+		</div>
+		<div class="entity-member-count">
+			<span>
+				{ fullNumber(float64(view.Data.Total)) } members
+				if view.CorpID > 0 {
+					<span>in { entitySelectedCorp(view.Corps.Corporations, view.CorpID) }</span>
+				}
+				if view.Activity > 0 {
+					<span class="entity-member-active">active in { strconv.Itoa(view.Activity) }d</span>
+				}
+				if view.Data.Total > 100 {
+					<span>— page { strconv.Itoa(view.Data.Page) } of { strconv.FormatInt((view.Data.Total+99)/100, 10) }</span>
+				}
+			</span>@entityMembersPagination(view)
+		</div>
+		if len(view.Data.Members) > 0 {
+			<div class="entity-member-grid">
+				for _, member := range view.Data.Members {
+					<a href={ idPath("character", member.CharacterID) } class="entity-member-card">
+						<img src={ eveEntityImage("character", member.CharacterID, 64) } alt="" width="36" height="36" loading="lazy"/>
+						<div>
+							<div class="entity-member-name">
+								<span>{ member.Name }</span>
+								if member.IsFC {
+									<small class="fc" title="Fleet Commander">FC</small>
+								}
+								if member.IsLogi {
+									<small class="logi" title="Logistics">Logi</small>
+								}
+								if member.IsCapitalPilot {
+									<small class="capital" title="Capital Pilot">Cap</small>
+								}
+							</div>
+							<div class="entity-member-stats">
+								<span class={ entityMemberSecurityClass(member.SecurityStatus) }>{ entityMemberSecurity(member.SecurityStatus) }</span>
+								if member.LastActive != "" {
+									<span>{ entityMemberTimeAgo(member.LastActive) }</span>
+								}
+								if member.Kills90D > 0 || member.Losses90D > 0 {
+									<span class="entity-member-kd"><em>{ strconv.FormatInt(member.Kills90D, 10) }</em> / <b>{ strconv.FormatInt(member.Losses90D, 10) }</b></span>
+								}
+							</div>
+						</div>
+					</a>
+				}
+			</div>
+		} else {
+			<p class="entity-member-empty">
+				if view.Activity > 0 {
+					No members active in the last { strconv.Itoa(view.Activity) } days
+				} else {
+					No known members
+				}
+			</p>
+		}
+		<div class="entity-member-bottom">
+			@entityMembersPagination(view)
+		</div>
+	</section>
+}
+
+templ entityMembersPagination(view entityMembersView) {
+	if view.Data.Total > 100 {
+		<nav class="entity-member-pages" aria-label="Member pages">
+			<button type="button" data-member-page={ strconv.Itoa(view.Data.Page - 1) } disabled?={ view.Data.Page <= 1 } aria-label="Previous page">‹</button>
+			for _, p := range entityMembersPages(view.Data.Page, view.Data.Total) {
+				if p == 0 {
+					<span>…</span>
+				} else {
+					<button type="button" class={ entityMemberButtonClass(p == view.Data.Page) } data-focus-key={ "member-page:" + strconv.Itoa(p) } data-member-page={ strconv.Itoa(p) }>{ strconv.Itoa(p) }</button>
+				}
+			}
+			<button type="button" data-member-page={ strconv.Itoa(view.Data.Page + 1) } disabled?={ int64(view.Data.Page) >= (view.Data.Total+99)/100 } aria-label="Next page">›</button>
+		</nav>
+	}
+}
+
+templ entityCorporations(view entityCorporationsView) {
+	<section class="entity-corporations" data-entity-corporations data-id={ strconv.FormatInt(view.ID, 10) } data-sort={ view.Sort } data-dir={ view.Dir }>
+		<p>{ fullNumber(float64(view.Data.Total)) } corporations</p>
+		if len(view.Data.Corporations) > 0 {
+			<div class="entity-corporation-heading"><span></span><button type="button" data-focus-key="corp-sort:name" data-corp-sort="name">Corporation { entityCorpSortIcon(view.Sort, view.Dir, "name") }</button><button type="button" data-focus-key="corp-sort:members" data-corp-sort="members">Members { entityCorpSortIcon(view.Sort, view.Dir, "members") }</button></div>
+			for _, corp := range view.Data.Corporations {
+				<a class="entity-corporation-row" style={ entityCorpAccent(corp.Palette) } href={ idPath("corporation", corp.CorporationID) }><img src={ eveEntityImage("corporation", corp.CorporationID, 64) } alt="" width="32" height="32" loading="lazy"/><span><strong>{ corp.Name }</strong><small>[{ corp.Ticker }]</small></span><b>{ fullNumber(float64(corp.MemberCount)) }</b></a>
+			}
+		} else {
+			<p class="entity-member-empty">No corporations found</p>
+		}
+	</section>
+}
+
+func entityMemberButtonClass(active bool) string {
+	if active {
+		return "active"
+	}
+	return ""
+}

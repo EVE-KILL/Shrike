@@ -331,8 +331,8 @@ func (s *commentService) insertCommentReport(
 	}
 	fresh, err := queryMap(ctx, txDatabase{Tx: tx}, `
 		UPDATE comments
-		SET reports_count = $2,
-			flagged = ($2 >= $3)
+		SET reports_count = $2::integer,
+			flagged = ($2::integer >= $3::integer)
 		WHERE id = $1
 		RETURNING `+commentColumns,
 		commentID,

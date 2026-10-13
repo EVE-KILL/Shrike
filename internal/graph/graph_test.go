@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -190,6 +191,41 @@ func TestIngestIsIdempotentAndPreservesNewestAffiliation(t *testing.T) {
 	}
 	if len(indexes) < 9 {
 		t.Errorf("indexes = %d, want at least 9 node and edge indexes", len(indexes))
+	}
+	for _, label := range nodeLabels {
+		found := false
+		for _, index := range indexes {
+			properties, ok := index["property"].([]any)
+			if index["label"] == label && index["index type"] == "label+property" &&
+				ok && len(properties) == 1 && properties[0] == "id" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s.id has no explicit lookup index", label)
+		}
+	}
+	// A uniqueness constraint alone used to let every ingest scan all graph
+	// nodes. Check the real planner, not just the schema declarations.
+	plan, err := client.Read(ctx, `EXPLAIN MERGE (k:Killmail {id: $id}) RETURN k`, map[string]any{"id": int64(200)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexed := false
+	for _, step := range plan {
+		text, _ := step["QUERY PLAN"].(string)
+		if strings.Contains(text, "ScanAll (k)") {
+			t.Errorf("killmail MERGE still scans the graph: %s", text)
+		}
+		if strings.Contains(text, "ScanAllByLabelProperties") && strings.Contains(text, "k :Killmail {id}") {
+			indexed = true
+		}
+	}
+	if !indexed {
+		t.Errorf("killmail MERGE does not use its id index: %#v", plan)
+	}
+	if err := client.EnsureSchema(ctx); err != nil {
+		t.Fatalf("reapplying the schema is not idempotent: %v", err)
 	}
 	constraints, err := client.Read(ctx, `SHOW CONSTRAINT INFO`, nil)
 	if err != nil {

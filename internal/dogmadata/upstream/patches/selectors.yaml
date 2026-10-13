@@ -1,0 +1,179 @@
+# The filters more than one attribute needs. Everything else in patches/ is
+# an attribute; this file is not.
+
+selectors:
+  - name: usesCapacitor
+    match: isModule and attribute("capacitorNeed")
+
+  # A module without any of these is still activated, but the EVE client
+  # leaves its capacitorNeed out of the peak load.
+  - name: usesCapacitorInCycles
+    description: uses capacitor, and has a cycle time to spread it over
+    match: >-
+      usesCapacitor and attribute(
+        "duration",
+        "durationHighisGood",
+        "speed",
+        "moduleReactivationDelay",
+        "durationECMJammerBurstProjector",
+        "durationSensorDampeningBurstProjector",
+        "durationTargetIlluminationBurstProjector",
+        "durationWeaponDisruptionBurstProjector"
+      )
+
+  - name: transfersCapacitorToShip
+    match: usesCapacitorInCycles and effect("energyNosferatuFalloff")
+
+  # Capacitor warfare: one gives capacitor away, the other two take it.
+  - name: remoteCapacitorTransmitter
+    match: >-
+      isModule and attribute("powerTransferAmount") and attribute("duration")
+      and effect("shipModuleRemoteCapacitorTransmitter")
+
+  - name: energyNosferatu
+    match: >-
+      isModule and attribute("powerTransferAmount") and attribute("duration")
+      and effect("energyNosferatuFalloff")
+
+  # A capacitor booster injects what its charge holds. An ancillary shield
+  # booster takes the same charge, but burns it as fuel instead, so the charge
+  # hands the amount over and only this module spends it.
+  - name: capacitorBooster
+    match: isModule and attribute("duration") and effect("powerBooster")
+
+  - name: capacitorBoosterCharge
+    match: isCharge and attribute("capacitorBonus")
+
+  - name: energyNeutralizer
+    match: >-
+      (isModule or isDrone) and attribute("energyNeutralizerAmount") and attribute("duration") and effect(
+        "energyNeutralizerFalloff",
+        "entityEnergyNeutralizerFalloff"
+      )
+
+  - name: isShip
+    match: category("Ship")
+
+  - name: isStructure
+    match: category("Structure")
+
+  - name: isHull
+    description: a ship or a structure; what modules are fitted to
+    match: isShip or isStructure
+
+  - name: isModule
+    match: category("Module", "Structure Module")
+
+  - name: isDrone
+    match: category("Drone")
+
+  # The dogma-engine takes every non-passive effect of a fighter to be an
+  # ability, and switches it by the fit; so an effect on isFighter is passive.
+  - name: isFighter
+    match: category("Fighter")
+
+  - name: isCharge
+    match: category("Charge")
+
+  - name: hasDamageAttribute
+    description: carries a damage value of its own
+    match: attribute("emDamage", "explosiveDamage", "kineticDamage", "thermalDamage")
+
+  - name: dealsDamage
+    description: >-
+      deals damage; also covers turrets, missile launchers and point defense
+      batteries, which hold no damage value of their own, as their charge does
+    match: hasDamageAttribute or effect("useMissiles", "turretFitted", "pointDefense")
+
+  - name: damagingModule
+    description: a module that deals damage
+    match: isModule and dealsDamage
+
+  - name: damagingDrone
+    description: a drone that deals damage
+    match: isDrone and hasDamageAttribute
+
+  # Scan probe launchers have both, so prefer "speed": dividing by both would
+  # be wrong, even though their damage is meaningless anyway.
+  - name: moduleCyclesOnSpeed
+    description: a damaging module that cycles on speed
+    match: damagingModule and attribute("speed")
+
+  - name: moduleCyclesOnDuration
+    description: a damaging module that cycles on duration
+    match: damagingModule and attribute("duration") and not attribute("speed")
+
+  - name: moduleCycles
+    description: a damaging module that cycles on speed or duration
+    match: moduleCyclesOnSpeed or moduleCyclesOnDuration
+
+  # Reloading depends on this, not on whether a module cycles on speed or
+  # duration: smart bombs cycle on duration and hold no charge, while a
+  # Modulated Deep Core Miner II does too and holds a crystal.
+  - name: holdsCharge
+    description: a module that holds a charge, and so reloads
+    match: isModule and attribute("chargeGroup1", "chargeGroup2", "chargeGroup3", "chargeGroup4", "chargeGroup5")
+
+  - name: cyclingDamageDealer
+    description: anything that deals damage in cycles
+    match: moduleCyclesOnSpeed or moduleCyclesOnDuration or damagingDrone
+
+  - name: armorRepairModule
+    match: >-
+      isModule and attribute("armorDamageAmount") and attribute("duration") and effect(
+        "armorRepair",
+        "fueledArmorRepair"
+      )
+
+  # Both the local and the remote ones repair more while loaded with paste.
+  - name: ancillaryArmorRepairModule
+    match: >-
+      (armorRepairModule or remoteArmorRepairModule)
+      and attribute("chargedArmorDamageMultiplier")
+
+  - name: naniteRepairPaste
+    match: isCharge and group("Nanite Repair Paste")
+
+  - name: hullRepairModule
+    match: isModule and attribute("structureDamageAmount") and attribute("duration") and effect("structureRepair")
+
+  - name: shieldBoostModule
+    match: >-
+      isModule and attribute("shieldBonus") and effect(
+        "shieldBoosting",
+        "fueledShieldBoosting"
+      )
+
+  # The remote versions, which repair the ship they are aimed at instead. Ewar
+  # drones do the same job, so they count too.
+  - name: remoteArmorRepairModule
+    match: >-
+      (isModule or isDrone) and attribute("armorDamageAmount") and attribute("duration") and effect(
+        "shipModuleRemoteArmorRepairer",
+        "shipModuleAncillaryRemoteArmorRepairer",
+        "ShipModuleRemoteArmorMutadaptiveRepairer",
+        "npcEntityRemoteArmorRepairer"
+      )
+
+  - name: remoteShieldBoostModule
+    match: >-
+      (isModule or isDrone) and attribute("shieldBonus") and attribute("duration") and effect(
+        "shipModuleRemoteShieldBooster",
+        "shipModuleAncillaryRemoteShieldBooster",
+        "npcEntityRemoteShieldBooster"
+      )
+
+  - name: remoteHullRepairModule
+    match: >-
+      (isModule or isDrone) and attribute("structureDamageAmount") and attribute("duration") and effect(
+        "shipModuleRemoteHullRepairer",
+        "npcEntityRemoteHullRepairer"
+      )
+
+  - name: spoolsDamage
+    description: a damaging module whose damage grows every cycle
+    match: moduleCycles and attribute("damageMultiplierBonusMax")
+
+  - name: spoolsRepair
+    description: a repairing module whose repair grows every cycle
+    match: isModule and effect("ShipModuleRemoteArmorMutadaptiveRepairer")

@@ -322,25 +322,11 @@ func registerLegacyArchiveStats(a huma.API, opts Options) {
 		time.Hour,
 		"public, max-age=300, s-maxage=3600, stale-while-revalidate=3600",
 		func(ctx context.Context, _ *legacyRequest) (legacyPayload, error) {
-			row, err := queryMap(ctx, opts.DB, `
-				SELECT
-				  COUNT(*)::int AS killmails,
-				  (COUNT(DISTINCT victim_name)
-				    FILTER (WHERE victim_name IS NOT NULL))::int AS characters,
-				  (COUNT(DISTINCT victim_corp)
-				    FILTER (WHERE victim_corp IS NOT NULL))::int AS corporations,
-				  (COUNT(DISTINCT victim_alliance)
-				    FILTER (WHERE victim_alliance IS NOT NULL))::int AS alliances
-				FROM old_killmails`)
+			stats, err := loadLegacyArchiveStats(ctx, opts.DB)
 			if err != nil {
 				return legacyPayload{}, err
 			}
-			return jsonPayload(map[string]any{
-				"killmails":    int64OrZero(row["killmails"]),
-				"characters":   int64OrZero(row["characters"]),
-				"corporations": int64OrZero(row["corporations"]),
-				"alliances":    int64OrZero(row["alliances"]),
-			}), nil
+			return jsonPayload(stats), nil
 		},
 	)
 	registerLegacy(a, huma.Operation{
@@ -474,44 +460,7 @@ func registerLegacyArchiveKill(a huma.API, opts Options) {
 		opts,
 		time.Hour,
 		"public, max-age=3600, s-maxage=3600",
-		func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-			id, err := parseUniverseID(req.Param("id"))
-			if err != nil {
-				return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid ID")
-			}
-			results, err := queryMapsConcurrent(ctx, opts.DB,
-				databaseQuery{
-					SQL:  `SELECT * FROM old_killmails WHERE killmail_id = $1`,
-					Args: []any{id},
-				},
-				databaseQuery{
-					SQL: `
-						SELECT * FROM old_killmail_attackers
-						WHERE killmail_id = $1
-						ORDER BY final_blow DESC, security_status DESC`,
-					Args: []any{id},
-				},
-				databaseQuery{
-					SQL: `
-						SELECT * FROM old_killmail_items
-						WHERE killmail_id = $1 ORDER BY name`,
-					Args: []any{id},
-				},
-			)
-			if err != nil {
-				return legacyPayload{}, err
-			}
-			if len(results[0]) == 0 {
-				return legacyPayload{}, apiError(
-					http.StatusNotFound, "Killmail not found",
-				)
-			}
-			return jsonPayload(map[string]any{
-				"kill":      results[0][0],
-				"attackers": nonNilLegacyArchiveRows(results[1]),
-				"items":     nonNilLegacyArchiveRows(results[2]),
-			}), nil
-		},
+		legacyArchiveKillHandler(opts),
 	)
 	registerLegacy(a, huma.Operation{
 		OperationID: "legacy-archive-kill",
@@ -520,6 +469,47 @@ func registerLegacyArchiveKill(a huma.API, opts Options) {
 		Summary:     "Historical killmail detail",
 		Tags:        []string{"legacy archive", "killmails"},
 	}, handler)
+}
+
+func legacyArchiveKillHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		id, err := parseUniverseID(req.Param("id"))
+		if err != nil {
+			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid ID")
+		}
+		results, err := queryMapsConcurrent(ctx, opts.DB,
+			databaseQuery{
+				SQL:  `SELECT * FROM old_killmails WHERE killmail_id = $1`,
+				Args: []any{id},
+			},
+			databaseQuery{
+				SQL: `
+						SELECT * FROM old_killmail_attackers
+						WHERE killmail_id = $1
+						ORDER BY final_blow DESC, security_status DESC`,
+				Args: []any{id},
+			},
+			databaseQuery{
+				SQL: `
+						SELECT * FROM old_killmail_items
+						WHERE killmail_id = $1 ORDER BY name`,
+				Args: []any{id},
+			},
+		)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		if len(results[0]) == 0 {
+			return legacyPayload{}, apiError(
+				http.StatusNotFound, "Killmail not found",
+			)
+		}
+		return jsonPayload(map[string]any{
+			"kill":      results[0][0],
+			"attackers": nonNilLegacyArchiveRows(results[1]),
+			"items":     nonNilLegacyArchiveRows(results[2]),
+		}), nil
+	}
 }
 
 func nonNilLegacyArchiveRows(rows []map[string]any) []map[string]any {

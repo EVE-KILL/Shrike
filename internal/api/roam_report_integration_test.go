@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -132,6 +134,11 @@ func TestRoamReportCreateAndLoadAgainstPostgres(t *testing.T) {
 	if got := get.Header().Get("Cache-Control"); got != "no-store" {
 		t.Fatalf("get cache-control = %q", got)
 	}
+	reader := NewHomepageReader(pool)
+	direct, found, err := reader.RoamReport(ctx, created.ID)
+	if err != nil || !found || !reflect.DeepEqual(direct, report) {
+		t.Fatalf("Go page reader differs from the report API: found=%v err=%v", found, err)
+	}
 	for _, role := range []struct {
 		name, path string
 		want       int
@@ -155,6 +162,12 @@ func TestRoamReportCreateAndLoadAgainstPostgres(t *testing.T) {
 		}
 		if len(result.Kills) != role.want || role.want > 0 && result.Kills[0].KillmailID != 123456 {
 			t.Fatalf("%s killlist = %+v", role.name, result.Kills)
+		}
+		query := make(url.Values)
+		query.Set("role", role.name)
+		directList, err := reader.RoamReportKilllist(ctx, direct, query)
+		if err != nil || len(directList.Kills) != role.want || role.want > 0 && directList.Kills[0].KillmailID != 123456 {
+			t.Fatalf("Go killlist reader differs from report API: %+v err=%v", directList, err)
 		}
 	}
 
@@ -193,6 +206,10 @@ func TestRoamReportCreateAndLoadAgainstPostgres(t *testing.T) {
 	}
 	if loaded.ID != created.ID || len(loaded.Roster) != 1 || loaded.Roster[0].CharacterID != 2 || loaded.Summary.Kills != 0 {
 		t.Fatalf("report at original URL = %+v", loaded)
+	}
+	direct, found, err = reader.RoamReport(ctx, created.ID)
+	if err != nil || !found || !reflect.DeepEqual(direct, loaded) {
+		t.Fatal("Go page reader returned stale data after rebuilding the report")
 	}
 	listAfterUpdate := httptest.NewRecorder()
 	handler.ServeHTTP(listAfterUpdate, httptest.NewRequest(http.MethodGet,

@@ -1,0 +1,90 @@
+package frontend
+
+import "strconv"
+
+templ walletPage(view walletPageView) {
+	<div class="wallet-page" data-wallet-page data-controller="wallet" data-action="change->wallet#change click->wallet#click popstate@window->wallet#restore">
+		<header class="page-header hero-surface glass-panel wallet-header">
+			<span class="page-header-icon">
+				@icon("wallet-cards")
+			</span>
+			<div class="wallet-heading">
+				<p class="eyebrow">Public corporation wallet</p>
+				<h1>{ view.Data.Corporation.Name } wallet</h1>
+				<p>The corporation wallet used for campaign prizes and other EVE-KILL.com activity. Its balance and journal are public.</p>
+			</div>
+			<a class="wallet-corporation" href={ "/corporation/" + strconv.FormatInt(view.Data.Corporation.ID, 10) }>Corporation { strconv.FormatInt(view.Data.Corporation.ID, 10) } <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17 17 7"></path></svg></a>
+		</header>
+		<div data-wallet-content>
+			@walletContents(view)
+		</div>
+	</div>
+}
+
+templ walletContents(view walletPageView) {
+	<div class="wallet-summary">
+		<section class="glass-panel wallet-summary-card"><div class="wallet-label">Total balance</div><strong class="wallet-balance">{ walletIsk(&view.Data.TotalBalance) }</strong></section>
+		<section class="glass-panel wallet-summary-card">
+			<div class="wallet-label">Last journal sync</div>
+			<strong class="wallet-synced">
+				if view.Data.LastSynced != nil {
+					<time datetime={ *view.Data.LastSynced }>{ walletDate(*view.Data.LastSynced) }</time>
+				} else {
+					{ "Not yet" }
+				}
+			</strong><small>Imported automatically from ESI every hour.</small>
+		</section>
+	</div>
+	<section class="glass-panel wallet-journal">
+		<header>
+			<div><h2>Wallet journal</h2><p>Latest entries first, exactly as imported from ESI.</p></div>
+			<select aria-label="Wallet division" data-wallet-division>
+				<option value="" selected?={ view.Division==0 }>All divisions</option>
+				for division := 1; division <= 7; division++ {
+					<option value={ strconv.Itoa(division) } selected?={ view.Division==division }>Division { strconv.Itoa(division) }</option>
+				}
+			</select>
+		</header>
+		<div class="wallet-table-scroll">
+			<table>
+				<thead><tr><th>Date</th><th>Division</th><th>Type</th><th>Description</th><th>Amount</th><th>Balance</th><th>Parties</th></tr></thead>
+				<tbody>
+					for _, entry := range view.Data.Journal {
+						<tr>
+							<td><time datetime={ entry.Date }>{ walletDate(entry.Date) }</time></td>
+							<td>{ strconv.Itoa(entry.Division) }</td>
+							<td>{ walletRefType(entry.RefType) }</td>
+							<td>
+								<div>{ entry.Description }</div>
+								if entry.Reason != nil && *entry.Reason != "" {
+									<small>{ *entry.Reason }</small>
+								}
+							</td>
+							<td class={ "wallet-amount " + walletAmountTone(entry.Amount) }>{ walletIsk(entry.Amount) }</td>
+							<td>{ walletIsk(entry.Balance) }</td>
+							<td>
+								if entry.FirstPartyID != nil {
+									<div>From { walletID(entry.FirstPartyID) }</div>
+								}
+								if entry.SecondPartyID != nil {
+									<div>To { walletID(entry.SecondPartyID) }</div>
+								}
+								if entry.FirstPartyID == nil && entry.SecondPartyID == nil {
+									{ "—" }
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		if len(view.Data.Journal)==0 {
+			<div class="wallet-empty">No wallet journal entries have been imported yet.</div>
+		}
+	</section>
+	if view.Page>1 || view.Data.HasMore {
+		<nav class="wallet-pagination" aria-label="Wallet journal pages">
+			<button type="button" data-wallet-page-number={ strconv.Itoa(view.Page - 1) } disabled?={ view.Page<=1 }>Previous</button><span>Page { strconv.Itoa(view.Page) }</span><button type="button" data-wallet-page-number={ strconv.Itoa(view.Page + 1) } disabled?={ !view.Data.HasMore }>Next</button>
+		</nav>
+	}
+}

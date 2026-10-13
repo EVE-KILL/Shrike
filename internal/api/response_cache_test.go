@@ -90,7 +90,7 @@ func TestResponseCacheWritesThroughAndServesL1First(t *testing.T) {
 }
 
 func TestResponseCacheMutableEntriesInvalidateAcrossReplicas(t *testing.T) {
-	for _, key := range []string{"shrike:api:build:/coalitions", "shrike:web-api:build:battle:123"} {
+	for _, key := range []string{"shrike:api:build:/coalitions", "shrike:web-api:build:battle:123", "shrike:web-api:build:announcements:canonical", "shrike:api:build:/user/announcements/active"} {
 		t.Run(key, func(t *testing.T) {
 			shared := newFakeResponseCacheBackend()
 			first := newResponseCache(shared, 4096)

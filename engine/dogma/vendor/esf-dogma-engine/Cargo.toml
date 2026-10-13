@@ -1,0 +1,27 @@
+[package]
+name = "esf-dogma-engine"
+description = "Calculates the dogma attributes of EVE Online ship fits"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+readme.workspace = true
+keywords.workspace = true
+
+[dependencies]
+esf-data.workspace = true
+serde.workspace = true
+serde-wasm-bindgen = { workspace = true, optional = true }
+strum.workspace = true
+strum_macros.workspace = true
+tsify = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+
+[features]
+# Emits the TypeScript for every type that crosses the WASM boundary; only the
+# WASM build needs it. Tsify expands to code that names both of the others.
+typescript = ["dep:tsify", "dep:serde-wasm-bindgen", "dep:wasm-bindgen"]
+
+[dev-dependencies]
+serde_json.workspace = true

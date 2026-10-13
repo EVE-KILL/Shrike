@@ -29,7 +29,12 @@ func registerGlobalStatsRoute(a huma.API, opts Options) {
 		Path:        "/stats",
 		Summary:     "Global statistics",
 		Tags:        []string{"stats"},
-	}, func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+	}, globalStatisticsHandler(opts))
+}
+
+// Used by both the JSON operation and the Go statistics cards.
+func globalStatisticsHandler(opts Options) legacyHandler {
+	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		dataType := req.Query.Get("dataType")
 		if dataType == "" {
 			return legacyPayload{}, apiError(
@@ -75,7 +80,7 @@ func registerGlobalStatsRoute(a huma.API, opts Options) {
 			return legacyPayload{}, err
 		}
 		return jsonPayload(map[string]any{"entries": entries}), nil
-	})
+	}
 }
 
 func globalStatsLimit(raw string) int {
@@ -211,7 +216,7 @@ func loadSecurityStatusList(
 		      109299958, 661107786, 924269309, 1069536620, 1838146481
 		    )
 		  ))
-		ORDER BY security_status `+order+`
+		ORDER BY security_status `+order+`, character_id ASC
 		LIMIT $1`, limit)
 	if err != nil {
 		return nil, err

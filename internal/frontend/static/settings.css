@@ -1,0 +1,19 @@
+.settings-page .settings-nav { min-width:0; }
+.settings-page .settings-nav .icon { width:16px; height:16px; }
+.settings-page [data-settings-select] .icon { width:10px; height:10px; }
+.settings-page [data-settings-color-reset] .icon { width:12px; height:12px; }
+.settings-page [data-settings-theme-status] { font-size:12px; }
+.settings-page [data-settings-section][hidden] { display:none; }
+.settings-page [data-esi-log-filters] svg { width:10px;height:10px; }
+.settings-page [data-esi-log-live] .icon { width:12px;height:12px; }
+.settings-page [data-settings-comments] :is(.text-xs .icon,button .icon) { width:14px;height:14px; }
+.settings-page [data-settings-comments] .comment-body a { color:inherit;text-decoration:none; }
+.settings-page [data-settings-comments] .comment-body a:hover { color:var(--color-brand-primary); }
+.settings-page [data-settings-domains] .icon { width:1em;height:1em; }
+.settings-page [data-settings-domains] :is(input,textarea,select) { min-width:0; }
+.settings-page [data-settings-domains] [hidden] { display:none; }
+.settings-page [data-domain-tabs] { overflow-x:auto; }
+.esi-detail-dialog { position:fixed;top:50%;left:50%;margin:0;transform:translate(-50%,-50%);width:min(512px,calc(100% - 32px));max-width:none;max-height:calc(100dvh - 32px);background:#141414;border-color:#ffffff1a;box-sizing:border-box; }
+.esi-detail-dialog::backdrop { background:#0009; backdrop-filter:blur(8px); }
+.esi-detail-dialog .icon { width:14px;height:14px; }
+@media(max-width:767px){.settings-page .settings-nav{max-width:100%;}.settings-page .settings-nav>div{max-width:100%;}.settings-page [data-settings-session-device]{width:40px;height:40px;}}

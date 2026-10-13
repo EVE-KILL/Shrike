@@ -1,0 +1,335 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ advancedSearchPage(view advancedSearchView) {
+	<div class="go-utility-page advanced-search" data-advanced-search data-controller="advanced-search saved-searches" data-action="click->advanced-search#click input->advanced-search#input change->advanced-search#change keydown->advanced-search#keyboard pointerdown@document->advanced-search#outside popstate@window->advanced-search#popstate pagehide@window->advanced-search#hide pageshow@window->advanced-search#show saved-searches:current->advanced-search#savedCurrent saved-searches:load->advanced-search#savedLoad click->saved-searches#click input->saved-searches#input submit->saved-searches#save pointerdown@document->saved-searches#outside keydown->saved-searches#keyboard resize@window->saved-searches#layout scroll@window->saved-searches#layout focus@window->saved-searches#identity pagehide@window->saved-searches#hide pageshow@window->saved-searches#show">
+		@templ.JSONScript("advanced-search-state", view.State).WithType("application/json")
+		@templ.JSONScript("advanced-search-options", map[string]any{"groups": advancedOptionGroups, "tech": advancedTechOptions, "time": advancedTimeOptions, "sort": advancedSortOptions, "labels": view.Labels}).WithType("application/json")
+		<header class="page-header hero-surface glass-panel relative overflow-hidden p-5 mb-4">
+			<div class="relative flex flex-wrap items-start justify-between gap-4">
+				<div class="flex min-w-0 items-start gap-3">
+					<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-400/15 bg-blue-500/10 text-lg text-blue-400">
+						@icon("search-code")
+					</span>
+					<div class="min-w-0"><p class="text-fine font-bold uppercase tracking-[0.16em] text-blue-400/70">Build a killmail query</p><h1 class="text-xl font-bold text-white">Advanced Search</h1><div class="mt-1.5 max-w-3xl text-sm leading-relaxed text-gray-500">Build a query from pilots, corporations, alliances, ships, items and space, then narrow it by time, ISK and engagement size. Searches can be linked or saved.</div></div>
+				</div>
+				<div class="relative shrink-0">
+					<div class="flex items-center gap-2 flex-shrink-0">
+						<button type="button" data-advanced-copy hidden?={ !advancedHasFilters(view.State.Filters) } class="px-2.5 py-1.5 text-xs font-medium rounded border transition-colors bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-blue-500/[0.08]">
+							@icon("link")
+							<span>Copy Link</span>
+						</button>@savedSearches()
+					</div>
+				</div>
+			</div>
+		</header>
+		<div data-advanced-search-box class="relative mb-4">
+			<div class="glass-panel flex items-center gap-2 px-3 py-2.5 focus-within:border-blue-500/40 transition-colors">
+				<span class="text-base text-gray-500 flex-shrink-0">
+					@icon("search")
+				</span><input type="search" data-advanced-query aria-label="Search entities, ships, items and locations" autocomplete="off" placeholder="Search for pilots, corporations, alliances, ships, items, systems, regions..." class="flex-1 min-w-0 bg-transparent text-white text-sm outline-none placeholder-gray-600"/>
+				<span data-advanced-search-spinner hidden class="text-base text-gray-500 animate-spin">
+					@icon("loader-2")
+				</span>
+			</div>
+			<div data-advanced-suggestions hidden class="absolute z-50 mt-1 w-full rounded-lg bg-black/90 backdrop-blur-xl border border-white/[0.08] shadow-2xl max-h-80 overflow-y-auto"></div>
+		</div>
+		<p data-advanced-notice hidden role="status" class="mb-3 text-sm text-red-400"></p>
+		<div data-advanced-tags class="flex flex-wrap gap-1.5 mb-4" hidden?={ len(view.State.Filters.Entities["victim"])+len(view.State.Filters.Entities["attacker"])+len(view.State.Filters.Entities["both"])+len(view.State.Filters.Items)==0 && advancedLocationLabel(view.State.Filters.Location)=="" }>
+			for _,role:=range []string{"victim","attacker","both"} {
+				for index,entity:=range view.State.Filters.Entities[role] {
+					@advancedEntityTag(role, index, entity)
+				}
+			}
+			for index,item:=range view.State.Filters.Items {
+				@advancedItemTag(index, item)
+			}
+			if label:=advancedLocationLabel(view.State.Filters.Location);label!="" {
+				@advancedLocationTag(label)
+			}
+		</div>
+		<div data-advanced-applied class="flex flex-wrap items-center gap-1.5 mb-3" hidden?={ len(advancedActiveChips(view))==0 }>
+			<span class="text-fine text-gray-600 font-medium uppercase tracking-wider mr-0.5">Applied</span>
+			for _,chip:=range advancedActiveChips(view) {
+				@advancedAppliedChip(chip)
+			}
+		</div>
+		<div class="flex items-center justify-between gap-3 mb-2">
+			<button type="button" data-advanced-collapse aria-expanded="true" class="flex items-center gap-1.5 text-fine font-bold uppercase tracking-wider text-gray-500 hover:text-blue-400 transition-colors cursor-pointer">
+				@icon("chevron-down")
+				<span>Filters</span><span data-advanced-collapse-count hidden class="text-blue-400/70 normal-case tracking-normal"></span>
+			</button><button type="button" data-advanced-clear hidden?={ !advancedHasFilters(view.State.Filters) } class="px-2.5 py-1 text-fine font-medium rounded border transition-colors bg-white/[0.04] text-gray-500 border-white/[0.08] hover:bg-blue-500/[0.08] cursor-pointer">Clear All</button>
+		</div>
+		<div data-advanced-panels class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
+			<div class="glass-panel p-3">
+				<label for="label-filter" class="block text-fine font-bold uppercase tracking-wider text-gray-600 mb-2">Killmail Label</label>
+				<select id="label-filter" data-advanced-label class="w-full px-2 py-1.5 text-xs bg-[#181818] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none">
+					<option value="">Any label</option>
+					for _,category:=range advancedLabelCategories(view.Labels) {
+						<optgroup label={ category }>
+							for _,label:=range view.Labels {
+								if label.Category==category {
+									<option value={ label.ID } selected?={ view.State.Filters.Label==label.ID }>
+										{ label.Name }
+									</option>
+								}
+							}
+						</optgroup>
+					}
+				</select>
+			</div>
+			for _,group:=range advancedOptionGroups {
+				<div class="glass-panel p-3">
+					<div class="text-fine font-bold uppercase tracking-wider text-gray-600 mb-2">
+						{ group.Label }
+					</div>
+					<div class={ "flex flex-wrap gap-1 " + killBoolClass(group.Key == "iskValue", "mb-2", "") }>
+						for _,option:=range group.Options {
+							@advancedOptionButton(group.Key, option, killBoolClass(group.Key == "security", strconv.FormatBool(member(option.Value, view.State.Filters.Location.SecurityTypes...)), strconv.FormatBool(advancedChoice(view.State.Filters, group.Key) == option.Value)) == "true")
+						}
+					</div>
+					if group.Key=="iskValue" {
+						<div class="grid grid-cols-2 gap-2"><div><label for="advanced-isk-min" class="block text-fine text-gray-500 mb-1">Min</label><input id="advanced-isk-min" data-advanced-isk="iskMin" value={ string(view.State.Filters.ISKMin) } type="text" placeholder="e.g. 500m" class="w-full px-2 py-1 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none"/></div><div><label for="advanced-isk-max" class="block text-fine text-gray-500 mb-1">Max</label><input id="advanced-isk-max" data-advanced-isk="iskMax" value={ string(view.State.Filters.ISKMax) } type="text" placeholder="e.g. 5b" class="w-full px-2 py-1 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none"/></div></div>
+					}
+					if group.Key=="shipCategory" {
+						<div class="text-fine font-bold uppercase tracking-wider text-gray-600 mt-3 mb-2">Tech Level</div>
+						<div class="flex flex-wrap gap-1">
+							for _,option:=range advancedTechOptions {
+								@advancedOptionButton("techLevel", option, view.State.Filters.TechLevel == option.Value)
+							}
+						</div>
+					}
+				</div>
+			}
+			<div class="glass-panel p-3">
+				<div class="text-fine font-bold uppercase tracking-wider text-gray-600 mb-2">Time Range</div>
+				<div class="flex flex-wrap gap-1 mb-2">
+					for _,option:=range advancedTimeOptions {
+						@advancedOptionButton("timePreset", option, advancedChoice(view.State.Filters, "timePreset") == option.Value)
+					}
+				</div>
+				<div class="grid grid-cols-2 gap-2">
+					<div>
+						<label class="block text-fine text-gray-500 mb-1">From <span class="text-gray-700">(EVE)</span></label>@dateTimePicker(dateTimePickerOptions{Name: "advanced_from", Value: view.State.Filters.TimeRange.From, Placeholder: "From", Compact: true})
+					</div>
+					<div>
+						<label class="block text-fine text-gray-500 mb-1">To <span class="text-gray-700">(EVE)</span></label>@dateTimePicker(dateTimePickerOptions{Name: "advanced_to", Value: view.State.Filters.TimeRange.To, Placeholder: "To", Compact: true})
+					</div>
+				</div>
+			</div>
+		</div>
+		<div data-advanced-sort class="flex flex-wrap items-center gap-3 mb-4">
+			<div class="flex flex-wrap items-center gap-1">
+				<span class="text-fine text-gray-500 mr-1">Sort:</span>
+				for _,option:=range advancedSortOptions {
+					@advancedOptionButton("sortField", option, view.State.Filters.Sort.Field == option.Value)
+				}
+			</div>
+			<div class="flex items-center gap-1">
+				for _,direction:=range []string{"desc","asc"} {
+					<button type="button" data-advanced-option="sortDirection" data-value={ direction } aria-label={ killBoolClass(direction == "desc", "Sort descending", "Sort ascending") } aria-pressed={ strconv.FormatBool(view.State.Filters.Sort.Direction == direction) } class={ "px-2 py-1 text-xs font-medium rounded border transition-colors " + advancedButtonClass(view.State.Filters.Sort.Direction == direction) }>
+						@icon(killBoolClass(direction == "desc", "arrow-down", "arrow-up"))
+					</button>
+				}
+			</div>
+			<div class="flex items-center gap-1 ml-auto">
+				for _,option:=range []advancedOption{{"kills","Killmails"},{"fits","Fits"}} {
+					<button type="button" data-advanced-view={ option.Value } aria-pressed={ strconv.FormatBool(view.State.View == option.Value) } class={ "px-3 py-1 text-xs font-medium border transition-colors " + killBoolClass(option.Value == "kills", "rounded-l-lg", "rounded-r-lg border-l-0") + " " + killBoolClass(view.State.View == option.Value, "bg-blue-500/20 text-blue-400 border-blue-400/40", "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:text-blue-400") }>
+						@icon(killBoolClass(option.Value == "kills", "list", "wrench"))
+						<span>
+							{ option.Label }
+						</span>
+					</button>
+				}
+			</div>
+		</div>
+		<div data-advanced-results aria-live="polite">
+			if view.Error!="" {
+				@advancedSearchError(view.Error)
+			} else {
+				@advancedSearchResults(view)
+			}
+		</div>
+		@advancedSearchTemplates()
+		@savedSearchPanel()
+	</div>
+}
+
+templ advancedOptionButton(key string, option advancedOption, active bool) {
+	<button type="button" data-advanced-option={ key } data-value={ option.Value } aria-pressed={ strconv.FormatBool(active) } class={ "px-2 py-1 text-xs font-medium rounded border transition-colors " + advancedButtonClass(active) }>
+		{ option.Label }
+	</button>
+}
+
+templ advancedEntityTag(role string, index int, entity advancedSearchEntity) {
+	<div data-advanced-entity-tag class={ "inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs font-medium " + advancedRoleColor(role, entity.Exclude) }>
+		<img data-tag-image src={ advancedEntityImage(entity.Type, entity.ID) } alt="" class="w-4 h-4 rounded" width="16" height="16" loading="lazy" hidden?={ advancedEntityImage(entity.Type,entity.ID)=="" }/>
+		<span data-tag-icon hidden?={ advancedEntityImage(entity.Type,entity.ID)!="" }>
+			@icon("ship")
+		</span>
+		<span data-tag-name>
+			{ entity.Name }
+		</span>
+		<span data-tag-label class="opacity-60 capitalize text-fine">
+			{ advancedEntityLabel(role,entity) }
+		</span>
+		<button type="button" data-advanced-remove-entity={ role } data-index={ strconv.Itoa(index) } aria-label={ "Remove " + entity.Name + " " + advancedEntityLabel(role, entity) } class="ml-0.5 opacity-60 hover:opacity-100">
+			@icon("x")
+		</button>
+	</div>
+}
+
+templ advancedItemTag(index int, item advancedSearchItem) {
+	<div data-advanced-item-tag class={ "inline-flex items-center gap-1 px-2 py-1 rounded border text-xs font-medium " + killBoolClass(item.GroupID != 0, "bg-cyan-500/20 text-cyan-400 border-cyan-500/30", "bg-purple-500/20 text-purple-400 border-purple-500/30") }>
+		<img data-tag-image src={ fmt.Sprintf("/images/types/%d/icon?size=32", item.TypeID) } alt="" class="w-4 h-4 rounded" width="16" height="16" loading="lazy" hidden?={ item.TypeID==0 }/>
+		<span data-tag-icon class="text-fine ml-0.5" hidden?={ item.TypeID!=0 }>
+			@icon("layers")
+		</span>
+		<span data-tag-name class="ml-0.5">
+			{ item.Name }
+		</span>
+		<button type="button" data-advanced-item-slot={ strconv.Itoa(index) } title={ "Slot scope: " + item.Slot } class="ml-1 px-1.5 py-0.5 rounded bg-black/25 text-fine opacity-80 hover:opacity-100 hover:bg-black/40 transition-colors">
+			{ item.Slot }
+		</button>
+		<button type="button" data-advanced-item-side={ strconv.Itoa(index) } title={ "Side: " + item.Side } class="px-1.5 py-0.5 rounded bg-black/25 text-fine opacity-80 hover:opacity-100 hover:bg-black/40 transition-colors">
+			{ item.Side }
+		</button>
+		<button type="button" data-advanced-remove-item={ strconv.Itoa(index) } aria-label={ "Remove " + item.Name } class="ml-0.5 opacity-60 hover:opacity-100">
+			@icon("x")
+		</button>
+	</div>
+}
+
+templ advancedLocationTag(label string) {
+	<div class="inline-flex items-center gap-1.5 px-2 py-1 rounded border text-xs font-medium bg-amber-500/20 text-amber-400 border-amber-500/30">
+		@icon("map-pin")
+		<span data-tag-name>
+			{ label }
+		</span>
+		<button type="button" data-advanced-clear-location aria-label="Remove location" class="ml-0.5 opacity-60 hover:opacity-100">
+			@icon("x")
+		</button>
+	</div>
+}
+
+templ advancedAppliedChip(chip advancedChip) {
+	<button type="button" data-advanced-remove-chip={ chip.Key } title={ "Remove " + chip.Group + ": " + chip.Label } class="group inline-flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-md border border-blue-500/30 bg-blue-500/[0.12] text-xs text-blue-300 hover:bg-blue-500/20 transition-colors cursor-pointer">
+		<span data-chip-group class="text-blue-400/60 text-fine uppercase tracking-wider">
+			{ chip.Group }
+		</span>
+		<span data-chip-label class="font-medium">
+			{ chip.Label }
+		</span>
+		<span class="text-fine text-blue-400/50 group-hover:text-blue-300 transition-colors">
+			@icon("x")
+		</span>
+	</button>
+}
+
+templ advancedSearchError(message string) {
+	<div data-advanced-result-content role="alert" class="glass-panel p-8 text-center text-sm text-red-400">
+		{ message }
+	</div>
+}
+
+templ advancedSearchResults(view advancedSearchView) {
+	<div data-advanced-result-content data-view={ view.State.View }>
+		if !view.State.ShowResults {
+			<div class="glass-panel py-16 text-center">
+				<span class="text-3xl text-gray-600 mb-3">
+					@icon("search")
+				</span>
+				<div class="text-sm text-gray-500">Add filters above to find killmails</div>
+				<div class="text-xs text-gray-600 mt-1">Use the search bar to add pilots, corps, alliances, ships, or items</div>
+			</div>
+		} else if view.State.View=="kills" {
+			if view.State.Hash!="" {
+				<div class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+					<button type="button" data-advanced-clear-drilldown class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+						@icon("arrow-left")
+						<span>Back to fits</span>
+					</button><span class="text-xs text-gray-400">All killmails with <span data-advanced-drilldown-name class="text-white font-medium"></span> { view.State.HashMode } fit</span>
+				</div>
+			}
+			@killList(api.KilllistPage{Kills: view.Result.Kills, HasMore: view.Result.HasMore, Cursor: view.Result.Cursor}, killListOptions{Kind: "advancedsearch", Page: view.Page, Limit: view.Limit, Filtered: true})
+		} else {
+			if view.State.Hash!="" {
+				<div class="mb-3 flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2">
+					<button type="button" data-advanced-clear-drilldown class="inline-flex items-center gap-1 text-xs font-medium text-blue-400 transition-colors hover:text-blue-300">
+						@icon("x")
+						<span>Clear family filter</span>
+					</button>
+					<span class="text-xs text-gray-400">
+						Showing { killBoolClass(view.State.HashMode=="family","variants from one fitting family","one exact fitting") }
+					</span>
+				</div>
+			}
+			<div class="flex items-center gap-1 mb-3">
+				<span class="text-fine text-gray-500 mr-1">Group:</span>
+				for _,option:=range []advancedOption{{"family","Family"},{"exact","Exact"},{"none","All"}} {
+					<button type="button" data-advanced-dedup={ option.Value } aria-pressed={ strconv.FormatBool(view.State.Dedup == option.Value) } class={ "px-2 py-1 text-xs font-medium rounded border transition-colors " + advancedButtonClass(view.State.Dedup == option.Value) }>
+						{ option.Label }
+					</button>
+				}
+				<span class="text-fine text-gray-600 ml-2">
+					{ advancedDedupLabel(view.State.Dedup) }
+				</span>
+			</div>
+			if len(view.Result.Fits)==0 {
+				<div class="glass-panel py-12 text-center">
+					<span class="text-2xl text-gray-600 mb-2">
+						@icon("wrench")
+					</span>
+					<div class="text-sm text-gray-500">No matching fits found</div>
+				</div>
+			} else {
+				<div data-advanced-fit-grid class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+					for _,fit:=range view.Result.Fits {
+						@fitPreviewCard(fit)
+					}
+				</div>
+				if view.Result.HasMore {
+					<div class="mt-4 text-center"><button type="button" data-advanced-more-fits data-cursor={ cursorString(view.Result.Cursor) } class="px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors">Load more fits</button></div>
+				}
+			}
+		}
+	</div>
+}
+
+templ advancedSearchTemplates() {
+	<template id="advanced-entity-template">
+		@advancedEntityTag("victim", 0, advancedSearchEntity{})
+	</template>
+	<template id="advanced-item-template">
+		@advancedItemTag(0, advancedSearchItem{Slot: "any", Side: "victim"})
+	</template>
+	<template id="advanced-location-template">
+		@advancedLocationTag("")
+	</template>
+	<template id="advanced-chip-template">
+		@advancedAppliedChip(advancedChip{})
+	</template>
+	<template id="advanced-suggestion-template">
+		<div class="border-b border-white/[0.04] last:border-b-0">
+			<div class="px-3 py-2.5">
+				<div class="flex items-center justify-between gap-3">
+					<div class="flex items-center gap-2.5 min-w-0">
+						<img data-hit-image alt="" width="28" height="28" class="w-7 h-7 rounded flex-shrink-0" loading="lazy" hidden/>
+						<div data-hit-icon class="w-7 h-7 rounded bg-white/[0.06] flex items-center justify-center flex-shrink-0">
+							<span data-hit-symbol class="text-xs text-gray-500">
+								@icon("map-pin")
+							</span>
+						</div>
+						<div class="min-w-0"><div data-hit-name class="text-sm text-gray-200 truncate"></div><div class="text-fine text-gray-500 capitalize"><span data-hit-type></span><span data-hit-ticker class="text-gray-600 font-mono ml-1" hidden></span></div></div>
+					</div>
+					<div data-hit-actions class="flex gap-1 flex-shrink-0"></div>
+				</div>
+			</div>
+		</div>
+	</template>
+}

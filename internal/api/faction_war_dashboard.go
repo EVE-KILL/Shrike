@@ -1013,6 +1013,8 @@ func factionWarMembersQuery(
 	args = append(args, options.Limit)
 	limitPlaceholder := len(args)
 
+	// OFFSET 0 retains the per-killmail lookup boundary. The unrestricted
+	// join chose a full attacker-table scan even for this small recent slice.
 	query := fmt.Sprintf(`
 		WITH att AS MATERIALIZED (
 			SELECT a.character_id,
@@ -1021,7 +1023,14 @@ func factionWarMembersQuery(
 			       k.killmail_id,
 			       k.total_value
 			FROM killmails k
-			JOIN killmail_attackers a ON a.killmail_id = k.killmail_id
+			JOIN LATERAL (
+				SELECT character_id, faction_id, ship_type_id
+				FROM killmail_attackers
+				WHERE killmail_id = k.killmail_id
+				  AND character_id IS NOT NULL
+				  AND faction_id IN ($1, $2)
+				OFFSET 0
+			) a ON TRUE
 			WHERE k.victim_faction_id IN ($1, $2)
 			  AND k.killmail_time >= $3
 			  AND a.character_id IS NOT NULL
@@ -1196,7 +1205,13 @@ func factionWarIntelHandler(opts Options) legacyHandler {
 					       t.group_id, g.name AS group_name,
 					       COUNT(*)::int AS count
 					FROM killmails k
-					JOIN killmail_attackers a ON a.killmail_id = k.killmail_id
+					JOIN LATERAL (
+						SELECT ship_type_id
+						FROM killmail_attackers
+						WHERE killmail_id = k.killmail_id
+						  AND ship_type_id IS NOT NULL
+						OFFSET 0
+					) a ON TRUE
 					LEFT JOIN inv_types t ON t.type_id = a.ship_type_id
 					LEFT JOIN inv_groups g ON g.group_id = t.group_id
 					WHERE k.victim_faction_id IN ($1, $2)

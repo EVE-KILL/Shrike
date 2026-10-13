@@ -1,0 +1,4 @@
+addTo:
+  - effect: adaptiveArmorHardener
+    rules:
+      - {mulFirst: armorEmDamageResonance, domain: shipID}

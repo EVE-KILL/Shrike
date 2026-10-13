@@ -1,0 +1,22 @@
+.fits-catalog [hidden]{display:none!important}
+.fits-catalog .page-header{margin-bottom:24px}
+.fits-catalog .icon{width:14px;height:14px}
+.fits-catalog [data-fits-part="stats"] .h-8 .icon{width:16px;height:16px}
+.fits-catalog-empty-icon .icon{width:40px;height:40px}
+.fits-catalog-heading{gap:12px}
+.fits-catalog-heading [data-fits-modes]{flex:none}
+.fits-catalog-number{border:1px solid color-mix(in srgb,var(--catalog-color) 15%,transparent);background:color-mix(in srgb,var(--catalog-color) 6%,transparent);color:var(--catalog-light)}
+.fits-catalog-eyebrow{color:color-mix(in srgb,var(--catalog-color) 80%,transparent)}
+.fits-catalog [data-tone="amber"]{--catalog-color:#fbbf24;--catalog-light:#fcd34d}
+.fits-catalog [data-tone="purple"]{--catalog-color:#c084fc;--catalog-light:#d8b4fe}
+.fits-catalog [data-tone="blue"]{--catalog-color:var(--color-brand-primary);--catalog-light:#93c5fd}
+.fits-catalog [data-tone="cyan"]{--catalog-color:#22d3ee;--catalog-light:#67e8f9}
+.fits-catalog [data-tone="cyan"] .fits-catalog-eyebrow{color:color-mix(in srgb,var(--color-brand-primary) 80%,transparent)}
+.fits-catalog [data-fits-modes] button{color:#6b7280}
+.fits-catalog [data-fits-modes] button:hover{background:#ffffff0a;color:#d1d5db}
+.fits-catalog [data-fits-modes="flavor"] button.active{background:#fbbf241a;color:#fcd34d}
+.fits-catalog [data-fits-modes="doctrines"] button.active{background:#c084fc26;color:#e9d5ff;box-shadow:0 1px 2px #0001}
+.fits-catalog [data-fits-part][aria-busy="true"]{opacity:.65}
+.fits-catalog .fit-rating-star .icon{width:14px;height:14px}
+.fits-catalog a{text-decoration:none}
+@media(max-width:639px){.fits-catalog-heading{flex-wrap:wrap;align-items:flex-start}.fits-catalog-heading [data-fits-modes]{max-width:100%}}

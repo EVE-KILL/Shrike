@@ -1,0 +1,213 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ statisticsContent(view statisticsView) {
+	<div class="go-utility-page statistics-page" data-statistics data-stats-filter={ view.Filter } data-stats-period={ statisticsPeriodValue(view.Days) } data-controller="statistics" data-action="click->statistics#click popstate@window->statistics#history pagehide@window->statistics#hide pageshow@window->statistics#show">
+		@utilityPageHeader("Statistics", "New Eden by the numbers", "chart-no-axes-column", "", statisticsDescription(view)) {
+			if view.Site.Domain!=nil {
+				<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-fine font-medium text-indigo-300 flex-shrink-0" title="Scoped to the entities this killboard tracks">
+					<span class="text-fine">
+						@icon("shield")
+					</span>This killboard only
+				</span>
+			}
+		}
+		<div class="flex flex-wrap items-center gap-1.5 mb-3" role="group" aria-label="Statistics section">
+			<button type="button" data-stats-filter-button="all" aria-pressed={ strconv.FormatBool(view.Filter == "all") } class={ "px-3 py-1.5 text-xs rounded-md font-medium border transition-colors cursor-pointer " + statisticsFilterClass(view.Filter == "all") }>All</button>
+			for _,section:=range statisticsSections {
+				if view.Site.Domain==nil || section.Period {
+					<button type="button" data-stats-filter-button={ section.Key } aria-pressed={ strconv.FormatBool(view.Filter == section.Key) } class={ "px-3 py-1.5 text-xs rounded-md font-medium border transition-colors cursor-pointer " + statisticsFilterClass(view.Filter == section.Key) }>{ section.Label }</button>
+				}
+			}
+		</div>
+		<div data-stats-jumps hidden?={ view.Filter!="all" } class="flex flex-wrap items-center gap-1.5 mb-3">
+			<span class="text-fine text-gray-600 font-medium uppercase tracking-wider mr-0.5">Jump to</span>
+			for _,section:=range statisticsSections {
+				if view.Site.Domain==nil || section.Period {
+					<a href={ "#stats-" + section.Key } data-stats-jump={ section.Key } class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-fine font-medium text-gray-500 bg-white/[0.02] border border-white/[0.06] hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors cursor-pointer">
+						<span class="text-fine">
+							@icon(section.Icon)
+						</span>{ section.Label }
+					</a>
+				}
+			}
+		</div>
+		<div data-stats-period-controls hidden?={ !statisticsShowPeriod(view.Filter) } class="flex flex-wrap items-center gap-2 mb-4" role="group" aria-label="Statistics period">
+			<span class="text-fine text-gray-500 uppercase tracking-wider">Period</span>
+			<div class="flex flex-wrap rounded-lg border border-white/[0.08] overflow-hidden">
+				for _,period:=range statisticsPeriods {
+					<button type="button" data-stats-period-button={ statisticsPeriodValue(period.Days) } aria-pressed={ strconv.FormatBool(view.Days == period.Days) } class={ "px-2.5 py-1.5 text-xs font-medium tabular-nums transition-colors cursor-pointer " + statisticsPeriodClass(view.Days == period.Days) }>{ period.Label }</button>
+				}
+			</div>
+		</div>
+		for _,section:=range statisticsSections {
+			if section.Period {
+				<section id={ "stats-" + section.Key } data-stats-section={ section.Key } data-stats-period-section hidden?={ !statisticsShow(view.Filter,section.Key) } class="mb-6 scroll-mt-4">
+					@statisticsSectionHeading(section, view.PeriodLabel)
+					<div class={ statisticsGrid(section.Key) }>
+						for _,card:=range statisticsSectionCards(view.Cards,section.Key) {
+							@statisticsCard(card)
+						}
+					</div>
+				</section>
+			}
+		}
+		if view.Site.Domain==nil {
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+				<div data-stats-separator hidden?={ view.Filter!="all" } class="md:col-span-2 lg:col-span-3 border-t border-white/[0.06] my-2"></div>
+				for _,section:=range statisticsSections {
+					if !section.Period {
+						<div data-stats-section={ section.Key } hidden?={ !statisticsShow(view.Filter,section.Key) } class="contents">
+							<div id={ "stats-" + section.Key } class="md:col-span-2 lg:col-span-3 scroll-mt-4">
+								@statisticsSectionHeading(section, "")
+							</div>
+							for _,card:=range statisticsSectionCards(view.Cards,section.Key) {
+								@statisticsCard(card)
+							}
+						</div>
+					}
+				}
+			</div>
+		}
+		<template data-stats-period-placeholder>
+			@statisticsCardPlaceholder(true)
+		</template>
+		<template data-stats-population-placeholder>
+			@statisticsCardPlaceholder(false)
+		</template>
+		<template data-stats-error-template><div role="alert" class="py-4 text-center text-fine text-gray-500"><p>Could not load this table.</p><button type="button" data-stats-retry class="mt-2 text-xs text-blue-400 hover:underline cursor-pointer">Retry</button></div></template>
+	</div>
+}
+
+templ statisticsDescription(view statisticsView) {
+	if view.Site.Domain!=nil {
+		{ "Leaderboards for "+view.Name+" — kills, ISK and activity for this killboard's pilots, corporations and alliances over the period you pick. " }
+	} else {
+		{ "EVE Online PvP leaderboards — who kills the most, who loses the most, and where. Period tables refresh with the stats rollups; population rankings track the whole cluster. " }
+	}
+	{ "Read the " }<a href="/faq" class="text-blue-400 hover:underline">FAQ on combat points and rankings</a>{ " for how scores are calculated." }
+}
+
+templ statisticsSectionHeading(section statisticsSection, period string) {
+	<div class={ "flex items-center gap-2.5 " + killBoolClass(section.Period, "mb-2.5", "mb-0.5") }>
+		<span class="text-sm text-blue-400/70 flex-shrink-0">
+			@icon(section.Icon)
+		</span>
+		<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-400">{ section.Label }</h2><span class="text-fine text-gray-600 truncate">{ section.Blurb }</span>
+		if section.Period {
+			<span data-stats-period-label class="ml-auto text-fine text-gray-600 tabular-nums flex-shrink-0">{ period }</span>
+		}
+	</div>
+}
+
+templ statisticsCard(card statisticsCardView) {
+	<div class="glass-panel p-3" data-stats-card={ card.Spec.Key } data-stats-kind={ card.Spec.Kind } data-stats-loaded={ strconv.FormatBool(!card.Pending) }>
+		<div class={ "px-1 pb-2 mb-2 text-fine font-bold uppercase tracking-[0.15em] border-b border-white/[0.08] " + card.Spec.Color + killBoolClass(card.Spec.Icon != "", " flex items-center gap-2", "") }>
+			if card.Spec.Icon!="" {
+				<span class="text-fine text-gray-600 flex-shrink-0">
+					@icon(card.Spec.Icon)
+				</span>
+			}
+			<span class="block min-w-0 truncate">{ card.Spec.Title }</span>
+		</div>
+		<div data-stats-card-content aria-busy={ strconv.FormatBool(card.Pending) }>
+			if card.Pending {
+				@statisticsCardPlaceholder(card.Spec.Kind == "period")
+			} else {
+				@statisticsCardRows(card)
+			}
+		</div>
+	</div>
+}
+
+templ statisticsCardPlaceholder(period bool) {
+	<div data-stats-placeholder aria-label="Loading statistics" class={ killBoolClass(period, "space-y-1.5 py-1 stats-period-skeleton", "flex items-center justify-center py-6 stats-population-skeleton") }>
+		if period {
+			for range 10 {
+				<div class="flex items-center gap-2 px-2" aria-hidden="true"><div class="w-6 h-6 rounded bg-white/[0.04] skeleton-animate flex-shrink-0"></div><div class="h-3 rounded bg-white/[0.04] skeleton-animate flex-1"></div></div>
+			}
+		} else {
+			<span class="w-4 h-4 text-gray-500 animate-spin">
+				@icon("loader-2")
+			</span>
+		}
+	</div>
+}
+
+templ statisticsCardRows(card statisticsCardView) {
+	<div data-stats-card-loaded={ card.Spec.Key } data-stats-card-period={ statisticsCardSlot(card) } class="space-y-px">
+		for index,entry:=range card.Entries {
+			if card.Spec.Kind=="period" {
+				<a href={ rankingEntityPath(entry.Type, entry.ID) } class="flex items-center gap-2 px-2 py-1 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors" data-stats-entity={ strconv.FormatInt(entry.ID, 10) }>
+					<span class={ "flex-shrink-0 w-4 text-fine text-right tabular-nums " + killBoolClass(index == 0, "text-amber-300 font-bold", killBoolClass(index < 3, "text-gray-400", "text-gray-600")) }>{ strconv.Itoa(index+1) }</span>
+					if card.Spec.Image!="" {
+						<img src={ rankingEntityImage(card.Spec.Image, entry.ID, 64) } width="24" height="24" class="w-6 h-6 rounded flex-shrink-0 bg-gray-900" loading="lazy" alt=""/>
+					}
+					<span class="flex-1 text-xs truncate">{ entry.Name }</span>
+					if card.Spec.Format=="isk" {
+						<span class="text-xs text-isk/70 tabular-nums">{ statisticsISK(entry) }</span>
+					} else {
+						<span class="text-xs text-gray-500 tabular-nums">{ statisticsNumber(entry.Count) }</span>
+					}
+				</a>
+			} else {
+				@statisticsPopulationRow(card.Spec, entry, index)
+			}
+		}
+		if len(card.Entries)==0 && card.Spec.Kind!="largest" {
+			<div class="py-4 text-center text-fine text-gray-600">{ killBoolClass(card.Spec.Kind=="period","No activity in this period","No data") }</div>
+		}
+	</div>
+	if card.Spec.Kind=="largest" {
+		<div class="flex justify-end gap-2 px-2 pt-1 text-fine text-gray-600"><span>1d</span><span>7d</span><span>30d</span></div>
+	}
+}
+
+templ statisticsPopulationRow(spec statisticsCardSpec, entry api.StatisticsEntry, index int) {
+	<a href={ rankingEntityPath(spec.Image, entry.ID) } class="flex items-center gap-2 px-2 py-1.5 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06] transition-colors" data-stats-entity={ strconv.FormatInt(entry.ID, 10) }>
+		<span class="flex-shrink-0 w-4 text-fine text-gray-600 text-right">{ strconv.Itoa(index+1) }</span><img src={ rankingEntityImage(spec.Image, entry.ID, 64) } width="24" height="24" class="w-6 h-6 rounded flex-shrink-0 bg-gray-900" loading="lazy" alt=""/>
+		<div class="flex-1 min-w-0">
+			<div class="text-xs truncate">{ entry.Name }</div>
+			switch spec.Kind {
+				case "largest","security","growth":
+					<div class="text-fine text-gray-500 tabular-nums">{ fullNumber(float64(entry.Members)) } members</div>
+				case "newest":
+					if entry.Members!=0 {
+						<div class="text-fine text-gray-500 tabular-nums">{ fullNumber(float64(entry.Members)) } members</div>
+					} else {
+						<div class="text-fine text-gray-600">&#160;</div>
+					}
+				case "achievements":
+					if spec.Image!="character" {
+						<div class="text-fine text-gray-500 tabular-nums">{ statisticsRaw(entry.AveragePoints) } avg/member</div>
+					} else {
+						<div class="text-fine text-gray-600">&#160;</div>
+					}
+				default:
+					<div class="text-fine text-gray-600">&#160;</div>
+			}
+		</div>
+		switch spec.Kind {
+			case "largest":
+				<div class="flex gap-2 text-fine tabular-nums flex-shrink-0">
+					for _,delta:=range []int64{entry.Delta1,entry.Delta7,entry.Delta30} {
+						<span class={ statisticsDeltaColor(delta) }>{ statisticsDelta(delta) }</span>
+					}
+				</div>
+			case "security":
+				<div class="flex-shrink-0 text-right"><div class={ "text-xs tabular-nums " + statisticsSecurityColor(entry.AverageSec) }>{ statisticsRaw(entry.AverageSec) }</div><div class="text-fine text-gray-600 tabular-nums">{ statisticsRaw(entry.WeightedScore) }</div></div>
+			case "security-character":
+				<span class={ "text-xs tabular-nums " + statisticsSecurityColor(entry.Security) }>{ statisticsRaw(entry.Security) }</span>
+			case "growth":
+				<span class={ "text-xs tabular-nums font-medium flex-shrink-0 " + statisticsDeltaColor(entry.Delta) }>{ statisticsDelta(entry.Delta) }</span>
+			case "newest":
+				<span class="text-fine text-gray-500 flex-shrink-0">{ statisticsTimeAgo(entry.Founded) }</span>
+			case "achievements":
+				<span class="text-xs text-purple-400 tabular-nums font-medium flex-shrink-0">{ statisticsNumber(entry.TotalPoints) }</span>
+		}
+	</a>
+}

@@ -44,10 +44,14 @@ func applicationOperationResponseSchema(operationID string) *huma.Schema {
 	// Account preferences, boards, descriptions, ESI, and notifications.
 	case "account-preferences", "user-preferences-compat":
 		return accountPreferencesSchema()
-	case "account-preferences-update", "user-preferences-update-compat":
+	case "account-preferences-update":
 		return responseSchema(map[string]*huma.Schema{
 			"preferences": accountPreferencesSchema(),
 		}, "preferences")
+	case "user-preferences-update-compat":
+		return responseSchema(map[string]*huma.Schema{
+			"defaultTabs": {Type: "object", AdditionalProperties: stringSchema()},
+		}, "defaultTabs")
 	case "user-theme-update-compat":
 		return responseSchema(map[string]*huma.Schema{
 			"theme": openJSONObjectSchema("User-selected theme settings."),
@@ -924,19 +928,25 @@ func esiMetricsSchema() *huma.Schema {
 
 func esiLogRowSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
-		"id":                  intSchema(),
-		"endpoint":            stringSchema(),
-		"method":              stringSchema(),
-		"status_code":         nullable(intSchema()),
-		"success":             boolSchema(),
-		"error_message":       nullable(stringSchema()),
-		"items_returned":      nullable(intSchema()),
-		"new_items":           nullable(intSchema()),
-		"source":              stringSchema(),
-		"request_duration_ms": nullable(intSchema()),
-		"created_at":          timestampSchema(),
-		"endpoint_type":       stringSchema(),
-		"endpoint_action":     stringSchema(),
+		"id":                   intSchema(),
+		"endpoint":             stringSchema(),
+		"method":               stringSchema(),
+		"status_code":          nullable(intSchema()),
+		"success":              boolSchema(),
+		"error_message":        nullable(stringSchema()),
+		"items_returned":       nullable(intSchema()),
+		"new_items":            nullable(intSchema()),
+		"source":               stringSchema(),
+		"request_duration_ms":  nullable(intSchema()),
+		"created_at":           timestampSchema(),
+		"endpoint_type":        stringSchema(),
+		"endpoint_action":      stringSchema(),
+		"endpoint_entity_id":   nullable(intSchema()),
+		"endpoint_entity_name": nullable(stringSchema()),
+		"character_id":         nullable(intSchema()),
+		"character_name":       nullable(stringSchema()),
+		"new_item_ids":         nullable(arraySchema(intSchema())),
+		"stored_item_ids":      nullable(arraySchema(intSchema())),
 	}, "id", "endpoint", "method", "status_code", "success",
 		"error_message", "items_returned", "new_items", "source",
 		"request_duration_ms", "created_at", "endpoint_type",
@@ -978,6 +988,7 @@ func notificationRepliesSchema() *huma.Schema {
 		"id":                intSchema(),
 		"target_type":       intSchema(),
 		"target_id":         intSchema(),
+		"target_slug":       nullable(stringSchema()),
 		"parent_id":         nullable(intSchema()),
 		"root_id":           nullable(intSchema()),
 		"body_html":         stringSchema(),
@@ -990,7 +1001,7 @@ func notificationRepliesSchema() *huma.Schema {
 		"alliance_name":     nullable(stringSchema()),
 		"parent_comment_id": intSchema(),
 		"parent_snippet":    stringSchema(),
-	}, "id", "target_type", "target_id", "parent_id", "root_id",
+	}, "id", "target_type", "target_id", "target_slug", "parent_id", "root_id",
 		"body_html", "created_at", "character_id", "character_name",
 		"corporation_id", "corporation_name", "alliance_id", "alliance_name",
 		"parent_comment_id", "parent_snippet")
@@ -1003,7 +1014,7 @@ func notificationRepliesSchema() *huma.Schema {
 func accountTrackerSchema() *huma.Schema {
 	return responseSchema(map[string]*huma.Schema{
 		"id":                    intSchema(),
-		"target_type":           stringSchema(),
+		"target_type":           accountTrackerTargetSchema(),
 		"target_id":             intSchema(),
 		"target_name":           stringSchema(),
 		"target_ticker":         nullable(stringSchema()),
@@ -1025,11 +1036,11 @@ func accountTrackerNotificationsSchema() *huma.Schema {
 		"created_at":            timestampSchema(),
 		"is_read":               boolSchema(),
 		"tracker_id":            intSchema(),
-		"target_type":           stringSchema(),
+		"target_type":           accountTrackerTargetSchema(),
 		"target_id":             intSchema(),
 		"target_name":           stringSchema(),
 		"target_ticker":         nullable(stringSchema()),
-		"match_role":            stringSchema(),
+		"match_role":            {Type: huma.TypeString, Enum: []any{"victim", "attacker", "both", "location"}},
 		"killmail_id":           intSchema(),
 		"occurred_at":           timestampSchema(),
 		"total_value":           numberSchema(),
@@ -1050,6 +1061,11 @@ func accountTrackerNotificationsSchema() *huma.Schema {
 		"notifications": arraySchema(notification),
 		"unreadCount":   intSchema(),
 	}, "notifications", "unreadCount")
+}
+
+// These values are enforced by the tracker table's check constraint and API.
+func accountTrackerTargetSchema() *huma.Schema {
+	return &huma.Schema{Type: huma.TypeString, Enum: []any{"character", "corporation", "alliance", "system", "constellation", "region"}}
 }
 
 func trackedDashboardConfigSchema() *huma.Schema {
@@ -1078,9 +1094,14 @@ func adminOverviewSchema() *huma.Schema {
 		}),
 		"esi": responseSchema(map[string]*huma.Schema{
 			"total": intSchema(), "errors": intSchema(),
+			"requests24h": intSchema(), "errors24h": intSchema(),
 			"errorRate": numberSchema(),
 		}),
-	}, "users", "killmails", "comments", "moderation", "esi")
+		"attention": responseSchema(map[string]*huma.Schema{
+			"moderation": intSchema(), "domainAssets": intSchema(),
+			"campaignsPaused": intSchema(), "campaignsFailed": intSchema(),
+		}, "moderation", "domainAssets", "campaignsPaused", "campaignsFailed"),
+	}, "users", "killmails", "esi", "attention")
 }
 
 func adminUserSchema() *huma.Schema {
@@ -1913,9 +1934,16 @@ func graphResponseSchema() *huma.Schema {
 		"corp_name":     nullable(stringSchema()),
 		"alliance_name": nullable(stringSchema()),
 	}, "id", "name")
+	affiliation := nullable(responseSchema(map[string]*huma.Schema{
+		"id": intSchema(), "name": nullable(stringSchema()),
+	}, "id", "name"))
+	pathNode := responseSchema(map[string]*huma.Schema{
+		"id": intSchema(), "name": stringSchema(),
+		"corporation": affiliation, "alliance": affiliation,
+	}, "id", "name", "corporation", "alliance")
 	path := mode(map[string]*huma.Schema{
 		"path": nullable(responseSchema(map[string]*huma.Schema{
-			"nodes": arraySchema(entity),
+			"nodes": arraySchema(pathNode),
 			"edges": arraySchema(responseSchema(map[string]*huma.Schema{
 				"weight": intSchema(),
 			}, "weight")),
@@ -1927,7 +1955,7 @@ func graphResponseSchema() *huma.Schema {
 		"coalitions": arraySchema(responseSchema(map[string]*huma.Schema{
 			"id": intSchema(),
 			"alliances": arraySchema(responseSchema(map[string]*huma.Schema{
-				"id": intSchema(), "name": stringSchema(), "connections": intSchema(),
+				"id": intSchema(), "name": stringSchema(), "cooperation": intSchema(),
 			}, "id", "name")),
 		}, "id", "alliances")),
 	}, "coalitions")
@@ -1977,7 +2005,7 @@ func graphResponseSchema() *huma.Schema {
 			"supers": intSchema(), "droppers": intSchema(),
 		})),
 		"totals": recordSchema(map[string]*huma.Schema{
-			"total": intSchema(), "fcs": intSchema(), "logis": intSchema(),
+			"characters": intSchema(), "fcs": intSchema(), "logis": intSchema(),
 			"caps": intSchema(), "supers": intSchema(), "droppers": intSchema(),
 		}),
 	}, "corps", "totals")

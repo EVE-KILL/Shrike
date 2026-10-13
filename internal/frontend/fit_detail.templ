@@ -1,0 +1,84 @@
+package frontend
+
+import "strconv"
+
+templ savedFitInformation(config fitEditorConfig) {
+	<div class="fit-detail-information" data-controller="fit-rating" data-action="click->fit-rating#click mouseover->fit-rating#hover mouseout->fit-rating#leave focusin->fit-rating#focus focusout->fit-rating#focus pagehide@window->fit-rating#hide pageshow@window->fit-rating#show">
+		<div class="fit-detail-rating" data-fit-rating>
+			<div class="fit-detail-stars" role="group" aria-label="Rate this fitting">
+				for star := 1; star <= 5; star++ {
+					<button type="button" data-fit-rate={ strconv.Itoa(star) } aria-label={ "Rate " + strconv.Itoa(star) + " " + pluralStars(star) } aria-pressed={ strconv.FormatBool(config.Data.ViewerRating != nil && *config.Data.ViewerRating == star) } class={ templ.KV("on", config.ratingOn(star)), templ.KV("own", config.Data.ViewerRating != nil) }>
+						@icon("star")
+					</button>
+				}
+			</div>
+			<span class="fit-detail-rating-summary" data-fit-rating-summary>
+				if config.Data.Fit.Ratings > 0 {
+					<strong>{ catalogRating(config.Data.Fit.Rating) }</strong> <span>{ "(" + strconv.Itoa(config.Data.Fit.Ratings) + ")" }</span>
+				} else {
+					unrated
+				}
+			</span>
+			<button type="button" class="fit-detail-rating-clear" data-fit-clear-rating aria-label="Clear your rating" hidden?={ config.Data.ViewerRating == nil }>clear</button>
+		</div>
+		<p class="fit-detail-description" data-fit-description title={ config.description() }>{ config.description() }</p>
+		<span class="fit-detail-rating-error" data-fit-rating-error role="status" hidden></span>
+	</div>
+}
+
+templ savedFitComments(id string) {
+	<section class="fit-detail-comments" data-controller="fit-comments" data-action="click->fit-comments#click pagehide@window->fit-comments#hide pageshow@window->fit-comments#show">
+		<button type="button" data-fit-comments-toggle aria-expanded="false" aria-controls="fit-comments">
+			<span>
+				@icon("message-square")
+				<strong>Comments</strong><small>Discussion for this fit</small>
+			</span>
+			@icon("chevron-down")
+		</button>
+		<div id="fit-comments" class="fit-detail-comments-body" hidden></div>
+		<template data-fit-comments-template>
+			<div class="blog-comment-thread" data-comment-thread data-controller="comment-thread" data-action="click->comment-thread#click pagehide@window->comment-thread#hide pageshow@window->comment-thread#show" data-target-type="8" data-target-id="0" data-target-slug={ id }>
+				<p data-comments-status>Loading comments…</p>
+				<div data-comments-list></div>
+				<div data-comments-composer></div>
+			</div>
+		</template>
+	</section>
+}
+
+templ savedFitError(id string, status int, title string) {
+	<div class="fit-editor fit-detail">
+		<div class="fit-editor-actions">
+			<div class="fit-editor-action-group">
+				<button disabled type="button">
+					@fitIcon("copy")
+					<span>Copy EFT</span>
+				</button>
+				<button disabled type="button">
+					@fitIcon("link")
+					<span>Share Link</span>
+				</button>
+				<button disabled type="button">
+					@fitIcon("copy")
+					<span>Fork</span>
+				</button>
+			</div>
+		</div>
+		<div class="fit-detail-error glass-panel" role="alert">
+			@icon("lock")
+			<h1>{ title }</h1>
+			if status == 404 {
+				<p>We couldn't find a fit with ID <code>{ id }</code>. It may have been deleted.</p>
+			} else if status == 403 {
+				<p>The owner has restricted this fit to their corp or alliance and you're not a member.</p>
+			} else {
+				<p>Failed to load the fit. Try again in a moment.</p>
+				<a href={ templ.SafeURL("/fit/" + id) }>Try again</a>
+			}
+			<a href="/fits">
+				@icon("arrow-left")
+				<span>Browse Fits</span>
+			</a>
+		</div>
+	</div>
+}

@@ -26,6 +26,12 @@ mkdir -p "$GOCACHE" "$(dirname "$output")"
 # macOS; rename() swaps the directory entry and leaves it its own inode.
 staging="$output.next.$$"
 trap 'rm -f "$staging"' EXIT
+go tool templ generate -path "$repo_root/internal/frontend"
+# Compile changed utility classes when the optional CSS toolchain is present.
+# The helper only writes changed output, so it cannot cause a rebuild loop.
+if command -v node >/dev/null 2>&1 && [ -f "$repo_root/frontend/node_modules/@tailwindcss/node/package.json" ]; then
+    (cd "$repo_root/frontend" && node --import tsx scripts/build-go-css.ts)
+fi
 go build -o "$staging" "$repo_root/cmd/shrike"
 mv -f "$staging" "$output"
 

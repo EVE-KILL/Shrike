@@ -1,0 +1,65 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+)
+
+templ factionWarSystemsContent(data api.FactionWarSystems) {
+	<div data-fw-systems-loaded>
+		@templ.JSONScript("faction-war-systems-data", data).WithType("application/json")
+		<div class="relative" data-fw-map data-controller="faction-war-map" data-action="click->faction-war-map#click keydown->faction-war-map#keyboard wheel->faction-war-map#wheel:!passive pointerdown->faction-war-map#down pointermove@window->faction-war-map#move pointerup@window->faction-war-map#up pointercancel@window->faction-war-map#up pointerover->faction-war-map#hover pointermove->faction-war-map#hoverMove pointerout->faction-war-map#leave focusin->faction-war-map#hover focusout->faction-war-map#leave fw-map-hide->faction-war-map#hide pagehide@window->faction-war-map#hide" hidden>
+			<div class="absolute top-2 right-2 z-10 flex flex-col gap-1 text-fine bg-black/60 rounded-md px-2 py-1.5">
+				<div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" data-fw-map-dot="1"></span><span class="text-gray-400" data-fw-map-name="1"></span></div>
+				<div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" data-fw-map-dot="2"></span><span class="text-gray-400" data-fw-map-name="2"></span></div>
+				<div class="flex items-center gap-1.5 mt-0.5 pt-0.5 border-t border-white/10"><span class="w-2.5 h-2.5 rounded-full border border-yellow-400/40 bg-transparent"></span><span class="text-gray-500">Contested</span></div>
+				<div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full border border-red-400/40 bg-transparent"></span><span class="text-gray-500">Vulnerable</span></div>
+				<button type="button" data-fw-map-reset hidden class="mt-1 pt-1 border-t border-white/10 text-gray-500 hover:text-blue-400 transition-colors text-left">Reset view</button>
+			</div>
+			<div data-fw-map-zoom hidden class="absolute bottom-2 right-2 z-10 text-fine text-gray-600 bg-black/40 rounded px-1.5 py-0.5 tabular-nums"></div>
+			<div class="relative rounded-lg overflow-hidden border border-white/[0.08] bg-[#0a0a0f]" data-fw-map-container>
+				if len(data.Systems)>0 {
+					<svg data-fw-map-svg class="w-full h-auto select-none cursor-grab" style="height:700px;touch-action:none" preserveAspectRatio="xMidYMid meet" aria-label="Faction warfare systems map"></svg>
+				} else {
+					<div class="h-[700px] flex items-center justify-center text-sm text-gray-500">No systems to display</div>
+				}
+				<div data-fw-map-hover hidden class="absolute z-20 w-[260px] pointer-events-none rounded-lg border border-white/[0.12] bg-[#0f1015]/95 backdrop-blur-sm shadow-xl p-3 text-xs"></div>
+			</div>
+		</div>
+		<div class="overflow-x-auto" data-fw-system-table>
+			<table class="w-full text-xs">
+				<thead class="text-gray-500 text-left">
+					<tr class="border-b border-white/[0.06]">
+						@factionWarSortHeading("name", "System", "py-2 pr-2 font-medium")
+						@factionWarSortHeading("region", "Region", "py-2 px-2 font-medium hidden md:table-cell")
+						<th class="py-2 px-2 font-medium w-[80px]">Occupier</th>
+						@factionWarSortHeading("status", "Status", "py-2 px-2 font-medium w-[90px]")
+						@factionWarSortHeading("vp", "VP Progress", "py-2 px-2 font-medium w-[140px]")
+						@factionWarSortHeading("kills", "Kills", "py-2 px-2 font-medium text-right w-[60px]")
+						@factionWarSortHeading("isk", "ISK (24h)", "py-2 pl-2 font-medium text-right w-[80px] hidden sm:table-cell")
+					</tr>
+				</thead>
+				<tbody>
+					for _,system:=range factionWarSystemRows(data) {
+						<tr data-fw-system-id={ warID(system.ID) } class="border-b border-white/[0.03] hover:bg-white/[0.02]">
+							<td class="py-1.5 pr-2"><a href={ idPath("system", system.ID) } class="text-gray-300 hover:text-blue-400 font-medium">{ system.Name }</a><span class={ "ml-1 tabular-nums " + factionWarSecurity(system.Security) }>{ fmt.Sprintf("%.1f",system.Security) }</span></td>
+							<td class="py-1.5 px-2 text-gray-500 hidden md:table-cell">{ system.RegionName }</td>
+							<td class="py-1.5 px-2"><span class="font-medium" style={ "color:" + factionWarColor(system.OccupierID) }>{ factionWarShort(system.OccupierID) }</span></td>
+							<td class="py-1.5 px-2"><span class={ "px-1.5 py-0.5 rounded text-fine font-medium " + factionWarStatusClass(system.Contested) }>{ system.Contested }</span></td>
+							<td class="py-1.5 px-2"><div class="flex items-center gap-2"><div class="flex-1 h-1.5 bg-white/[0.06] rounded-full overflow-hidden"><div class={ "h-full rounded-full transition-all " + factionWarVPClass(system.Contested) } style={ fmt.Sprintf("width:%g%%", factionWarPct(system)) }></div></div><span class="text-fine text-gray-600 tabular-nums w-[32px] text-right">{ factionWarRoundedPct(system) }%</span></div></td>
+							<td class="py-1.5 px-2 text-right tabular-nums text-gray-300">{ warMemberCount(system.Kills) }</td>
+							<td class="py-1.5 pl-2 text-right tabular-nums hidden sm:table-cell text-isk/70">{ warMemberISK(system.ISK) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			if len(data.Systems)==0 {
+				<p class="py-12 text-center text-gray-500 text-sm">No systems to display</p>
+			}
+		</div>
+	</div>
+}
+
+templ factionWarSortHeading(key, label, class string) {
+	<th class={ class }><button type="button" data-fw-system-sort={ key } aria-label={ label } class="flex items-center gap-1 hover:text-blue-400"><span>{ label }</span><span class="text-fine" data-fw-sort-icon>{ map[string]string{"kills":"⌄"}[key] }</span></button></th>
+}

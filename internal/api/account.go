@@ -220,6 +220,7 @@ type accountNotificationReply struct {
 	ID              int64   `json:"id"`
 	TargetType      int16   `json:"target_type"`
 	TargetID        int64   `json:"target_id"`
+	TargetSlug      *string `json:"target_slug"`
 	ParentID        *int64  `json:"parent_id"`
 	RootID          *int64  `json:"root_id"`
 	BodyHTML        string  `json:"body_html"`

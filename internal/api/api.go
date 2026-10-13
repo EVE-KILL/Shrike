@@ -61,6 +61,8 @@ type GraphDatabase interface {
 type Service struct {
 	site     http.Handler
 	document *huma.OpenAPI
+	homepage *HomepageReader
+	session  *SessionPageReader
 }
 
 type sameOriginPrefixContextKey struct{}
@@ -101,7 +103,9 @@ at the network edge rather than by the Shrike origin.`
 // New builds the shared API once.
 func New(opts Options) *Service {
 	mux := chi.NewRouter()
-	opts.responseCache = NewResponseCache(opts.Cache, opts.ResponseCacheBytes)
+	if opts.responseCache == nil {
+		opts.responseCache = NewResponseCache(opts.Cache, opts.ResponseCacheBytes)
+	}
 
 	cfg := huma.DefaultConfig("EVE-KILL API", opts.Version)
 	cfg.DocsRenderer = huma.DocsRendererScalar
@@ -137,8 +141,15 @@ func New(opts Options) *Service {
 	if opts.RequestGuard != nil {
 		site = opts.RequestGuard.Wrap(site)
 	}
-	return &Service{site: site, document: a.OpenAPI()}
+	return &Service{
+		session: &SessionPageReader{auth: newAuthService(opts)},
+		site:    site, document: a.OpenAPI(),
+		homepage: newCachedHomepageReader(opts.DB, opts.Graph, opts.responseCache, opts.Commit),
+	}
 }
+
+// Homepage provides the shared cached reads used by the Go homepage widgets.
+func (s *Service) Homepage() *HomepageReader { return s.homepage }
 
 func setRootNamespaceServers(document *huma.OpenAPI) {
 	for path, item := range document.Paths {

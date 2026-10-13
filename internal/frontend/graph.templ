@@ -1,0 +1,82 @@
+package frontend
+
+import "strconv"
+
+templ graphPageContent(active string) {
+	<div class="go-utility-page graph-page" data-graph-root data-tab={ active } data-controller="graph" data-action="click->graph#click keydown->graph#key graph-search:change->graph#searchChange graph-search:pick->graph#pick popstate@window->graph#history pagehide@window->graph#hide pageshow@window->graph#show">
+		@utilityHeader(utilityHeaderView{Title: "Graph Intelligence", Eyebrow: "Relationship explorer", Symbol: "network", Description: "Relationship analysis powered by graph data from killmail activity — experimental features, subject to change.", Meta: graphTabButtons(active)}) {
+			<span class="text-xs font-medium px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">BETA</span>
+		}
+		for _,tab:=range graphTabs {
+			<section id={ "graph-panel-" + tab.ID } data-graph-panel={ tab.ID } data-loading={ tab.Loading } data-empty={ tab.Empty } role="tabpanel" aria-labelledby={ "graph-tab-" + tab.ID } hidden?={ active!=tab.ID }>
+				if tab.ID=="path_finder" {
+					<div class="glass-panel p-4 mb-4">
+						<div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+							@graphSearch("from", "From", "Search character...")
+							<span class="hidden sm:flex items-center pt-5 text-gray-600">
+								@icon("arrow-right")
+							</span>
+							@graphSearch("to", "To", "Search character...")
+						</div>
+					</div>
+				} else if tab.ID=="entity_intel" || tab.ID=="hunting_grounds" || tab.ID=="spy_check" {
+					<div class="glass-panel p-4 mb-4">
+						<div class="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+							@graphEntityButtons(false)
+							if tab.ID=="entity_intel" {
+								@graphSearch("entity", "", "Search for an alliance...")
+							} else {
+								@graphSearch("entity", "", "Search alliance...")
+							}
+						</div>
+					</div>
+				} else if tab.ID=="census" || tab.ID=="migration" {
+					<div class="glass-panel p-4 mb-4">
+						if tab.ID=="census" {
+							@graphSearch("entity", "", "Search for an alliance...")
+						} else {
+							@graphSearch("entity", "", "Search for a corporation...")
+						}
+					</div>
+				} else if tab.ID=="rivalries" {
+					<div class="mb-4">
+						@graphEntityButtons(true)
+					</div>
+				}
+				<div data-graph-result aria-live="polite">
+					<div class="rounded-lg border border-white/[0.08] bg-[#0a0a0f] p-8 flex items-center justify-center min-h-[200px]">
+						<div class="text-gray-600 text-sm text-center">{ tab.Empty }</div>
+					</div>
+				</div>
+			</section>
+		}
+		<noscript><p class="glass-panel p-4 text-sm text-gray-400">Enable JavaScript to search and load graph intelligence.</p></noscript>
+	</div>
+}
+
+templ graphTabButtons(active string) {
+	<nav class="graph-tabs flex gap-2" role="tablist" aria-label="Graph intelligence tools">
+		for _,tab:=range graphTabs {
+			<button type="button" id={ "graph-tab-" + tab.ID } data-graph-tab={ tab.ID } role="tab" aria-controls={ "graph-panel-" + tab.ID } aria-selected={ strconv.FormatBool(active == tab.ID) } tabindex={ killBoolClass(active == tab.ID, "0", "-1") } class={ "flex flex-col px-4 py-2 rounded-md text-sm transition-colors " + killBoolClass(active == tab.ID, "bg-blue-500/20 text-blue-400 border border-blue-500/30", "bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:text-white hover:bg-white/[0.08]") }>
+				<span class="font-medium">{ tab.Label }</span><span class="text-xs opacity-60">{ tab.Subtitle }</span>
+			</button>
+		}
+	</nav>
+}
+
+templ graphSearch(key, label, placeholder string) {
+	<div class="relative flex-1 w-full" data-graph-search={ key } data-controller="graph-search" data-action="input->graph-search#input click->graph-search#choose keydown->graph-search#key pointerdown@document->graph-search#outside graph-search-hide->graph-search#hideResults graph-search-reset->graph-search#reset pagehide@window->graph-search#hide pageshow@window->graph-search#show">
+		if label!="" {
+			<label class="text-xs text-gray-500 mb-1 block">{ label }</label>
+		}
+		<input type="search" aria-label={ killBoolClass(label != "", label, placeholder) } placeholder={ placeholder } data-graph-input autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" class="w-full bg-white/[0.06] border border-white/[0.1] rounded-md px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"/>
+		<div data-graph-hits hidden class="absolute z-20 w-full mt-1 bg-gray-900 border border-white/[0.1] rounded-md shadow-xl max-h-48 overflow-y-auto"></div>
+	</div>
+}
+
+templ graphEntityButtons(rivalry bool) {
+	<div class={ "flex gap-2 " + killBoolClass(rivalry, "graph-rivalry-types", "graph-entity-types") }>
+		<button type="button" data-graph-type="alliance" aria-pressed="true" class={ "px-3 py-1.5 rounded-md text-sm transition-colors " + killBoolClass(rivalry, "bg-red-500/20 text-red-400 border border-red-500/30", "bg-purple-500/20 text-purple-400 border border-purple-500/30") }>{ killBoolClass(rivalry,"Alliances","Alliance") }</button>
+		<button type="button" data-graph-type={ killBoolClass(rivalry, "character", "corporation") } aria-pressed="false" class="px-3 py-1.5 rounded-md text-sm transition-colors bg-white/[0.04] text-gray-400 border border-white/[0.06] hover:text-white">{ killBoolClass(rivalry,"Characters","Corporation") }</button>
+	</div>
+}

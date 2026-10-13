@@ -1,0 +1,47 @@
+package frontend
+
+templ layout(meta pageMetadata, content templ.Component, development bool) {
+	<!DOCTYPE html>
+	<html lang="en" class="dark">
+		@pageHead(meta, development)
+		<body data-controller="shell navigation-progress announcements kill-submission" data-action="keydown@document->shell#keyboard click@document->shell#outside scroll@window->shell#scroll:passive click@document->shell#rememberKillNavigation:capture click@document->navigation-progress#click:capture change@document->navigation-progress#remember:capture input@document->navigation-progress#remember:capture keydown@document->navigation-progress#keyboard:capture submit@document->navigation-progress#submit:capture pagehide@window->navigation-progress#pageHide pageshow@window->navigation-progress#pageShow click->announcements#dismissClick visibilitychange@document->announcements#visibility pagehide@window->announcements#pageHide pageshow@window->announcements#pageShow paste@document->kill-submission#paste:capture click->kill-submission#click visibilitychange@document->kill-submission#visibility pagehide@window->kill-submission#hide pageshow@window->kill-submission#show">
+			<div id="navigation-progress" class="navigation-progress" hidden aria-hidden="true"><span></span></div>
+			<div id="navigation-loading-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+			<a class="skip-link" href="#main">Skip to content</a>
+			@navbar()
+			<div class="content-blur" aria-hidden="true"></div>
+			<div class="content" data-shell-target="content">
+				<div class="inner-content">
+					<main id="main" class="main-content" tabindex="-1">
+						@announcementBannerHost()
+						@content
+					</main>
+					@footer()
+				</div>
+			</div>
+			<div class="background-controls">
+				<button class="floating-button" id="background-view" data-shell-target="view" data-action="click->shell#toggleBackgroundView" aria-label="View background image" title="View background image" aria-pressed="false">
+					@icon("eye")
+				</button>
+				<button class="floating-button" id="background-shuffle" data-action="click->shell#shuffle" aria-label="Choose a random background" title="Choose a random background">
+					@icon("shuffle")
+				</button>
+			</div>
+			<a class="powered-badge" href="/" aria-label="Powered by EVE-KILL"><span class="powered-badge-icon">E</span><span class="powered-badge-text">Powered by EVE-KILL</span></a>
+			@searchDialog()
+			@announcementGlobalHosts()
+			if meta.CommentEditor {
+				@commentInputTemplates()
+			}
+			if development {
+				@diagnostics()
+			}
+			<div class="kill-ready-toasts" data-kill-ready-host aria-live="polite"></div>
+			<div class="kill-submit-toasts" data-kill-submit-host aria-live="polite"></div>
+		</body>
+	</html>
+}
+
+templ icon(name string) {
+	<svg class="icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><use href={ iconURL(name) }></use></svg>
+}

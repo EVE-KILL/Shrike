@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+var a={i:"1",ii:"2",iii:"3",iv:"4",v:"5"};function s(e){return e.toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(/\s+/).filter(Boolean).map(t=>a[t]??t)}function g(e,t){let o=s(e);if(o.length===0)return!0;let r=s(t);return o.every(n=>r.some(i=>i===n||i.startsWith(n)))}function d(e,t){let o=s(e),r=s(t),n=0;for(let i of o){let f=r.findIndex(c=>c===i);if(f>=0){n+=f*2;continue}let u=r.findIndex(c=>c.startsWith(i));n+=u>=0?10+u*2:1e3}return n+r.length}export{g as a,d as b};

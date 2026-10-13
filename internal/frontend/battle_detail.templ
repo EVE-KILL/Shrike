@@ -1,0 +1,433 @@
+package frontend
+
+import (
+	"fmt"
+	"net/url"
+	"strconv"
+)
+
+templ battleDetailPage(v battleDetailView) {
+	<article class="go-utility-page battle-detail" data-battle-detail data-controller="battle-detail" data-action="click->battle-detail#click change->battle-detail#change submit->battle-detail#submit popstate@window->battle-detail#popstate pagehide@window->battle-detail#hide pageshow@window->battle-detail#show" data-battle-id={ strconv.FormatInt(v.ID, 10) } data-battle-tab={ v.Tab } data-battle-title={ "Battle in " + v.Data.SystemName + " — " + battleEVEDate(v.Data.Start) }>
+		@templ.JSONScript("battle-header-data", v.Data).WithType("application/json")
+		if v.Failed {
+			<div class="glass-panel p-8 text-center">
+				<span class="text-3xl text-gray-600 mb-3">
+					@icon("swords")
+				</span>
+				<p class="text-sm text-gray-400 mb-2">Could not generate a battle report from this killmail</p>
+				<p class="text-xs text-gray-600 mb-4">There may not be enough opposing sides in this area to form a battle.</p>
+				<a href={ idPath("kill", v.KillmailID) } class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium bg-white/[0.06] text-gray-300 border border-white/[0.08] hover:bg-blue-500/[0.1] transition-colors">
+					@icon("arrow-left")
+					Back to killmail
+				</a>
+			</div>
+		} else {
+			<h1 class="sr-only">{ "Battle in "+v.Data.SystemName+" — "+battleEVEDate(v.Data.Start) }</h1>
+			if v.KillmailID>0 {
+				<div class="flex flex-wrap items-center gap-2 mb-3 text-xs text-gray-500">
+					<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium text-fine">Generated</span>
+					<span>Battle report generated from</span>
+					<a href={ idPath("kill", v.KillmailID) } class="text-blue-400 hover:text-blue-300">{ fmt.Sprintf("killmail #%d",v.KillmailID) }</a>
+					<a href={ battleEditSides(v) } class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium border border-white/[0.08] bg-white/[0.04] text-gray-300 hover:bg-blue-500/[0.12] hover:text-blue-300 hover:border-blue-500/30 transition-colors" title="Reassign the sides in the battle generator and save it as a real battle">
+						@icon("users")
+						Edit sides
+					</a>
+				</div>
+			}
+			<header class="hero-surface glass-panel p-5 mb-4">
+				<div class="flex flex-wrap items-center gap-3 mb-4 pb-3 border-b border-white/[0.06]">
+					<img src={ fmt.Sprintf("/images/systems/%d?size=64", v.Data.SystemID) } alt="" class="w-10 h-10 rounded-lg flex-shrink-0" width="40" height="40" loading="eager"/>
+					<div>
+						<span class={ "text-lg font-bold text-white " + killBoolClass(v.Data.RegionID == 10000070, "font-triglavian", "") }>{ v.Data.SystemName }</span>
+						<span class={ "ml-2 text-sm tabular-nums " + battleSecurityClass(v.Data.Security) }>{ battleSecurity(v.Data.Security) }</span>
+						<span class={ "ml-2 text-sm text-gray-500 " + killBoolClass(v.Data.RegionID == 10000070, "font-triglavian", "") }>{ v.Data.RegionName }</span>
+					</div>
+					<div class="ml-auto flex flex-wrap items-center gap-2">
+						if v.Data.MultiParty {
+							<span class="px-2 py-0.5 text-fine rounded bg-amber-500/20 text-amber-400 font-medium">Multi-party</span>
+						}
+						if v.Data.Custom {
+							<span class="px-2 py-0.5 text-fine rounded bg-purple-500/20 text-purple-400 font-medium">Custom</span>
+						}
+						if v.KillmailID==0 {
+							<a href={ battleEditSides(v) } class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-white/[0.08] bg-white/[0.04] text-gray-300 hover:bg-blue-500/[0.12] hover:text-blue-300 hover:border-blue-500/30 transition-colors" title="Reassign the sides — anyone signed in can correct them">
+								@icon("users")
+								Edit sides
+							</a>
+						}
+					</div>
+				</div>
+				<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-fine text-gray-500 mb-3">
+					<span class="flex items-center gap-1.5">
+						@icon("calendar-range")
+						<time datetime={ v.Data.Start } class="tabular-nums">{ battleEVEDate(v.Data.Start) }</time>
+						<span class="text-gray-600">→</span>
+						<time datetime={ v.Data.End } class="tabular-nums">{ battleEVEDate(v.Data.End) }</time>
+					</span>
+					<span class="flex items-center gap-1.5">
+						@icon("clock")
+						<span class="text-gray-300">{ battleDetailDuration(v.Data.Minutes) }</span>
+					</span>
+				</div>
+				<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+					for _,tile:=range battleDetailTiles(v.Data) {
+						<div class="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-center">
+							<div class={ "text-lg font-bold tabular-nums " + tile.Color }>{ tile.Value }</div>
+							<div class="flex items-center justify-center gap-1.5 text-fine text-gray-500 uppercase tracking-wider mt-0.5">
+								@icon(tile.Icon)
+								{ tile.Label }
+							</div>
+						</div>
+					}
+				</div>
+			</header>
+			if len(v.Data.Teams)>=2 {
+				<div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 mb-6 items-center">
+					@battleTeamCard(v.Data, 0)
+					<div class="flex flex-col items-center gap-2 px-4">
+						<div class="text-2xl font-bold text-gray-600">VS</div>
+						<div class="w-32 h-2 rounded-full overflow-hidden" style={ "background-color:color-mix(in srgb," + battleTeamColor(v.Data, 1) + " 30%,transparent)" }>
+							<div class="h-full rounded-full" style={ fmt.Sprintf("width:%d%%;background-color:%s", battleEfficiency(v.Data), battleTeamColor(v.Data, 0)) }></div>
+						</div>
+						<div class="text-fine text-gray-500 tabular-nums">{ fmt.Sprintf("%d%% — %d%%",battleEfficiency(v.Data),100-battleEfficiency(v.Data)) }</div>
+					</div>
+					@battleTeamCard(v.Data, 1)
+				</div>
+			}
+			<nav class="flex overflow-x-auto border-b border-white/[0.08] mb-4 scrollbar-hide" aria-label="Battle sections">
+				for _,tab:=range battleTabs {
+					if tab.ID!="comments" || v.KillmailID==0 {
+						<a href={ v.path(tab.ID, nil) } data-battle-tab-link={ tab.ID } class={ "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 cursor-pointer whitespace-nowrap " + killBoolClass(v.Tab == tab.ID, "text-white border-white", "text-gray-500 border-transparent hover:text-blue-400") } aria-current={ killBoolClass(v.Tab == tab.ID, "page", "false") }>
+							<span class="text-base">
+								@icon(tab.Icon)
+							</span>{ tab.Label }
+						</a>
+					}
+				}
+			</nav>
+			<div data-battle-content>
+				@battleTabContent(v)
+			</div>
+		}
+	</article>
+}
+
+templ battleTeamCard(data battleDetailData, index int) {
+	<section class="battle-team-accent rounded-lg bg-white/[0.04] border p-4" style={ battleTeamStyle(data, index) }>
+		<div class="mb-3">
+			<div class="battle-team-heading text-sm font-bold mb-1.5">{ battleSideName(index) }</div>
+			<div class="flex items-center gap-2 min-w-0">
+				if len(data.Teams[index].Alliances)>0 {
+					<img src={ battleAllianceImage(data.Teams[index].Alliances[0], 128) } alt="" class="w-6 h-6 rounded bg-gray-900 flex-shrink-0" width="24" height="24" loading="eager"/>
+				}
+				<span class="text-xs text-gray-300 truncate">{ battleTeamTopName(data.Teams[index]) }</span>
+				if data.Teams[index].AllianceCount>1 || data.Teams[index].CorpCount>1 {
+					<span class="text-fine text-gray-500 flex-shrink-0">{ fmt.Sprintf("+%d alli · +%d corps",max(0,data.Teams[index].AllianceCount-1),max(0,data.Teams[index].CorpCount-1)) }</span>
+				}
+			</div>
+		</div>
+		<div class="grid grid-cols-2 gap-2 text-xs">
+			for _,metric:=range battleTeamMetrics(data,index) {
+				<div>
+					<span class={ metric.Color + " tabular-nums font-medium" }>{ metric.Value }</span>
+					if metric.Unsided!="" {
+						<span class="text-fine text-gray-600 ml-1" title={ "Up to " + metric.Unsided + " more from unsided participants" }>{ "±"+metric.Unsided }</span>
+					}
+					<div class="text-gray-500">{ metric.Label }</div>
+				</div>
+			}
+		</div>
+	</section>
+}
+
+templ battleTabContent(v battleDetailView) {
+	<div data-battle-fragment class="contents">
+		if v.Error!="" {
+			<div class="glass-panel p-5 text-red-300" role="alert">
+				{ v.Error } <button type="button" class="underline" data-battle-retry>Retry</button>
+			</div>
+		} else if v.Tab=="summary" || v.Tab=="kills" || v.Tab=="timeline" {
+			@battleLossExplorer(v)
+			if v.Tab=="summary" {
+				<div class="mt-5">
+					@battleSummary(v.Data)
+				</div>
+			}
+		} else if v.Tab=="comments" {
+			<div class="blog-comment-thread mt-2" data-comment-thread data-controller="comment-thread" data-action="click->comment-thread#click pagehide@window->comment-thread#hide pageshow@window->comment-thread#show" data-target-type="7" data-target-id={ strconv.FormatInt(v.ID, 10) }>
+				<p data-comments-status>Loading comments…</p>
+				<div data-comments-list></div>
+				<div data-comments-composer></div>
+			</div>
+		} else if v.Tab=="composition" {
+			@battleComposition(v)
+		} else if v.Tab=="intel" {
+			@battleIntel(v)
+		} else if v.Tab=="replay" {
+			@battleReplay(v, battleInitialReplay(v))
+		} else {
+			<p class="glass-panel p-8 text-center text-gray-500" role="status">Loading battle section…</p>
+		}
+	</div>
+}
+
+templ battleSummary(data battleDetailData) {
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		for i,team:=range data.Teams {
+			<section class="battle-team-accent rounded-lg bg-white/[0.04] border" style={ battleTeamStyle(data, i) }>
+				<header class="px-4 py-2 border-b border-white/[0.06] bg-white/[0.02]">
+					<div class="flex items-center justify-between">
+						<div class="battle-summary-heading text-fine font-bold uppercase tracking-[0.15em]">{ fmt.Sprintf("Team %d — %d alliances · %d corps",i+1,team.AllianceCount,team.CorpCount) }</div>
+						<div class="text-fine text-gray-500 tabular-nums">{ fmt.Sprintf("%d kills · %s destroyed",team.Kills,compactNumber(team.Destroyed)) }</div>
+					</div>
+				</header>
+				<div class="divide-y divide-white/[0.04]">
+					@battleSummaryAlliances(team.Alliances)
+				</div>
+			</section>
+		}
+	</div>
+	if data.Unsided!=nil && (len(data.Unsided.Alliances)>0 || data.Unsided.CorpCount>0) {
+		<details class="glass-panel mt-4 battle-unsided">
+			<summary class="flex items-center justify-between w-full px-4 py-2.5 text-left hover:bg-white/[0.02] transition-colors">
+				<div class="flex items-center gap-2">
+					<span class="text-base text-gray-500">
+						@icon("circle-help")
+					</span>
+					<div>
+						<div class="text-sm font-bold text-gray-300">Unsided participants</div>
+						<div class="text-fine text-gray-500">{ fmt.Sprintf("%d alliances · %d corps — couldn't be assigned to either team",data.Unsided.AllianceCount,data.Unsided.CorpCount) }</div>
+					</div>
+				</div>
+				<div class="flex items-center gap-3">
+					<div class="text-fine text-gray-500 tabular-nums hidden sm:block">{ fmt.Sprintf("%d kills · %d losses · %s destroyed",data.Unsided.Kills,data.Unsided.Losses,compactNumber(data.Unsided.Destroyed)) }</div>
+					<span class="battle-disclosure text-xs text-gray-600">
+						@icon("chevron-right")
+					</span>
+				</div>
+			</summary>
+			<div class="border-t border-white/[0.06] divide-y divide-white/[0.04]">
+				@battleSummaryAlliances(data.Unsided.Alliances)
+			</div>
+		</details>
+	}
+}
+
+templ battleSummaryAlliances(rows []battleAlliance) {
+	for _,ally:=range battleSortedAlliances(rows) {
+		if ally.ID!=nil {
+			<details class="battle-alliance">
+				<summary class="flex items-center gap-2.5 w-full px-4 py-2.5 text-left hover:bg-blue-500/[0.04] transition-colors">
+					<img src={ battleAllianceImage(ally, 64) } alt="" class="w-8 h-8 rounded flex-shrink-0 bg-gray-900" width="32" height="32" loading="lazy"/>
+					<div class="flex-1 min-w-0">
+						<div class="text-sm text-gray-200 truncate">
+							<a href={ idPath("alliance", *ally.ID) } class="hover:text-blue-400">{ battleAllianceName(ally) }</a>
+							if len(ally.Corporations)>1 {
+								<span class="text-xs text-gray-500 ml-1">{ fmt.Sprintf("(%d)",len(ally.Corporations)) }</span>
+							}
+						</div>
+						<div class="text-fine text-gray-500">
+							<span class="text-isk/70 tabular-nums">{ fmt.Sprintf("%d kills",ally.Kills) }</span>
+							<span class="text-gray-600 mx-0.5">·</span>
+							<span class="text-red-400/70 tabular-nums">{ fmt.Sprintf("%d losses",ally.Losses) }</span>
+							<span class="text-gray-600 mx-0.5">·</span>
+							<span class="tabular-nums">{ compactNumber(ally.Destroyed) }</span>
+						</div>
+					</div>
+					<span class="battle-disclosure text-xs text-gray-600 flex-shrink-0">
+						@icon("chevron-right")
+					</span>
+				</summary>
+				<div class="bg-white/[0.01]">
+					@battleSummaryCorporations(ally.Corporations, true)
+				</div>
+			</details>
+		} else {
+			<div>
+				<div class="px-4 py-2 text-fine font-bold uppercase tracking-[0.15em] text-gray-500 bg-white/[0.02]">Independent corporations</div>
+				@battleSummaryCorporations(ally.Corporations, false)
+			</div>
+		}
+	}
+	if len(rows)==0 {
+		<div class="px-4 py-6 text-center text-sm text-gray-500">No organizations found</div>
+	}
+}
+
+templ battleSummaryCorporations(rows []battleCorporation, indented bool) {
+	for _,corp:=range rows {
+		<a href={ idPath("corporation", corp.ID) } class={ "flex items-center gap-2.5 px-4 py-1.5 hover:bg-blue-500/[0.04] transition-colors " + killBoolClass(indented, "pl-10", "") }>
+			<img src={ eveEntityImage("corporation", corp.ID, 64) } alt="" class="w-6 h-6 rounded flex-shrink-0 bg-gray-900" width="24" height="24" loading="lazy"/>
+			<span class="flex-1 text-xs text-gray-400 truncate">{ battleUnknown(corp.Name) }</span>
+			<div class="flex items-center gap-2 text-fine text-gray-500 flex-shrink-0 tabular-nums">
+				<span class="text-isk/60">{ strconv.FormatInt(corp.Kills,10) }</span>
+				<span class="text-gray-600">/</span>
+				<span class="text-red-400/60">{ strconv.FormatInt(corp.Losses,10) }</span>
+				<span class="text-gray-600 mx-0.5">·</span>
+				<span>{ compactNumber(corp.Destroyed) }</span>
+			</div>
+		</a>
+	}
+}
+
+templ battleLossExplorer(v battleDetailView) {
+	<section class="space-y-4" aria-label={ v.Tab + " loss explorer" }>
+		if v.Tab=="summary" && battleFilterActive(v.Filter) {
+			<div class="glass-panel flex items-center gap-3 p-3 text-xs text-sky-300">
+				Highlights for your selected losses. The team breakdown below covers the full battle.<a href={ v.path(v.Tab, battleClearFilters()) } data-battle-navigation class="ml-auto underline">Full battle highlights</a>
+			</div>
+		}
+		if v.Tab!="summary" {
+			<form class="glass-panel flex flex-wrap items-center gap-3 p-3" data-battle-filters>
+				<label class="text-xs text-gray-400">
+					Victim side 
+					<select name="side" class="ml-1 rounded bg-[#141414] p-2">
+						<option value="">All sides</option>
+						for i:=range v.Data.Sides {
+							<option value={ strconv.Itoa(i) } selected?={ v.Filter.Side!=nil && *v.Filter.Side==int64(i) }>{ battleSideName(i) }</option>
+						}
+						<option value="-1" selected?={ v.Filter.Side!=nil && *v.Filter.Side==-1 }>Unassigned</option>
+					</select>
+				</label>
+				<label class="text-xs text-gray-400">
+					Ship class 
+					<select name="group" class="ml-1 max-w-52 rounded bg-[#141414] p-2">
+						<option value="">All classes</option>
+						for _,group:=range v.Groups {
+							<option value={ strconv.FormatInt(group.ID, 10) } selected?={ v.Filter.Group!=nil && *v.Filter.Group==group.ID }>{ group.Name }</option>
+						}
+					</select>
+				</label>
+				<label class="text-xs text-gray-400">
+					Minimum ISK 
+					<select name="minIsk" class="ml-1 rounded bg-[#141414] p-2">
+						<option value="0">Any value</option>
+						for _,value:=range []float64{1e8,1e9,1e10,1e11} {
+							<option value={ strconv.FormatFloat(value, 'f', -1, 64) } selected?={ v.Filter.MinISK==value }>{ compactNumber(value)+"+" }</option>
+						}
+					</select>
+				</label>
+				<a href={ v.path(v.Tab, battleClearFilters()) } data-battle-navigation class="ml-auto text-xs text-blue-300">Reset filters</a>
+				if v.Filter.From!=nil || v.Filter.To!=nil {
+					<div class="flex w-full items-center gap-2 text-xs text-sky-300">
+						@icon("clock")
+						{ battleEVETime(battleFilterTime(v.Filter.From,battleTimeMS(v.Data.Start)))+" → "+battleEVETime(battleFilterTime(v.Filter.To,battleTimeMS(v.Data.End))) }<a href={ v.path(v.Tab, url.Values{"from": nil, "to": nil}) } data-battle-navigation class="ml-2 underline">Full battle</a>
+					</div>
+				}
+			</form>
+		}
+		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+			<div class="glass-panel p-4">
+				<div class="text-[10px] uppercase tracking-wider text-gray-500">Recorded losses</div>
+				<div class="mt-1 font-mono text-xl text-gray-100">{ fullNumber(float64(len(v.Filtered))) }</div>
+			</div>
+			<div class="glass-panel p-4">
+				<div class="text-[10px] uppercase tracking-wider text-gray-500">ISK lost</div>
+				<div class="mt-1 font-mono text-xl text-amber-200">{ compactNumber(v.LossISK) }</div>
+			</div>
+			<a href={ v.path("timeline", url.Values{"group": nil}) } data-battle-navigation class="glass-panel p-4 hover:border-amber-400/30">
+				<div class="text-[10px] uppercase tracking-wider text-gray-500">Titans / supercarriers lost</div>
+				<div class="mt-1 font-mono text-xl text-amber-300">{ strconv.Itoa(len(v.Supers)) }</div>
+			</a>
+			<a href={ v.path("replay", url.Values{"at": {strconv.FormatInt(v.Busiest.Start, 10)}, "kill": nil}) } data-battle-navigation class="glass-panel p-4 hover:border-sky-400/30">
+				<div class="text-[10px] uppercase tracking-wider text-gray-500">Busiest interval · replay ↗</div>
+				<div class="mt-1 text-sm text-sky-200">{ battleEVETime(v.Busiest.Start) }</div>
+				<div class="text-xs text-gray-500">{ fmt.Sprintf("%d losses",v.Busiest.Count) }</div>
+			</a>
+		</div>
+		<p class="text-xs text-gray-500">Losses include capsules and unassigned pilots. All values describe recorded killmails.</p>
+		if v.Tab=="summary" {
+			<div class="flex items-center justify-between">
+				<h3 class="text-sm font-medium text-gray-300">Most expensive losses</h3>
+				<a href={ v.path("timeline", nil) } data-battle-navigation class="text-xs text-sky-300">Explore the timeline →</a>
+			</div>
+			<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+				for _,kill:=range v.Biggest {
+					<div class="glass-panel flex items-center gap-3 p-3">
+						<img src={ fmt.Sprintf("/images/types/%d/icon?size=64", kill.ShipID) } alt="" width="40" height="40" class="h-10 w-10 rounded" loading="lazy"/>
+						<div class="min-w-0 flex-1">
+							<a href={ idPath("kill", kill.ID) } class="block truncate text-sm text-gray-200">{ kill.ShipName }</a>
+							<div class="text-xs text-amber-200">{ compactNumber(kill.Value)+" ISK" }</div>
+							<a href={ v.replayLink(kill) } data-battle-navigation class="text-xs text-sky-300">Show in replay →</a>
+						</div>
+					</div>
+				}
+			</div>
+		} else if v.Tab=="timeline" {
+			@battleTimeline(v)
+		} else {
+			<div data-battle-killfeed>
+				@killList(v.Killlist, killListOptions{Kind: "battle", Page: v.Page, Limit: v.Limit})
+			</div>
+		}
+		if len(v.Filtered)==0 {
+			<p class="glass-panel p-6 text-center text-sm text-gray-500">No losses match these filters.</p>
+		}
+	</section>
+}
+
+templ battleTimeline(v battleDetailView) {
+	<div class="glass-panel p-4">
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+			<h3 class="text-sm text-gray-300">How the battle unfolded</h3>
+			<label class="text-xs text-gray-400">
+				Measure 
+				<select class="ml-1 rounded bg-[#141414] p-2" data-battle-measure>
+					<option value="count">Losses</option>
+					<option value="isk">ISK lost</option>
+				</select>
+			</label>
+		</div>
+		<div class="mb-3 flex flex-wrap gap-4 text-xs">
+			for i:=0;i<=len(v.Data.Sides);i++ {
+				<span style={ "color:" + battleSideColor(battleBinSide(i, len(v.Data.Sides))) }>{ "● "+battleSideName(battleBinSide(i,len(v.Data.Sides))) }</span>
+			}
+			<span class="text-amber-300">┃ Titan / supercarrier loss</span>
+		</div>
+		<div class="flex h-36 items-end gap-1" data-battle-histogram>
+			for _,bin:=range v.Bins {
+				<a href={ v.path(v.Tab, url.Values{"from": {strconv.FormatInt(bin.Start, 10)}, "to": {strconv.FormatInt(bin.End, 10)}}) } data-battle-navigation class="relative flex h-full min-w-0 flex-1 flex-col justify-end hover:brightness-150" title={ fmt.Sprintf("%s · %d losses · %s ISK", battleEVETime(bin.Start), bin.Count, compactNumber(bin.ISK)) } aria-label={ fmt.Sprintf("Filter interval %s: %d losses", battleEVETime(bin.Start), bin.Count) }>
+					if bin.Big>0 {
+						<span class="absolute inset-y-0 left-1/2 z-10 w-0.5 bg-amber-300"></span>
+					}
+					for i,side:=range bin.Sides {
+						<span class="block w-full" style={ fmt.Sprintf("height:%.6f%%;background:%s", battleBinHeight(v, side, false), battleSideColor(battleBinSide(i, len(v.Data.Sides)))) } data-count-height={ fmt.Sprintf("%.6f", battleBinHeight(v, side, false)) } data-isk-height={ fmt.Sprintf("%.6f", battleBinHeight(v, side, true)) }></span>
+					}
+				</a>
+			}
+		</div>
+		<div class="mt-2 flex justify-between text-[10px] text-gray-500">
+			<span>{ battleEVETime(battleTimeMS(v.Data.Start)) }</span>
+			<span>Click an interval to filter</span>
+			<span>{ battleEVETime(battleTimeMS(v.Data.End)) }</span>
+		</div>
+	</div>
+	if len(v.Supers)>0 {
+		<div class="glass-panel p-4">
+			<h3 class="mb-3 text-xs font-semibold uppercase tracking-wider text-amber-300">Titan and supercarrier losses</h3>
+			<div class="max-h-64 space-y-2 overflow-y-auto">
+				for _,kill:=range v.Supers {
+					<div class="flex flex-wrap items-center gap-3 border-b border-white/5 pb-2 text-xs">
+						<span class="font-mono text-gray-500">{ battleEVETime(battleTimeMS(kill.Time)) }</span>
+						<a href={ idPath("kill", kill.ID) } class="text-amber-100">{ kill.ShipName+" · "+compactNumber(kill.Value) }</a>
+						<span style={ "color:" + battleSideColor(battleVictimSide(kill, v.Data.Sides)) }>{ battleSideName(battleVictimSide(kill,v.Data.Sides)) }</span>
+						<a href={ v.replayLink(kill) } data-battle-navigation class="ml-auto text-sky-300">Show in replay →</a>
+					</div>
+				}
+			</div>
+		</div>
+	}
+	<div class="space-y-2">
+		for i:=len(v.Bins)-1;i>=0;i-- {
+			if v.Bins[i].Count>0 {
+				<div class="glass-panel flex flex-wrap items-center gap-4 px-4 py-3 text-xs">
+					<span class="font-mono text-gray-400">{ battleEVETime(v.Bins[i].Start) }</span>
+					<span class="text-gray-200">{ fmt.Sprintf("%d losses",v.Bins[i].Count) }</span>
+					<span class="text-amber-200">{ compactNumber(v.Bins[i].ISK)+" ISK" }</span>
+					<a href={ v.path("kills", url.Values{"from": {strconv.FormatInt(v.Bins[i].Start, 10)}, "to": {strconv.FormatInt(v.Bins[i].End, 10)}}) } data-battle-navigation class="ml-auto text-sky-300">Inspect losses</a>
+					<a href={ v.path("replay", url.Values{"at": {strconv.FormatInt(v.Bins[i].Start, 10)}, "kill": nil}) } data-battle-navigation class="text-sky-300">Replay →</a>
+				</div>
+			}
+		}
+	</div>
+}

@@ -40,6 +40,19 @@ linters:
           - misspell
           - unconvert
           - gocritic
+      # Preserve the pinned third-party converter instead of carrying style
+      # patches. Its public data files use upstream permissions and filenames;
+      # taint/security checks outside these reviewed findings remain enabled.
+      - path: internal/dogmadata/upstream/
+        linters:
+          - errcheck
+          - gocritic
+          - staticcheck
+          - unused
+      - path: internal/dogmadata/upstream/
+        text: 'G(301|302|304|306):'
+        linters:
+          - gosec
       # Tests get more leeway around cleanup paths and deliberately malformed
       # security inputs.
       - path: _test\.go
