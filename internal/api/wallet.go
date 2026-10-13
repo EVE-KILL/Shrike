@@ -401,7 +401,7 @@ func (s *walletService) adminWalletHandler() legacyHandler {
 					LEFT JOIN campaign_prize_results result
 					  ON result.campaign_id = pool.campaign_id
 					WHERE pool.status IN (1, 2)
-					ORDER BY pool.finalized_at DESC NULLS LAST, result.rank
+					ORDER BY pool.finalized_at DESC NULLS LAST, pool.campaign_id, result.rank
 					LIMIT $1`,
 				Args: []any{walletSettlementPageSize},
 			},

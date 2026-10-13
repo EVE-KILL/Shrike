@@ -340,7 +340,7 @@ func TestSiteOpenAPIDocumentsAudienceAndServers(t *testing.T) {
 	if len(document.Servers) != 1 || document.Servers[0].URL != "/api" {
 		t.Fatalf("OpenAPI servers = %#v, want /api", document.Servers)
 	}
-	image := document.Paths["/images/characters/{id}/{variant}"]["get"]
+	image := document.Paths["/images/types/{id}/{variant}"]["get"]
 	if len(image.Servers) != 1 || image.Servers[0].URL != "/" {
 		t.Fatalf("image operation servers = %#v, want /", image.Servers)
 	}

@@ -1,0 +1,12 @@
+new:
+  displayName: Armor EHP
+  category: Armor
+  unit: Hitpoints
+  highIsGood: true
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: armorHP}
+      - {div: armorDamageEffectiveResonance}

@@ -1,0 +1,19 @@
+new:
+  displayName: Reload Time
+  category: Miscellaneous
+  unit: Milliseconds
+  highIsGood: false
+
+effects:
+  - name: speedOfReload
+    on: moduleCycles and holdsCharge
+    category: active
+    rules:
+      - {from: reloadTime}
+      - {div: chargeAmount}
+
+  - name: speedOfReload2
+    on: moduleCycles and holdsCharge and effect("pointDefense")
+    category: active
+    rules:
+      - {mul: chargeRate}

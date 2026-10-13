@@ -1,0 +1,162 @@
+package frontend
+
+import "strconv"
+
+templ adminAnnouncements(view adminView) {
+	<div class="space-y-4" data-admin-announcements data-controller="admin-announcements" data-action="click->admin-announcements#click input->admin-announcements#input change->admin-announcements#input cancel->admin-announcements#close:capture pagehide@window->admin-announcements#hide pageshow@window->admin-announcements#show" data-status={ view.Announcements.Status }>
+		<div class="flex items-center justify-between">
+			<div class="flex items-center gap-2" data-admin-announcement-filter></div>
+			<button type="button" data-admin-announcement-new class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors cursor-pointer">
+				<span class="text-sm">
+					@icon("plus")
+				</span>New Announcement
+			</button>
+		</div>
+		<p hidden?={ !view.Announcements.Failed } data-admin-announcement-error role="alert" class="glass-panel p-4 text-sm text-red-300">Could not load announcements. <button type="button" data-admin-announcement-retry class="text-blue-400">Retry</button></p>
+		<div data-admin-announcement-results>
+			@adminAnnouncementList(view)
+		</div>
+		@adminModal("Announcement", adminAnnouncementForm(), adminAnnouncementFooter())
+	</div>
+}
+
+templ adminAnnouncementList(view adminView) {
+	<div data-admin-announcement-list data-initial={ settingsJSON(view.Announcements) }>
+		if len(view.Announcements.Rows)==0 {
+			<div class="text-center py-12 text-gray-500 text-sm">No announcements found.</div>
+		} else {
+			<div class="space-y-2">
+				for _,a:=range view.Announcements.Rows {
+					<div class="glass-panel p-4" data-admin-announcement-id={ strconv.FormatInt(a.ID, 10) }>
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center gap-2 mb-1">
+									{{ label, tone := a.status(view.Now) }}
+									<span class={ "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border " + tone }>{ label }</span>
+									<span class={ "text-xs font-medium " + adminAnnouncementTierTone(a.Tier) }>{ adminAnnouncementTierLabel(a.Tier) }</span>
+									<span class="text-[10px] text-gray-600">{ "#"+strconv.FormatInt(a.ID,10) }</span>
+								</div>
+								<div class="text-sm font-medium text-white">{ a.Title }</div>
+								if a.Body!="" {
+									<div class="text-xs text-gray-500 mt-1 line-clamp-2">{ a.Body }</div>
+								}
+								<div class="flex items-center gap-3 mt-2 text-[10px] text-gray-600">
+									<span>{ "Start: "+a.Starts.UTC().Format("2006-01-02 15:04") }</span>
+									<span>{ "Expires: "+a.Expires.UTC().Format("2006-01-02 15:04") }</span>
+									if a.Link!=nil&&*a.Link!="" {
+										<span class="text-blue-400/60">Has link</span>
+									}
+								</div>
+							</div>
+							<div class="flex items-center gap-1 flex-shrink-0">
+								<button type="button" data-admin-announcement-edit aria-label={ "Edit announcement " + strconv.FormatInt(a.ID, 10) } title="Edit" class="flex items-center justify-center w-7 h-7 rounded-md text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.08] transition-colors cursor-pointer">
+									<span class="text-sm">
+										@icon("pencil")
+									</span>
+								</button>
+								if a.Archived==nil {
+									<button type="button" data-admin-announcement-archive aria-label={ "Archive announcement " + strconv.FormatInt(a.ID, 10) } title="Archive" class="flex items-center justify-center h-7 rounded-md transition-colors cursor-pointer w-7 text-gray-500 hover:text-red-400 hover:bg-red-500/[0.08]">
+										<span class="text-sm">
+											@icon("archive")
+										</span><span hidden data-admin-announcement-confirm class="text-fine font-medium">Confirm</span>
+									</button>
+								}
+							</div>
+						</div>
+					</div>
+				}
+			</div>
+		}
+	</div>
+}
+
+// The original Modal.vue slots, using the browser's focus/inert/Escape support.
+templ adminModal(title string, body, footer templ.Component) {
+	@adminModalFrame(title, "Close announcement editor", "", body, footer)
+}
+
+templ adminModalFrame(title, closeLabel, extraClass string, body, footer templ.Component) {
+	<dialog data-admin-modal class={ "admin-modal go-utility-page " + extraClass } aria-label={ title }>
+		<div class="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+			<h2 data-admin-modal-title class="text-sm font-semibold text-white">{ title }</h2>
+			<button type="button" data-admin-modal-close aria-label={ closeLabel } class="flex items-center justify-center w-7 h-7 rounded-md text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.08] transition-colors cursor-pointer">
+				<span class="text-sm">
+					@icon("x")
+				</span>
+			</button>
+		</div>
+		<div class="max-h-[70vh] overflow-y-auto px-5 py-4">
+			@body
+		</div>
+		<div class="px-5 py-3 border-t border-white/[0.06]">
+			@footer
+		</div>
+	</dialog>
+}
+
+templ adminAnnouncementForm() {
+	<div class="space-y-4" data-admin-announcement-form>
+		<div>
+			<label class="block text-xs font-medium text-gray-400 mb-1">Tier</label>
+			<div class="flex gap-2">
+				for i,label:=range []string{"Ticker","Banner","Modal"} {
+					<button type="button" data-announcement-tier={ strconv.Itoa(i + 1) } class="flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors cursor-pointer">{ label }</button>
+				}
+			</div>
+		</div>
+		@adminAnnouncementInput("title", "Title *", "Announcement title")
+		<div><label for="admin-announcement-body" class="block text-xs font-medium text-gray-400 mb-1">Body (markdown, optional)</label><textarea id="admin-announcement-body" name="body_md" rows="4" class="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white px-3 py-2 focus:outline-none focus:border-blue-500/50 resize-y" placeholder="Optional markdown body..."></textarea></div>
+		<div>
+			<label class="block text-xs font-medium text-gray-400 mb-1">Color</label>
+			<div class="flex gap-2">
+				for _,c:=range []string{"info","warning","danger","success"} {
+					<button type="button" data-announcement-color={ c } class="flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors capitalize cursor-pointer">{ c }</button>
+				}
+			</div>
+		</div>
+		@adminAnnouncementInput("icon", "Icon (lucide name, optional)", "e.g. lucide:megaphone")
+		<div class="grid grid-cols-2 gap-3">
+			@adminAnnouncementInput("link_url", "Link URL (optional)", "/path or https://...")
+			@adminAnnouncementInput("link_label", "Link Label", "Learn more")
+		</div>
+		<div data-announcement-duration hidden>
+			<label class="block text-xs font-medium text-gray-400 mb-1">Auto-expire after</label>
+			<div class="flex gap-2">
+				for i,n:=range []int{5,10,15,30,60} {
+					<button type="button" data-announcement-duration-value={ strconv.Itoa(n) } class="flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors cursor-pointer">{ []string{"5 min","10 min","15 min","30 min","1 hour"}[i] }</button>
+				}
+			</div>
+			<p class="text-[10px] text-gray-600 mt-1">Starts immediately, disappears after the selected duration.</p>
+		</div>
+		<div data-announcement-dates class="grid grid-cols-2 gap-3">
+			<div>
+				<label class="block text-xs font-medium text-gray-400 mb-1">Starts at <span class="text-gray-600 font-normal">(EVE time)</span></label>
+				@dateTimePicker(dateTimePickerOptions{Name: "starts_at", Placeholder: "Start", HideClear: true})
+			</div>
+			<div>
+				<label class="block text-xs font-medium text-gray-400 mb-1">Expires at * <span class="text-gray-600 font-normal">(EVE time)</span></label>
+				@dateTimePicker(dateTimePickerOptions{Name: "expires_at", Placeholder: "Expiry", HideClear: true})
+			</div>
+		</div>
+	</div>
+}
+
+templ adminAnnouncementInput(name, label, placeholder string) {
+	<div><label for={ "admin-announcement-" + name } class="block text-xs font-medium text-gray-400 mb-1">{ label }</label><input id={ "admin-announcement-" + name } name={ name } type="text" class="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white px-3 py-2 focus:outline-none focus:border-blue-500/50" placeholder={ placeholder }/></div>
+}
+
+templ adminAnnouncementFooter() {
+	<div class="flex items-center justify-end gap-3">
+		<p hidden data-admin-announcement-form-error role="alert" class="flex-1 text-xs text-red-400 flex items-center gap-1.5">
+			<span class="text-sm flex-shrink-0">
+				@icon("circle-alert")
+			</span><span data-admin-announcement-form-message></span>
+		</p>
+		<button type="button" data-admin-modal-close class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white transition-colors cursor-pointer">Cancel</button>
+		<button type="button" data-admin-announcement-save class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+			<span hidden data-admin-announcement-spinner class="text-sm animate-spin mr-1 inline">
+				@icon("loader-circle")
+			</span><span data-admin-announcement-save-label>Create</span>
+		</button>
+	</div>
+}

@@ -1,0 +1,154 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+)
+
+templ roamComposition(view roamCompositionView) {
+	<div data-roam-composition data-controller="roam-composition" data-action="click->roam-composition#click input->roam-composition#input change->roam-composition#change">
+		<div class="glass-panel mb-4 border-l-2 border-blue-500/20 p-4">
+			<div class="mb-2 text-xs font-semibold text-blue-400">Fleet · roster and observed hulls</div>
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+				<div>
+					<div class="font-mono text-lg text-gray-200">
+						{ roamNumber(len(view.Report.Roster)) }
+					</div>
+					<div class="text-[10px] text-gray-500">Listed pilots · { strconv.Itoa(view.ObservedPilots) } observed</div>
+				</div>
+				<div>
+					<div class="font-mono text-lg text-gray-200">
+						{ roamNumber(view.HullTypes) }
+					</div>
+					<div class="text-[10px] text-gray-500">Hull types</div>
+				</div>
+				<div>
+					<div class="font-mono text-lg text-gray-200">
+						{ roamNumber(view.Report.Summary.Losses) }
+					</div>
+					<div class="text-[10px] text-gray-500">Recorded losses</div>
+				</div>
+				<div>
+					<div class="font-mono text-lg text-amber-200">
+						{ compactNumber(view.Report.Summary.IskLost) }
+					</div>
+					<div class="text-[10px] text-gray-500">ISK lost</div>
+				</div>
+			</div>
+		</div>
+		<p class="mb-3 text-xs text-gray-500">Every listed pilot appears below. Ships come from matching killmails, so { strconv.Itoa(len(view.Report.Roster)-view.ObservedPilots) } { roamPlural(len(view.Report.Roster)-view.ObservedPilots,"pilot has","pilots have") } no recorded hull. A pilot may appear in several ships.</p>
+		<div class="glass-panel mb-4 flex flex-wrap items-center gap-3 p-3">
+			<label class="text-xs text-gray-400">Find <input type="search" data-roam-composition-search aria-label="Ship, pilot or corporation" placeholder="Ship, pilot or corporation" class="ml-2 rounded border border-white/10 bg-black/30 px-3 py-2 text-gray-200"/></label>
+			<label class="text-xs text-gray-400">
+				Ship class 
+				<select data-roam-composition-group class="ml-2 max-w-52 rounded bg-[#141414] p-2 text-gray-200">
+					<option value="">All classes</option>
+					for _, group := range view.Groups {
+						<option value={ strconv.FormatInt(int64(group.ID), 10) }>
+							{ group.Name }
+						</option>
+					}
+				</select>
+			</label>
+			<label class="flex items-center gap-2 text-xs text-gray-400"><input type="checkbox" data-roam-composition-loss class="accent-red-400"/> Losses only</label>
+			<button type="button" data-roam-composition-reset hidden class="ml-auto text-xs text-blue-400 hover:underline">Reset</button>
+		</div>
+		<div class="mb-4 flex flex-wrap gap-2">
+			for _, option := range []struct{ID,Label,Icon string}{{"pilots","Pilots","users"},{"ships","By Ship","rocket"},{"groups","By Group","layers"}} {
+				<button type="button" data-roam-composition-view={ option.ID } aria-pressed={ strconv.FormatBool(option.ID == "pilots") } class={ "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors " + killBoolClass(option.ID == "pilots", "border-blue-500/30 bg-blue-500/10 text-blue-300", "border-white/10 text-gray-400 hover:text-gray-200") }>
+					@icon(option.Icon)
+					<span>{ option.Label }</span>
+				</button>
+			}
+		</div>
+		<div class="rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
+			<div class="mb-3 flex items-center justify-between border-b border-white/[0.06] pb-2"><h2 class="text-sm font-bold text-blue-400">Fleet</h2><span class="text-fine text-gray-500" data-roam-composition-count>{ strconv.Itoa(len(view.Report.Roster)) } pilots · { strconv.Itoa(len(view.Rows)) } rows</span></div>
+			<div class="overflow-x-auto">
+				<table class="w-full min-w-[680px] table-fixed text-xs">
+					<thead class="text-left text-gray-500">
+						<tr class="border-b border-white/[0.06]">
+							for _, column := range []struct{Key,Label,Class string}{{"ship","Ship","w-[26%] py-1.5 pr-2"},{"pilot","Pilot","w-[25%] py-1.5 px-2"},{"observations","Observed","py-1.5 px-2 text-right"},{"losses","Lost","py-1.5 px-2 text-right"},{"iskLost","ISK Lost","py-1.5 px-2 text-right"},{"damage","Dmg Done","py-1.5 pl-2 text-right"}} {
+								<th class={ column.Class + " font-medium" }>
+									<button type="button" data-roam-composition-sort={ column.Key } class={ "flex items-center gap-1 hover:text-blue-400 " + killBoolClass(member(column.Key, "ship", "pilot"), "", "ml-auto") }>
+										<span>
+											{ column.Label }
+										</span>@icon("chevrons-up-down")
+									</button>
+								</th>
+							}
+						</tr>
+					</thead>
+					<tbody data-roam-composition-rows>
+						for _, row := range view.SortedRows {
+							@roamCompositionTableRow(row)
+						}
+					</tbody>
+				</table>
+				<p hidden?={ len(view.Rows)>0 } data-roam-composition-empty class="py-8 text-center text-xs text-gray-600">No pilots match these filters.</p>
+			</div>
+		</div>
+		<template data-roam-composition-row-template>
+			@roamCompositionTableRow(roamCompositionRow{})
+		</template>
+		@templ.JSONScript("roam-composition-data", struct {
+			Rows   []roamCompositionRow `json:"rows"`
+			Pilots int                  `json:"pilots"`
+		}{view.Rows, len(view.Report.Roster)}).WithType("application/json")
+	</div>
+}
+
+// The same row markup supplies SSR rows and the client's inert clone template.
+templ roamCompositionTableRow(row roamCompositionRow) {
+	<tr class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
+		<td class="py-1.5 pr-2">
+			<div data-roam-ship-cell hidden?={ row.Ship==nil } class="flex min-w-0 items-center gap-2">
+				if row.Ship!=nil {
+					<img data-roam-ship-image src={ fmt.Sprintf("/images/types/%d/render?size=32", row.Ship.ShipTypeID) } alt={ row.Ship.ShipName } class="h-7 w-7 shrink-0 rounded bg-gray-900" width="28" height="28" loading="lazy"/>
+				} else {
+					<img data-roam-ship-image class="h-7 w-7 shrink-0 rounded bg-gray-900" width="28" height="28" loading="lazy" alt=""/>
+				}
+				<div class="min-w-0">
+					<a data-roam-ship-link href={ idPath("item", roamRowShipID(row)) } class="block truncate hover:text-blue-400">
+						{ roamRowShipName(row) }
+					</a><span data-roam-ship-name hidden class="block truncate"></span>
+					<span data-roam-ship-group class="block truncate text-fine text-gray-500">
+						{ roamRowGroupName(row) }
+					</span>
+				</div>
+			</div>
+			<span data-roam-unknown-ship hidden?={ row.Ship!=nil } class="flex items-center gap-2 text-gray-500">
+				@icon("circle-help")
+				No ship recorded
+			</span>
+		</td>
+		<td class="px-2 py-1.5">
+			<div data-roam-pilot-cell class="flex min-w-0 items-center gap-2">
+				if row.Pilot.CharacterID>0 {
+					<img data-roam-pilot-image src={ fmt.Sprintf("https://images.evetech.net/characters/%d/portrait?size=32", row.Pilot.CharacterID) } alt={ row.Pilot.Name } class="h-6 w-6 shrink-0 rounded bg-gray-900" width="24" height="24" loading="lazy"/>
+				} else {
+					<img data-roam-pilot-image class="h-6 w-6 shrink-0 rounded bg-gray-900" width="24" height="24" loading="lazy" alt=""/>
+				}
+				<div class="min-w-0">
+					<a data-roam-pilot-link href={ idPath("character", int64(row.Pilot.CharacterID)) } class="block truncate hover:text-blue-400">
+						{ row.Pilot.Name }
+					</a>
+					<span data-roam-pilot-corp class="block truncate text-fine text-gray-500">
+						{ row.Pilot.CorporationName }
+					</span>
+				</div>
+			</div><span data-roam-aggregate-pilots hidden class="text-gray-400"></span>
+		</td>
+		<td data-roam-row-observations class="px-2 py-1.5 text-right tabular-nums">
+			{ roamRowObservations(row) }
+		</td>
+		<td data-roam-row-losses class={ "px-2 py-1.5 text-right tabular-nums " + killBoolClass(row.Ship != nil && row.Ship.Losses > 0, "text-red-400", "text-gray-600") }>
+			{ roamRowLosses(row) }
+		</td>
+		<td data-roam-row-isk-lost class={ "px-2 py-1.5 text-right tabular-nums " + killBoolClass(row.ISKLost > 0, "text-red-400", "text-gray-600") }>
+			{ roamRowLost(row) }
+		</td>
+		<td data-roam-row-damage class="py-1.5 pl-2 text-right tabular-nums">
+			{ roamRowDamage(row) }
+		</td>
+	</tr>
+}

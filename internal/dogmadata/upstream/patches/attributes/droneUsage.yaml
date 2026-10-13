@@ -1,0 +1,6 @@
+new:
+  displayName: Drone Usage
+  category: Drones
+  default: 1
+  highIsGood: true
+  published: false

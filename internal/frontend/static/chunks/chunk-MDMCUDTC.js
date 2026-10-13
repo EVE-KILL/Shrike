@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+function e(n){return typeof n=="object"&&n!==null&&!Array.isArray(n)}function r(n){try{let t=document.cookie.split("; ").find(o=>o.startsWith(n+"="));return JSON.parse(decodeURIComponent(t?.slice(n.length+1)||"null"))}catch{return null}}function i(n,t="Request failed"){return n instanceof Error?n.message:t}function s(n){return typeof n=="object"&&n!==null&&"name"in n&&n.name==="AbortError"}export{e as a,r as b,i as c,s as d};

@@ -1,0 +1,112 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+	"strings"
+)
+
+templ itemMarketPanel(view itemPageView) {
+	<section class="item-market glass-panel" data-item-market data-region={ strconv.FormatInt(int64(view.Market.RegionID), 10) } data-days={ strconv.Itoa(view.Market.Days) } data-security={ view.Market.Security } data-market-type-id={ strconv.FormatInt(view.ID, 10) } data-market-view="item" data-controller="item-market" data-action="click->item-market#click change->item-market#change pagehide@window->item-market#hide pageshow@window->item-market#show">
+		<header class="item-market-header">
+			<strong>
+				@icon("shopping-cart")
+				Regional market
+			</strong>
+			<label>
+				Region 
+				<select data-market-region aria-label="Region">
+					<option value="0" selected?={ view.Market.RegionID == 0 }>All Regions</option>
+					for _, region := range view.Market.Orders.Regions {
+						<option value={ strconv.FormatInt(region.ID, 10) } selected?={ region.ID == int64(view.Market.RegionID) }>{ region.Name }</option>
+					}
+				</select>
+			</label>
+		</header>
+		@itemMarketBody(view.Market)
+	</section>
+}
+
+templ itemMarketBody(view itemMarketView) {
+	<div class="item-market-body">
+		<div class="item-market-history-title">
+			<div><h2>{ marketSelectedRegion(view) } price history</h2><p>Daily traded price, corrected when EVERef republishes historical data.</p></div>
+			<div class="item-market-days">
+				for _, days := range []int{30, 90} {
+					<button type="button" class={ marketDayClass(days == view.Days) } data-market-days={ strconv.Itoa(days) } data-focus-key={ "market-days:" + strconv.Itoa(days) } aria-pressed={ strconv.FormatBool(days == view.Days) }>{ strconv.Itoa(days) }d</button>
+				}
+			</div>
+		</div>
+		@itemMarketHistory(view)
+		@itemMarketBook("Sellers", view.Orders.Sellers, "sellers")
+		@itemMarketBook("Buyers", view.Orders.Buyers, "buyers")
+	</div>
+}
+
+templ itemMarketHistory(view itemMarketView) {
+	{{ chart := itemMarketChartFor(view.History.History) }}
+	<div class="item-market-chart">
+		if chart.Points != "" {
+			<div class="item-market-chart-scroll">
+				<svg viewBox="0 0 900 205" role="img" aria-label={ strconv.Itoa(view.Days) + "-day average price and traded volume" }>
+					<defs><linearGradient id="item-market-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".25"></stop><stop offset="1" stop-color="#3b82f6" stop-opacity="0"></stop></linearGradient></defs>
+					for _, tick := range chart.Ticks {
+						<line x1="66" x2="882" y1={ tick.Y } y2={ tick.Y } stroke="rgba(255,255,255,.06)"></line><text x="57" y={ tick.Y } text-anchor="end" fill="#62646b" font-size="11">{ tick.Label }</text>
+					}
+					for _, bar := range chart.Bars {
+						<rect x={ bar.X } y={ bar.Y } width={ bar.Width } height={ bar.Height } rx="1" fill="#34d399" opacity=".28"><title>{ bar.Title }</title></rect>
+					}
+					<polygon points={ chart.Area } fill="url(#item-market-area)"></polygon><polyline points={ chart.Points } fill="none" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></polyline>
+					<text x="66" y="195" fill="#62646b" font-size="11">{ chart.Start }</text><text x="882" y="195" text-anchor="end" fill="#62646b" font-size="11">{ chart.End }</text>
+				</svg>
+			</div>
+		} else {
+			<p class="item-market-empty">No history is available for this region and item yet.</p>
+		}
+		<footer>
+			<div class="item-market-legend"><span><i class="average"></i>Average price</span><span><i class="volume"></i>Units traded</span></div>
+			<div class="item-market-security">
+				<strong>Order security</strong>
+				for _, option := range []struct{ Value, Label string }{{"high", "High"}, {"low", "Low"}, {"null", "Null"}} {
+					<button type="button" class={ marketSecurityButtonClass(option.Value, marketSecurityOn(view, option.Value)) } data-market-security={ option.Value } data-focus-key={ "market-security:" + option.Value } aria-pressed={ strconv.FormatBool(marketSecurityOn(view, option.Value)) }><i></i>{ option.Label }</button>
+				}
+			</div>
+			if view.Orders.SnapshotAt != nil {
+				<span class="item-market-snapshot">Snapshot { view.Orders.SnapshotAt.Format("Jan 2, 2006, 3:04 PM") }</span>
+			}
+		</footer>
+	</div>
+}
+
+templ itemMarketBook(label string, rows []api.UniverseMarketOrder, kind string) {
+	<section class={ "item-market-book " + kind } data-market-book={ kind }>
+		<h2><i></i>{ label } <small>({ strconv.Itoa(len(rows)) })</small></h2>
+		<div class="item-market-table-scroll">
+			<table>
+				<thead>
+					<tr>
+						<th aria-sort="none"><button type="button" data-market-sort="quantity">Quantity ↕</button></th>
+						<th aria-sort={ marketInitialSort(kind) }><button type="button" data-market-sort="price">Price (ISK) ↕</button></th>
+						<th>Location</th>
+						<th aria-sort="none"><button type="button" data-market-sort="min_volume">Min. volume ↕</button></th>
+						<th aria-sort="none"><button type="button" data-market-sort="expires">Expires ↕</button></th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, order := range rows {
+						<tr data-order-id={ strconv.FormatInt(order.OrderID, 10) } data-quantity={ strconv.FormatInt(order.VolumeRemain, 10) } data-price={ strconv.FormatFloat(order.Price, 'f', -1, 64) } data-min-volume={ strconv.FormatInt(order.MinVolume, 10) } data-expires={ strconv.FormatInt(order.ExpiresAt.Unix(), 10) }>
+							<td>{ fullNumber(float64(order.VolumeRemain)) }</td>
+							<td class="item-market-price">{ marketPrice(order.Price) }</td>
+							<td title={ order.LocationName + ", " + order.RegionName }>{ order.LocationName } <a class={ marketSecurityClass(order.Security) } href={ idPath("system", order.SystemID) }>({ marketSecurityLabel(order.Security) })</a></td>
+							<td>{ fullNumber(float64(order.MinVolume)) }</td>
+							<td>{ marketExpiresIn(order.ExpiresAt) }</td>
+						</tr>
+					}
+					if len(rows) == 0 {
+						<tr><td colspan="5" class="item-market-empty">No matching { strings.ToLower(label) }.</td></tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</section>
+}

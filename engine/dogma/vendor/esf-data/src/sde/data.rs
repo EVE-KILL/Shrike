@@ -1,0 +1,261 @@
+use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::sync::OnceLock;
+
+use super::eve;
+use crate::Error;
+use crate::fold::{fold_case, fold_char, sort_by_text};
+
+/// Compare two names case-insensitively without allocating.
+fn compare_folded(left: &str, right: &str) -> Ordering {
+    if left.is_ascii() && right.is_ascii() {
+        let left = left.bytes().map(|byte| byte.to_ascii_lowercase());
+        return left.cmp(right.bytes().map(|byte| byte.to_ascii_lowercase()));
+    }
+    left.chars()
+        .map(fold_char)
+        .cmp(right.chars().map(fold_char))
+}
+
+/// Names sorted case-insensitively, published first, then lowest id.
+fn sorted_names(entries: Vec<(&str, bool, i32)>) -> Vec<(&str, bool, i32)> {
+    sort_by_text(entries, |(name, published, _)| {
+        let mut key = fold_case(name);
+        key.push(if *published { '\0' } else { '\u{1}' });
+        key
+    })
+}
+
+/// The position of each entry in a vector, by id.
+struct IdIndex {
+    first: i32,
+    /// `u32::MAX` where no entry has that id.
+    positions: Vec<u32>,
+}
+
+impl IdIndex {
+    fn new(ids: impl Iterator<Item = i32> + Clone) -> IdIndex {
+        let first = ids.clone().min().unwrap_or(0);
+        let mut positions = Vec::new();
+        for (position, id) in ids.enumerate() {
+            let offset = id.abs_diff(first) as usize;
+            if positions.len() <= offset {
+                positions.resize(offset + 1, u32::MAX);
+            }
+            positions[offset] = position as u32;
+        }
+        IdIndex { first, positions }
+    }
+
+    fn get(&self, id: i32) -> Option<usize> {
+        let offset = usize::try_from(id.checked_sub(self.first)?).ok()?;
+        let position = *self.positions.get(offset)?;
+        (position != u32::MAX).then_some(position as usize)
+    }
+}
+
+fn find_name(names: &[(&str, bool, i32)], name: &str) -> Option<i32> {
+    let position = names.partition_point(|entry| compare_folded(entry.0, name) == Ordering::Less);
+    let entry = names.get(position)?;
+    (compare_folded(entry.0, name) == Ordering::Equal).then_some(entry.2)
+}
+
+/// The lowest major version of `sde.dat` this crate reads.
+pub const MIN_SDE_VERSION: i32 = 12;
+
+/// Reader for `sde.dat`, everything needed to calculate a fit.
+///
+/// It borrows the bytes it reads from instead of copying them.
+pub struct Sde<'a> {
+    sde: eve::Sde<'a>,
+    attribute_ids: HashMap<&'a str, i32>,
+    attribute_positions: IdIndex,
+    effect_positions: IdIndex,
+    /// Built on first use: only an import looks a name up, and
+    /// the borrowed names mean building it allocates one vector and no more.
+    type_names: OnceLock<Vec<(&'a str, bool, i32)>>,
+    attribute_names: OnceLock<Vec<(&'a str, bool, i32)>>,
+    base_mutaplasmids: OnceLock<HashMap<i32, Vec<i32>>>,
+}
+
+impl<'a> Sde<'a> {
+    /// Check the bytes are a valid SDE, and index the attributes and effects.
+    pub fn new(bytes: &'a [u8]) -> Result<Sde<'a>, Error> {
+        let sde = eve::root_as_sde(bytes).map_err(Error::InvalidSde)?;
+        if sde.major_version() < MIN_SDE_VERSION {
+            return Err(Error::SdeTooOld {
+                found: sde.major_version(),
+                needed: MIN_SDE_VERSION,
+            });
+        }
+
+        let mut attribute_ids = HashMap::new();
+        if let Some(attributes) = sde.dogma_attributes() {
+            for attribute in attributes {
+                attribute_ids.insert(attribute.name(), attribute.id());
+            }
+        }
+
+        let attribute_positions = IdIndex::new(
+            sde.dogma_attributes()
+                .into_iter()
+                .flatten()
+                .map(|attribute| attribute.id()),
+        );
+        let effect_positions = IdIndex::new(
+            sde.dogma_effects()
+                .into_iter()
+                .flatten()
+                .map(|effect| effect.id()),
+        );
+
+        Ok(Sde {
+            sde,
+            attribute_ids,
+            attribute_positions,
+            effect_positions,
+            type_names: OnceLock::new(),
+            attribute_names: OnceLock::new(),
+            base_mutaplasmids: OnceLock::new(),
+        })
+    }
+
+    /// The EVE build the data was exported from.
+    pub fn build_number(&self) -> i32 {
+        self.sde.build_number()
+    }
+
+    /// Every type, lowest id first.
+    pub fn types(&self) -> impl Iterator<Item = eve::Type<'a>> {
+        self.sde.types().into_iter().flatten()
+    }
+
+    /// A type by id.
+    pub fn get_type(&self, type_id: i32) -> Option<eve::Type<'a>> {
+        self.sde
+            .types()?
+            .lookup_by_key(type_id, |entry, key| entry.key_compare_with_value(*key))
+    }
+
+    /// An attribute by id.
+    pub fn get_dogma_attribute(&self, attribute_id: i32) -> Option<eve::DogmaAttribute<'a>> {
+        let position = self.attribute_positions.get(attribute_id)?;
+        Some(self.sde.dogma_attributes()?.get(position))
+    }
+
+    /// An effect by id.
+    pub fn get_dogma_effect(&self, effect_id: i32) -> Option<eve::DogmaEffect<'a>> {
+        let position = self.effect_positions.get(effect_id)?;
+        Some(self.sde.dogma_effects()?.get(position))
+    }
+
+    /// A buff by id.
+    pub fn get_dbuff_collection(&self, buff_id: i32) -> Option<eve::DbuffCollection<'a>> {
+        self.sde
+            .dbuff_collections()?
+            .lookup_by_key(buff_id, |entry, key| entry.key_compare_with_value(*key))
+    }
+
+    /// Every mutaplasmid, lowest type id first.
+    pub fn mutaplasmids(&self) -> impl Iterator<Item = eve::Mutaplasmid<'a>> {
+        self.sde.mutaplasmids().into_iter().flatten()
+    }
+
+    /// The type ids of the mutaplasmids that apply to `base`, lowest first.
+    pub fn mutaplasmids_of(&self, base: i32) -> &[i32] {
+        let base_mutaplasmids = self.base_mutaplasmids.get_or_init(|| {
+            let mut base_mutaplasmids: HashMap<i32, Vec<i32>> = HashMap::new();
+            for mutaplasmid in self.mutaplasmids() {
+                let bases = mutaplasmid
+                    .mappings()
+                    .into_iter()
+                    .flatten()
+                    .flat_map(|mapping| mapping.applicable_type_ids().into_iter().flatten());
+                for base in bases {
+                    let mutaplasmids = base_mutaplasmids.entry(base).or_default();
+                    if mutaplasmids.last() != Some(&mutaplasmid.id()) {
+                        mutaplasmids.push(mutaplasmid.id());
+                    }
+                }
+            }
+            base_mutaplasmids
+        });
+        base_mutaplasmids.get(&base).map_or(&[], Vec::as_slice)
+    }
+
+    /// A mutaplasmid by its type id.
+    pub fn get_mutaplasmid(&self, type_id: i32) -> Option<eve::Mutaplasmid<'a>> {
+        self.sde
+            .mutaplasmids()?
+            .lookup_by_key(type_id, |entry, key| entry.key_compare_with_value(*key))
+    }
+
+    /// The id of the attribute with exactly this name, like `"cycleTime"`.
+    pub fn attribute_name_to_id(&self, name: &str) -> Option<i32> {
+        self.attribute_ids.get(name).copied()
+    }
+
+    /// Look a type up by its English name. Several types can share one; this
+    /// prefers a published type, then the lowest id.
+    pub fn type_name_to_id(&self, name: &str) -> Option<i32> {
+        let type_names = self.type_names.get_or_init(|| {
+            sorted_names(
+                self.types()
+                    .map(|r#type| (r#type.name(), r#type.published(), r#type.id()))
+                    .collect(),
+            )
+        });
+        find_name(type_names, name)
+    }
+
+    /// Look an attribute up by its name ignoring case; published first, then lowest id.
+    pub fn attribute_name_to_id_ignoring_case(&self, name: &str) -> Option<i32> {
+        let attribute_names = self.attribute_names.get_or_init(|| {
+            sorted_names(
+                self.sde
+                    .dogma_attributes()
+                    .into_iter()
+                    .flatten()
+                    .map(|attribute| (attribute.name(), attribute.published(), attribute.id()))
+                    .collect(),
+            )
+        });
+        find_name(attribute_names, name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sde_bytes(major_version: i32) -> Vec<u8> {
+        let mut builder = flatbuffers::FlatBufferBuilder::new();
+        let sde = eve::Sde::create(
+            &mut builder,
+            &eve::SdeArgs {
+                major_version,
+                ..Default::default()
+            },
+        );
+        eve::finish_sde_buffer(&mut builder, sde);
+        builder.finished_data().to_vec()
+    }
+
+    #[test]
+    fn rejects_an_sde_too_old() {
+        let bytes = sde_bytes(MIN_SDE_VERSION - 1);
+        assert_eq!(
+            Sde::new(&bytes).err(),
+            Some(Error::SdeTooOld {
+                found: MIN_SDE_VERSION - 1,
+                needed: MIN_SDE_VERSION,
+            })
+        );
+    }
+
+    #[test]
+    fn accepts_an_sde_new_enough() {
+        assert!(Sde::new(&sde_bytes(MIN_SDE_VERSION)).is_ok());
+        assert!(Sde::new(&sde_bytes(MIN_SDE_VERSION + 1)).is_ok());
+    }
+}

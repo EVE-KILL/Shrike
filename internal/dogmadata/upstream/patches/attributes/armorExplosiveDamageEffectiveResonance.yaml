@@ -1,0 +1,12 @@
+new:
+  displayName: Armor Effective Explosive Resonance
+  category: Armor
+  unit: "Inverse Absolute Percent"
+  highIsGood: false
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: damageProfileExplosive}
+      - {mul: armorExplosiveDamageResonance}

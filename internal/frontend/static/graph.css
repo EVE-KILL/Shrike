@@ -1,0 +1,19 @@
+/* Retain the source graph layout while containing its wide controls/tables. */
+.graph-page .graph-tabs { overflow-x: auto; }
+.graph-page [data-graph-result] { min-width: 0; }
+.graph-page .graph-table { overflow-x: auto; }
+.graph-page .graph-table table { min-width: 100%; }
+.graph-page .graph-table th { white-space: nowrap; }
+.graph-page [data-graph-search] { min-width: 0; }
+.graph-page [data-graph-panel="path_finder"] input:focus { border-color: color-mix(in srgb, var(--color-brand-primary) 50%, transparent); }
+.graph-page [data-graph-hits] button:focus-visible { outline: 2px solid var(--color-brand-primary); outline-offset: -2px; }
+.graph-page .graph-path-node { max-width: 100%; overflow-wrap: anywhere; }
+.graph-page .graph-path-node a { max-width: 100%; }
+@media (max-width: 639px) {
+  .graph-page .graph-tabs > button { flex-shrink: 0; white-space: nowrap; }
+  .graph-page .graph-table th, .graph-page .graph-table td { padding-left: 10px; padding-right: 10px; }
+  .graph-page .graph-coalition-heading { flex-wrap: wrap; gap: 8px; }
+  .graph-page .graph-coalition-heading > .truncate { flex-basis: 100%; margin-left: 22px; }
+  .graph-page .graph-census-totals { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .graph-page .graph-suspect-heading { flex-wrap: wrap; }
+}

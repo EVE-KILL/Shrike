@@ -1,0 +1,16 @@
+new:
+  displayName: Align Time
+  category: Speed and Travel
+  unit: Time
+  default: 1.3862943611198906 # -ln(0.25)
+  highIsGood: false
+
+effects:
+  - on: isShip
+    category: passive
+    rules:
+      - {mul: agility}
+      - {mul: mass}
+      # Twice: once for the mass in kilogrammes, once for the milliseconds.
+      - {div: thousand}
+      - {div: thousand}

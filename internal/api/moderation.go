@@ -238,6 +238,32 @@ func (s *moderationService) commentQueueHandler() legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
+		blogIDs := []int64{}
+		for _, row := range rows {
+			if html, ok := row["body_html"].(string); ok {
+				row["body_html"] = SafeCommentHTML(html)
+			}
+			if mapInt64(row, "target_type", 0) == 9 && stringField(row["target_slug"]) == "" {
+				blogIDs = append(blogIDs, mapInt64(row, "target_id", 0))
+			}
+		}
+		if len(blogIDs) != 0 {
+			posts, err := queryMaps(ctx, s.comments.db, `SELECT id, slug FROM blog_posts WHERE id=ANY($1::bigint[])`, blogIDs)
+			if err != nil {
+				return legacyPayload{}, err
+			}
+			slugs := map[int64]string{}
+			for _, post := range posts {
+				slugs[mapInt64(post, "id", 0)] = stringField(post["slug"])
+			}
+			for _, row := range rows {
+				if mapInt64(row, "target_type", 0) == 9 && stringField(row["target_slug"]) == "" {
+					if slug := slugs[mapInt64(row, "target_id", 0)]; slug != "" {
+						row["target_slug"] = slug
+					}
+				}
+			}
+		}
 		return accountNoStorePayload(
 			map[string]any{"comments": rows},
 		), nil
@@ -556,6 +582,15 @@ func (s *moderationService) queueHandler() legacyHandler {
 		if hasMore {
 			rows = rows[:limit]
 		}
+		for _, row := range rows {
+			if html, ok := row["rendered_html"].(string); ok {
+				if mapInt64(row, "target_kind", -1) == moderationKindComment {
+					row["rendered_html"] = SafeCommentHTML(html)
+				} else {
+					row["rendered_html"] = SafeAccountBioHTML(html)
+				}
+			}
+		}
 		if err := s.enrichModerationComments(ctx, rows); err != nil {
 			return legacyPayload{}, err
 		}
@@ -605,9 +640,11 @@ func (s *moderationService) enrichModerationComments(
 	contexts := map[int64]map[string]any{}
 	if len(ids) != 0 {
 		contextRows, err := queryMaps(ctx, s.comments.db, `
-			SELECT id, target_type, target_id, target_slug
-			FROM comments
-			WHERE id = ANY($1::bigint[])`,
+			SELECT c.id, c.target_type, c.target_id,
+			       COALESCE(c.target_slug, p.slug) AS target_slug
+			FROM comments c
+			LEFT JOIN blog_posts p ON c.target_type=9 AND p.id=c.target_id
+			WHERE c.id = ANY($1::bigint[])`,
 			ids,
 		)
 		if err != nil {

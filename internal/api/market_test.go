@@ -72,6 +72,13 @@ func TestMarketExplorerEndpointsAgainstImportedData(t *testing.T) {
 		SELECT count(*) FROM market_orders WHERE type_id = $1`, plex).Scan(&orders); err != nil || orders == 0 {
 		t.Skip("market explorer fixture data is not imported")
 	}
+	var historyDays int
+	if err := pool.QueryRow(ctx, `
+		SELECT count(DISTINCT date) FROM market_region_history
+		WHERE type_id = $1 AND region_id = 19000001
+		  AND date >= current_date - 29`, plex).Scan(&historyDays); err != nil || historyDays < 20 {
+		t.Skip("market explorer fixture has fewer than 20 recent history days")
+	}
 
 	handler := apiPathHandler(Options{Version: "test", DB: pool, Primary: pool, PrimaryPool: pool})
 	request := func(path string) map[string]any {
@@ -102,6 +109,16 @@ func TestMarketExplorerEndpointsAgainstImportedData(t *testing.T) {
 	points := history["history"].([]any)
 	if len(points) < 20 || len(points) > 30 {
 		t.Fatalf("history points = %d, want a populated 30-day window", len(points))
+	}
+
+	reader := NewHomepageReader(pool)
+	ordersPage, err := reader.UniverseMarketOrders(ctx, plex, 0, "high")
+	if err != nil || len(ordersPage.Sellers) == 0 || len(ordersPage.Buyers) == 0 {
+		t.Fatalf("market SSR orders: sellers=%d buyers=%d error=%v", len(ordersPage.Sellers), len(ordersPage.Buyers), err)
+	}
+	historyPage, err := reader.UniverseMarketHistory(ctx, plex, 19000001, 30)
+	if err != nil || len(historyPage.History) != len(points) {
+		t.Fatalf("market SSR history: points=%d API=%d error=%v", len(historyPage.History), len(points), err)
 	}
 }
 

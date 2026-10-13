@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+import{a as o}from"./chunks/chunk-LVVBNF33.js";import"./chunks/chunk-T3H5KXSH.js";var s=o(()=>{let e=new EventSource("/__dev/reload");return{close:()=>e.close(),addEventListener(n,c){e.addEventListener(n,t=>{t instanceof MessageEvent&&typeof t.data=="string"&&c({data:t.data})})}}});self.onconnect=e=>{let n=e.ports[0];n&&s.connect(n)};

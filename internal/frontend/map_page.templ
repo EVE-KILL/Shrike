@@ -1,0 +1,138 @@
+package frontend
+
+import "strconv"
+
+templ mapIndexPage(view mapPageView) {
+	<div class="map-index" data-controller="map-page" data-action="click->map-page#click input->map-page#input focusin->map-page#focus focusout->map-page#blur pointerover->map-page#hover pointerout->map-page#leave error->map-page#imageError:capture popstate@window->map-page#back pagehide@window->map-page#hide pageshow@window->map-page#show" data-map-root data-map-scope={ view.Scope } data-map-base={ view.Base } data-map-activity={ view.Activity } data-map-hours={ strconv.Itoa(view.Hours) }>
+		<div class="map-index-controls glass-panel">
+			<div class="map-index-layers">
+				<div class="map-index-options">
+					<span>Base</span>
+					for _,option:=range []struct{ID,Label string}{{"sovereignty","Sovereignty"},{"live","Live"},{"aiid","AIID"},{"geography","Geography"},{"security","Security"}} {
+						<button type="button" data-map-base-option={ option.ID } class={ killBoolClass(view.Base == option.ID, "active", "") } hidden?={ view.Scope!="new-eden" && member(option.ID,"sovereignty","live","aiid") } aria-pressed={ strconv.FormatBool(view.Base == option.ID) }>{ option.Label }</button>
+					}
+				</div>
+				<div class="map-index-options activity">
+					<span>Activity</span>
+					for _,option:=range []struct{ID,Label string}{{"none","Off"},{"activity","Activity"},{"danger","Danger"},{"ship-kills","Ship kills"},{"pod-kills","Pod kills"},{"npc-kills","NPC kills"},{"jumps","Jumps"}} {
+						<button type="button" data-map-activity-option={ option.ID } class={ killBoolClass(view.Activity == option.ID, "active", "") } aria-pressed={ strconv.FormatBool(view.Activity == option.ID) }>{ option.Label }</button>
+					}
+				</div>
+			</div>
+			<div class="map-index-lower">
+				<div class="map-index-scopes" aria-label="Map space">
+					for _,scope:=range []struct{ID,Label string}{{"new-eden","New Eden"},{"zarzakh","Zarzakh"},{"wormhole","Wormhole"},{"abyssal","Abyssal"},{"proving","Proving"}} {
+						<button type="button" data-map-scope-option={ scope.ID } class={ killBoolClass(view.Scope == scope.ID, "active", "") } aria-pressed={ strconv.FormatBool(view.Scope == scope.ID) }>{ scope.Label }</button>
+					}
+				</div>
+				<div class="map-index-more">
+					<span>Window</span>
+					for _,window:=range []struct{Hours int; Label string}{{1,"1h"},{6,"6h"},{24,"24h"},{168,"7d"}} {
+						<button type="button" data-map-hours-option={ strconv.Itoa(window.Hours) } class={ killBoolClass(view.Hours == window.Hours, "active", "") } disabled?={ view.Activity=="none" } aria-pressed={ strconv.FormatBool(view.Hours == window.Hours) }>{ window.Label }</button>
+					}
+					<span>Show</span><button type="button" data-map-toggle="routes" class={ killBoolClass(view.ShowConnections, "active", "") } aria-pressed={ strconv.FormatBool(view.ShowConnections) }>Routes</button><button type="button" data-map-toggle="systems" class={ killBoolClass(view.ShowSystems, "active", "") } aria-pressed={ strconv.FormatBool(view.ShowSystems) }>Systems</button><button type="button" data-map-toggle="labels" class={ killBoolClass(view.ShowLabels, "active", "") } aria-pressed={ strconv.FormatBool(view.ShowLabels) }>Labels</button>
+					<button type="button" data-map-changes class={ killBoolClass(view.ShowChanges, "active", "") } hidden?={ view.Base!="sovereignty" } aria-pressed={ strconv.FormatBool(view.ShowChanges) }>Recent changes</button>
+					<span data-map-alarms hidden?={ view.Base!="aiid" }>
+						Alarms 
+						<button type="button" data-map-alarm="near" title="Sound an urgent alarm for kills fewer than five jumps away" aria-pressed="false">
+							<span class="map-alarm-off">
+								@icon("volume-x")
+							</span>
+							<span class="map-alarm-on">
+								@icon("volume-2")
+							</span>Near &lt;5
+						</button>
+						<button type="button" data-map-alarm="outer" title="Sound a scanner alert for kills five to ten jumps away" aria-pressed="false">
+							<span class="map-alarm-off">
+								@icon("volume-x")
+							</span>
+							<span class="map-alarm-on">
+								@icon("volume-2")
+							</span>Outer 5–10
+						</button>
+					</span>
+				</div>
+			</div>
+		</div>
+		<div class="map-index-surface" data-map-surface>
+			<div class="map-index-search">
+				<label>
+					@icon("search")
+					<input type="search" data-map-search placeholder="Find a region or system" aria-label="Find a region or system" autocomplete="off"/>
+				</label>
+				<div data-map-search-results hidden></div>
+			</div>
+			<div class="map-index-status" data-map-status role="status">Loading map...</div>
+			<div class="map-index-canvas" data-map-canvas></div>
+			<div class="map-live-status map-general-status" data-map-general-status hidden>
+				<span data-map-general-count></span>@mapHourlyStatus()
+				<button type="button" data-map-reset>Reset view</button>
+			</div>
+			<aside class="map-live-panel map-sovereignty-panel" data-map-sovereignty hidden?={ view.Base!="sovereignty" } aria-label="Sovereignty holders">
+				<header><div><strong>Sovereignty holders</strong><small>Ranked by claimed systems</small></div><span data-map-sovereignty-alliance-count>0</span></header>
+				<div class="map-sovereignty-picker">
+					<label>
+						@icon("search")
+						<input type="search" data-map-sovereignty-search placeholder="Alliance or system" aria-label="Alliance or system" autocomplete="off"/>
+					</label>
+					<div class="map-sovereignty-results" data-map-sovereignty-results hidden></div>
+				</div>
+				<div class="map-sovereignty-list" data-map-sovereignty-list></div>
+				<footer><span data-map-sovereignty-claimed>0 systems claimed</span><span>Hover to isolate</span></footer>
+			</aside>
+			<div class="map-live-status map-sovereignty-status" data-map-sovereignty-status hidden?={ view.Base!="sovereignty" }>
+				<span data-map-sovereignty-summary>0 claimed · 0 alliances</span>@mapHourlyStatus()
+				<button type="button" data-map-reset>Reset view</button>
+			</div>
+			<div class="map-sovereignty-hover" data-map-sovereignty-hover hidden>
+				<div class="map-sovereignty-hover-main"><img data-map-hover-logo alt="" width="48" height="48"/><div><strong data-map-hover-name></strong><small data-map-hover-ticker></small><p><span><b data-map-hover-systems></b> systems</span><span><b data-map-hover-regions></b> regions</span></p></div></div>
+				<div class="map-sovereignty-hover-bottom"><span data-map-hover-members></span><span data-map-hover-changes></span></div>
+			</div>
+			<div class="map-region-hover" data-map-region-hover hidden>
+				<header><div><strong data-map-region-name></strong><small>Click to open the SVG region map</small></div><div><span data-map-region-systems></span><small data-map-region-window></small></div></header>
+				<div class="map-region-hover-metrics">
+					for _, metric := range []struct{ID,Label string}{{"ship_kills","ship kills"},{"pod_kills","pod kills"},{"npc_kills","NPC kills"},{"ship_jumps","jumps"}} {
+						<div><b data-map-region-metric={ metric.ID }>0</b><small>{ metric.Label }</small></div>
+					}
+				</div>
+				<footer><span><b class="high" data-map-region-high></b> high · <b class="low" data-map-region-low></b> low · <b class="null" data-map-region-null></b> null</span><span data-map-region-hotspot></span></footer>
+			</div>
+			<aside class="map-live-panel" data-map-live hidden?={ view.Base!="live" } aria-label="Live kills">
+				<header><div><strong>Live kills</strong><small>Newest activity across New Eden</small></div><span data-map-live-connection>Connecting</span></header>
+				<div class="map-live-list" data-map-live-list><p>Waiting for killmails…</p></div>
+				<footer><span data-map-live-count>0 recent kills</span><span>Events fade over 45s</span></footer>
+			</aside>
+			<div class="map-live-status" data-map-live-status hidden?={ view.Base!="live" }>
+				<span data-map-live-indicator>Connecting to relay</span> · <span data-map-live-recent>0 recent</span>@mapHourlyStatus()
+				<button type="button" data-map-reset>Reset view</button>
+			</div>
+			<aside class="map-live-panel map-aiid-panel" data-map-aiid hidden?={ view.Base!="aiid" } aria-label="Am I In Danger?">
+				<header><div><strong>Am I In Danger?</strong><small>Watch everything within 10 jumps</small></div><span data-map-aiid-connection>Connecting</span></header>
+				<div class="map-aiid-picker">
+					<label>
+						@icon("search")
+						<input type="text" data-map-aiid-search placeholder="Add a system to watch..." aria-label="Add a system to watch" autocomplete="off"/>
+					</label>
+					<div class="map-aiid-results" data-map-aiid-results hidden></div>
+					<div class="map-aiid-chips" data-map-aiid-chips hidden></div>
+					<div class="map-aiid-coverage" data-map-aiid-coverage hidden></div>
+				</div>
+				<div class="map-live-list" data-map-aiid-list><p><strong>Choose your position</strong><span>Add a mining, ratting, or travel system. AIID will stitch together every stargate route up to ten jumps away.</span></p></div>
+				<footer><span data-map-aiid-count>0 kills in 24h</span><span>Risk signals fade over 15m</span></footer>
+			</aside>
+			<div class="map-live-status map-aiid-status" data-map-aiid-status hidden?={ view.Base!="aiid" }>
+				<span data-map-aiid-indicator>Connecting to relay</span> · <span data-map-aiid-recent>0 systems</span>@mapHourlyStatus()
+				<button type="button" data-map-reset>Reset view</button>
+			</div>
+			<div class="map-index-legend" data-map-legend>
+				<span class="map-legend-base" data-map-legend-base>Region grouping</span>
+				<span class="map-legend-changes" data-map-legend-changes hidden>Changed in the last 7 days</span>
+				<span class="map-legend-activity" data-map-legend-activity hidden><i aria-hidden="true"></i><strong data-map-activity-label></strong><span>Quiet</span><span data-map-activity-peak></span><small data-map-activity-window></small></span>
+			</div>
+		</div>
+	</div>
+}
+
+templ mapHourlyStatus() {
+	<span class="map-status-hourly" data-map-hourly hidden></span>
+}

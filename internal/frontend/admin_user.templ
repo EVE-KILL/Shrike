@@ -1,0 +1,157 @@
+package frontend
+
+import "time"
+
+templ adminUserDetail(data adminUserDetailData, now time.Time) {
+	{{ user := data.User }}
+	<div class="go-utility-page admin-page admin-user w-full" data-admin-user data-controller="admin-user-detail" data-action="click->admin-user-detail#click submit->admin-user-detail#submit pagehide@window->admin-user-detail#hide pageshow@window->admin-user-detail#show" data-character-id={ warID(user.ID) }>
+		<a href="/admin/users" class="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-400 transition-colors mb-4">
+			<span class="text-sm">
+				@icon("arrow-left")
+			</span>Back to Users
+		</a>
+		<p hidden data-admin-user-error role="alert" class="glass-panel p-4 mb-4 text-sm text-red-400"></p>
+		<div class="hero-surface glass-panel overflow-hidden mb-6">
+			<div class="relative">
+				<img src={ eveEntityImage("character", user.ID, 512) } alt={ user.Name } width="512" height="128" class="w-full h-32 object-cover object-top"/>
+				<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+				<div class="absolute bottom-0 left-0 right-0 p-4 flex items-end gap-4">
+					<img src={ eveEntityImage("character", user.ID, 128) } alt={ user.Name } width="64" height="64" class="w-16 h-16 rounded-full border-2 border-black/50 flex-shrink-0"/>
+					<div class="flex-1 min-w-0 pb-1">
+						<div class="flex items-center gap-2">
+							<span class="text-lg font-bold text-white truncate">
+								{ user.Name }
+							</span>
+							if user.Admin {
+								<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-500/20 text-green-400 border border-green-500/20">Admin</span>
+							}
+						</div>
+						<div class="flex items-center gap-3 mt-0.5">
+							if user.CorporationName!="" {
+								<span class="flex items-center gap-1.5 text-xs text-gray-300">
+									<img src={ eveEntityImage("corporation", user.CorporationID, 32) } alt="" width="16" height="16" class="w-4 h-4 rounded"/>{ user.CorporationName }
+								</span>
+							}
+							if user.AllianceName!="" {
+								<span class="flex items-center gap-1.5 text-xs text-gray-300">
+									<img src={ eveEntityImage("alliance", user.AllianceID, 32) } alt="" width="16" height="16" class="w-4 h-4 rounded"/>{ user.AllianceName }
+								</span>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+			<div class="glass-panel p-5">
+				<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">Account</h2>
+				<div class="space-y-3">
+					@settingsAccountRow("Character ID", warID(user.ID), "text-gray-300 tabular-nums")
+					@settingsAccountRow("Owner Hash", user.OwnerHash, "text-gray-300 font-mono text-xs truncate ml-4 max-w-[200px]")
+					@settingsAccountRow("Last Login", adminDate(user.LastLogin), "text-gray-300 tabular-nums")
+					@settingsAccountRow("Joined", adminDate(user.CreatedAt), "text-gray-300 tabular-nums")
+					@settingsAccountRow("Updated", adminDate(user.UpdatedAt), "text-gray-300 tabular-nums")
+					<div class="flex justify-between items-center text-sm pt-2 border-t border-white/[0.06]">
+						<span class="text-gray-500">Admin</span>
+						<button type="button" data-admin-user-toggle class={ "px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer " + killBoolClass(user.Admin, "bg-red-500/15 text-red-400 border border-red-500/20 hover:bg-red-500/25", "bg-green-500/15 text-green-400 border border-green-500/20 hover:bg-green-500/25") }>
+							<span hidden data-admin-user-toggle-spinner class="text-xs animate-spin mr-1 inline">
+								@icon("loader-2")
+							</span>{ killBoolClass(user.Admin,"Remove Admin","Make Admin") }
+						</button>
+					</div>
+					<div class="pt-2 border-t border-white/[0.06]">
+						<div class="flex justify-between items-center text-sm mb-2">
+							<span class="text-gray-500">Discord ID</span>
+							<span class={ "text-xs " + killBoolClass(user.DiscordID != nil, "text-gray-400 font-mono", "text-gray-600") }>
+								{ killBoolClass(user.DiscordID!=nil,"linked","not linked") }
+							</span>
+						</div>
+						<form novalidate data-admin-discord class="flex gap-2">
+							<input type="text" data-admin-discord-id aria-label="Discord ID" inputmode="numeric" pattern="[0-9]*" value={ adminOptionalString(user.DiscordID) } placeholder="Discord snowflake (numeric)" class="flex-1 px-2 py-1 rounded bg-black/30 border border-white/[0.08] text-sm font-mono text-gray-200 focus:outline-none focus:border-blue-500/40"/>
+							<button type="submit" class="px-3 py-1 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-400 border border-blue-500/20 hover:bg-blue-500/25 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+								<span hidden data-admin-discord-spinner class="text-xs animate-spin mr-1 inline">
+									@icon("loader-2")
+								</span>Save
+							</button>
+							if user.DiscordID!=nil {
+								<button type="button" data-admin-discord-clear class="px-3 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer disabled:opacity-50">Clear</button>
+							}
+						</form>
+						<p hidden data-admin-discord-error class="text-xs text-red-400 mt-1" role="alert"></p>
+					</div>
+				</div>
+			</div>
+			<div class="glass-panel p-5">
+				<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">ESI Token</h2>
+				if data.Token!=nil {
+					<div class="space-y-3">
+						@settingsAccountRow("Status", killBoolClass(adminTokenActive(data, now), "Active", "Expired"), killBoolClass(adminTokenActive(data, now), "text-green-400", "text-red-400"))
+						@settingsAccountRow("Expires", adminDate(data.Token.Expiry), "text-gray-300 tabular-nums")
+						@settingsAccountRow("Last Fetched", adminDate(data.Token.LastFetched), "text-gray-300 tabular-nums")
+						@settingsAccountRow("Created", adminDate(data.Token.CreatedAt), "text-gray-300 tabular-nums")
+					</div>
+					<div class="mt-4 pt-4 border-t border-white/[0.06]">
+						<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-2">Scopes</div>
+						if len(data.Token.Scopes)>0 {
+							<div class="flex flex-wrap gap-1.5">
+								for _,scope:=range data.Token.Scopes {
+									<span class="px-2 py-0.5 text-xs rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+										{ scope }
+									</span>
+								}
+							</div>
+						} else {
+							<p class="text-sm text-gray-600">No scopes granted.</p>
+						}
+					</div>
+				} else {
+					<p class="text-sm text-gray-600">No ESI token found.</p>
+				}
+			</div>
+			<div class="glass-panel p-5">
+				<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">ESI Activity</h2>
+				<div class="space-y-3">
+					@settingsAccountRow("Total Requests", adminNumber(data.Stats["total_requests"]), "text-gray-300 tabular-nums")
+					@settingsAccountRow("Errors", adminNumber(data.Stats["total_errors"]), "tabular-nums "+killBoolClass(adminFloat(data.Stats["total_errors"]) > 0, "text-red-400", "text-gray-300"))
+					@settingsAccountRow("New Items Found", adminNumber(data.Stats["total_new_items"]), "tabular-nums "+killBoolClass(adminFloat(data.Stats["total_new_items"]) > 0, "text-blue-400", "text-gray-300"))
+					@settingsAccountRow("Last Request", adminStatDate(data.Stats["last_request"]), "text-gray-300 tabular-nums")
+				</div>
+				<div class="mt-4 pt-4 border-t border-white/[0.06]"><a href={ adminUserESIURL(user) } class="text-xs text-gray-500 hover:text-blue-400 transition-colors">View in ESI logs →</a></div>
+			</div>
+			if len(data.Config)>0 {
+				<div class="glass-panel p-5 md:col-span-2">
+					<h2 class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500 mb-4">User Config</h2>
+					<div class="overflow-x-auto">
+						<table class="w-full text-sm">
+							<thead>
+								<tr class="border-b border-white/[0.06]">
+									for _,label:=range []string{"Key","Value","Updated"} {
+										<th class={ killBoolClass(label == "Updated", "text-right", "text-left") + " px-3 py-2 text-fine font-bold uppercase tracking-[0.15em] text-gray-600" }>
+											{ label }
+										</th>
+									}
+								</tr>
+							</thead>
+							<tbody>
+								for _,config:=range data.Config {
+									<tr class="border-b border-white/[0.04]">
+										<td class="px-3 py-2 text-gray-300 font-mono text-xs">
+											{ config.Key }
+										</td>
+										<td data-admin-config-value={ settingsJSON(config.Value) } class="px-3 py-2 text-gray-400 font-mono text-xs truncate max-w-[400px]">
+											{ settingsJSON(config.Value) }
+										</td>
+										<td class="px-3 py-2 text-right text-gray-500 tabular-nums text-xs">
+											{ adminDate(config.UpdatedAt) }
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			}
+		</div>
+		<div class="mt-4 flex items-center gap-3"><a href={ "/character/" + warID(user.ID) } class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 bg-white/[0.04] border border-white/[0.06] hover:text-blue-400 hover:bg-blue-500/[0.08] transition-colors">View Public Profile</a></div>
+	</div>
+}

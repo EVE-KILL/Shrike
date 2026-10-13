@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+import{a,b,c,d,e,f,g,h,i,j,k,l,m}from"./chunks/chunk-OZOCKCFV.js";import"./chunks/chunk-T3H5KXSH.js";export{b as ANNOUNCEMENT_COLLAPSED_KEY,a as ANNOUNCEMENT_DISMISSED_KEY,e as announcementActive,k as announcementBannerColors,f as announcementCategory,g as announcementLists,l as announcementModalColors,c as announcementNewestFirst,d as announcementSort,m as announcementTickerColors,h as applyAnnouncementEvent,i as reconcileAnnouncementSnapshot,j as tickerFreshness};

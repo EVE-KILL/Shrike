@@ -24,7 +24,7 @@ var openAPICmd = &cobra.Command{
 reading runtime configuration or touching Postgres, Redis, Memgraph, ESI, or B2.
 
 The committed JSON output is the source for the generated TypeScript contract
-used by the Nuxt renderer.`,
+used by browser helpers.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if flagOpenAPIVersion != "3.0" && flagOpenAPIVersion != "3.1" {
 			return fmt.Errorf(

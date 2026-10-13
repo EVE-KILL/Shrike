@@ -28,6 +28,27 @@ func TestRoamReportRoutes(t *testing.T) {
 	if path := a.OpenAPI().Paths["/tools/roam-report/{id}/killlist"]; path == nil || path.Get == nil {
 		t.Fatal("report killlist route is missing")
 	}
+	applyOperationParameters(a.OpenAPI())
+	for _, op := range []*huma.Operation{a.OpenAPI().Paths["/tools/roam-report/{id}"].Get, a.OpenAPI().Paths["/tools/roam-report/{id}"].Put, a.OpenAPI().Paths["/tools/roam-report/{id}/killlist"].Get} {
+		found := false
+		for _, p := range op.Parameters {
+			if p.In == "path" && p.Name == "id" && p.Required && p.Schema.Type == huma.TypeString {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s lacks its share ID input in API docs", op.OperationID)
+		}
+	}
+	names := map[string]bool{}
+	for _, p := range a.OpenAPI().Paths["/tools/roam-report/{id}/killlist"].Get.Parameters {
+		names[p.Name] = true
+	}
+	for _, name := range []string{"role", "limit", "after", "page"} {
+		if !names[name] {
+			t.Errorf("report killlist docs lack %s", name)
+		}
+	}
 }
 
 func TestRoamShipCompositionTracksMultipleHulls(t *testing.T) {

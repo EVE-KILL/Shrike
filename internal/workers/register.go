@@ -112,10 +112,6 @@ var registrations = []registration{
 		kind: queue.CharacterIntelRollupArgs{}.Kind(),
 		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &CharacterIntelRollupWorker{Deps: d}) },
 	},
-	{
-		kind: queue.ImageRefreshArgs{}.Kind(),
-		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &ImageRefreshWorker{Deps: d}) },
-	},
 }
 
 // Register builds the worker set.

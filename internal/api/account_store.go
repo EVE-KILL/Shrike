@@ -647,7 +647,7 @@ func (s *postgresAccountStore) LoadESIMetrics(
 				request_duration_ms
 			FROM esi_request_logs
 			WHERE character_id = $1
-			  AND created_at >= $2 - interval '24 hours'
+			  AND created_at >= $2::timestamptz - interval '24 hours'
 		),
 		hourly AS (
 			SELECT
@@ -677,12 +677,12 @@ func (s *postgresAccountStore) LoadESIMetrics(
 			(
 				SELECT count(*)::bigint
 				FROM recent
-				WHERE created_at >= $2 - interval '1 hour'
+				WHERE created_at >= $2::timestamptz - interval '1 hour'
 			),
 			(
 				SELECT round(avg(request_duration_ms))::int
 				FROM recent
-				WHERE created_at >= $2 - interval '1 hour'
+				WHERE created_at >= $2::timestamptz - interval '1 hour'
 				  AND request_duration_ms IS NOT NULL
 			),
 			(
@@ -692,7 +692,7 @@ func (s *postgresAccountStore) LoadESIMetrics(
 					)
 				)::int
 				FROM recent
-				WHERE created_at >= $2 - interval '1 hour'
+				WHERE created_at >= $2::timestamptz - interval '1 hour'
 				  AND request_duration_ms IS NOT NULL
 			)`,
 		characterID,
@@ -1088,6 +1088,7 @@ func (s *postgresAccountStore) LoadNotificationReplies(
 			c.id,
 			c.target_type,
 			c.target_id,
+			COALESCE(c.target_slug,p.target_slug,post.slug),
 			c.parent_id,
 			c.root_id,
 			c.body_html,
@@ -1103,6 +1104,7 @@ func (s *postgresAccountStore) LoadNotificationReplies(
 		FROM comments c
 		INNER JOIN comments p
 		  ON c.parent_id = p.id
+		LEFT JOIN blog_posts post ON c.target_type=9 AND post.id=c.target_id
 		WHERE p.character_id = $1
 		  AND c.character_id <> $1
 		  AND c.deleted_at IS NULL
@@ -1132,6 +1134,7 @@ func (s *postgresAccountStore) LoadNotificationReplies(
 			&item.ID,
 			&item.TargetType,
 			&item.TargetID,
+			&item.TargetSlug,
 			&item.ParentID,
 			&item.RootID,
 			&item.BodyHTML,

@@ -1,0 +1,19 @@
+new:
+  displayName: Spool Multiplier Bonus
+  category: Miscellaneous
+  unit: Multiplier
+  highIsGood: true
+  published: false
+
+effects:
+  - name: spoolMultiplierBonus
+    on: spoolsDamage
+    category: passive
+    rules:
+      - {from: damageMultiplierBonusMax}
+
+  - name: spoolMultiplierBonus2
+    on: spoolsRepair
+    category: passive
+    rules:
+      - {from: repairMultiplierBonusMax}

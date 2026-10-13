@@ -16,7 +16,6 @@ import (
 	// caddyhttp already brings in the TLS and PKI apps. File storage is linked
 	// explicitly so the development CA and leaf certificates stay inside
 	// Shrike's data directory instead of Caddy's process-wide default.
-	_ "github.com/caddyserver/caddy/v2/modules/caddyhttp/reverseproxy"
 	_ "github.com/caddyserver/caddy/v2/modules/filestorage"
 )
 

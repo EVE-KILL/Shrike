@@ -1,0 +1,101 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ roamKills(view roamView) {
+	<div data-roam-kills>
+		<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+			<div><h2 class="text-lg font-semibold text-white">Killmails</h2><p class="mt-1 text-sm text-gray-400">The report's recorded kills and losses in the regular killlist.</p></div>
+			<div class="flex rounded-lg border border-white/[0.08] bg-white/[0.04] p-1 text-xs">
+				for _, option := range []struct{ID,Label string;Count int}{{"kills","Kills",view.Data.Summary.Kills},{"losses","Losses",view.Data.Summary.Losses},{"all","All",view.Data.Summary.Kills+view.Data.Summary.Losses}} {
+					<button type="button" data-roam-kill-role={ option.ID } aria-pressed={ strconv.FormatBool(roamKillRole(view) == option.ID) } class={ "rounded-md px-3 py-1.5 font-medium transition-colors " + killBoolClass(roamKillRole(view) == option.ID, "bg-blue-500/15 text-blue-300", "text-gray-400 hover:text-gray-200") }>
+						{ option.Label }
+						<span class="tabular-nums text-gray-500">
+							{ strconv.Itoa(option.Count) }
+						</span>
+					</button>
+				}
+			</div>
+		</div>
+		<div data-roam-killlist>
+			@killList(view.Kills, view.KillOptions)
+		</div>
+	</div>
+}
+
+templ roamSystems(report api.RoamReport) {
+	<div class="space-y-6" data-roam-systems>
+		<p class="text-sm text-gray-400">Systems are ordered by their first recorded kill or loss. Repeated visits appear in the engagement trail below.</p>
+		if len(report.Systems)==0 {
+			<div class="glass-panel p-10 text-center text-sm text-gray-400">No systems with recorded combat in this time window.</div>
+		} else {
+			<div class="grid gap-6 xl:grid-cols-3">
+				<section class="glass-panel overflow-hidden p-4 sm:p-5 xl:col-span-2" aria-label="Roam combat map">
+					<div class="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold text-white">Combat map</h2><p class="mt-1 text-xs text-gray-500">Markers show systems with recorded kills or losses.</p></div><select data-roam-map-scope aria-label="Map scope" class="rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-gray-200"><option value="new-eden">New Eden</option><option value="wormhole">Wormhole</option><option value="zarzakh">Zarzakh</option><option value="abyssal">Abyssal</option><option value="proving">Proving</option></select></div>
+					<button type="button" data-roam-map-back hidden class="mb-3 text-xs text-blue-300 hover:underline">← All regions</button>
+					<div class="roam-combat-map" data-roam-map></div>
+					<p data-roam-map-error hidden role="alert" class="mt-2 text-sm text-red-400"></p>
+					@templ.JSONScript("roam-map-data", report.Systems).WithType("application/json")
+				</section>
+				<section id="roam-system-order" class="glass-panel scroll-mt-6 p-5">
+					<h2 class="text-lg font-semibold text-white">Systems in combat order</h2>
+					<p class="mt-1 text-xs text-gray-500">First recorded killmail sets the order</p>
+					<div class="mt-4 max-h-[35rem] space-y-2 overflow-y-auto pr-1">
+						for index, system := range roamOrderedSystems(report) {
+							<button type="button" data-roam-system={ strconv.FormatInt(int64(system.SolarSystemID), 10) } data-system-name={ system.SolarSystemName } aria-pressed="false" class="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-white/[0.04] border-white/[0.06]">
+								<span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs font-semibold text-blue-300">
+									{ strconv.Itoa(index+1) }
+								</span>
+								<span class="min-w-0 flex-1">
+									<span class="block truncate text-sm font-medium text-gray-100">
+										{ system.SolarSystemName }
+									</span>
+									<span class="block truncate text-xs text-gray-500">
+										{ system.RegionName } · { roamDate(system.FirstSeen) }
+									</span>
+								</span><span class="shrink-0 text-xs tabular-nums text-gray-400">{ strconv.Itoa(system.Kills) } K / { strconv.Itoa(system.Losses) } L</span>
+							</button>
+						}
+					</div>
+				</section>
+			</div>
+			<section class="scroll-mt-6">
+				<div class="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-lg font-semibold text-white">Engagement trail</h2><p class="mt-1 text-sm text-gray-400">A new stretch begins after a system change or a 30-minute pause.</p></div><button type="button" data-roam-system-clear hidden class="text-sm text-blue-300 hover:underline"></button></div>
+				<div class="space-y-3">
+					for _, engagement := range report.Engagements {
+						<article data-roam-engagement-system={ strconv.FormatInt(int64(engagement.SolarSystemID), 10) } class="glass-panel flex flex-wrap items-center gap-4 p-5">
+							<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-sm font-bold text-blue-300">
+								{ strconv.Itoa(engagement.Number) }
+							</span>
+							<div class="min-w-0 flex-1">
+								<a href={ idPath("system", int64(engagement.SolarSystemID)) } class="text-base font-semibold text-white hover:text-blue-300">
+									{ engagement.SolarSystemName }
+								</a>
+								<p class="mt-1 text-xs text-gray-500">
+									{ engagement.RegionName } · { roamDate(engagement.StartTime) }
+									if !engagement.EndTime.Equal(engagement.StartTime) {
+										{ " – " }{ roamClock(engagement.EndTime) } EVE
+									}
+								</p>
+							</div>
+							<div class="text-right text-sm tabular-nums">
+								<p>
+									<span class="text-emerald-300">
+										{ strconv.Itoa(engagement.Kills) } { roamPlural(engagement.Kills,"kill","kills") }
+									</span> · 
+									<span class="text-rose-300">
+										{ strconv.Itoa(engagement.Losses) } { roamPlural(engagement.Losses,"loss","losses") }
+									</span>
+								</p>
+								<p class="mt-1 text-xs text-gray-500">{ compactNumber(engagement.IskDestroyed) } destroyed · { strconv.Itoa(len(engagement.PilotIDs)) } { roamPlural(len(engagement.PilotIDs),"pilot","pilots") } observed</p>
+							</div>
+						</article>
+					}
+				</div>
+			</section>
+		}
+	</div>
+}

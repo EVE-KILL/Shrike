@@ -1,0 +1,9 @@
+.statistics-page [hidden] { display: none !important; }
+.statistics-page .icon { width: 1em; height: 1em; }
+.statistics-page [data-stats-card-content] img { object-fit: contain; }
+.statistics-page .stats-period-skeleton { min-height: 329px; }
+.statistics-page .stats-population-skeleton { min-height: 450px; }
+@media (prefers-reduced-motion: reduce) {
+  .statistics-page .skeleton-animate,
+  .statistics-page .animate-spin { animation: none; }
+}

@@ -5,31 +5,7 @@ import (
 	"fmt"
 
 	"github.com/eve-kill/shrike/internal/images"
-	"github.com/eve-kill/shrike/internal/queue"
-	"github.com/riverqueue/river"
 )
-
-// ImageRefreshWorker moves CCP refreshes off the HTTP request path. River's
-// active-state uniqueness means a traffic spike can never multiply the origin
-// request or write the same B2 pointer concurrently.
-type ImageRefreshWorker struct {
-	river.WorkerDefaults[queue.ImageRefreshArgs]
-	Deps *Deps
-}
-
-func (w *ImageRefreshWorker) Work(
-	ctx context.Context,
-	job *river.Job[queue.ImageRefreshArgs],
-) error {
-	if w.Deps.Images == nil || !w.Deps.Images.Available() {
-		return fmt.Errorf("image storage is not configured")
-	}
-	return w.Deps.Images.RefreshEntity(
-		ctx,
-		images.EntityKind(job.Args.EntityKind),
-		job.Args.EntityID,
-	)
-}
 
 // cronImageTypeSync checks GitHub once per day and mirrors a changed
 // TurtleTools Image Export Collection into direct type-ID keys in B2. The

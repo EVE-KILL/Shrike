@@ -583,7 +583,7 @@ var rebuildFittingDistributionsCmd = &cobra.Command{
 }
 
 func calculateFittingStatsInline(ctx context.Context, pool *pgxpool.Pool, days, workers int) error {
-	if err := os.Setenv("DOGMA_BRIDGE_PROCESSES", strconv.Itoa(workers)); err != nil {
+	if err := os.Setenv("DOGMA_WORKER_PROCESSES", strconv.Itoa(workers)); err != nil {
 		return err
 	}
 	query := `

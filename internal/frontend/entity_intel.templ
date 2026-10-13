@@ -1,0 +1,125 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ entityIntel(kind string, data api.EntityIntelData) {
+	<div class="entity-intel-content" data-entity-kind={ kind }>
+		if kind == "character" {
+			<section class="glass-panel entity-intel-profile">
+				<h2>Intel Profile</h2>
+				<div class="entity-intel-playstyle">
+					<div><span>Playstyle</span><strong>{ data.DominantStyle } <small>({ fullNumber(float64(data.Playstyle.TotalKills)) } kills)</small></strong></div>
+					<div class="entity-intel-playstyle-bar">
+						for _, bar := range entityPlaystyleBars(data) {
+							<span class={ bar.Class } style={ entityPlaystyleWidth(bar.Percent) } title={ bar.Label + ": " + strconv.FormatInt(bar.Percent, 10) + "%" }></span>
+						}
+					</div>
+					<div class="entity-intel-legend">
+						for _, bar := range entityPlaystyleBars(data) {
+							<span class={ bar.Class }>{ bar.Label } { strconv.FormatInt(bar.Percent, 10) }%</span>
+						}
+					</div>
+				</div>
+				<div class="entity-intel-tags">
+					<span>Avg Fleet: { entityIntelFleetSize(data.Playstyle.AvgFleetSize) }</span>
+					if data.FC.Likelihood != "" && data.FC.Likelihood != "None" {
+						<span>FC: { data.FC.Likelihood }</span>
+					}
+					if data.CapitalPilot {
+						<span>Capital Pilot</span>
+					}
+					if data.IsLogi {
+						<span>Logi Pilot</span>
+					}
+					if data.CynoDeaths > 0 {
+						<span>Cyno Alt ({ strconv.FormatInt(data.CynoDeaths, 10) } deaths)</span>
+					}
+					if data.Bait != "" && data.Bait != "None" {
+						<span>Bait ({ strconv.FormatInt(data.BaitCount, 10) }x)</span>
+					}
+					if data.AWOXKills > 0 {
+						<span>Awox: { strconv.FormatInt(data.AWOXKills, 10) } kills</span>
+					}
+				</div>
+				<div class="entity-intel-tops">
+					@topBox(topBoxView{Title: "Typically Flies", DataType: "ships", Entries: data.ShipsFlown})
+					@topBox(topBoxView{Title: "Typically Loses", DataType: "ships", Entries: data.ShipsLost})
+				</div>
+				<div class="entity-intel-tops">
+					@topBox(topBoxView{Title: "Targets (Alliances)", DataType: "alliances", Entries: data.Targets})
+				</div>
+				if len(data.FleetPartners) > 0 {
+					<div class="entity-intel-partners">
+						<h3>Top Fleet Partners</h3>
+						for _, peer := range data.FleetPartners {
+							<div>
+								<img src={ eveEntityImage("character", peer.ID, 64) } alt="" width="24" height="24" loading="lazy"/><a href={ idPath("character", peer.ID) }>{ peer.Name }</a>
+								<span>
+									{ peer.CorpName }
+									if peer.AllianceName != "" {
+										[{ peer.AllianceName }]
+									}
+								</span><strong>{ fullNumber(float64(peer.Count)) }</strong>
+							</div>
+						}
+					</div>
+				}
+			</section>
+		} else {
+			<div class="entity-intel-section" data-entity-intel-section="active">
+				<section class="glass-panel entity-active-members">
+					<h2>Active Members</h2>
+					<div class="entity-active-member-grid"><div><strong>{ fullNumber(float64(data.ActiveMembers.Days7)) }</strong><span>7 days</span></div><div><strong>{ fullNumber(float64(data.ActiveMembers.Days30)) }</strong><span>30 days</span></div><div><strong>{ fullNumber(float64(data.ActiveMembers.Days90)) }</strong><span>90 days</span></div></div>
+					if data.Census.Total > 0 {
+						<h3>Composition</h3>
+						<div class="entity-intel-tags">
+							<span class="tracked">{ fullNumber(float64(data.Census.Total)) } tracked</span>
+							if data.Census.FCs > 0 {
+								<span class="fcs">{ strconv.FormatInt(data.Census.FCs, 10) } FCs</span>
+							}
+							if data.Census.Logis > 0 {
+								<span class="logis">{ strconv.FormatInt(data.Census.Logis, 10) } Logi</span>
+							}
+							if data.Census.Caps > 0 {
+								<span class="caps">{ strconv.FormatInt(data.Census.Caps, 10) } Capital Pilots</span>
+							}
+						</div>
+					}
+				</section>
+			</div>
+			if len(data.Allies) > 0 || len(data.Enemies) > 0 || len(data.HuntingGrounds) > 0 {
+				<div class="entity-intel-section" data-entity-intel-section="relations">
+					if len(data.Allies) > 0 || len(data.Enemies) > 0 {
+						<div class="entity-intel-tops">
+							@topBox(topBoxView{Title: "Allies", DataType: kindToPlural(kind), Entries: entityIntelPeers(data.Allies, "allies"), CountClass: "ally"})
+							@topBox(topBoxView{Title: "Enemies", DataType: kindToPlural(kind), Entries: entityIntelPeers(data.Enemies, "enemies"), CountClass: "loss"})
+						</div>
+					}
+					if len(data.HuntingGrounds) > 0 {
+						<div class="entity-intel-hunting">
+							@topBox(topBoxView{Title: "Hunting Grounds (7d)", DataType: "systems", Entries: entityIntelPeers(data.HuntingGrounds, "hunting"), CountClass: "hunting"})
+						</div>
+					}
+				</div>
+			}
+			if len(data.RecentDepartures) > 0 || len(data.RecentJoins) > 0 {
+				<div class="entity-intel-section" data-entity-intel-section="recent">
+					<div class="entity-intel-tops">
+						@topBox(topBoxView{Title: "Recent Departures", DataType: "characters", Entries: entityIntelPeers(data.RecentDepartures, "departures"), CountFormat: "age", CountClass: "departure"})
+						@topBox(topBoxView{Title: "Recent Joins", DataType: "characters", Entries: entityIntelPeers(data.RecentJoins, "joins"), CountFormat: "age", CountClass: "ally"})
+					</div>
+				</div>
+			}
+		}
+	</div>
+}
+
+func kindToPlural(kind string) string {
+	if kind == "corporation" {
+		return "corporations"
+	}
+	return "alliances"
+}

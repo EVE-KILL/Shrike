@@ -1,0 +1,13 @@
+new:
+  displayName: Capacitor Peak Delta Percentage
+  category: Capacitor
+  unit: "Absolute Percent"
+  default: 100
+  highIsGood: true
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {mul: capacitorPeakDelta}
+      - {div: capacitorPeakRecharge}

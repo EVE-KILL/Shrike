@@ -1,0 +1,334 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+)
+
+templ battleComposition(v battleDetailView) {
+	<section data-battle-composition data-controller="battle-composition" data-action="click->battle-composition#click input->battle-composition#input change->battle-composition#change">
+		@templ.JSONScript("battle-composition-data", v.Composition).WithType("application/json")
+		<div class="mb-4 grid gap-3 sm:grid-cols-2">
+			for i,t:=range v.Composition.Teams {
+				@battleCompositionSummary(t, i)
+			}
+		</div>
+		<p class="mb-3 text-xs text-gray-500">Observed ships and pilots from the full battle’s killmails, not a complete fleet roster. Pilots can appear in multiple hulls.</p>
+		<div class="glass-panel mb-4 flex flex-wrap items-center gap-3 p-3">
+			<label class="text-xs text-gray-400">
+				Find <input type="search" data-battle-composition-search placeholder="Ship, pilot or corporation" class="ml-2 rounded border border-white/10 bg-black/30 px-3 py-2"/>
+			</label>
+			<label class="text-xs text-gray-400">
+				Ship class 
+				<select data-battle-composition-group class="ml-2 max-w-52 rounded bg-[#141414] p-2">
+					<option value="">All classes</option>
+					for _,group:=range battleCompositionGroups(v.Composition) {
+						<option value={ strconv.FormatInt(group.ID, 10) } selected?={ v.Filter.Group!=nil && *v.Filter.Group==group.ID }>{ group.Name }</option>
+					}
+				</select>
+			</label>
+			<label class="flex items-center gap-2 text-xs text-gray-400">
+				<input type="checkbox" data-battle-composition-loss/>With recorded losses
+			</label>
+			<button type="button" class="ml-auto text-xs text-sky-300" data-battle-composition-reset>Reset filters</button>
+		</div>
+		<div class="flex gap-1 mb-4">
+			for _,view:=range []struct{ID,Label,Icon string}{{"individuals","Pilots","users"},{"by_ship","By Ship","rocket"},{"by_group","By Group","layers"}} {
+				<button type="button" data-battle-composition-view={ view.ID } aria-pressed={ strconv.FormatBool(view.ID == "individuals") } class={ "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer " + killBoolClass(view.ID == "individuals", "bg-blue-500/10 text-blue-400", "text-gray-500 hover:text-blue-400 hover:bg-blue-500/[0.04]") }>
+					<span class="text-sm">
+						@icon(view.Icon)
+					</span>{ view.Label }
+				</button>
+			}
+		</div>
+		if len(v.Composition.Teams)<2 {
+			<p class="glass-panel p-8 text-center text-sm text-gray-500">Composition data is not available for this battle.</p>
+		} else {
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				for i:=range v.Composition.Teams {
+					<section class={ "rounded-lg bg-white/[0.04] border p-3 " + battleTeamBorder(i) } data-battle-composition-team={ strconv.Itoa(i) }>
+						<header class="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.06]">
+							<h3 class={ "text-sm font-bold " + battleTeamAccent(i) }>{ battleSideName(i) }</h3>
+							<div class="text-fine text-gray-500" data-battle-composition-count>{ fmt.Sprintf("%s pilots",fullNumber(float64(len(v.CompositionRows[i])))) }</div>
+						</header>
+						<div data-battle-individual-table>
+							<table class="w-full text-xs table-fixed">
+								<thead class="text-gray-500 text-left">
+									<tr class="border-b border-white/[0.06]">
+										<th class="py-1.5 pr-2 font-medium">
+											@battleSortButton("individuals", "ship_name", "Ship", false)
+										</th>
+										<th class="py-1.5 px-2 font-medium">
+											@battleSortButton("individuals", "character_name", "Pilot", false)
+										</th>
+										<th class="py-1.5 px-2 font-medium text-right w-[90px]">
+											@battleSortButton("individuals", "isk_lost", "ISK Lost", true)
+										</th>
+										<th class="py-1.5 pl-2 font-medium text-right w-[90px]">
+											<div class="flex flex-col items-end leading-tight">
+												<span class="text-green-400/80">
+													@battleSortButton("individuals", "damage_done", "Done", true)
+												</span>
+												<span class="text-red-400/80">
+													@battleSortButton("individuals", "damage_taken", "Taken", true)
+												</span>
+											</div>
+										</th>
+									</tr>
+								</thead>
+								<tbody data-battle-composition-individuals>
+									for _,pilot:=range v.CompositionRows[i][:min(500,len(v.CompositionRows[i]))] {
+										@battleCompositionPilot(pilot)
+									}
+								</tbody>
+							</table>
+						</div>
+						<div class="overflow-x-auto" data-battle-aggregate-table hidden>
+							<table class="w-full text-xs">
+								<thead class="text-gray-500 text-left">
+									<tr class="border-b border-white/[0.06]">
+										<th class="py-1.5 pr-2 font-medium">
+											@battleSortButton("aggregate", "name", "Ship", false)
+										</th>
+										<th class="py-1.5 px-2 font-medium text-right">
+											@battleSortButton("aggregate", "count", "Count", true)
+										</th>
+										<th class="py-1.5 px-2 font-medium text-right">
+											@battleSortButton("aggregate", "losses", "Lost", true)
+										</th>
+										<th class="py-1.5 px-2 font-medium text-right">
+											@battleSortButton("aggregate", "isk_lost", "ISK Lost", true)
+										</th>
+										<th class="py-1.5 px-2 font-medium text-right">
+											@battleSortButton("aggregate", "damage_done", "Dmg Done", true)
+										</th>
+										<th class="py-1.5 pl-2 font-medium text-right">
+											@battleSortButton("aggregate", "damage_taken", "Dmg Taken", true)
+										</th>
+									</tr>
+								</thead>
+								<tbody data-battle-composition-aggregates></tbody>
+							</table>
+						</div>
+						<p class="py-4 text-center text-gray-600 text-xs" data-battle-composition-empty hidden>No pilots</p>
+						<button type="button" data-battle-composition-more class="w-full py-2.5 mt-2 rounded-lg text-xs font-medium text-gray-400 bg-white/[0.04] border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors" hidden>Show more</button>
+					</section>
+				}
+			</div>
+		}
+		<template data-battle-individual-template>
+			@battleCompositionPilot(battlePilot{})
+		</template>
+		<template data-battle-aggregate-template>
+			@battleCompositionAggregate(battleShipAggregate{})
+		</template>
+	</section>
+}
+
+templ battleCompositionSummary(t battleCompositionTeam, index int) {
+	<div class={ "glass-panel border-l-2 p-4 " + battleTeamBorder(index) }>
+		<div class={ "mb-2 text-xs font-semibold " + battleTeamAccent(index) }>{ battleSideName(index)+" · full-battle observations" }</div>
+		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+			for _,tile:=range battleCompositionTiles(t) {
+				<div>
+					<div class={ "font-mono text-lg " + tile.Color }>{ tile.Value }</div>
+					<div class="text-[10px] text-gray-500">{ tile.Label }</div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ battleSortButton(view, key, label string, right bool) {
+	<button type="button" data-battle-composition-sort={ key } data-battle-sort-view={ view } class={ "flex items-center gap-1 hover:text-blue-400 " + killBoolClass(right, "ml-auto", "") }>
+		<span>{ label }</span>
+		<span class="text-fine">
+			@icon("chevrons-up-down")
+		</span>
+	</button>
+}
+
+templ battleCompositionPilot(p battlePilot) {
+	<tr class="border-b border-white/[0.03] hover:bg-white/[0.02] align-top">
+		<td class="py-1.5 pr-2">
+			<div class="flex items-center gap-2 min-w-0">
+				<img src={ battleShipRender(p.ShipID) } hidden?={ p.ShipID==0 } alt="" width="32" height="32" class="w-8 h-8 rounded flex-shrink-0" loading="lazy" data-battle-ship-image/>
+				<div class="min-w-0 leading-tight">
+					<a href={ idPath("item", p.ShipID) } class={ "block truncate hover:text-blue-400 " + killBoolClass(p.Deaths > 0, "text-red-300", "text-gray-300") } data-battle-ship-link>{ battleUnknown(p.ShipName) }</a>
+					<a href={ idPath("group", p.GroupID) } class="block truncate text-fine text-gray-500 hover:text-blue-400" data-battle-group-link>{ battleUnknown(p.GroupName) }</a>
+				</div>
+			</div>
+		</td>
+		<td class="py-1.5 px-2">
+			<div class="flex items-center gap-2 min-w-0">
+				<img src={ battlePilotLogo(p) } hidden?={ battlePilotLogo(p)=="" } alt="" width="32" height="32" class="w-8 h-8 rounded flex-shrink-0" loading="lazy" data-battle-pilot-image/>
+				<div class="min-w-0 leading-tight">
+					<a href={ idPath("character", p.CharacterID) } class="block truncate text-gray-300 hover:text-blue-400" data-battle-pilot-link>{ battleUnknown(p.CharacterName) }</a>
+					<div class="truncate text-fine text-gray-500" data-battle-pilot-corp>{ p.CorpName }</div>
+				</div>
+			</div>
+		</td>
+		<td class={ "py-1.5 px-2 text-right tabular-nums " + killBoolClass(p.Lost > 0, "text-red-400", "text-gray-700") } data-battle-lost>{ killBoolClass(p.Lost>0,compactNumber(p.Lost),"—") }</td>
+		<td class="py-1.5 pl-2 text-right tabular-nums leading-tight">
+			<div class="text-green-400" data-battle-damage>{ fullNumber(p.Damage) }</div>
+			<div class="text-red-400 text-fine" data-battle-taken>{ fullNumber(p.Taken) }</div>
+		</td>
+	</tr>
+}
+
+templ battleCompositionAggregate(p battleShipAggregate) {
+	<tr class="border-b border-white/[0.03] hover:bg-white/[0.02] text-gray-300">
+		<td class="py-1 pr-2">
+			<div class="flex items-center gap-1.5">
+				<img alt="" width="24" height="24" class="w-6 h-6 rounded" loading="lazy" data-battle-ship-image hidden/>
+				<a class="hover:text-blue-400" data-battle-ship-link>{ p.Name }</a>
+			</div>
+		</td>
+		<td class="py-1 px-2 text-right tabular-nums" data-battle-count></td>
+		<td class="py-1 px-2 text-right tabular-nums" data-battle-losses></td>
+		<td class="py-1 px-2 text-right tabular-nums" data-battle-lost></td>
+		<td class="py-1 px-2 text-right tabular-nums" data-battle-damage></td>
+		<td class="py-1 pl-2 text-right tabular-nums text-gray-500" data-battle-taken></td>
+	</tr>
+}
+
+templ battleIntel(v battleDetailView) {
+	<section>
+		<p class="mb-4 text-xs text-gray-500">Full-battle killmail observations. FC candidates come from command hulls or prior identification. Pilot loss flags include losses in other hulls or capsules; inspect class losses for destroyed ships.</p>
+		if len(v.Intel.Teams)<2 {
+			<p class="glass-panel p-8 text-center text-sm text-gray-500">Intel data is not available for this battle.</p>
+		} else {
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+				for i,t:=range v.Intel.Teams {
+					@battleIntelSummary(v, t, i, battleIntelTeamStats(t))
+				}
+			</div>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				for i,t:=range v.Intel.Teams {
+					<div class="space-y-4">
+						@battleIntelPilots(t.FCs, i, "Fleet Commanders", "crown", "text-yellow-400", "No fleet commanders identified", true)
+						@battleIntelPilots(t.Logistics, i, "Logistics", "heart-pulse", "text-green-400", "No logistics pilots identified", false)
+						@battleIntelPilots(t.Capitals, i, "Capital Pilots", "shield", "text-orange-400", "No capital pilots in this battle", false)
+					</div>
+				}
+			</div>
+		}
+	</section>
+}
+
+templ battleIntelSummary(v battleDetailView, t battleIntelTeam, index int, s battleIntelStats) {
+	<div class={ "rounded-lg bg-white/[0.04] border p-3 space-y-2 " + battleTeamBorder(index) }>
+		<h3 class={ "text-xs font-bold mb-1 " + battleTeamAccent(index) }>{ battleSideName(index) }</h3>
+		<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+			<div class="flex items-center gap-1.5">
+				<span class="text-fine text-yellow-400">
+					@icon("crown")
+				</span>
+				<span class="text-gray-400">FC</span>
+				<span class="text-yellow-400 font-medium tabular-nums">{ strconv.Itoa(s.Confirmed) }</span>
+				if s.Possible>0 {
+					<span class="text-gray-500">+ <span class="text-gray-400 tabular-nums">{ strconv.Itoa(s.Possible) }</span> possible</span>
+				}
+			</div>
+			<div class="flex items-center gap-1.5">
+				<span class="text-fine text-green-400">
+					@icon("heart-pulse")
+				</span>
+				<span class="text-gray-400">Logi</span>
+				<span class="text-green-400 font-medium tabular-nums">{ strconv.Itoa(s.LogiSurvived) }</span>
+				if s.LogiDied>0 {
+					<span class="text-red-400/80 tabular-nums">{ fmt.Sprintf("/ %d with losses",s.LogiDied) }</span>
+				}
+			</div>
+			<div class="flex items-center gap-1.5">
+				<span class="text-fine text-orange-400">
+					@icon("shield")
+				</span>
+				<span class="text-gray-400">Caps</span>
+				<span class="text-orange-400 font-medium tabular-nums">{ strconv.Itoa(len(t.Capitals)) }</span>
+				if s.CapDied>0 {
+					<span class="text-red-400/80 tabular-nums">{ fmt.Sprintf("/ %d with losses",s.CapDied) }</span>
+				}
+			</div>
+		</div>
+		if len(s.Groups)>0 {
+			<div class="flex flex-wrap gap-x-3 gap-y-0.5 text-fine text-gray-500 pl-0.5">
+				for _,g:=range s.Groups {
+					<span>
+						{ fmt.Sprintf("%dx ",g.Count) }<a href={ battleLossClassLink(v, g.ID, index) } data-battle-navigation class="hover:text-blue-400" title="Inspect this class’s losses">{ g.Name }</a>
+						if g.Died>0 {
+							<span class="text-red-400/60 ml-0.5">{ fmt.Sprintf("(%d pilots with losses)",g.Died) }</span>
+						}
+					</span>
+				}
+			</div>
+		}
+	</div>
+}
+
+templ battleIntelPilots(pilots []battlePilot, index int, label, iconName, iconColor, empty string, fc bool) {
+	<section class={ "rounded-lg bg-white/[0.04] border p-3 " + battleTeamBorder(index) }>
+		<header class="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.06]">
+			<div class="flex items-center gap-2">
+				<span class={ "text-sm " + iconColor }>
+					@icon(iconName)
+				</span>
+				<h3 class={ "text-sm font-bold " + battleTeamAccent(index) }>{ battleSideName(index)+" — "+label }</h3>
+			</div>
+			<div class="text-fine text-gray-500">{ fmt.Sprintf("%d pilots",len(pilots)) }</div>
+		</header>
+		if len(pilots)==0 {
+			<p class="py-4 text-center text-fine text-gray-600">{ empty }</p>
+		} else {
+			<table class="w-full text-xs table-fixed">
+				<thead class="text-gray-500 text-left">
+					<tr class="border-b border-white/[0.06]">
+						<th class="py-1.5 pr-2 font-medium w-[40%]">Pilot</th>
+						<th class="py-1.5 px-2 font-medium w-[30%]">Ship</th>
+						<th class="py-1.5 px-2 font-medium text-right w-[15%]">Damage</th>
+						<th class="py-1.5 pl-2 font-medium text-right w-[15%]">Status</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _,p:=range pilots {
+						<tr class="border-b border-white/[0.03] hover:bg-white/[0.02] align-top">
+							<td class="py-1.5 pr-2">
+								<div class="flex items-center gap-2 min-w-0">
+									<img src={ eveEntityImage("character", p.CharacterID, 32) } alt="" width="32" height="32" class="w-8 h-8 rounded flex-shrink-0" loading="lazy"/>
+									<div class="min-w-0 leading-tight">
+										<a href={ idPath("character", p.CharacterID) } class="block truncate text-gray-300 hover:text-blue-400">{ battleUnknown(p.CharacterName) }</a>
+										<div class="truncate text-fine text-gray-500">{ p.CorpName }</div>
+									</div>
+								</div>
+							</td>
+							<td class="py-1.5 px-2">
+								<div class="flex items-center gap-2 min-w-0">
+									if p.ShipID>0 {
+										<img src={ battleShipRender(p.ShipID) } alt="" width="32" height="32" class="w-8 h-8 rounded flex-shrink-0" loading="lazy"/>
+									}
+									<div class="min-w-0 leading-tight">
+										<a href={ idPath("item", p.ShipID) } class={ "block truncate hover:text-blue-400 " + killBoolClass(p.Died, "text-red-300", "text-gray-300") }>{ battleUnknown(p.ShipName) }</a>
+										<a href={ idPath("group", p.GroupID) } class="block truncate text-fine text-gray-500 hover:text-blue-400">{ p.GroupName }</a>
+									</div>
+								</div>
+							</td>
+							<td class="py-1.5 px-2 text-right tabular-nums text-gray-300">{ fullNumber(p.Damage) }</td>
+							<td class="py-1.5 pl-2 text-right">
+								<div class="flex flex-col items-end gap-0.5">
+									if fc {
+										<span class={ "inline-block px-1.5 py-0.5 rounded text-fine font-medium " + killBoolClass(p.Confirmed, "bg-yellow-500/20 text-yellow-400", "bg-gray-500/20 text-gray-400") }>{ killBoolClass(p.Confirmed,"Command hull","Prior FC signal") }</span>
+									}
+									if p.Died {
+										<span class="inline-block px-1.5 py-0.5 rounded text-fine font-medium bg-red-500/20 text-red-400">Died</span>
+									} else if !fc {
+										<span class="text-fine text-green-400">No recorded loss</span>
+									}
+								</div>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	</section>
+}

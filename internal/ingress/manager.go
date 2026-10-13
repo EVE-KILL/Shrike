@@ -298,9 +298,9 @@ func (m *Manager) Status() Status {
 //  1. /health and /ready go through the same-origin API adapter.
 //     Kubernetes probes by pod IP with no useful Host header, so this route
 //     matches on path alone rather than relying on DNS.
-//  2. /ws bypasses Nuxt and reaches the WebSocket relay.
+//  2. /ws bypasses page rendering and reaches the WebSocket relay.
 //  3. /api, /auth, and /images share the site's API registry.
-//  4. Everything else goes to the Nuxt renderer. Unmatched is the frontend by
+//  4. Everything else goes to the Go frontend. Unmatched is the frontend by
 //     definition, which is what lets tenant custom domains work without ever
 //     being enumerated here.
 //
@@ -349,7 +349,7 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil, nil, nil, err
 	}
 
-	// WebSockets share the frontend origin but bypass the Nuxt process. A
+	// WebSockets share the frontend origin but use a dedicated handler. A
 	// dedicated prefix avoids stealing the real /comments and /status pages,
 	// while still letting custom domains use their own origin for live data.
 	if err := surfaceRoute(
@@ -359,62 +359,15 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		return nil, nil, nil, err
 	}
 
-	sitePaths := []string{"/api", "/api/*", "/auth", "/auth/*"}
-	siteDescription := "path /api, /api/*, /auth, /auth/*"
-	if !cfg.ProxyImagesToNuxt {
-		sitePaths = append(sitePaths, "/images", "/images/*")
-		siteDescription += ", /images, /images/*"
-	}
 	if err := surfaceRoute(
-		map[string]any{"path": sitePaths}, siteDescription, SurfaceSameOrigin,
+		map[string]any{"path": []string{"/api", "/api/*", "/auth", "/auth/*", "/images", "/images/*"}},
+		"path /api, /api/*, /auth, /auth/*, /images, /images/*", SurfaceSameOrigin,
 	); err != nil {
 		return nil, nil, nil, err
 	}
-
-	// The catch-all is always emitted, in one of two forms. Leaving the route
-	// list open-ended instead would fall off the end of Caddy's chain, and an
-	// unhandled request there is answered with an empty 200 — the single worst
-	// response available, since it tells a crawler the page exists and tells a
-	// developer nothing at all.
-	socket := strings.TrimSpace(cfg.NuxtSocket)
-	address := strings.TrimSpace(cfg.NuxtAddress)
-	if socket != "" && address != "" {
-		return nil, nil, nil, errors.New(
-			"ingress: set at most one of NuxtSocket and NuxtAddress",
-		)
-	}
-	dial, describe := "", ""
-	switch {
-	case socket != "":
-		dial, describe = "unix/"+socket, "nuxt:"+socket
-	case address != "":
-		dial, describe = address, "nuxt-dev:"+address
-	}
-	if dial != "" {
-		routes = append(routes, map[string]any{
-			"handle": loggedHandlers(map[string]any{
-				"handler": "reverse_proxy",
-				"upstreams": []any{map[string]any{
-					"dial": dial,
-				}},
-				"transport": map[string]any{
-					"protocol": "http", "response_header_timeout": "30s",
-				},
-			}),
-			"terminal": true,
-		})
-		status = append(status, RouteStatus{Match: "(default)", Surface: describe})
-	} else {
-		routes = append(routes, map[string]any{
-			"handle": loggedHandlers(map[string]any{
-				"handler":     "static_response",
-				"status_code": 404,
-				"headers":     map[string]any{"Content-Type": []string{"text/plain; charset=utf-8"}},
-				"body":        "no renderer configured\n",
-			}),
-			"terminal": true,
-		})
-		status = append(status, RouteStatus{Match: "(default)", Surface: "404 — no renderer configured"})
+	// A registered frontend is required; missing wiring must fail startup.
+	if err := surfaceRoute(nil, "(default)", SurfaceFrontend); err != nil {
+		return nil, nil, nil, err
 	}
 
 	server := map[string]any{

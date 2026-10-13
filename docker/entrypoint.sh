@@ -14,6 +14,5 @@ if [ "$1" = "shrike" ] || [ "$1" = "ek" ]; then
     fi
 fi
 
-# `shrike serve` owns and supervises Bun itself. Worker, cron, and one-shot
-# commands use this exact same image but never start the renderer.
+# All HTTP surfaces, including page rendering, run inside Shrike.
 exec /usr/local/bin/shrike "$@"

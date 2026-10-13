@@ -1,8 +1,10 @@
 # Cloudflare image delivery
 
-Shrike owns the canonical image routes at `https://eve-kill.com/images/...` and
-the compatibility image hostnames. Cloudflare caches successful responses at
-the edge according to Shrike's `Cache-Control` headers.
+Shrike serves inventory types, map images, old portraits, UI assets, and
+killmail social cards. Browsers load current character portraits and
+corporation and alliance logos from `https://images.evetech.net` directly.
+Cloudflare caches Shrike's remaining image responses according to their
+`Cache-Control` headers.
 
 ## Origin storage
 
@@ -26,7 +28,7 @@ shrike images prune --high-watermark 90 --low-watermark 80 --min-age 24h
 ```
 
 Both byte and inode utilization are checked. Crossing either high watermark
-starts eviction; old character, corporation, and alliance objects and their
+starts eviction; legacy character, corporation, and alliance objects and their
 `.shrike-meta.json` sidecars are removed until both are at the low watermark.
 Static types, old-character archives, maps, UI assets, and every other tree are
 never eligible. Recent dynamic images are protected by `--min-age`. Use
@@ -48,7 +50,7 @@ types/dust514/
 types/overlays/
 types/
 oldcharacters/
-entities/
+entities/                 # legacy cache; no new entity images are stored
 social/
 ```
 
@@ -75,16 +77,31 @@ installs the UI, Dust 514, and overlay
 assets bundled into Shrike itself. TurtleTools
 and legacy portrait imports download their upstream archives themselves.
 
-Character, corporation, and alliance originals are fetched lazily from CCP and
-refreshed by the image queue. A freshly provisioned volume can therefore serve
-some missing images while the corpus warms.
+The old dynamic `entities/` tree is not needed to serve the site. Once every
+running Shrike version uses direct EVE image URLs, remove those old files to
+reclaim storage. Keep `oldcharacters/`, `types/`, `static/`, and `social/`.
+
+Inspect the obsolete cache before deletion:
+
+```sh
+shrike images purge-entity-cache
+```
+
+After all serving pods run this version, delete only those three old trees:
+
+```sh
+shrike images purge-entity-cache --apply
+```
+
+The command requires `IMAGE_STORAGE_PATH`. It does not touch the old portrait
+archive or static image trees. If an old version must be restored, its entity
+cache will be empty and it will fetch dynamic images again.
 
 ## Caching
 
-Static and content-addressed objects are immutable. Entity responses use the
-long shared-cache policy defined by the Go image service. Cloudflare should
-respect origin cache headers and must not cache `404`, authorization failures,
-or `5xx` responses.
+Static and content-addressed objects are immutable. Cloudflare should respect
+origin cache headers and must not cache `404`, authorization failures, or `5xx`
+responses. EVE's image service controls caching for portraits and logos.
 
 ## Rollback
 

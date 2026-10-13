@@ -1,0 +1,24 @@
+new:
+  displayName: Cycle Time (with reload)
+  category: Miscellaneous
+  unit: Milliseconds
+  highIsGood: false
+
+effects:
+  - name: speedWithReload
+    on: moduleCyclesOnSpeed or damagingDrone
+    category: active
+    rules:
+      - {from: speed}
+
+  - name: speedWithReload2
+    on: moduleCyclesOnDuration
+    category: active
+    rules:
+      - {from: duration}
+
+  - name: speedWithReload3
+    on: moduleCycles and holdsCharge
+    category: active
+    rules:
+      - {add: speedOfReload}

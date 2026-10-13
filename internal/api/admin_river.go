@@ -145,7 +145,9 @@ func (s *adminService) riverJobsHandler() legacyHandler {
 				return legacyPayload{}, err
 			}
 			if len(items) == limit {
-				next = id
+				// The cursor is exclusive: point at the last returned row, so the
+				// extra lookahead row remains on the following page.
+				next = items[len(items)-1]["id"].(int64)
 				break
 			}
 			items = append(items, riverJobMap(id, state, attempt, maxAttempts, priority, attemptedAt,

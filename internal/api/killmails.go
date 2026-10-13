@@ -619,7 +619,7 @@ func loadKillmailDetail(
 		SELECT a.character_id, c.name AS character_name,
 		       a.corporation_id, co.name AS corporation_name,
 		       a.alliance_id, al.name AS alliance_name,
-		       a.ship_type_id, ship.name AS ship_name,
+		       a.ship_type_id, ship.name AS ship_name, ship_group.category_id AS ship_category_id,
 		       a.weapon_type_id, weapon.name AS weapon_name,
 		       COALESCE(a.damage_done, 0) AS damage_done,
 		       COALESCE(a.final_blow, false) AS final_blow,
@@ -629,6 +629,7 @@ func loadKillmailDetail(
 		LEFT JOIN corporations co ON co.corporation_id = a.corporation_id
 		LEFT JOIN alliances al ON al.alliance_id = a.alliance_id
 		LEFT JOIN inv_types ship ON ship.type_id = a.ship_type_id
+		LEFT JOIN inv_groups ship_group ON ship_group.group_id = ship.group_id
 		LEFT JOIN inv_types weapon ON weapon.type_id = a.weapon_type_id
 		WHERE a.killmail_id = $1
 		ORDER BY COALESCE(a.damage_done, 0) DESC, a.attacker_index ASC`, id)

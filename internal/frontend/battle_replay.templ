@@ -1,0 +1,205 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+)
+
+templ battleReplay(v battleDetailView, s battleReplayState) {
+	<section aria-label="Battle map replay" class="replay space-y-3" data-battle-replay data-controller="battle-replay" data-action="click->battle-replay#click input->battle-replay#input change->battle-replay#change mouseover->battle-replay#hover mouseout->battle-replay#mouseout focusin->battle-replay#hover focusout->battle-replay#focusout visibilitychange@document->battle-replay#visibility pagehide@window->battle-replay#hide">
+		@templ.JSONScript("battle-replay-data", battleReplayPayload(v)).WithType("application/json")
+		if battleFilterActive(v.Filter) {
+			<div class="glass-panel flex items-center gap-3 p-3 text-xs text-sky-300">
+				Showing losses matching your selected side, class, value and time filters.<a href={ v.path("replay", battleClearFilters()) } data-battle-navigation class="ml-auto underline">Show full battle</a>
+			</div>
+		}
+		<div class="grid grid-cols-2 gap-2" aria-label="Team losses at replay time" data-replay-loss-cards>
+			for i,team:=range v.Data.Teams {
+				@battleReplayLossCard(i, battleTeamTopName(team), s.Totals[i], s.Time)
+			}
+		</div>
+		<div class="flex flex-wrap items-center gap-3">
+			<label class="text-xs text-gray-400">
+				System 
+				<select data-replay-system class="ml-2 rounded border border-white/10 bg-[#141414] px-3 py-2 text-gray-200">
+					for _,system:=range s.Systems {
+						<option value={ strconv.FormatInt(system.ID, 10) }>{ system.Name }</option>
+					}
+				</select>
+			</label>
+			<button type="button" data-replay-fit-system class="rounded border border-white/10 px-3 py-2 text-xs text-blue-300">Whole system</button>
+			<button type="button" data-replay-fit-kills class="rounded border border-white/10 px-3 py-2 text-xs text-blue-300">Fit all kills</button>
+			for _,control:=range []struct{ID,Label string}{{"orbits","Orbits"},{"moons","Moons"},{"labels","Labels"}} {
+				<label class="flex items-center gap-1 text-xs text-gray-400">
+					<input type="checkbox" name={ control.ID } data-replay-layer checked/>{ control.Label }
+				</label>
+			}
+			<span class="ml-auto text-xs text-gray-500" data-replay-position-count>{ fmt.Sprintf("%d of %d kills have positions",s.Positions,s.SystemKills) }</span>
+		</div>
+		<p class="text-xs text-amber-300" data-replay-no-celestials hidden?={ s.Celestials>0 }>No celestial coordinates are available for this system.</p>
+		<p class="text-xs text-gray-500">Recorded destruction locations, coloured by the victim’s side. Top-down view · drag to pan. Orbit guides follow the system images; ship movement is not recorded.</p>
+		<div class="replay-stage relative grid overflow-hidden rounded-xl border border-slate-700/40 lg:grid-cols-[minmax(0,1fr)_288px]" data-replay-stage>
+			<svg class="pointer-events-none absolute inset-0 z-20 h-full w-full overflow-visible" data-replay-leader aria-hidden="true"></svg>
+			<div class="replay-space relative min-w-0 overflow-hidden">
+				<svg class="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 1000 600" preserveAspectRatio="none" aria-hidden="true">
+					for i:=0;i<130;i++ {
+						<circle cx={ strconv.Itoa((i*7919 + 17) % 1000) } cy={ strconv.Itoa((i*3571 + 31) % 600) } r={ killBoolClass(i%13 == 0, "1.2", "0.55") } fill="#b9d6ff" opacity={ fmt.Sprintf("%.2f", .15+float64(i%5)*.09) }></circle>
+					}
+				</svg>
+				<svg data-replay-plot data-action="pointerdown->battle-replay#down pointermove->battle-replay#move pointerup->battle-replay#up pointercancel->battle-replay#up" viewBox="-1 -0.6 2 1.2" class="relative h-[64vh] min-h-[440px] w-full touch-none" role="img" aria-label="Kill positions in the selected system">
+					<defs>
+						<radialGradient id="replay-sun-glow">
+							<stop offset="0" stop-color="#fff7d6" stop-opacity="0.9"></stop>
+							<stop offset="0.12" stop-color="#fbbf24" stop-opacity="0.6"></stop>
+							<stop offset="0.4" stop-color="#fb923c" stop-opacity="0.12"></stop>
+							<stop offset="1" stop-color="#fb923c" stop-opacity="0"></stop>
+						</radialGradient>
+						<radialGradient id="replay-planet">
+							<stop offset="0" stop-color="#d5f2ff"></stop>
+							<stop offset="0.5" stop-color="#6198b8"></stop>
+							<stop offset="1" stop-color="#18354e"></stop>
+						</radialGradient>
+					</defs>
+					<g data-replay-orbits fill="none" stroke="#7294b6" stroke-opacity="0.25" stroke-width="1"></g>
+					<g data-replay-landmarks></g>
+					<g data-replay-points></g>
+					<g data-replay-pulses pointer-events="none"></g>
+				</svg>
+				<div class="pointer-events-none absolute left-5 right-5 top-5 flex items-start justify-between gap-4">
+					<div>
+						<div class="mb-1 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.24em] text-sky-300/65">
+							<span class="h-1.5 w-1.5 rounded-full bg-sky-400" data-replay-playing-dot></span>
+							<span data-replay-playing-label>Battle replay · paused</span>
+						</div>
+						<div class="text-xl font-light tracking-wider text-slate-100" data-replay-system-name>{ s.SystemName }</div>
+						<div class="mt-1 font-mono text-[10px] text-slate-500" data-replay-span></div>
+					</div>
+					<div class="text-right">
+						<div class="font-mono text-lg tracking-wider text-slate-200" data-replay-clock>{ battleReplayClock(s.Time) }</div>
+						<div class="mt-1 text-[9px] uppercase tracking-[0.2em] text-slate-500" data-replay-speed-label>EVE time · 60×</div>
+					</div>
+				</div>
+				<div class="replay-big-kill absolute left-1/2 top-24 z-30 flex w-[min(340px,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 rounded-lg border border-amber-300/40 bg-[#1c150e]/95 p-3 shadow-[0_0_45px_rgba(245,158,11,0.18)]" data-replay-big hidden>
+					<img alt="" width="48" height="48" class="h-12 w-12 rounded border border-amber-200/20 bg-black/30"/>
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">
+							@icon("flame")
+							<span data-replay-big-class></span>
+						</div>
+						<button type="button" class="mt-1 block max-w-full truncate text-left text-sm font-semibold text-amber-50 hover:text-white" data-replay-big-select></button>
+						<div class="mt-0.5 text-[10px] text-amber-200/60" data-replay-big-description></div>
+					</div>
+					<a class="shrink-0 text-amber-300" aria-label="Open big kill">
+						@icon("arrow-up-right")
+					</a>
+				</div>
+				<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-gray-400" data-replay-no-positions hidden?={ s.Positions>0 }>No recorded positions in this system. Kills still appear in the replay feed.</div>
+				<div class="pointer-events-none absolute bottom-4 left-5 right-5 flex flex-wrap gap-3 border-t border-slate-500/15 pt-3 text-[10px] text-slate-400">
+					for i:=range v.Data.Teams {
+						<span class="flex items-center gap-1.5">
+							<span class="h-2 w-2 rounded-full" style={ "background:" + battleSideColor(i) }></span>{ battleSideName(i) }
+						</span>
+					}
+					<span class="flex items-center gap-1.5">
+						<span class="h-2 w-2 rounded-full bg-slate-400"></span>Unassigned
+					</span>
+					<span class="ml-auto text-slate-600" data-replay-celestial-count>{ fmt.Sprintf("◇ Gate · □ Station · %d celestials",s.Celestials) }</span>
+				</div>
+			</div>
+			<aside class="replay-feed relative z-10 flex h-80 flex-col overflow-hidden border-t border-slate-700/30 lg:h-[64vh] lg:min-h-[440px] lg:border-l lg:border-t-0">
+				<div class="border-b border-slate-700/30 p-4">
+					<div class="flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-slate-500">
+						<span>Destruction feed</span>
+						<span class="h-3 w-3 text-rose-400">
+							@icon("radio")
+						</span>
+					</div>
+					<div class="mt-3 flex items-baseline justify-between gap-2">
+						<span class="font-mono text-xl text-slate-100">
+							<span data-replay-occurred>{ strconv.Itoa(s.Occurred) }</span>
+							<span class="ml-1 text-[10px] text-slate-500">kills</span>
+						</span>
+						<span class="font-mono text-sm text-amber-200">
+							<span data-replay-destroyed>{ compactNumber(s.ISK) }</span>
+							<span class="ml-1 text-[9px] text-slate-500">ISK</span>
+						</span>
+					</div>
+				</div>
+				<div class="min-h-0 flex-1 overflow-y-auto" data-replay-feed data-action="scroll->battle-replay#leader">
+					<p class="p-5 text-xs text-gray-500">Press play or scrub forward to follow the losses.</p>
+				</div>
+				<div class="border-t border-slate-700/30 px-4 py-2 text-[9px] text-slate-600">Hover to locate · click to inspect</div>
+			</aside>
+		</div>
+		<div class="replay-transport rounded-xl border border-slate-700/30 p-3">
+			<div class="mb-2 flex h-9 items-end gap-[2px]" aria-label="Battle activity timeline" data-replay-histogram></div>
+			<div class="flex flex-wrap items-center gap-3">
+				<button type="button" disabled?={ len(v.Filtered)==0 } data-replay-play class="flex items-center gap-2 rounded-md bg-blue-500 px-4 py-2 text-sm text-white disabled:opacity-40">
+					@icon("play")
+					<span>Play</span>
+				</button>
+				<button type="button" class="text-xs text-gray-400" data-replay-restart>Restart</button>
+				<input aria-label="Replay time" type="range" min={ strconv.FormatInt(s.Start, 10) } max={ strconv.FormatInt(s.End, 10) } step="1000" value={ strconv.FormatInt(s.Time, 10) } class="min-w-40 flex-1 accent-blue-400" data-replay-time/>
+				<span class="font-mono text-xs text-gray-300">
+					<span data-replay-clock>{ battleReplayClock(s.Time) }</span> EVE
+				</span>
+				<label class="text-xs text-gray-400">
+					Speed 
+					<select data-replay-speed class="ml-1 rounded bg-[#141414] p-2">
+						for _,rate:=range []int{1,10,30,60,120,300} {
+							<option value={ strconv.Itoa(rate) } selected?={ rate==60 }>{ fmt.Sprintf("%d×",rate) }</option>
+						}
+					</select>
+				</label>
+			</div>
+		</div>
+		<div class="glass-panel flex flex-wrap items-center gap-3 p-3 text-sm" data-replay-selected hidden>
+			<span class="text-gray-200" data-replay-selected-name></span>
+			<span class="text-gray-400" data-replay-selected-value></span>
+			<span class="text-xs text-amber-300" data-replay-position-unavailable hidden>Position unavailable</span>
+			<span class="text-xs text-gray-400" data-replay-nearest></span>
+			<button type="button" class="text-xs text-blue-300" data-replay-focus>Focus kill location</button>
+			<a class="ml-auto text-blue-300 hover:underline" data-replay-open>Open killmail →</a>
+		</div>
+		<template data-replay-loss-card-template>
+			@battleReplayLossCard(-1, "Outside the assigned teams", battleLossTotal{}, s.Time)
+		</template>
+		<template data-replay-feed-template>
+			<button type="button" class="replay-feed-row relative flex w-full items-center gap-2.5 border-b border-white/[0.04] px-3 py-2.5 text-left transition-colors">
+				<img alt="" width="40" height="40" class="h-10 w-10 rounded-md border border-white/10 bg-slate-900" loading="lazy"/>
+				<span class="min-w-0 flex-1">
+					<span class="mb-0.5 block text-[8px] font-bold tracking-[0.15em] text-amber-300" data-replay-row-big hidden></span>
+					<span class="block truncate text-xs" data-replay-row-ship></span>
+					<span class="block truncate text-[10px] text-gray-500" data-replay-row-pilot></span>
+				</span>
+				<span class="shrink-0 text-right">
+					<span class="block font-mono text-[10px] text-amber-100/80" data-replay-row-value></span>
+					<span class="mt-1 block text-[9px] text-slate-600" data-replay-row-time></span>
+				</span>
+			</button>
+		</template>
+	</section>
+}
+
+templ battleReplayLossCard(index int, identity string, total battleLossTotal, ms int64) {
+	<div class="relative overflow-hidden rounded-lg border border-white/[0.08] bg-slate-900/40 px-4 py-3" data-replay-loss-side={ strconv.Itoa(index) }>
+		<div class="absolute inset-y-0 left-0 w-0.5" style={ "background:" + battleSideColor(index) }></div>
+		<div class="flex items-center justify-between gap-2">
+			<span class="text-[10px] font-semibold uppercase tracking-[0.15em]" style={ "color:" + battleSideColor(index) }>{ battleSideName(index) }</span>
+			<span class="font-mono text-[9px] text-slate-600">
+				<span data-replay-clock>{ battleReplayClock(ms) }</span> EVE
+			</span>
+		</div>
+		<div class="mt-1 truncate text-[10px] text-slate-500">{ identity }</div>
+		<div class="mt-2 flex flex-wrap items-baseline justify-between gap-1">
+			<span class="font-mono text-xl text-slate-100">
+				<span data-replay-loss-count>{ strconv.Itoa(total.Count) }</span>
+				<span class="ml-1.5 text-[10px] text-slate-500">losses</span>
+			</span>
+			<span class="font-mono text-sm text-amber-100">
+				<span data-replay-loss-isk>{ compactNumber(total.ISK) }</span>
+				<span class="ml-1 text-[9px] text-slate-500">ISK lost</span>
+			</span>
+		</div>
+	</div>
+}

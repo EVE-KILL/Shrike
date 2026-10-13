@@ -1,0 +1,12 @@
+new:
+  displayName: Structure EHP
+  category: Structure
+  unit: Hitpoints
+  highIsGood: true
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: hp}
+      - {div: hullDamageEffectiveResonance}

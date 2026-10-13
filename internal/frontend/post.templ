@@ -1,0 +1,24 @@
+package frontend
+
+templ postKillmailPage() {
+	<div class="post-page info-page" data-post-page data-controller="post" data-action="input->post#input submit->post#submit pagehide@window->post#hide pageshow@window->post#show">
+		@pageHeader("clipboard-paste", "Post Killmail", "Paste an ESI killmail URL — or paste one anywhere on the site and it is queued automatically.")
+		<p class="post-example">Example: <code>https://esi.evetech.net/killmails/134199691/b6b969654468cefe5891b40b054d20fad8787f64/</code></p>
+		<button class="post-from-clipboard" type="button" data-post-clipboard data-action="click->post#fromClipboard">
+			@icon("clipboard-paste")
+			Post from clipboard
+		</button>
+		<form class="post-bulk" data-post-form>
+			<label for="post-killmail-links">Or paste many links (one per line)</label>
+			<textarea id="post-killmail-links" name="text" rows="8" placeholder="https://esi.evetech.net/killmails/134199691/b6b969654468cefe5891b40b054d20fad8787f64/&#10;https://esi.evetech.net/killmails/.../"></textarea>
+			<button type="submit" data-post-submit disabled>Queue killmails</button>
+		</form>
+		<div class="post-result" data-post-result hidden>
+			<strong>Last submission</strong>
+			<div>Total parsed: <b data-post-total></b></div>
+			<div>Accepted: <b data-post-accepted></b></div>
+			<div data-post-rejected-row hidden>Rejected: <b data-post-rejected></b></div>
+			<div class="post-result-links" data-post-links></div>
+		</div>
+	</div>
+}

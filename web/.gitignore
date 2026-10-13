@@ -1,9 +1,0 @@
-node_modules/
-.nuxt/
-.output/
-.data/
-dist/
-!packages/dogma/dist/
-!packages/dogma/dist/**
-*.log
-.DS_Store

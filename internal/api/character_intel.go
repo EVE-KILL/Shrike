@@ -314,7 +314,9 @@ func loadGraphIntel(
 		return empty
 	}
 	partners, err := graph.Read(ctx, `
-		MATCH (c:Character {id: $id})-[r:FLEW_WITH]-(p:Character)
+		MATCH (c:Character {id: $id})
+		WITH c
+		MATCH (c)-[r:FLEW_WITH]-(p:Character)
 		RETURN p.id AS id, p.corporation_id AS corp_id,
 		       p.alliance_id AS alliance_id, r.weight AS weight
 		ORDER BY r.weight DESC LIMIT 10`, map[string]any{"id": id})
@@ -322,7 +324,9 @@ func loadGraphIntel(
 		return empty
 	}
 	groupRows, err := graph.Read(ctx, `
-		MATCH (c:Character {id: $id})-[:FLEW_WITH]-(p:Character)
+		MATCH (c:Character {id: $id})
+		WITH c
+		MATCH (c)-[:FLEW_WITH]-(p:Character)
 		WHERE p.alliance_id IS NOT NULL
 		WITH p.alliance_id AS alliance_id,
 		     count(DISTINCT p) AS shared_partners

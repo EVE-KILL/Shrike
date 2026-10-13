@@ -1,0 +1,189 @@
+package frontend
+
+import "strconv"
+
+templ adminModeration(data adminModerationData) {
+	<div class="space-y-4" data-admin-review="moderation" data-controller="admin-review" data-action="click->admin-review#click pagehide@window->admin-review#hide pageshow@window->admin-review#show" data-query={ settingsJSON(data.Query.values("moderation")) }>
+		<div class="flex items-center gap-2 flex-wrap">
+			for _,group:=range []struct{Key,Label,Value string;Keys,Labels []string}{{"kind","Content kind",data.Query.Kind,[]string{"all","comments","bios"},[]string{"All","Comments","Bios"}},{"status","Review status",data.Query.Status,[]string{"pending","approved","rejected","all"},[]string{"Pending","Approved","Rejected","All"}}} {
+				<div class="flex flex-wrap items-center gap-1 rounded-md bg-white/[0.03] border border-white/[0.06] p-1" role="group" aria-label={ group.Label }>
+					for i,value:=range group.Keys {
+						<button type="button" data-admin-review-filter={ group.Key } data-value={ value } aria-pressed={ strconv.FormatBool(group.Value == value) } class={ "px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer " + killBoolClass(group.Value == value, "bg-blue-500/[0.15] text-blue-300", "text-gray-400 hover:text-white") }>{ group.Labels[i] }</button>
+					}
+				</div>
+			}
+			<div hidden?={ data.Failed } data-admin-review-counts class="flex items-center gap-3 text-xs text-gray-400 ml-2"><span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span><span data-admin-review-count="pending">{ strconv.Itoa(data.Counts.Pending) }</span>{ " pending" }</span><span class="text-gray-600"><span data-admin-review-count="pending_comments">{ strconv.Itoa(data.Counts.Comments) }</span>{ " comments · " }<span data-admin-review-count="pending_bios">{ strconv.Itoa(data.Counts.Bios) }</span>{ " bios" }</span></div>
+			@adminReviewRefresh()
+		</div>
+		@adminReviewError(data.Failed, "Could not load the moderation queue.")
+		<div data-admin-review-results>
+			@adminModerationRows(data)
+		</div>
+	</div>
+}
+
+templ adminComments(data adminCommentsData) {
+	<div class="space-y-4" data-admin-review="comments" data-controller="admin-review" data-action="click->admin-review#click pagehide@window->admin-review#hide pageshow@window->admin-review#show" data-query={ settingsJSON(data.Query.values("comments")) }>
+		<div class="flex flex-wrap items-center gap-2">
+			for i,filter:=range []string{"flagged","reported","all"} {
+				<button type="button" data-admin-review-filter="filter" data-value={ filter } aria-pressed={ strconv.FormatBool(data.Query.Filter == filter) } class={ "px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer " + killBoolClass(data.Query.Filter == filter, "bg-blue-500/[0.15] text-blue-300 border border-blue-500/30", "bg-white/[0.04] text-gray-400 hover:bg-white/[0.08] border border-transparent") }>{ []string{"Flagged","Reported","All active"}[i] }</button>
+			}
+			@adminReviewRefresh()
+		</div>
+		@adminReviewError(data.Failed, "Could not load comments.")
+		<div data-admin-review-results>
+			@adminCommentRows(data)
+		</div>
+	</div>
+}
+
+templ adminReviewRefresh() {
+	<button type="button" data-admin-review-refresh class="ml-auto px-3 py-1.5 rounded-md text-xs text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer flex items-center gap-1">
+		<span class="text-xs">
+			@icon("refresh-cw")
+		</span>{ " Refresh" }
+	</button>
+}
+
+templ adminReviewError(failed bool, message string) {
+	<p hidden?={ !failed } data-admin-review-error class="text-sm text-red-300" role="alert">{ message }{ " " }<button type="button" data-admin-review-refresh class="text-blue-400">Retry</button></p>
+}
+
+templ adminReviewContext(href string) {
+	<a href={ href } class="ml-auto px-3 py-1 rounded-md text-xs text-blue-400 hover:bg-blue-500/[0.08] cursor-pointer transition-colors flex items-center gap-1">
+		View in context
+		<span class="text-xs">
+			@icon("external-link")
+		</span>
+	</a>
+}
+
+templ adminReviewAuthor(id int64, name, corporation, href, label, date string, moderation bool) {
+	<header class={ "flex items-start gap-3 " + killBoolClass(moderation, "mb-3", "mb-2") }>
+		<a href={ "/character/" + warID(id) } class="flex-shrink-0"><img src={ eveEntityImage("character", id, 64) } alt={ name } width="36" height="36" class="w-9 h-9 rounded-md" loading="lazy"/></a>
+		<div class="flex-1 min-w-0">
+			<div class="flex items-baseline gap-2 text-sm flex-wrap">
+				<a href={ "/character/" + warID(id) } class="font-semibold text-white hover:text-blue-400 truncate">{ name }</a>
+				if corporation!=""||!moderation {
+					<span class="text-xs text-gray-600 truncate">{ corporation }</span>
+				}
+				<span class="text-xs text-gray-600">·</span>
+				<a href={ href } class={ "text-xs text-blue-400 hover:underline " + killBoolClass(!moderation, "truncate", "") }>{ label }</a>
+				<span class="text-xs text-gray-600 ml-auto whitespace-nowrap">{ date }</span>
+			</div>
+			<div class={ "flex items-center mt-1 text-xs " + killBoolClass(moderation, "gap-2 flex-wrap", "gap-3") }>
+				{ children... }
+			</div>
+		</div>
+	</header>
+}
+
+templ adminModerationRows(data adminModerationData) {
+	<div class="space-y-2" data-admin-review-result data-failed={ strconv.FormatBool(data.Failed) } data-counts={ settingsJSON(data.Counts) }>
+		for _,item:=range data.Items {
+			{{
+				identity, href := item.target()
+				label, tone := adminModerationStatus(item.Status)
+				body := item.body()
+			}}
+			<article data-admin-review-id={ warID(item.ID) } class="glass-panel p-4">
+				@adminReviewAuthor(item.CharacterID, item.CharacterName, item.CorporationName, href, adminModerationKind(item.Kind)+" #"+identity, adminDate(item.Submitted), true) {
+					<span class={ "inline-flex items-center px-2 py-0.5 rounded-full border font-medium " + tone }>{ label }</span>
+					if item.ai()!="" {
+						<span class="text-gray-500">{ item.ai() }</span>
+					}
+					if item.Format!=nil&&*item.Format!="" {
+						<span class="text-gray-600">{ "· "+*item.Format }</span>
+					}
+				}
+				if body!="" {
+					<div class="text-sm text-gray-200 prose prose-invert max-w-none prose-sm pl-12 entity-bio admin-preview">
+						@templ.Raw(body)
+					</div>
+				} else {
+					<pre class="text-xs text-gray-400 pl-12 whitespace-pre-wrap font-mono break-words min-w-0">{ item.Body }</pre>
+				}
+				if item.Notes!=nil&&*item.Notes!="" {
+					<div class="mt-2 pl-12 text-xs text-gray-500 italic">{ "Note: "+*item.Notes }</div>
+				}
+				if item.Status==0 {
+					<div class="flex flex-wrap items-center gap-2 mt-3 pl-12">
+						<button type="button" data-admin-review-action="approve" class="px-3 py-1 rounded-md text-xs bg-green-500/[0.15] text-green-300 hover:bg-green-500/[0.25] cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+							<span class="text-xs inline -mt-0.5">
+								@icon("check")
+							</span>{ " Approve" }
+						</button>
+						<button type="button" data-admin-review-action="reject" class="px-3 py-1 rounded-md text-xs bg-red-500/[0.15] text-red-300 hover:bg-red-500/[0.25] cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+							<span class="text-xs inline -mt-0.5">
+								@icon("x")
+							</span>{ " Reject" }
+						</button>
+						@adminReviewContext(href)
+					</div>
+				} else {
+					<div class="flex flex-wrap items-center gap-2 mt-3 pl-12 text-xs text-gray-500">
+						if item.Reviewed!=nil {
+							<span>
+								{ "Reviewed "+adminDate(item.Reviewed) }
+								if item.Reviewer!=nil&&*item.Reviewer!=0 {
+									{ " by #"+warID(*item.Reviewer) }
+								}
+							</span>
+						}
+						@adminReviewContext(href)
+					</div>
+				}
+			</article>
+		}
+		if !data.Failed&&len(data.Items)==0 {
+			<div class="text-sm text-gray-500 italic py-8 text-center">Nothing in the queue.</div>
+		}
+	</div>
+}
+
+templ adminCommentRows(data adminCommentsData) {
+	<div class="space-y-2" data-admin-review-result data-failed={ strconv.FormatBool(data.Failed) }>
+		for _,comment:=range data.Comments {
+			{{
+				meta := adminCommentMeta(comment)
+				label, tone := adminCommentStatus(comment.Moderation)
+			}}
+			<article data-admin-review-id={ warID(comment.ID) } class={ "glass-panel p-4 " + killBoolClass(comment.DeletedAt != nil || comment.Moderation >= 2, "opacity-60", "") }>
+				@adminReviewAuthor(comment.CharacterID, comment.CharacterName, comment.CorporationName, meta.Href, meta.Label, adminDate(&comment.CreatedAt), false) {
+					<span class={ tone }>{ label }</span>
+					if comment.Flagged {
+						<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-medium">
+							<span class="text-xs">
+								@icon("flag")
+							</span>Flagged
+						</span>
+					}
+					if comment.Reports>0 {
+						<span class="text-yellow-400">{ strconv.Itoa(comment.Reports)+" report"+killBoolClass(comment.Reports==1,"","s") }</span>
+					}
+					if comment.DeletedAt!=nil {
+						<span class="text-red-400">deleted</span>
+					}
+				}
+				<div class="text-sm text-gray-200 prose prose-invert max-w-none prose-sm pl-12 admin-preview">
+					@templ.Raw(commentSafeBody(comment.BodyHTML))
+				</div>
+				<div class="flex flex-wrap items-center gap-2 mt-3 pl-12">
+					if comment.Moderation<3&&comment.DeletedAt==nil {
+						<button type="button" data-admin-review-action="hide" class="px-3 py-1 rounded-md text-xs bg-yellow-500/[0.15] text-yellow-400 hover:bg-yellow-500/[0.25] cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Hide</button>
+					}
+					if comment.Moderation>=2||comment.DeletedAt!=nil {
+						<button type="button" data-admin-review-action="restore" class="px-3 py-1 rounded-md text-xs bg-green-500/[0.15] text-green-300 hover:bg-green-500/[0.25] cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed">Restore</button>
+					}
+					if comment.DeletedAt==nil {
+						<button type="button" data-admin-review-action="delete" class="px-3 py-1 rounded-md text-xs bg-red-500/[0.15] hover:bg-red-500/[0.25] cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-red-300">Delete</button>
+					}
+					@adminReviewContext(meta.Href)
+				</div>
+			</article>
+		}
+		if !data.Failed&&len(data.Comments)==0 {
+			<div class="text-sm text-gray-500 italic py-8 text-center">No comments to moderate.</div>
+		}
+	</div>
+}

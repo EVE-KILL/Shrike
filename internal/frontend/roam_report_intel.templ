@@ -1,0 +1,247 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ roamIntelHeading(title, detail string) {
+	<div class="mb-3 flex items-center justify-between border-b border-white/[0.06] pb-2">
+		<h2 class="text-sm font-bold text-blue-400">
+			{ title }
+		</h2>
+		<span class="text-fine text-gray-500">
+			{ detail }
+		</span>
+	</div>
+}
+
+templ roamIntelPilot(pilot api.RoamPilot, corporation bool) {
+	<div class="flex min-w-0 items-center gap-2">
+		<img src={ fmt.Sprintf("https://images.evetech.net/characters/%d/portrait?size=32", pilot.CharacterID) } alt={ pilot.Name } class="h-6 w-6 shrink-0 rounded" width="24" height="24" loading="lazy"/>
+		<div class="min-w-0">
+			<a href={ idPath("character", int64(pilot.CharacterID)) } class="block truncate hover:text-blue-400">
+				{ pilot.Name }
+			</a>
+			if corporation {
+				<span class="block truncate text-fine text-gray-500">
+					{ pilot.CorporationName }
+				</span>
+			}
+		</div>
+	</div>
+}
+
+templ roamIntel(view roamIntelView) {
+	<div>
+		<p class="mb-4 text-xs text-gray-500">Killmail observations for the listed fleet. Command hulls are a ship-class signal, not proof of command; the report cannot identify an FC or ships that never appeared on a killmail.</p>
+		<div class="mb-4 rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
+			<div class="mb-2 text-xs font-bold text-blue-400">Fleet · observed roles</div>
+			<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+				for _, section := range view.Sections {
+					<div class="flex items-center gap-1.5">
+						<span class={ section.Tone }>
+							@icon(section.Icon)
+						</span>
+						<span class="text-gray-400">
+							{ section.Title }
+						</span>
+						<strong class="tabular-nums text-gray-200">
+							{ strconv.Itoa(len(section.Rows)) }
+						</strong>
+					</div>
+				}
+				<div class="flex items-center gap-1.5">
+					<span class="text-blue-400">
+						@icon("users")
+					</span><span class="text-gray-400">Active pilots</span>
+					<strong class="tabular-nums text-gray-200">
+						{ strconv.Itoa(view.Report.Summary.ActivePilots) } / { strconv.Itoa(len(view.Report.Roster)) }
+					</strong>
+				</div>
+			</div>
+		</div>
+		if roamHasSpecialists(view) {
+			<div class="mb-4 grid gap-4 lg:grid-cols-2">
+				for _, section := range view.Sections {
+					if len(section.Rows)>0 {
+						<section class="rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
+							<div class="mb-3 flex items-center justify-between border-b border-white/[0.06] pb-2">
+								<h2 class="flex items-center gap-2 text-sm font-bold text-blue-400">
+									@icon(section.Icon)
+									<span>{ section.Title }</span>
+								</h2><span class="text-fine text-gray-500">{ strconv.Itoa(len(section.Rows)) } observed</span>
+							</div>
+							<p class="mb-3 text-fine text-gray-500">
+								{ section.Description }
+							</p>
+							<div class="overflow-x-auto">
+								<table class="w-full min-w-[480px] table-fixed text-xs">
+									<thead class="text-left text-gray-500"><tr class="border-b border-white/[0.06]"><th class="w-[38%] py-1.5 pr-2 font-medium">Pilot</th><th class="w-[32%] px-2 py-1.5 font-medium">Ship</th><th class="px-2 py-1.5 text-right font-medium">Damage</th><th class="py-1.5 pl-2 text-right font-medium">Status</th></tr></thead>
+									<tbody>
+										for _, item := range section.Rows {
+											<tr class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
+												<td class="py-1.5 pr-2">
+													@roamIntelPilot(item.Pilot, true)
+												</td>
+												<td class="px-2 py-1.5">
+													<div class="flex min-w-0 items-center gap-2">
+														<img src={ fmt.Sprintf("/images/types/%d/render?size=32", item.Ship.ShipTypeID) } alt={ item.Ship.ShipName } class="h-6 w-6 shrink-0 rounded" width="24" height="24" loading="lazy"/>
+														<a href={ idPath("item", int64(item.Ship.ShipTypeID)) } class="truncate hover:text-blue-400">
+															{ item.Ship.ShipName }
+														</a>
+													</div>
+												</td>
+												<td class="px-2 py-1.5 text-right tabular-nums text-green-400">
+													{ fullNumber(float64(item.Ship.DamageDone)) }
+												</td>
+												<td class="py-1.5 pl-2 text-right">
+													if item.Ship.Losses>0 {
+														<span class="rounded bg-red-500/20 px-1.5 py-0.5 text-fine font-medium text-red-400">{ strconv.Itoa(item.Ship.Losses) } lost</span>
+													} else {
+														<span class="text-fine text-gray-500">Observed</span>
+													}
+												</td>
+											</tr>
+										}
+									</tbody>
+								</table>
+							</div>
+						</section>
+					}
+				}
+			</div>
+		} else {
+			<div class="mb-4 rounded-lg border border-white/[0.08] bg-white/[0.04] p-5 text-xs text-gray-500">No command, logistics, or capital hulls were observed in this report.</div>
+		}
+		<div class="grid gap-4 lg:grid-cols-2">
+			<section class="rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
+				@roamIntelHeading("Fleet contributors", strconv.Itoa(len(view.Pilots))+" "+roamPlural(len(view.Pilots), "pilot", "pilots"))
+				if len(view.Pilots)>0 {
+					<div class="overflow-x-auto">
+						<table class="w-full min-w-[470px] table-fixed text-xs">
+							<thead class="text-left text-gray-500"><tr class="border-b border-white/[0.06]"><th class="w-[45%] py-1.5 pr-2 font-medium">Pilot</th><th class="px-2 py-1.5 text-right font-medium">Kills</th><th class="px-2 py-1.5 text-right font-medium">Final</th><th class="px-2 py-1.5 text-right font-medium">Losses</th><th class="py-1.5 pl-2 text-right font-medium">Damage</th></tr></thead>
+							<tbody>
+								for _, pilot := range view.Pilots {
+									<tr class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
+										<td class="py-1.5 pr-2">
+											@roamIntelPilot(pilot, false)
+										</td>
+										<td class="px-2 py-1.5 text-right tabular-nums text-green-400">
+											{ strconv.Itoa(pilot.KillParticipations) }
+										</td>
+										<td class="px-2 py-1.5 text-right tabular-nums">
+											{ strconv.Itoa(pilot.FinalBlows) }
+										</td>
+										<td class="px-2 py-1.5 text-right tabular-nums text-red-400">
+											{ strconv.Itoa(pilot.Losses) }
+										</td>
+										<td class="py-1.5 pl-2 text-right tabular-nums">
+											{ fullNumber(float64(pilot.DamageDone)) }
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				} else {
+					<p class="py-5 text-center text-xs text-gray-600">No fleet combat recorded.</p>
+				}
+			</section>
+			<section class="rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
+				@roamIntelHeading("Opposing corporations", strconv.Itoa(len(view.Report.Targets))+" "+roamPlural(len(view.Report.Targets), "corp", "corps"))
+				if len(view.Report.Targets)>0 {
+					<div class="overflow-x-auto">
+						<table class="w-full min-w-[440px] table-fixed text-xs">
+							<thead class="text-left text-gray-500"><tr class="border-b border-white/[0.06]"><th class="w-[55%] py-1.5 pr-2 font-medium">Corporation</th><th class="px-2 py-1.5 text-right font-medium">Kills</th><th class="py-1.5 pl-2 text-right font-medium">ISK destroyed</th></tr></thead>
+							<tbody>
+								for _, target := range view.Report.Targets {
+									<tr class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
+										<td class="py-1.5 pr-2">
+											<div class="flex min-w-0 items-center gap-2">
+												<img src={ fmt.Sprintf("https://images.evetech.net/corporations/%d/logo?size=32", target.CorporationID) } alt={ target.CorporationName } class="h-6 w-6 shrink-0 rounded" width="24" height="24" loading="lazy"/>
+												<div class="min-w-0">
+													<a href={ idPath("corporation", int64(target.CorporationID)) } class="block truncate hover:text-blue-400">
+														{ target.CorporationName }
+													</a>
+													<span class="block truncate text-fine text-gray-500">
+														{ target.AllianceName }
+													</span>
+												</div>
+											</div>
+										</td>
+										<td class="px-2 py-1.5 text-right tabular-nums">
+											{ strconv.Itoa(target.Kills) }
+										</td>
+										<td class="py-1.5 pl-2 text-right tabular-nums text-amber-200">
+											{ compactNumber(target.IskDestroyed) }
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				} else {
+					<p class="py-5 text-center text-xs text-gray-600">No opposing corporations recorded.</p>
+				}
+			</section>
+			if len(view.Destroyed)>0 {
+				<section class="rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
+					@roamIntelHeading("Opposing ships destroyed", strconv.Itoa(len(view.Destroyed))+" hull "+roamPlural(len(view.Destroyed), "type", "types"))
+					<table class="w-full table-fixed text-xs">
+						<thead class="text-left text-gray-500"><tr class="border-b border-white/[0.06]"><th class="w-[60%] py-1.5 pr-2 font-medium">Ship</th><th class="px-2 py-1.5 text-right font-medium">Kills</th><th class="py-1.5 pl-2 text-right font-medium">ISK</th></tr></thead>
+						<tbody>
+							for _, ship := range view.Destroyed {
+								<tr class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
+									<td class="py-1.5 pr-2">
+										<div class="flex min-w-0 items-center gap-2">
+											<img src={ fmt.Sprintf("/images/types/%d/render?size=32", ship.ID) } alt={ ship.Name } class="h-6 w-6 shrink-0 rounded" width="24" height="24" loading="lazy"/>
+											<a href={ idPath("item", int64(ship.ID)) } class="truncate hover:text-blue-400">
+												{ ship.Name }
+											</a>
+										</div>
+									</td>
+									<td class="px-2 py-1.5 text-right tabular-nums">
+										{ strconv.Itoa(ship.Count) }
+									</td>
+									<td class="py-1.5 pl-2 text-right tabular-nums text-amber-200">
+										{ compactNumber(ship.ISK) }
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</section>
+			}
+			if len(view.Threats)>0 {
+				<section class="rounded-lg border border-blue-500/20 bg-white/[0.04] p-3">
+					@roamIntelHeading("Losses to", strconv.Itoa(len(view.Threats))+" "+roamPlural(len(view.Threats), "pilot", "pilots"))
+					<table class="w-full table-fixed text-xs">
+						<thead class="text-left text-gray-500"><tr class="border-b border-white/[0.06]"><th class="w-[55%] py-1.5 pr-2 font-medium">Pilot</th><th class="px-2 py-1.5 text-right font-medium">Losses</th><th class="py-1.5 pl-2 text-right font-medium">ISK lost</th></tr></thead>
+						<tbody>
+							for _, pilot := range view.Threats {
+								<tr class="border-b border-white/[0.03] text-gray-300 hover:bg-white/[0.02]">
+									<td class="py-1.5 pr-2">
+										<div class="truncate">
+											{ pilot.Name }
+										</div>
+										<div class="truncate text-fine text-gray-500">
+											{ pilot.Corporation }
+										</div>
+									</td>
+									<td class="px-2 py-1.5 text-right tabular-nums text-red-400">
+										{ strconv.Itoa(pilot.Losses) }
+									</td>
+									<td class="py-1.5 pl-2 text-right tabular-nums">
+										{ compactNumber(pilot.ISK) }
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</section>
+			}
+		</div>
+	</div>
+}

@@ -21,7 +21,7 @@ Cloudflare enables HTTP/2 origin connections by default.
 
 - Set `NODE_ENV=development`.
 - Set `DATA_DIR` to a writable directory.
-- Build the Nuxt renderer.
+- Build Shrike and its native fitting worker with `make build`.
 
 ### Procedure
 

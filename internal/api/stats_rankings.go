@@ -625,7 +625,7 @@ func newestRankingQuery(entityType string) newestRankingSpec {
 				       date_founded
 				FROM alliances
 				WHERE date_founded IS NOT NULL
-				ORDER BY date_founded DESC
+				ORDER BY date_founded DESC, alliance_id DESC
 				LIMIT $1`,
 			resultType: "alliance",
 		}
@@ -637,7 +637,7 @@ func newestRankingQuery(entityType string) newestRankingSpec {
 				       birthday AS date_founded
 				FROM characters
 				WHERE birthday IS NOT NULL
-				ORDER BY birthday DESC
+				ORDER BY birthday DESC, character_id DESC
 				LIMIT $1`,
 			resultType: "character",
 		}
@@ -649,7 +649,7 @@ func newestRankingQuery(entityType string) newestRankingSpec {
 				       date_founded
 				FROM corporations
 				WHERE date_founded IS NOT NULL
-				ORDER BY date_founded DESC
+				ORDER BY date_founded DESC, corporation_id DESC
 				LIMIT $1`,
 			resultType: "corporation",
 		}

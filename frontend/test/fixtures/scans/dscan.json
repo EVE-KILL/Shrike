@@ -1,0 +1,21 @@
+{
+  "grouped": {
+    "Ship": {
+      "categoryId": 6,
+      "groups": {
+        "Frigate": {
+          "groupId": 25,
+          "types": [
+            {
+              "typeName": "Astero",
+              "typeId": 33468,
+              "count": 2
+            }
+          ]
+        }
+      }
+    }
+  },
+  "totalCount": 2,
+  "uniqueTypes": 1
+}

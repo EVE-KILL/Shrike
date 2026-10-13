@@ -1,0 +1,97 @@
+package frontend
+
+import "strconv"
+
+templ campaignsDirectoryPage(view campaignDirectoryView) {
+	<div class="campaigns-directory" data-campaign-root data-controller="campaigns" data-action="click->campaigns#click input->campaigns#searchChanged popstate@window->campaigns#popstate pagehide@window->campaigns#hide pageshow@window->campaigns#show">
+		<header class="page-header hero-surface glass-panel campaigns-header">
+			<div class="campaigns-heading">
+				<span class="page-header-icon">
+					@icon("flag")
+				</span>
+				<div>
+					<p class="eyebrow">Tracked conflicts</p>
+					<h1>Campaigns</h1>
+					<p>Track EVE Online conflicts across multiple battles: kills, losses and ISK destroyed for opposing sides, one group's war effort, or a stretch of space. Scoreboards refresh hourly. For individual engagements, browse <a href="/battles">battle reports</a>.</p>
+				</div>
+			</div>
+			<div class="campaigns-header-actions">
+				if view.DomainMode {
+					<span class="campaigns-domain-badge">
+						@icon("shield")
+						This killboard only
+					</span>
+				}
+				<a href="/campaigncreator">
+					@icon("plus")
+					New Campaign
+				</a>
+			</div>
+		</header>
+		<div class="campaigns-toolbar">
+			<div class="campaigns-status-tabs" aria-label="Campaign status">
+				<button type="button" class={ "campaigns-status-tab" + killBoolClass(view.Filters.Status == "active", " active", "") } data-campaign-status="active" aria-pressed={ strconv.FormatBool(view.Filters.Status == "active") }>Active <span data-campaign-count="active">{ strconv.Itoa(view.Data.Counts.Active) }</span></button>
+				<button type="button" class={ "campaigns-status-tab" + killBoolClass(view.Filters.Status == "archived", " active", "") } data-campaign-status="archived" aria-pressed={ strconv.FormatBool(view.Filters.Status == "archived") }>Archived <span data-campaign-count="archived">{ strconv.Itoa(view.Data.Counts.Archived) }</span></button>
+				<button type="button" class={ "campaigns-status-tab" + killBoolClass(view.Filters.Status == "private", " active", "") } data-campaign-status="private" data-campaign-private hidden aria-pressed={ strconv.FormatBool(view.Filters.Status == "private") }>
+					@icon("lock")
+					Private <span data-campaign-count="private">{ strconv.Itoa(view.Data.Counts.Private) }</span>
+				</button>
+			</div>
+			<span class="campaigns-toolbar-divider" aria-hidden="true"></span>
+			<div class="campaigns-mode-tabs" aria-label="Campaign mode">
+				<button type="button" class={ "campaigns-mode-tab" + killBoolClass(view.Filters.Mode == "all", " active", "") } data-campaign-mode="all" aria-pressed={ strconv.FormatBool(view.Filters.Mode == "all") }>
+					@icon("layers")
+					All
+				</button>
+				<button type="button" class={ "campaigns-mode-tab" + killBoolClass(view.Filters.Mode == "conflict", " active", "") } data-campaign-mode="conflict" aria-pressed={ strconv.FormatBool(view.Filters.Mode == "conflict") }>
+					@icon("swords")
+					Conflicts
+				</button>
+				<button type="button" class={ "campaigns-mode-tab" + killBoolClass(view.Filters.Mode == "area", " active", "") } data-campaign-mode="area" aria-pressed={ strconv.FormatBool(view.Filters.Mode == "area") }>
+					@icon("map-pinned")
+					Battlefields
+				</button>
+			</div>
+			<label class="campaigns-search">
+				@icon("search")
+				<input type="search" data-campaign-search value={ view.Filters.Query } placeholder="Search campaigns…" aria-label="Search campaigns" autocomplete="off"/>
+				<button type="button" data-campaign-clear-search aria-label="Clear search" hidden>
+					@icon("x")
+				</button>
+			</label>
+		</div>
+		<div class="campaigns-error" data-campaign-error role="alert" hidden></div>
+		@campaignsDirectoryResults(view)
+	</div>
+}
+
+templ campaignsDirectoryResults(view campaignDirectoryView) {
+	<div class="campaigns-results" data-campaign-results>
+		if len(view.Data.Campaigns) == 0 {
+			<div class="campaigns-empty glass-panel">
+				@icon("flag-off")
+				if view.Filters.Mode != "all" || view.Filters.Query != "" {
+					<p>No campaigns match these filters</p>
+					<small>Try a different search or clear the mode filter.</small>
+					<button type="button" data-campaign-clear-filters>Clear filters</button>
+				} else {
+					<p>No { view.Filters.Status } campaigns yet</p>
+					<a href="/campaigncreator">Create the first one →</a>
+				}
+			</div>
+		} else {
+			<div class="campaigns-grid">
+				for _, campaign := range view.Data.Campaigns {
+					@campaignCard(campaign)
+				}
+			</div>
+		}
+		if view.Filters.Page > 1 || view.Data.HasMore {
+			<nav class="campaigns-pagination" aria-label="Campaign pages">
+				<button type="button" data-campaign-page={ strconv.Itoa(view.Filters.Page - 1) } disabled?={ view.Filters.Page <= 1 }>Previous</button>
+				<span>Page { strconv.Itoa(view.Filters.Page) } of { strconv.Itoa(campaignLastPage(view.Data.Total)) }</span>
+				<button type="button" data-campaign-page={ strconv.Itoa(view.Filters.Page + 1) } disabled?={ !view.Data.HasMore }>Next</button>
+			</nav>
+		}
+	</div>
+}

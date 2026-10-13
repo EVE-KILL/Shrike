@@ -1,0 +1,135 @@
+package frontend
+
+import "strconv"
+
+templ settingsWallet(view settingsView) {
+	<div class="space-y-4" data-settings-wallet data-controller="settings-wallet" data-action="click->settings-wallet#click pagehide@window->settings-wallet#hide" data-page={ strconv.Itoa(view.Wallet.Page) }>
+		<p hidden?={ !view.WalletError } data-settings-wallet-error class="glass-panel p-5 text-sm text-red-400" role="alert">Could not load your EK Wallet. <button type="button" data-settings-section-retry class="text-blue-400">Retry</button></p>
+		if !view.WalletError {
+			{{ data := view.Wallet }}
+			<div class="glass-panel p-5">
+				<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+					<div class="flex items-start gap-3">
+						<div class="w-11 h-11 rounded-xl bg-yellow-500/15 flex items-center justify-center flex-shrink-0">
+							<span class="text-xl text-yellow-400">
+								@icon("wallet-cards")
+							</span>
+						</div>
+						<div><h2 class="text-base font-semibold text-white">Your EK Wallet</h2><p class="text-xs text-gray-500 mt-0.5">A per-character balance for { data.Character.Name }.</p></div>
+					</div>
+					<div class="sm:text-right">
+						<div class="text-fine font-bold uppercase tracking-[0.15em] text-gray-500">Available balance</div>
+						<div class="mt-1 text-2xl font-bold text-yellow-400 tabular-nums">{ settingsIsk(data.Available) }</div>
+						if settingsPositive(data.Reserved) {
+							<div class="mt-1 text-fine text-gray-500 tabular-nums">{ settingsIsk(data.Reserved) } held · { settingsIsk(data.Total) } total</div>
+						}
+					</div>
+				</div>
+			</div>
+			if len(data.Reservations)>0 {
+				<div class="glass-panel overflow-hidden">
+					<div class="p-4 border-b border-white/[0.06]">
+						<div class="flex items-center gap-2">
+							<span class="text-yellow-400">
+								@icon("lock-keyhole")
+							</span>
+							<h2 class="text-sm font-semibold text-white">Pending holds</h2>
+						</div>
+						<p class="text-fine text-gray-600 mt-0.5">Reserved funds are excluded from your available balance until captured, released, or expired.</p>
+					</div>
+					<div class="divide-y divide-white/[0.05]">
+						for _,reservation:=range data.Reservations {
+							<div class="flex items-start justify-between gap-4 px-4 py-3">
+								<div class="min-w-0">
+									<div class="text-xs text-gray-300">{ reservation.Description }</div>
+									<div class="mt-0.5 text-fine text-gray-600 truncate">
+										{ reservation.Reference }
+										if reservation.ExpiresAt!=nil {
+											<span>
+												{ " · expires " }
+												@settingsWalletDate(*reservation.ExpiresAt)
+											</span>
+										}
+									</div>
+								</div>
+								<div class="text-xs font-medium text-yellow-400 tabular-nums whitespace-nowrap">{ settingsIsk(reservation.Amount) }</div>
+							</div>
+						}
+					</div>
+				</div>
+			}
+			<div class="glass-panel overflow-hidden">
+				<div class="p-5 border-b border-white/[0.06]">
+					<div class="flex items-center gap-2">
+						<span class="text-green-400">
+							@icon("arrow-down-to-line")
+						</span>
+						<h2 class="text-sm font-semibold text-white">Deposit ISK</h2>
+					</div>
+					<p class="text-xs text-gray-500 mt-1">Send ISK from the signed-in character to the EVE-KILL.com corporation. ESI identifies the sender, so no special wallet reference is required.</p>
+				</div>
+				<div class="p-5 space-y-4">
+					<div class="grid sm:grid-cols-2 gap-3">
+						<div class="rounded-lg border border-white/[0.07] bg-white/[0.025] p-4"><div class="text-fine font-bold uppercase tracking-[0.12em] text-gray-600">Send from</div><div class="flex items-center gap-2 mt-2"><img src={ eveEntityImage("character", data.Character.ID, 64) } alt={ data.Character.Name } width="32" height="32" class="w-8 h-8 rounded"/><div><div class="text-sm text-white">{ data.Character.Name }</div><div class="text-fine text-gray-600">{ warID(data.Character.ID) }</div></div></div></div>
+						<div class="rounded-lg border border-white/[0.07] bg-white/[0.025] p-4">
+							<div class="text-fine font-bold uppercase tracking-[0.12em] text-gray-600">Send to</div>
+							<div class="flex items-center justify-between gap-3 mt-2">
+								<a href={ "/corporation/" + warID(data.Corporation.ID) } class="min-w-0 text-sm text-white hover:text-blue-300"><span class="block truncate">{ data.Corporation.Name }</span><span class="block text-fine text-gray-600">{ data.Corporation.Ticker } · { warID(data.Corporation.ID) }</span></a>
+								<button type="button" data-settings-wallet-copy={ data.Corporation.Name } class="px-2.5 py-1.5 rounded bg-white/[0.05] text-fine text-gray-400 hover:text-blue-300 hover:bg-blue-500/10">
+									<span class="mr-1">
+										@icon("copy")
+									</span><span data-settings-wallet-copy-label>Copy name</span>
+								</button>
+							</div>
+						</div>
+					</div>
+					<div class="rounded-lg border border-blue-500/15 bg-blue-500/[0.06] px-4 py-3 text-xs text-gray-400 leading-relaxed">
+						Deposits are imported automatically each hour. The last wallet journal sync was 
+						<span class="text-gray-300">
+							@settingsWalletDate(settingsString(data.LastSynced))
+						</span>. A reason beginning with <code class="text-yellow-400">campaign:</code> funds that campaign directly instead of crediting your personal EK Wallet.
+					</div>
+					<div class="rounded-lg border border-yellow-500/20 bg-yellow-500/[0.08] px-4 py-3 text-xs text-yellow-400/80 leading-relaxed">EK Wallet is currently deposit-only while its ledger is being established. The balance cannot be spent, transferred, or withdrawn yet.</div>
+				</div>
+			</div>
+			<div class="glass-panel overflow-hidden">
+				<div class="p-4 border-b border-white/[0.06]"><h2 class="text-sm font-semibold text-white">Transaction history</h2><p class="text-fine text-gray-600 mt-0.5">Immutable entries for this character, newest first.</p></div>
+				if len(data.Transactions)>0 {
+					<div class="overflow-x-auto">
+						<table class="w-full text-xs">
+							<thead><tr class="text-left text-gray-600 border-b border-white/[0.06]"><th class="px-4 py-2.5 font-medium whitespace-nowrap">Date</th><th class="px-4 py-2.5 font-medium">Type</th><th class="px-4 py-2.5 font-medium min-w-52">Description</th><th class="px-4 py-2.5 font-medium text-right">Amount</th><th class="px-4 py-2.5 font-medium text-right">Balance</th></tr></thead>
+							<tbody>
+								for _,transaction:=range data.Transactions {
+									<tr class="border-b border-white/[0.04] last:border-0" data-wallet-transaction-id={ warID(transaction.ID) }>
+										<td class="px-4 py-3 text-gray-500 whitespace-nowrap">
+											@settingsWalletDate(transaction.CreatedAt)
+										</td>
+										<td class="px-4 py-3 text-gray-300 whitespace-nowrap">{ settingsTransactionLabel(transaction.Type) }</td>
+										<td class="px-4 py-3 text-gray-400">
+											if transaction.CampaignID!=nil {
+												<a href={ "/campaign/" + *transaction.CampaignID } class="hover:text-blue-300">{ transaction.Description }</a>
+											} else {
+												{ transaction.Description }
+											}
+										</td>
+										<td class={ "px-4 py-3 text-right font-medium tabular-nums whitespace-nowrap " + killBoolClass(settingsPositive(transaction.Amount), "text-green-400", "text-red-400") }>{ killBoolClass(settingsPositive(transaction.Amount),"+","")+settingsIsk(transaction.Amount) }</td>
+										<td class="px-4 py-3 text-right text-gray-400 tabular-nums whitespace-nowrap">{ settingsIsk(transaction.Balance) }</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				} else {
+					<div class="p-8 text-center text-sm text-gray-500">No EK Wallet transactions yet.</div>
+				}
+			</div>
+			if data.Page>1||data.HasMore {
+				<div class="flex items-center justify-center gap-2"><button type="button" data-settings-wallet-page={ strconv.Itoa(data.Page - 1) } class="glass-panel px-3 py-1.5 text-xs text-gray-400 disabled:opacity-30" disabled?={ data.Page<=1 }>Previous</button><span class="text-fine text-gray-600">Page { strconv.Itoa(data.Page) }</span><button type="button" data-settings-wallet-page={ strconv.Itoa(data.Page + 1) } class="glass-panel px-3 py-1.5 text-xs text-gray-400 disabled:opacity-30" disabled?={ !data.HasMore }>Next</button></div>
+			}
+		}
+	</div>
+}
+
+templ settingsWalletDate(value string) {
+	<time datetime={ value } data-settings-wallet-date>{ walletDate(value) }</time>
+}

@@ -1,0 +1,11 @@
+.scans-page [hidden] { display: none !important; }
+.scans-page .icon { width: 1em; height: 1em; }
+.scans-page [data-scan-paste] .icon { width: 16px; height: 16px; }
+.scans-page details > summary { list-style: none; }
+.scans-page details > summary::-webkit-details-marker { display: none; }
+.scans-page details[open] > summary { background: transparent; color: inherit; }
+.scans-page details > summary:hover { background: color-mix(in srgb, var(--color-brand-primary) 4%, transparent); }
+.scans-page details:not([open]) > summary [data-scan-chevron] { transform: rotate(-90deg); }
+.scans-page details > summary [data-scan-chevron] { transition: transform .15s; }
+.scans-page img { object-fit: contain; }
+@media (prefers-reduced-motion: reduce) { .scans-page [data-scan-chevron] { transition: none; } }

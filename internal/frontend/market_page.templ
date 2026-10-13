@@ -1,0 +1,152 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ marketPage(view marketPageView) {
+	<div class="market-page" data-market-page data-controller="market-browser" data-action="click->market-browser#click toggle->market-browser#toggle:capture pagehide@window->market-browser#hide pageshow@window->market-browser#show">
+		<link rel="stylesheet" href={ assetURL("market.css") }/>
+		<nav class="market-breadcrumb" aria-label="Breadcrumb">
+			<a href="/market">Market</a>
+			for index, crumb := range view.Breadcrumb {
+				<span>/</span><a href={ marketBreadcrumbPath(view, index) }>{ crumb.Name }</a>
+			}
+		</nav>
+		<button type="button" class="market-mobile-toggle glass-panel" data-market-sidebar-toggle>Show Categories</button>
+		<div class="market-layout">
+			<aside class="market-sidebar glass-panel" data-market-sidebar>
+				@marketSearch()
+				<h2>Market Groups</h2>
+				@marketTreeSidebar(view.Tree, "", view.Path)
+			</aside>
+			<section class="market-content">
+				if view.Active==nil || !view.Active.HasTypes {
+					<section class="market-intro glass-panel"><small>{ marketIntroEyebrow(view) }</small><h1>{ marketIntroTitle(view) }</h1><p>{ marketIntroDescription(view) }</p></section>
+					<div class="market-groups">
+						for _, group := range marketVisibleGroups(view) {
+							@marketGroupCard(view, group)
+						}
+					</div>
+				} else {
+					<section class="market-intro glass-panel"><small>Market group</small><h1>{ view.Active.Name }</h1><p>Compare the latest universe-wide traded average with the current lowest sell order in Jita.</p><span>{ fullNumber(float64(len(view.Items))) } items</span></section>
+					if len(view.Items)>0 {
+						<div class="market-items">
+							for _, item := range view.Items {
+								@marketItemCard(item)
+							}
+						</div>
+					} else {
+						<p class="market-empty">No items in this category.</p>
+					}
+				}
+			</section>
+		</div>
+		<script type="module" src={ assetURL("market.js") }></script>
+	</div>
+}
+
+templ marketItemPage(view marketItemPageView) {
+	<div class="market-page market-standalone" data-market-page data-controller="market-browser" data-action="click->market-browser#click toggle->market-browser#toggle:capture pagehide@window->market-browser#hide pageshow@window->market-browser#show">
+		<link rel="stylesheet" href={ assetURL("market.css") }/>
+		<link rel="stylesheet" href={ assetURL("item.css") }/>
+		<nav class="market-breadcrumb" aria-label="Breadcrumb"><a href="/market">Market</a><span>/</span><span>{ view.Item.Item.Name }</span></nav>
+		<button type="button" class="market-mobile-toggle glass-panel" data-market-sidebar-toggle>Show Market Browser</button>
+		<div class="market-layout">
+			<aside class="market-sidebar glass-panel" data-market-sidebar>
+				@marketSearch()
+				<h2>Browse</h2>
+				@marketTreeSidebar(view.Tree, "", marketItemPath(view))
+				<a class="market-browse-all" href="/market">Browse all categories</a>
+			</aside>@marketStandalonePanel(view)
+		</div>
+		<script type="module" src={ assetURL("market.js") }></script>
+	</div>
+}
+
+templ marketStandalonePanel(view marketItemPageView) {
+	<section class="market-content item-market" data-item-market data-region={ strconv.FormatInt(int64(view.Market.RegionID), 10) } data-days={ strconv.Itoa(view.Market.Days) } data-security={ view.Market.Security } data-market-item-id={ strconv.FormatInt(view.ID, 10) } data-market-type-id={ strconv.FormatInt(view.ID, 10) } data-market-view="standalone" data-controller="item-market" data-action="click->item-market#click change->item-market#change popstate@window->item-market#history pagehide@window->item-market#hide pageshow@window->item-market#show">
+		<header class="market-item-header">
+			<div><img src={ fmt.Sprintf("/images/types/%d/icon?size=64", view.ID) } alt={ view.Item.Item.Name } width="56" height="56"/><span><small>Regional market</small><h1>{ view.Item.Item.Name }</h1><em>Type ID: { strconv.FormatInt(view.ID,10) } <a href={ idPath("item", view.ID) }>Item details</a></em></span></div>
+			<label>
+				Region 
+				<select data-market-region aria-label="Region">
+					<option value="0" selected?={ view.Market.RegionID==0 }>All Regions</option>
+					for _, region := range view.Market.Orders.Regions {
+						<option value={ strconv.FormatInt(region.ID, 10) } selected?={ region.ID==int64(view.Market.RegionID) }>{ region.Name }</option>
+					}
+				</select>
+			</label>
+		</header>
+		@itemMarketBody(view.Market)
+	</section>
+}
+
+templ marketSearch() {
+	<div class="market-search" data-market-search data-controller="market-search" data-action="input->market-search#input click->market-search#click focusin->market-search#focus keydown->market-search#key pointerdown@document->market-search#outside pagehide@window->market-search#hide pageshow@window->market-search#show">
+		<label>
+			@icon("search")
+			<input type="search" placeholder="Search market items…" autocomplete="off" aria-label="Search market items"/>
+			<span class="market-search-loading" hidden aria-hidden="true">
+				@icon("loader-circle")
+			</span>
+		</label>
+		<div data-market-results hidden></div>
+	</div>
+}
+
+templ marketTreeSidebar(nodes []api.UniverseMarketTreeNode, prefix, active string) {
+	@marketTreeWithParent(nodes, prefix, active, 0)
+}
+
+templ marketTreeWithParent(nodes []api.UniverseMarketTreeNode, prefix, active string, parent int64) {
+	<div class="market-tree" data-market-tree-parent={ strconv.FormatInt(parent, 10) }>
+		for _, node := range nodes {
+			{{ path := marketTreePath(prefix, node.Slug) }}
+			if len(node.Children)>0 {
+				<details data-market-node={ strconv.FormatInt(node.ID, 10) } open?={ marketNodeOpen(active,path) }>
+					<summary><span aria-hidden="true">›</span><a class={ marketTreeLinkClass(active, path) } href={ "/market/" + path }>{ node.Name }</a></summary>
+					if marketNodeOpen(active,path) {
+						@marketTreeWithParent(node.Children, path, active, node.ID)
+					}
+				</details>
+			} else {
+				<a class={ marketTreeLinkClass(active, path) + " leaf" } href={ "/market/" + path }>{ node.Name }</a>
+			}
+		}
+	</div>
+}
+
+templ marketGroupCard(view marketPageView, node api.UniverseMarketTreeNode) {
+	{{ path := marketGroupPath(view.Path, node) }}
+	<article class="market-group-card glass-panel">
+		<a class="market-group-title" href={ path }>
+			<span>
+				@icon(marketGroupIcon(node))
+			</span><span><strong>{ node.Name }</strong><small>{ marketGroupSubtitle(node) }</small></span>@icon("chevron-right")
+		</a>
+		if len(node.Children)>0 {
+			<div class="market-group-previews">
+				for _, child := range node.Children[:min(4,len(node.Children))] {
+					<a href={ path + "/" + child.Slug }>{ child.Name }</a>
+				}
+				if len(node.Children)>4 {
+					<a class="more" href={ path }>+{ strconv.Itoa(len(node.Children)-4) } more</a>
+				}
+			</div>
+		} else {
+			<a class="market-group-open" href={ path }>Open item listing →</a>
+		}
+	</article>
+}
+
+templ marketItemCard(item api.UniverseMarketGroupItem) {
+	<a class="market-item-card glass-panel" href={ idPath("market/item", item.ID) }>
+		<div class="market-item-card-top">
+			<img src={ marketCardImage(item) } alt={ item.Name } width="56" height="56" loading="lazy"/><span><strong>{ item.Name }</strong><small><em class={ marketMetaClass(item.MetaGroupID) }>{ marketMetaLabel(item.MetaGroupID) }</em> #{ strconv.FormatInt(item.ID,10) }</small></span>@icon("chevron-right")
+		</div>
+		<div class="market-item-prices"><div><small>Universe avg</small><strong>{ marketCardPrice(item.UniverseAverage) }</strong><span>{ marketCardVolume(item.UniverseVolume) }</span></div><div><small>Jita lowest sell</small><strong>{ marketCardPrice(item.JitaSell) }</strong><span>Current order book</span></div></div>
+	</a>
+}

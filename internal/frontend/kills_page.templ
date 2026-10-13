@@ -1,0 +1,75 @@
+package frontend
+
+import (
+	"strconv"
+
+	"github.com/eve-kill/shrike/internal/api"
+)
+
+templ killsPage(view killsPageView) {
+	<div class="kills-page" data-controller="home" data-action="click->home#click input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show" data-kills-page data-tab="kills" data-title={ view.Title }>
+		<h1>{ view.Title }</h1>
+		<div class="kills-mobile-tabs" role="tablist" aria-label="Kill page sections">
+			<button type="button" role="tab" aria-selected="true" aria-controls="kills-panel" data-kills-tab="kills">
+				@icon("swords")
+				Kills
+			</button>
+			<button type="button" role="tab" aria-selected="false" aria-controls="top-panel" data-kills-tab="top">
+				@icon("list-ordered")
+				Top Lists
+			</button>
+			<button type="button" role="tab" aria-selected="false" aria-controls="valuable-panel" data-kills-tab="valuable">
+				@icon("gem")
+				Valuable
+			</button>
+		</div>
+		<div id="valuable-panel" class="kills-valuable-panel" role="tabpanel">
+			@filteredValuable(view.Valuable)
+		</div>
+		<div class="kills-grid">
+			<aside id="top-panel" class="kills-top-panel" role="tabpanel" aria-label="Top killers">
+				for _, box := range view.TopBoxes {
+					if box.Pending {
+						@topBoxPlaceholder(box)
+					} else {
+						@topBox(box)
+					}
+				}
+			</aside>
+			<div id="kills-panel" class="kills-list-panel" role="tabpanel">
+				@killList(view.Killlist, killListOptions{Kind: view.Kind, Page: 1, Limit: 50, Live: true})
+			</div>
+		</div>
+	</div>
+}
+
+templ topBoxPlaceholder(box topBoxView) {
+	<section class="top-box glass-panel top-box-loading" data-top-pending={ box.DataType } data-controller="home-top" data-action="home:top->home-top#refresh resize@window->home-top#refresh click->home-top#click pagehide@window->home-top#hide pageshow@window->home-top#show" aria-busy="true" aria-label={ box.Title }>
+		<h3>{ box.Title }</h3>
+		<div class="top-box-entries">
+			for index := 0; index < box.Limit; index++ {
+				<div class="top-box-entry" aria-hidden="true">
+					<span class="top-rank">{ strconv.Itoa(index + 1) }</span>
+					<span class="top-image"></span>
+					<span class="top-name top-skeleton-line"></span>
+					<span class="top-count top-skeleton-count"></span>
+				</div>
+			}
+		</div>
+		<p class="top-footer">Last 7 days</p>
+	</section>
+}
+
+templ filteredValuable(kills []api.ValuableKill) {
+	<section class="kills-valuable glass-panel" aria-label="Most valuable kills">
+		if len(kills) == 0 {
+			<p class="valuable-empty">Nothing in the last 7 days</p>
+		} else {
+			<div class="valuable-grid kills-valuable-grid">
+				for index, kill := range kills {
+					@valuableCard(kill, index, true)
+				}
+			</div>
+		}
+	</section>
+}

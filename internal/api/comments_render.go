@@ -217,6 +217,13 @@ func sanitizeCommentHTML(raw string) string {
 	return output.String()
 }
 
+// SafeCommentHTML revalidates stored comment markup before server-side pages
+// emit it as HTML. The API's renderer already sanitizes new writes, but older
+// rows and imported content pass through the same policy on read.
+func SafeCommentHTML(raw string) string {
+	return hardenCommentAnchors(stripBadCommentIframes(sanitizeCommentHTML(raw)))
+}
+
 func stripBadCommentIframes(raw string) string {
 	contextNode := &xhtml.Node{
 		Type: xhtml.ElementNode, Data: "div", DataAtom: atom.Div,

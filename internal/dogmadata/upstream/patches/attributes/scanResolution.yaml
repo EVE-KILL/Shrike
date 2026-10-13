@@ -1,0 +1,10 @@
+addTo:
+  - effect: remoteSensorDampFalloff
+    rules:
+      - {percent: scanResolutionBonus, domain: targetID}
+  - effect: remoteSensorDampEntity
+    rules:
+      - {percent: scanResolutionBonus, domain: targetID}
+  - effect: remoteSensorBoostFalloff
+    rules:
+      - {percent: scanResolutionBonus, domain: targetID}

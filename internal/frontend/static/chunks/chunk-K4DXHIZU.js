@@ -1,0 +1,13 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+var L={11:"Low",12:"High",13:"Medium",2663:"Rig",3772:"SubSystem"},v={1272:"DroneBay"},A={Low:"Low Slot",Medium:"Med Slot",High:"High Slot",Rig:"Rig Slot",SubSystem:"Subsystem Slot"},$=["Low","Medium","High","Rig","SubSystem"];function N(e,n){let i=n.types.get(e.shipTypeId);if(!i)return null;let t=`[${i.name}, ${e.name||"Fit"}]
+`;for(let o of $){let s=e.modules.filter(r=>r.slot.type===o).sort((r,d)=>r.slot.index-d.slot.index);if(s.length===0){t+=`
+`;continue}for(let r of s)t+=O(r,n);t+=`
+`}t+=`
+`;for(let o of e.drones){let s=n.types.get(o.typeId);if(!s)continue;let r=o.states.Active+o.states.Passive;t+=`${s.name}${r>1?` x${r}`:""}
+`}t+=`
+`;for(let o of e.cargo){let s=n.types.get(o.typeId);s&&(t+=`${s.name} x${o.quantity}
+`)}return t.trim()+`
+`}function O(e,n){let i=n.types.get(e.typeId);if(!i)return`[Empty ${A[e.slot.type]}]
+`;let t=i.name;if(e.charge){let o=n.types.get(e.charge.typeId);o&&(t+=`, ${o.name}`)}return e.state==="Passive"&&(t+=" /offline"),t+`
+`}function P(e,n){let i=e.trim().split(`
+`);if(i.length===0)return null;let t=i[0].trim();if(!t.startsWith("[")||!t.endsWith("]"))return null;let o=t.slice(1,-1).split(","),s=o[0].trim(),r=o.slice(1).join(",").trim()||"EFT Import",d=n.typeNameToId.get(s);if(d===void 0)return null;let f={shipTypeId:d,name:r,description:"",modules:[],drones:[],cargo:[]},g={Low:1,Medium:1,High:1,Rig:1,SubSystem:1},u,T=0,I=!1;for(let S=1;S<i.length;S++){let D=i[S],m=D.trim();if(m===""){T++,T>=2&&(I=!0);continue}if(T=0,m.startsWith("[")&&m.endsWith("]")){u!==void 0&&u!=="DroneBay"&&u!=="CargoBay"&&g[u]++;continue}if(D.startsWith("  "))continue;let a=m,b=!1;a.endsWith("/offline")&&(b=!0,a=a.slice(0,-8).trim());let p=a.indexOf(","),x=(p>=0?a.slice(0,p):a).trim(),B=p>=0?a.slice(p+1).trim():"",y=x.match(/^(.*)\s+x(\d+)$/),E=y?y[1].trim():x,h=y?Number.parseInt(y[2],10):1,l=n.typeNameToId.get(E);if(l===void 0)continue;let c=_(l,n);if(I&&c!=="DroneBay"&&(c="CargoBay"),c===void 0)continue;u=c;let R=B?n.typeNameToId.get(B):void 0,M=R?{typeId:R}:void 0;if(c==="DroneBay"){let C=Math.min(h,Math.max(0,5-w(f.drones)));f.drones.push({typeId:l,states:{Active:C,Passive:h-C}});continue}if(c==="CargoBay"){f.cargo.push({typeId:l,quantity:h});continue}let F=c;f.modules.push({slot:{type:F,index:g[F]},typeId:l,state:b?"Passive":"Active",charge:M}),g[F]++}return f}function _(e,n){let i=n.typeDogma.get(e);if(!i)return;let t=i.dogmaEffects;if(t)for(let s of t){let r=L[s.effectID];if(r)return r}let o=i.dogmaAttributes;if(o)for(let s of o){let r=v[s.attributeID];if(r)return r}}function w(e){let n=0;for(let i of e)n+=i.states.Active;return n}export{N as a,P as b};

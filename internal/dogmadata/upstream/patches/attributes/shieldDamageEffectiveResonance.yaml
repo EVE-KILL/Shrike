@@ -1,0 +1,14 @@
+new:
+  displayName: Shield Effective Resonance
+  category: Shield
+  unit: "Inverse Absolute Percent"
+  highIsGood: false
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {add: shieldEmDamageEffectiveResonance}
+      - {add: shieldExplosiveDamageEffectiveResonance}
+      - {add: shieldKineticDamageEffectiveResonance}
+      - {add: shieldThermalDamageEffectiveResonance}

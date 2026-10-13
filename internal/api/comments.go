@@ -1150,33 +1150,41 @@ func (s *commentService) myCommentsHandler() legacyHandler {
 		limit := boundedContentInt(req.Query.Get("limit"), 25, 1, 100)
 		args := []any{principal.CharacterID}
 		filters := []string{
-			"character_id = $1",
-			"deleted_at IS NULL",
+			"c.character_id = $1",
+			"c.deleted_at IS NULL",
 		}
 		if cursor := looseCommentInteger(req.Query.Get("cursor")); cursor != nil && *cursor != 0 {
 			args = append(args, *cursor)
 			filters = append(
 				filters,
-				"id < $"+strconv.Itoa(len(args)),
+				"c.id < $"+strconv.Itoa(len(args)),
 			)
 		}
 		args = append(args, limit+1)
 		rows, err := queryMaps(ctx, s.db, `
 			SELECT
-				id, target_type, target_id, target_slug, domain_id,
-				parent_id, root_id, depth, body_md, body_html,
-				character_id, character_name, corporation_id,
-				corporation_name, alliance_id, alliance_name,
-				created_at, updated_at, edited_at,
-				moderation_status, visibility
-			FROM comments
+				c.id, c.target_type, c.target_id,
+				coalesce(c.target_slug, post.slug) AS target_slug, c.domain_id,
+				c.parent_id, c.root_id, c.depth, c.body_md, c.body_html,
+				c.character_id, c.character_name, c.corporation_id,
+				c.corporation_name, c.alliance_id, c.alliance_name,
+				c.created_at, c.updated_at, c.edited_at,
+				c.moderation_status, c.visibility
+			FROM comments c
+			LEFT JOIN blog_posts post ON c.target_type = 9 AND post.id = c.target_id
 			WHERE `+strings.Join(filters, " AND ")+`
-			ORDER BY id DESC
+			ORDER BY c.id DESC
 			LIMIT $`+strconv.Itoa(len(args)),
 			args...,
 		)
 		if err != nil {
 			return legacyPayload{}, err
+		}
+		// Imported historical HTML receives the same read-time policy as Go pages.
+		for _, row := range rows {
+			if html, ok := row["body_html"].(string); ok {
+				row["body_html"] = SafeCommentHTML(html)
+			}
 		}
 		hasMore := len(rows) > limit
 		if hasMore {

@@ -1,0 +1,30 @@
+new:
+  displayName: Structure Repair Rate
+  category: Structure
+  unit: hitpointsPerSecond
+  highIsGood: true
+
+effects:
+  - name: hullRepairRate
+    on: hullRepairModule
+    category: active
+    rules:
+      - {from: thousand}
+      - {mul: structureDamageAmount}
+      - {div: duration}
+      - {add: hullRepairRate, domain: shipID}
+
+  # A remote repairer reaches the ship it is aimed at. The strength is its
+  # own; the spool multiplier is 1 for everything that does not spool.
+  - name: remoteHullRepairRate
+    on: remoteHullRepairModule
+    category: active
+    resistanceAttribute: remoteRepairImpedance
+    rangeAttribute: maxRange
+    falloffAttribute: falloffEffectiveness
+    rules:
+      - {from: thousand}
+      - {mul: structureDamageAmount}
+      - {mul: spoolMultiplier}
+      - {div: duration}
+      - {add: hullRepairRate, domain: targetID}

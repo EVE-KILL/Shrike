@@ -1,0 +1,106 @@
+package frontend
+
+import "strconv"
+
+templ mcpPage(view mcpView) {
+	<div class="mcp-page" data-controller="mcp" data-action="click->mcp#click input->mcp#filter toggle->mcp#toggle:capture pagehide@window->mcp#hide pageshow@window->mcp#show">
+		<link rel="stylesheet" href={ assetURL("mcp.css") }/>
+		<header class="page-header hero-surface glass-panel mcp-header">
+			<span class="page-header-icon">
+				@icon("plug")
+			</span>
+			<div class="mcp-header-main"><p class="eyebrow">Model Context Protocol</p><h1>MCP Server</h1><p>Plug any MCP-compatible AI client (Claude, ChatGPT's MCP integrations, custom agents) into EVE-KILL. { strconv.Itoa(len(view.Tools)) } purpose-built tools cover killmail lookup, character intel, corp/alliance analytics, battle reports, Memgraph-backed relationship graphs, and route danger assessment. No API key. No auth. JSON-RPC over streamable HTTP.</p></div>
+			<div class="mcp-header-meta"><span>{ strconv.Itoa(len(view.Tools)) } tools</span><a href={ publicMCPBase } target="_blank" rel="noopener">{ publicMCPBase }</a></div>
+		</header>
+		<section class="glass-panel mcp-connect">
+			<h2>
+				<span aria-hidden="true">
+					@icon("plug")
+				</span> Connect an AI client
+			</h2>
+			<p>MCP clients that speak <code>streamable-HTTP</code> can add EVE-KILL as a server. Endpoint: <code>{ publicMCPBase }/mcp</code> (POST JSON-RPC, optional SSE on GET). Rate limit: 20 req/s per IP.</p>
+			<div class="mcp-config-grid">
+				<div><div class="mcp-config-heading"><span>Claude Code / ChatGPT / native HTTP clients</span><button type="button" data-copy="http">Copy</button></div><pre id="mcp-http-config">{ mcpHTTPConfig() }</pre><p>Or from the CLI: <code>claude mcp add --scope user --transport http evekill { publicMCPBase }/mcp</code></p></div>
+				<div><div class="mcp-config-heading"><span>Claude Desktop (via mcp-remote)</span><button type="button" data-copy="desktop">Copy</button></div><pre id="mcp-desktop-config">{ mcpDesktopConfig() }</pre><p>Desktop uses the <code>mcp-remote</code> adapter to connect over HTTP. Edit the Desktop config file, then restart it.</p></div>
+			</div>
+			<div><div class="mcp-config-heading"><span>Raw cURL (sanity-check the server)</span><button type="button" data-copy="curl">Copy</button></div><pre id="mcp-curl-example">{ mcpCurlExample() }</pre></div>
+			<footer><span>Building an agent? Point it at <a href="/mcp.txt">/mcp.txt</a> — a machine-readable usage guide tailored for AI models.</span><a href="https://modelcontextprotocol.io" target="_blank" rel="noopener">MCP spec ↗</a></footer>
+		</section>
+		if view.Error != "" {
+			<div class="glass-panel mcp-error"><strong>Failed to load tool list</strong><p>{ view.Error }</p></div>
+		} else {
+			<div class="mcp-layout">
+				<aside class="mcp-sidebar">
+					<label>
+						@icon("search")
+						<input type="search" id="mcp-filter" placeholder="Filter tools…" aria-label="Filter tools" autocomplete="off"/>
+					</label>
+					<nav aria-label="MCP tool categories">
+						<div class="mcp-count"><span id="mcp-tool-count">{ strconv.Itoa(len(view.Tools)) }</span> tools</div>
+						for _, group := range view.Groups {
+							<a href={ "#" + group.Anchor } data-mcp-nav={ group.Anchor }><span>{ group.Name }</span><span>{ strconv.Itoa(len(group.Tools)) }</span></a>
+						}
+						<p id="mcp-no-nav-results" hidden>No tools match</p>
+					</nav>
+				</aside>
+				<section class="mcp-groups">
+					for _, group := range view.Groups {
+						<section class="mcp-group" id={ group.Anchor }>
+							<h2>{ group.Name }</h2>
+							<div class="mcp-tools">
+								for _, tool := range group.Tools {
+									<details class="mcp-tool" data-search={ tool.Name + " " + tool.Description }>
+										<summary>
+											<div>
+												<span class="mcp-tool-name">{ tool.Name }</span>
+												if len(tool.Required) > 0 {
+													<span class="mcp-tool-required">requires { joinNames(tool.Required) }</span>
+												}
+												<p>{ tool.Description }</p>
+											</div><span class="mcp-tool-chevron" aria-hidden="true">⌄</span>
+										</summary>
+										<div class="mcp-tool-body">
+											if len(tool.Parameters) > 0 {
+												<h3>Arguments</h3>
+												for _, param := range tool.Parameters {
+													<div class="mcp-param">
+														<div>
+															<code>{ param.Name }</code>
+															if param.Required {
+																<small>required</small>
+															}
+														</div>
+														<div>
+															<code>{ param.Type }</code>
+															if param.Default != "" {
+																<code>{ param.Default }</code>
+															}
+															if param.Description != "" {
+																<p>{ param.Description }</p>
+															}
+														</div>
+													</div>
+												}
+											} else {
+												<p>No arguments.</p>
+											}
+											if tool.OutputSchema != "" {
+												<div data-mcp-output={ tool.Name }></div>
+											}
+										</div>
+									</details>
+								}
+							</div>
+						</section>
+					}
+				</section>
+			</div>
+		}
+		<script type="module" src={ assetURL("mcp.js") }></script>
+	</div>
+}
+
+templ mcpOutput(schema string) {
+	<h3>Output schema</h3>
+	<pre>{ schema }</pre>
+}

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/objectstore"
@@ -15,7 +14,6 @@ import (
 )
 
 const (
-	entityFreshness       = 30 * 24 * time.Hour
 	defaultMaximumObject  = 32 << 20
 	responseCacheControl  = "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=86400"
 	immutableCacheControl = "public, max-age=31536000, immutable"
@@ -28,18 +26,6 @@ type ObjectStore interface {
 	Delete(context.Context, string) error
 }
 
-type EntityKind string
-
-const (
-	Character   EntityKind = "characters"
-	Corporation EntityKind = "corporations"
-	Alliance    EntityKind = "alliances"
-)
-
-type RefreshEnqueuer interface {
-	EnqueueImageRefresh(context.Context, EntityKind, int64) error
-}
-
 type Options struct {
 	Store       ObjectStore
 	Social      SocialLoader
@@ -47,7 +33,6 @@ type Options struct {
 	UserAgent   string
 	CacheBytes  int64
 	CacheTTL    time.Duration
-	Refresh     RefreshEnqueuer
 	Now         func() time.Time
 	UpstreamURL string
 }
@@ -57,15 +42,11 @@ type Service struct {
 	client    *http.Client
 	userAgent string
 	cache     *Cache
-	refresh   RefreshEnqueuer
 	now       func() time.Time
 	upstream  string
 	single    singleflight.Group
 	maximum   int64
 	typeData  typeDataCache
-
-	defaultCharacterMu   sync.RWMutex
-	defaultCharacterETag string
 
 	social SocialLoader
 }
@@ -109,8 +90,8 @@ func New(options Options) *Service {
 	}
 	return &Service{
 		store: store, client: client, userAgent: options.UserAgent,
-		cache:   NewCache(options.CacheBytes, options.CacheTTL),
-		refresh: options.Refresh, now: now, upstream: upstream,
+		cache: NewCache(options.CacheBytes, options.CacheTTL),
+		now:   now, upstream: upstream,
 		maximum: defaultMaximumObject, social: options.Social,
 	}
 }

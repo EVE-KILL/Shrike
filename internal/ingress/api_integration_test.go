@@ -41,6 +41,7 @@ func TestSameOriginAPIAndImagesRouteThroughCaddy(t *testing.T) {
 	m := New(map[string]http.Handler{
 		SurfaceSameOrigin: apiService.Site(),
 		SurfaceWS:         api.WS(opts),
+		SurfaceFrontend:   http.NotFoundHandler(),
 	}, zerolog.Nop())
 	if err := m.Start(context.Background(), cfg); err != nil {
 		t.Fatalf("Start: %v", err)

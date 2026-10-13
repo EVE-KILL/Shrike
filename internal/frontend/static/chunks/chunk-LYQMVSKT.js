@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+var n=new Set(["High","Medium","Low","Rig","SubSystem","DroneBay"]);function r(e){if(!e)return null;let t=Number.parseInt(e.getData("application/esf-type-id"),10),o=Number.parseInt(e.getData("application/esf-slot-index"),10),l=e.getData("application/esf-slot-type");return!Number.isInteger(t)||Number.isInteger(o)||!n.has(l)?null:{typeId:t,slotType:l}}export{r as a};

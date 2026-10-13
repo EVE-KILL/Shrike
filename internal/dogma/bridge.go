@@ -1,4 +1,4 @@
-// Package dogma evaluates EVE ship fits through Shrike's long-lived Bun bridge.
+// Package dogma evaluates EVE ship fits through a pool of native Rust workers.
 package dogma
 
 import (
@@ -117,7 +117,7 @@ var shared processPool
 func Evaluate(ctx context.Context, fit Fit, skills *map[string]int64) (Stats, error) {
 	shared.once.Do(func() {
 		size := 4
-		if raw := os.Getenv("DOGMA_BRIDGE_PROCESSES"); raw != "" {
+		if raw := os.Getenv("DOGMA_WORKER_PROCESSES"); raw != "" {
 			if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 32 {
 				size = n
 			}
@@ -139,6 +139,17 @@ func Evaluate(ctx context.Context, fit Fit, skills *map[string]int64) (Stats, er
 func (p *process) evaluate(ctx context.Context, fit Fit, skills *map[string]int64) (Stats, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Stats{}, err
+	}
+	// Go's empty slices otherwise encode as null, while the engine expects
+	// JSON arrays even for a bare hull.
+	if fit.Modules == nil {
+		fit.Modules = []Module{}
+	}
+	if fit.Drones == nil {
+		fit.Drones = []Drone{}
+	}
 	for attempt := range 2 {
 		if err := p.ensureStarted(ctx); err != nil {
 			return Stats{}, err
@@ -146,54 +157,81 @@ func (p *process) evaluate(ctx context.Context, fit Fit, skills *map[string]int6
 		p.nextID++
 		req := request{ID: p.nextID, Fit: fit, Skills: skills}
 		data, err := json.Marshal(req)
-		if err == nil {
-			_, err = p.stdin.Write(append(data, '\n'))
-		}
 		if err != nil {
-			p.stop()
-			continue
+			return Stats{}, err
 		}
-		if !p.stdout.Scan() {
-			err = p.stdout.Err()
-			p.stop()
-			if err == nil {
-				err = fmt.Errorf("dogma bridge exited")
+		// A cancelled request must release its pool slot even if a calculation
+		// stalls. Stop and drain the read before reusing the process object.
+		type result struct {
+			line []byte
+			err  error
+		}
+		done := make(chan result, 1)
+		go func() {
+			if _, err := p.stdin.Write(append(data, '\n')); err != nil {
+				done <- result{err: err}
+				return
 			}
+			if !p.stdout.Scan() {
+				err := p.stdout.Err()
+				if err == nil {
+					err = fmt.Errorf("dogma worker exited")
+				}
+				done <- result{err: err}
+				return
+			}
+			done <- result{line: append([]byte(nil), p.stdout.Bytes()...)}
+		}()
+		var read result
+		select {
+		case read = <-done:
+		case <-ctx.Done():
+			p.kill()
+			<-done
+			p.stop()
+			return Stats{}, ctx.Err()
+		}
+		if read.err != nil {
+			p.stop()
 			if attempt == 1 {
-				return Stats{}, err
+				return Stats{}, read.err
 			}
 			continue
 		}
 		var res response
-		if err := json.Unmarshal(p.stdout.Bytes(), &res); err != nil {
+		if err := json.Unmarshal(read.line, &res); err != nil {
 			p.stop()
 			if attempt == 1 {
-				return Stats{}, fmt.Errorf("decode dogma bridge response: %w", err)
+				return Stats{}, fmt.Errorf("decode dogma worker response: %w", err)
 			}
 			continue
 		}
 		if res.ID != req.ID {
 			p.stop()
-			return Stats{}, fmt.Errorf("dogma bridge response id mismatch")
+			return Stats{}, fmt.Errorf("dogma worker response id mismatch")
 		}
 		if res.Error != "" {
 			return Stats{}, fmt.Errorf("dogma engine failed: %s", res.Error)
 		}
 		return res.Hull, nil
 	}
-	return Stats{}, fmt.Errorf("dogma bridge unavailable")
+	return Stats{}, fmt.Errorf("dogma worker unavailable")
 }
 
 func (p *process) ensureStarted(ctx context.Context) error {
 	if p.command != nil {
 		return nil
 	}
-	path, err := bridgePath()
+	path, err := workerPath()
 	if err != nil {
 		return err
 	}
-	// #nosec G204 -- path is resolved from Shrike's fixed, validated bridge locations.
-	cmd := exec.CommandContext(context.WithoutCancel(ctx), "bun", path)
+	data, err := dataPath()
+	if err != nil {
+		return err
+	}
+	// #nosec G204 -- executable and data paths are validated server configuration.
+	cmd := exec.CommandContext(context.WithoutCancel(ctx), path, data)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -204,34 +242,79 @@ func (p *process) ensureStarted(ctx context.Context) error {
 	}
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start dogma bridge: %w", err)
+		return fmt.Errorf("start dogma worker: %w", err)
 	}
 	p.command, p.stdin, p.stdout = cmd, stdin, bufio.NewScanner(stdout)
 	p.stdout.Buffer(make([]byte, 64*1024), 2*1024*1024)
 	return nil
 }
+func (p *process) kill() {
+	if p.command != nil && p.command.Process != nil {
+		_ = p.command.Process.Kill()
+	}
+}
+
 func (p *process) stop() {
 	if p.stdin != nil {
 		_ = p.stdin.Close()
 	}
 	if p.command != nil && p.command.Process != nil {
-		_ = p.command.Process.Kill()
-		_, _ = p.command.Process.Wait()
+		p.kill()
+		_ = p.command.Wait()
 	}
 	p.command, p.stdin, p.stdout = nil, nil, nil
 }
-func bridgePath() (string, error) {
-	if configured := os.Getenv("DOGMA_BRIDGE_PATH"); configured != "" {
-		return configured, nil
+func workerPath() (string, error) {
+	if configured := os.Getenv("DOGMA_WORKER_PATH"); configured != "" {
+		return executablePath(configured)
 	}
-	candidates := []string{"web/packages/dogma/src/bridge.ts", filepath.Join("..", "web", "packages", "dogma", "src", "bridge.ts")}
+	candidates := []string{"bin/shrike-dogma", "../bin/shrike-dogma"}
+	if executable, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(executable), "shrike-dogma"))
+	}
 	if _, source, _, ok := runtime.Caller(0); ok {
-		candidates = append(candidates, filepath.Join(filepath.Dir(source), "..", "..", "web", "packages", "dogma", "src", "bridge.ts"))
+		candidates = append(candidates, filepath.Join(filepath.Dir(source), "..", "..", "bin", "shrike-dogma"))
 	}
 	for _, candidate := range candidates {
-		if _, err := os.Stat(candidate); err == nil {
-			return filepath.Abs(candidate)
+		if path, err := executablePath(candidate); err == nil {
+			return path, nil
 		}
 	}
-	return "", fmt.Errorf("dogma bridge not found; set DOGMA_BRIDGE_PATH")
+	return "", fmt.Errorf("native dogma worker not found; run make build-dogma or set DOGMA_WORKER_PATH")
+}
+
+func executablePath(path string) (string, error) {
+	// #nosec G703 -- executable paths come only from operator configuration or fixed local candidates.
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+		return "", fmt.Errorf("dogma worker is not an executable file: %s", path)
+	}
+	return filepath.Abs(path)
+}
+
+func dataPath() (string, error) {
+	if configured := os.Getenv("DOGMA_SDE_DIR"); configured != "" {
+		return validateDataPath(configured)
+	}
+	candidates := []string{"frontend/dogma/dist/upstream/data/dist"}
+	if _, source, _, ok := runtime.Caller(0); ok {
+		candidates = append(candidates, filepath.Join(filepath.Dir(source), "..", "..", candidates[0]))
+	}
+	for _, candidate := range candidates {
+		if path, err := validateDataPath(candidate); err == nil {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("dogma SDE not found; set DOGMA_SDE_DIR")
+}
+
+func validateDataPath(path string) (string, error) {
+	for _, name := range []string{"sde"} {
+		// #nosec G703 -- the operator selects the data directory; the filename is fixed.
+		info, err := os.Stat(filepath.Join(path, name+".dat"))
+		if err != nil || !info.Mode().IsRegular() {
+			return "", fmt.Errorf("dogma SDE missing %s.dat in %s", name, path)
+		}
+	}
+	return filepath.Abs(path)
 }

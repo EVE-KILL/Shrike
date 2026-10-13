@@ -41,6 +41,7 @@ var (
 	flagImagesPruneLow       int
 	flagImagesPruneMinAge    time.Duration
 	flagImagesPruneDryRun    bool
+	flagImagesPurgeApply     bool
 )
 
 var imagesImportStaticCmd = &cobra.Command{
@@ -230,6 +231,37 @@ Filesystem atime must be enabled; relatime is supported.`,
 	},
 }
 
+var imagesPurgeEntitiesCmd = &cobra.Command{
+	Use:   "purge-entity-cache",
+	Short: "Report or remove obsolete character, corporation, and alliance image files",
+	Long: `Reports the old dynamic entity image trees by default. After all serving
+pods use direct EVE image URLs, use --apply to delete only entities/characters,
+entities/corporations, and entities/alliances from IMAGE_STORAGE_PATH.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		store, err := openImageStore()
+		if err != nil {
+			return err
+		}
+		fileStore, ok := store.(*objectstore.FileStore)
+		if !ok {
+			return fmt.Errorf("entity cache cleanup requires IMAGE_STORAGE_PATH filesystem storage")
+		}
+		result, err := fileStore.PurgeLegacyEntities(cmd.Context(), flagImagesPurgeApply)
+		if err != nil {
+			return err
+		}
+		if ui.JSONMode {
+			return ui.JSON(result)
+		}
+		ui.Section("Legacy entity image cache")
+		ui.KV("Applied", yesNo(result.Applied))
+		ui.KV("Files", fmtCount(int64(result.Files)))
+		ui.KV("Bytes", formatBytes(int64(result.Bytes)))
+		ui.Newline()
+		return nil
+	},
+}
+
 func openImageStore() (images.ObjectStore, error) {
 	if err := requireConfig(); err != nil {
 		return nil, err
@@ -371,12 +403,14 @@ func init() {
 	imagesPruneCmd.Flags().IntVar(&flagImagesPruneLow, "low-watermark", 80, "Stop eviction below this byte and inode utilization percentage")
 	imagesPruneCmd.Flags().DurationVar(&flagImagesPruneMinAge, "min-age", 24*time.Hour, "Never evict objects accessed more recently than this")
 	imagesPruneCmd.Flags().BoolVar(&flagImagesPruneDryRun, "dry-run", false, "Report what would be evicted without deleting it")
+	imagesPurgeEntitiesCmd.Flags().BoolVar(&flagImagesPurgeApply, "apply", false, "Delete the obsolete entity cache after reporting it")
 	imagesCmd.AddCommand(
 		imagesImportStaticCmd,
 		imagesImportOldCharactersCmd,
 		imagesSyncTypesCmd,
 		imagesGenerateMapsCmd,
 		imagesPruneCmd,
+		imagesPurgeEntitiesCmd,
 	)
 }
 

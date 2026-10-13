@@ -1,0 +1,213 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ warDetailContent(view warDetailView) {
+	<div class="war-detail" data-war-detail data-controller="war-detail" data-action="click->war-detail#click popstate@window->war-detail#popstate pagehide@window->war-detail#hide pageshow@window->war-detail#show" data-war-id={ warID(view.ID) }>
+		<section class="hero-surface glass-panel war-hero">
+			<div class="war-hero-title">
+				<h1>War #{ warID(view.ID) }</h1>
+				if view.Data.War.Finished == "" {
+					<span class="war-badge active">Active</span>
+				} else {
+					<span class="war-badge">Finished</span>
+				}
+				if view.Data.War.Mutual {
+					<span class="war-badge mutual">Mutual</span>
+				}
+				if view.Data.War.OpenForAllies {
+					<span class="war-badge allies">Open to Allies</span>
+				}
+			</div>
+			<div class="war-dates">
+				if view.Data.War.Declared != "" {
+					<span><em>Declared:</em> { warDate(view.Data.War.Declared) }</span>
+				}
+				if view.Data.War.Started != "" {
+					<span><em>Started:</em> { warDate(view.Data.War.Started) }</span>
+				}
+				if view.Data.War.Finished != "" {
+					<span><em>Finished:</em> { warDate(view.Data.War.Finished) }</span>
+				}
+			</div>
+			<div class="war-parties">
+				@warPartyCard(view.Data.War.Aggressor, "aggressor")
+				<div class="war-parties-versus"><strong>VS</strong><div><i style={ "width:" + strconv.Itoa(warISKShare(view.Data.War)) + "%" }></i></div><small>{ strconv.Itoa(warISKShare(view.Data.War)) }% — { strconv.Itoa(100-warISKShare(view.Data.War)) }%</small></div>
+				@warPartyCard(view.Data.War.Defender, "defender")
+			</div>
+			<div class="war-total-stats">
+				<div><strong>{ warNumber(view.Data.Stats.TotalKills) }</strong><span>Total Kills</span></div>
+				<div><strong class="green">{ warISK(view.Data.Stats.TotalValue) }</strong><span>ISK Destroyed</span></div>
+				<div><strong>{ strconv.Itoa(len(view.Data.War.Allies)) }</strong><span>Allies</span></div>
+			</div>
+		</section>
+		if len(view.Data.War.Allies)>0 {
+			<section class="glass-panel war-allies">
+				<h2>Allies (defending) — { strconv.Itoa(len(view.Data.War.Allies)) }</h2>
+				<div>
+					for _,ally:=range view.Data.War.Allies {
+						@warAllyCard(ally)
+					}
+				</div>
+			</section>
+		}
+		<nav class="war-tabs" aria-label="War views">
+			<button type="button" data-war-tab="combined" class="active" aria-pressed="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 8 4-8 4-8-4 8-4Z"></path><path d="m4 10 8 4 8-4M4 14l8 4 8-4"></path></g></svg><span>Both Sides</span></button>
+			<button type="button" data-war-tab="aggressor" aria-pressed="false">
+				@icon("swords")
+				<span>{ view.Data.War.Aggressor.Name }</span>
+			</button>
+			<button type="button" data-war-tab="defender" aria-pressed="false">
+				@icon("shield")
+				<span>{ view.Data.War.Defender.Name }</span>
+			</button>
+			<button type="button" data-war-tab="members" aria-pressed="false">
+				@icon("users")
+				<span>Members</span>
+			</button>
+			<button type="button" data-war-tab="intel" aria-pressed="false">
+				@icon("radar")
+				<span>Intel</span>
+			</button>
+		</nav>
+		<div class="war-overview" data-war-overview>
+			<aside class="war-sidebar" data-war-sidebar><div class="war-loading">Loading stats...</div></aside>
+			<div data-war-kills>
+				@killList(view.Kills, killListOptions{Kind: "war", Page: 1, Limit: 50, WarSides: &view.Sides})
+			</div>
+		</div>
+		<div data-war-members hidden>
+			<div class="war-member-filters">
+				<span>Side:</span><button type="button" class="active" data-member-side="combined">Both</button><button type="button" data-member-side="aggressor">Aggressor</button><button type="button" data-member-side="defender">Defender</button>
+				<span class="war-filter-divider"></span><span>Filter:</span><button type="button" class="active" data-member-entity="">All</button>
+				@warMemberFilter(view.Data.War.Aggressor, "aggressor")
+				@warMemberFilter(view.Data.War.Defender, "defender")
+				for _,ally:=range view.Data.War.Allies {
+					@warMemberAllyFilter(ally)
+				}
+				<span class="war-filter-divider"></span><span>Sort:</span>
+				<button type="button" class="active" data-member-sort="activity">Activity</button><button type="button" data-member-sort="kills">Kills</button><button type="button" data-member-sort="losses">Losses</button><button type="button" data-member-sort="isk">ISK</button>
+			</div>
+			<div data-war-member-results><div class="war-loading">Loading members...</div></div>
+		</div>
+		<div data-war-intel hidden><div class="war-loading">Loading intel...</div></div>
+	</div>
+}
+
+templ warPartyCard(side api.EntityWarSide, kind string) {
+	<a class={ "war-party " + kind } href={ warPartyLink(side.Type, side.ID) }><img src={ warPartyImage(side.Type, side.ID, 128) } alt="" width="64" height="64"/><div><small>{ warSideName(kind) }</small><strong>{ side.Name }</strong><span><em>{ warISK(side.ISKDestroyed) }</em> destroyed <b>·</b> { warNumber(side.ShipsKilled) } ships</span></div></a>
+}
+
+templ warAllyCard(ally api.WarAlly) {
+	<a class="war-ally" href={ warPartyLink(ally.Type, ally.ID) }>
+		<img src={ warPartyImage(ally.Type, ally.ID, 64) } alt="" width="32" height="32" loading="lazy"/>
+		<span>
+			<strong>{ ally.Name }</strong>
+			<small>
+				<em>{ warNumber(ally.Kills) } kills</em> · <b>{ warNumber(ally.Losses) } losses</b>
+				if ally.ISKDestroyed > 0 {
+					<span>· { warISK(ally.ISKDestroyed) }</span>
+				}
+			</small>
+		</span>
+	</a>
+}
+
+templ warMemberFilter(side api.EntityWarSide, team string) {
+	<button type="button" data-member-entity={ side.Type + ":" + warID(side.ID) } data-member-team={ team }>
+		@icon("building-2")
+		<span>{ side.Name }</span>
+	</button>
+}
+
+templ warMemberAllyFilter(ally api.WarAlly) {
+	<button type="button" data-member-entity={ ally.Type + ":" + warID(ally.ID) } data-member-team="defender">
+		@icon("building-2")
+		<span>{ ally.Name }</span>
+	</button>
+}
+
+templ warSidebar(data api.WarStatsData, side string) {
+	<div class="war-sidebar-content">
+		if side=="aggressor" {
+			@warLeaderboard("Top Characters", "character", data.Aggressor.TopCharacters, side)
+			@warLeaderboard("Top Corporations", "corporation", data.Aggressor.TopCorporations, side)
+			@warLeaderboard("Top Alliances", "alliance", data.Aggressor.TopAlliances, side)
+		} else if side=="defender" {
+			@warLeaderboard("Top Characters", "character", data.Defender.TopCharacters, side)
+			@warLeaderboard("Top Corporations", "corporation", data.Defender.TopCorporations, side)
+			@warLeaderboard("Top Alliances", "alliance", data.Defender.TopAlliances, side)
+		} else {
+			@warLeaderboard("Top Characters", "character", data.Combined.TopCharacters, side)
+			@warLeaderboard("Top Corporations", "corporation", data.Combined.TopCorporations, side)
+			@warLeaderboard("Top Alliances", "alliance", data.Combined.TopAlliances, side)
+		}
+		if len(data.TopShips)>0 {
+			<section class="glass-panel war-leaderboard">
+				<h2>Top Ships Destroyed</h2>
+				<div>
+					for index,ship:=range data.TopShips {
+						<div class="war-leaderboard-row"><small>{ strconv.Itoa(index+1) }</small><img src={ killImage("item", ship.ShipTypeID) } alt="" width="24" height="24" loading="lazy"/><span>{ ship.ShipName }</span><b>{ warNumber(ship.Count) }</b></div>
+					}
+				</div>
+			</section>
+		}
+	</div>
+}
+
+templ warLeaderboard(title, kind string, entries []api.WarLeaderboardEntry, side string) {
+	if len(entries)>0 {
+		<section class="glass-panel war-leaderboard">
+			<h2>{ title }</h2>
+			<div>
+				for _,entry:=range entries {
+					<a class="war-leaderboard-row" href={ idPath(kind, entry.ID) }><i class={ "war-dot " + warLeaderboardSide(side, entry.Side) }></i><img src={ warLeaderboardImage(kind, entry.ID) } alt="" width="24" height="24" loading="lazy"/><span>{ entry.Name }</span><b class={ warLeaderboardSide(side, entry.Side) }>{ warNumber(entry.Kills) }</b></a>
+				}
+			</div>
+		</section>
+	}
+}
+
+templ warMembersResults(data api.WarMembersData, emptyLabel ...string) {
+	<div class="glass-panel war-members-table">
+		<table>
+			<thead><tr><th>Character</th><th>Corp / Alliance</th><th>Top Ship</th><th>Kills</th><th>Losses</th><th>ISK Dest.</th><th>ISK Lost</th></tr></thead>
+			<tbody>
+				for _,m:=range data.Members {
+					<tr>
+						<td><a href={ idPath("character", m.CharacterID) }><i class={ "war-dot " + m.Side }></i><img src={ eveEntityImage("character", m.CharacterID, 64) } alt="" width="28" height="28" loading="lazy"/><span>{ m.CharacterName }<small class={ m.Side }>{ warMemberOrg(m) }</small></span></a></td>
+						<td>
+							<span>
+								if m.CorporationID>0 {
+									<a href={ idPath("corporation", m.CorporationID) }>{ m.CorporationName }</a>
+								}
+								if m.AllianceID>0 {
+									<a href={ idPath("alliance", m.AllianceID) }>{ m.AllianceName }</a>
+								}
+							</span>
+						</td>
+						<td>
+							if m.TopShipTypeID>0 {
+								<a href={ idPath("item", m.TopShipTypeID) }><img src={ killImage("item", m.TopShipTypeID) } alt="" width="20" height="20" loading="lazy"/>{ m.TopShipName } <small>×{ warNumber(m.TopShipCount) }</small></a>
+							} else {
+								<span>—</span>
+							}
+						</td>
+						<td class="green">{ warMemberCount(m.Kills) }</td>
+						<td class="red">{ warMemberCount(m.Losses) }</td>
+						<td class="isk">{ warMemberISK(m.ISKDestroyed) }</td>
+						<td class="red">{ warMemberISK(m.ISKLost) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		if len(data.Members)==0 {
+			<p data-war-members-empty>{ warMemberEmptyLabel(emptyLabel) }</p>
+		} else if data.Count>=data.Limit {
+			<p>Showing top { warNumber(data.Limit) } — more participants exist</p>
+		}
+	</div>
+}

@@ -1,0 +1,48 @@
+new:
+  displayName: Capacitor Peak Load
+  category: Capacitor
+  unit: capacitorPerSecond
+  highIsGood: false
+
+effects:
+  - name: capacitorPeakLoad
+    on: usesCapacitorInCycles
+    category: active
+    rules:
+      - {from: capacitorNeed}
+      - {div: cycleTime}
+      - {mul: thousand}
+      - {add: capacitorPeakLoad, domain: shipID}
+
+  - name: capacitorPeakLoad2
+    on: transfersCapacitorToShip
+    category: active
+    rules:
+      - {sub: powerTransferAmount}
+
+  - name: capacitorPeakLoadInjected
+    on: capacitorBooster
+    category: active
+    rules:
+      - {sub: capacitorInjectionAmount}
+      - {div: cycleTime}
+      - {mul: thousand}
+      - {add: capacitorPeakLoad, domain: shipID}
+
+  - name: capacitorPeakLoadGiven
+    on: remoteCapacitorTransmitter
+    category: active
+    resistanceAttribute: remoteRepairImpedance
+    rangeAttribute: maxRange
+    falloffAttribute: falloffEffectiveness
+    rules:
+      - {sub: capacitorTransferRate, domain: targetID}
+
+  - name: capacitorPeakLoadTaken
+    on: energyNeutralizer or energyNosferatu
+    category: active
+    resistanceAttribute: energyWarfareResistance
+    rangeAttribute: maxRange
+    falloffAttribute: falloffEffectiveness
+    rules:
+      - {add: capacitorTransferRate, domain: targetID}

@@ -1,0 +1,27 @@
+{
+  "alliances": {
+    "99003581": {
+      "name": "Fixture Alliance",
+      "ticker": "FA",
+      "corporations": {
+        "98598862": {
+          "name": "Fixture Corp",
+          "ticker": "FC",
+          "characters": [
+            {
+              "characterId": 2121270074,
+              "name": "Fixture Red Pilot",
+              "kills": 7
+            }
+          ]
+        }
+      }
+    }
+  },
+  "corporations": {},
+  "unresolved": [
+    "Missing Pilot"
+  ],
+  "totalCharacters": 1,
+  "totalDangerous": 1
+}

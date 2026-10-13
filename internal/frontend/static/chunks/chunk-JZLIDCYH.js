@@ -1,0 +1,2 @@
+// Generated browser asset. Edit frontend/src/browser and run npm --prefix frontend run build.
+var n=t=>/([Zz]|[+-]\d{2}:?\d{2})$/.test(t);function r(t){return t?new Date(n(t)?t:`${t}Z`):new Date(Number.NaN)}function i(t){return r(t).toISOString()}function o(t){if(!t)return"";let e=t instanceof Date?t:new Date(t);return Number.isNaN(e.getTime())?"":e.toISOString().slice(0,16)}export{r as a,i as b,o as c};

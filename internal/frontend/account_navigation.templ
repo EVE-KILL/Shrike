@@ -1,0 +1,65 @@
+package frontend
+
+templ accountCard(mobile bool) {
+	<div class="relative block overflow-hidden rounded-lg" data-account-card>
+		<a data-account-character-link href="#"><img data-account-picture width="256" height="192" alt="" class="w-full aspect-[4/3] object-cover object-top"/><div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div></a>
+		<div data-account-balance title="Available EK Wallet balance" class={ "absolute px-2.5 py-1 rounded-md border border-amber-400/20 bg-black/70 font-bold text-amber-300 tabular-nums backdrop-blur-sm pointer-events-none",templ.KV("top-3 right-3 text-fine",!mobile),templ.KV("top-4 right-4 text-xs",mobile) }>…</div>
+		<div class={ "absolute bottom-0 left-0 right-0",templ.KV("p-3",!mobile),templ.KV("p-4",mobile) }>
+			<a data-account-name data-account-character-link href="#" class={ "font-bold text-white",templ.KV("text-sm",!mobile),templ.KV("text-base",mobile) }></a>
+			<div class="flex items-center gap-3 mt-1.5">
+				for _,kind:=range []string{"corporation","alliance"} {
+					<a hidden data-account-entity={ kind } href="#" class="flex items-center gap-1.5 z-10 pointer-events-auto"><img width="20" height="20" alt="" class="w-5 h-5 rounded hover:scale-125 transition-transform"/><span class="text-xs text-gray-300 hover:text-blue-400 transition-colors"></span></a>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ accountLinks(mobile bool) {
+	for _,link:=range []struct{Label,Href,Icon string;Admin,Danger bool}{{"Admin","/admin","shield-alert",true,true},{"Tracker","/tracker","scan-eye",false,false},{"Manage Trackers","/trackers","radar",false,false},{"Settings","/settings","settings",false,false},{"Wallet","/settings/wallet","wallet-cards",false,false},{"Domains","/settings/domains","globe",false,false},{"Logout","","log-out",false,true}} {
+		if link.Href=="" {
+			<button type="button" data-account-logout data-action="click->account#logout" class={ accountMenuRow(mobile, link.Danger) + " w-full" }>
+				<span class={ accountMenuIcon(mobile, link.Danger) }>
+					@icon(link.Icon)
+				</span>{ link.Label }
+			</button>
+		} else {
+			<a href={ link.Href } hidden?={ link.Admin } data-account-admin?={ link.Admin } class={ accountMenuRow(mobile, link.Danger) }>
+				<span class={ accountMenuIcon(mobile, link.Danger) }>
+					@icon(link.Icon)
+				</span>{ link.Label }
+			</a>
+		}
+	}
+	<p hidden data-account-error role="alert" class="px-3 py-2 text-xs text-red-300"></p>
+}
+
+templ notificationBell() {
+	<details hidden data-account-authenticated data-notifications data-controller="notifications" data-action="toggle->shell#exclusiveMenu toggle->notifications#open click->notifications#follow" class="nav-dropdown go-utility-page" name="desktop-nav">
+		<summary class="icon-button relative" aria-label="Notifications" title="Notifications">
+			@icon("bell")
+			<span hidden data-notifications-badge data-notifications-target="badge" class="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-fine font-bold tabular-nums text-white ring-2 ring-black/80"></span>
+		</summary>
+		<div class="dropdown-panel align-right notification-panel">
+			<div class="flex max-h-[500px] w-[380px] max-w-[calc(100vw-1rem)] flex-col">
+				<div class="flex items-center justify-between border-b border-white/[0.08] px-3 py-2">
+					<div class="flex items-center gap-2">
+						<span class="text-sm text-blue-400">
+							@icon("bell")
+						</span><span class="text-sm font-semibold text-white">Notifications</span><span hidden data-notifications-count data-notifications-target="count" class="rounded-full border border-blue-500/20 bg-blue-500/[0.12] px-1.5 py-px text-fine font-semibold text-blue-300"></span>
+					</div><button hidden type="button" data-notifications-read data-notifications-target="read" data-action="click->notifications#markRead" class="cursor-pointer text-xs text-gray-400 transition-colors hover:text-blue-400">Mark all read</button>
+				</div>
+				<div class="flex-1 overflow-y-auto" data-notifications-list data-notifications-target="list">
+					<div class="px-4 py-10 text-center">
+						<span class="mb-2 inline-block text-3xl text-gray-600">
+							@icon("bell-off")
+						</span>
+						<p class="text-sm text-gray-500">No notifications yet</p>
+						<p class="mt-1 text-xs text-gray-600">Comment replies and opted-in tracker alerts will appear here.</p>
+					</div>
+				</div>
+				<div hidden data-notifications-footer data-notifications-target="footer" class="flex items-center justify-center gap-4 border-t border-white/[0.08] px-3 py-2"><a href="/comments" class="text-xs text-blue-400 transition-colors hover:text-blue-300">Comments</a><span class="text-gray-700">·</span><a href="/trackers" class="text-xs text-blue-400 transition-colors hover:text-blue-300">Manage trackers</a></div>
+			</div>
+		</div>
+	</details>
+}

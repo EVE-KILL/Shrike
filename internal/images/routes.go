@@ -14,10 +14,6 @@ import (
 // Register adds the canonical /images namespace to the shared Huma document.
 func Register(a huma.API, service *Service) {
 	registerOverview(a)
-	for _, kind := range []EntityKind{Character, Corporation, Alliance} {
-		registerEntityRoute(a, service, kind, false)
-		registerEntityRoute(a, service, kind, true)
-	}
 	registerTypeRoute(a, service)
 	for _, category := range []string{
 		"regions", "systems", "constellations", "ui",
@@ -52,9 +48,6 @@ func registerOverview(a huma.API) {
 		}{}
 		output.Body.Service = "EVE-KILL Images"
 		output.Body.Routes = []string{
-			"/images/characters/{id}/portrait",
-			"/images/corporations/{id}/logo",
-			"/images/alliances/{id}/logo",
 			"/images/types/{id}/{variant}",
 			"/images/regions/{id}",
 			"/images/systems/{id}",
@@ -84,50 +77,6 @@ func registerKillmailSocialRoute(a huma.API, service *Service) {
 			return Result{}, statusError(http.StatusBadRequest, "Invalid killmail ID", nil)
 		}
 		return service.KillmailSocial(ctx.Context(), id)
-	})
-}
-
-func registerEntityRoute(
-	a huma.API,
-	service *Service,
-	kind EntityKind,
-	withVariant bool,
-) {
-	path := "/images/" + string(kind) + "/{id}"
-	operationID := "image-" + strings.TrimSuffix(string(kind), "s")
-	if withVariant {
-		path += "/{variant}"
-		operationID += "-variant"
-	}
-	registerBinary(a, huma.Operation{
-		OperationID: operationID,
-		Method:      http.MethodGet,
-		Path:        path,
-		Summary:     "EVE " + strings.TrimSuffix(string(kind), "s") + " image",
-		Tags:        []string{"images"},
-		Parameters: []*huma.Param{
-			{Name: "id", In: "path", Required: true,
-				Schema: &huma.Schema{Type: huma.TypeInteger, Format: "int64"}},
-			imageSizeParam(false),
-			imageFormatParam(),
-			legacyImageTypeParam(),
-		},
-	}, func(ctx huma.Context) (Result, error) {
-		id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
-		if err != nil {
-			return Result{}, statusError(http.StatusBadRequest, "Invalid image ID", nil)
-		}
-		format, err := requestedFormat(ctx, "")
-		if err != nil {
-			return Result{}, err
-		}
-		return service.Entity(
-			ctx.Context(),
-			kind,
-			id,
-			parseSize(ctx.Query("size")),
-			format,
-		)
 	})
 }
 

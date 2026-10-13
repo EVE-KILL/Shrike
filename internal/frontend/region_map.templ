@@ -1,0 +1,44 @@
+package frontend
+
+import (
+	"fmt"
+	"strconv"
+)
+
+templ regionMapPage(view mapRegionPageView) {
+	<div class="region-map-page" data-region-map-root data-region-id={ strconv.FormatInt(view.RegionID, 10) } data-region-base={ view.MapPageView.Base } data-region-activity={ view.MapPageView.Activity } data-region-hours={ strconv.Itoa(view.MapPageView.Hours) }>
+		<div class="hero-surface glass-panel region-map-header">
+			<div class="region-map-heading"><div><a href={ regionMapBackURL(view) } data-region-back>Map <span>/</span></a><strong>{ view.RegionName }</strong></div><div><span>{ strconv.Itoa(view.SystemCount) } systems</span><span class="region-map-activity-note" data-region-activity-note hidden?={ view.MapPageView.Activity=="none" }>Hourly data · { strconv.Itoa(view.MapPageView.Hours) }h</span><span>scroll to zoom · drag to pan</span><button type="button" data-region-reset>Reset</button><a href={ fmt.Sprintf("/region/%d", view.RegionID) }>Region stats</a></div></div>
+			<div class="region-map-controls">
+				<div><span>Base</span><button type="button" data-region-base-option="geography" class={ killBoolClass(view.MapPageView.Base == "geography", "active", "") } aria-pressed={ strconv.FormatBool(view.MapPageView.Base == "geography") }>Geography</button><button type="button" data-region-base-option="security" class={ killBoolClass(view.MapPageView.Base == "security", "active", "") } aria-pressed={ strconv.FormatBool(view.MapPageView.Base == "security") }>Security</button></div>
+				<div>
+					<span>Activity</span>
+					for _,option:=range []struct{ID,Label string}{{"none","Off"},{"activity","Activity"},{"danger","Danger"},{"ship-kills","Ship kills"},{"pod-kills","Pod kills"},{"npc-kills","NPC kills"},{"jumps","Jumps"}} {
+						<button type="button" data-region-activity-option={ option.ID } class={ killBoolClass(view.MapPageView.Activity == option.ID, "active", "") } aria-pressed={ strconv.FormatBool(view.MapPageView.Activity == option.ID) }>{ option.Label }</button>
+					}
+				</div>
+				<div>
+					<span>Window</span>
+					for _,window:=range []struct{Hours int; Label string}{{1,"1h"},{6,"6h"},{24,"24h"},{168,"7d"}} {
+						<button type="button" data-region-hours-option={ strconv.Itoa(window.Hours) } class={ killBoolClass(view.MapPageView.Hours == window.Hours, "active", "") } disabled?={ view.MapPageView.Activity=="none" } aria-pressed={ strconv.FormatBool(view.MapPageView.Hours == window.Hours) }>{ window.Label }</button>
+					}
+				</div>
+				<div><span>Show</span><button type="button" data-region-toggle="routes" class={ killBoolClass(view.MapPageView.ShowConnections, "active", "") } aria-pressed={ strconv.FormatBool(view.MapPageView.ShowConnections) }>Routes</button><button type="button" data-region-toggle="systems" class={ killBoolClass(view.MapPageView.ShowSystems, "active", "") } aria-pressed={ strconv.FormatBool(view.MapPageView.ShowSystems) }>Systems</button><button type="button" data-region-toggle="labels" class={ killBoolClass(view.MapPageView.ShowLabels, "active", "") } aria-pressed={ strconv.FormatBool(view.MapPageView.ShowLabels) }>Labels</button></div>
+			</div>
+		</div>
+		<div class="region-map-surface" data-region-map-surface>
+			<div class="region-map-search">
+				<label>
+					@icon("search")
+					<input type="search" data-region-search placeholder="Find a system in this region" aria-label="Find a system in this region" autocomplete="off"/>
+				</label>
+				<div data-region-search-results hidden></div>
+			</div>
+			<div class="region-map-loading" data-region-loading role="status">Loading map data...</div>
+			<svg data-region-svg role="img" aria-label={ "Map of " + view.RegionName } preserveAspectRatio="xMidYMid meet"></svg>
+			<div class="region-map-legend" data-region-legend></div>
+			<div class="region-map-hover" data-region-hover hidden></div>
+		</div>
+		@templ.JSONScript("region-map-data", view.Data).WithType("application/json")
+	</div>
+}

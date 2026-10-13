@@ -1,0 +1,146 @@
+package frontend
+
+import (
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ blogListing(view blogListView) {
+	<div class="go-utility-page blog-page" data-blog-page data-controller="blog" data-action="click->blog#click pagehide@window->blog#hide pageshow@window->blog#show" data-blog-tag={ view.Tag }>
+		@utilityPageHeader("Blog", "From EVE-KILL", "newspaper", "News, updates, and long-form posts.") {
+			if view.Tag!="" {
+				<div class="flex items-center gap-2"><span class="text-xs text-gray-500">Filtering by tag:</span><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">{ "#"+view.Tag }</span><a href="/blog" class="text-xs text-gray-500 hover:text-gray-300 underline">Clear</a></div>
+			}
+		}
+		<div class="blog-list" data-blog-list>
+			if len(view.Page.Posts) == 0 {
+				<p class="blog-empty text-center py-16 text-gray-500 text-sm">No posts yet.</p>
+			} else {
+				@blogCards(view.Page.Posts)
+			}
+		</div>
+		if view.Page.NextCursor != "" {
+			<div class="blog-more flex justify-center pt-4"><button class="px-5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm text-gray-300 hover:bg-white/[0.08] transition-colors disabled:opacity-50" type="button" data-blog-more data-cursor={ view.Page.NextCursor }>Load more</button></div>
+		}
+		<p class="blog-error" data-blog-error role="alert" hidden></p>
+	</div>
+}
+
+templ blogCards(posts []api.BlogListPost) {
+	for _,post:=range posts {
+		<a class="blog-card block rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.16] transition-colors overflow-hidden" href={ blogPostURL(post.Slug) } data-controller="blog-dates">
+			<div class="flex flex-col sm:flex-row">
+				if blogCoverImage(post.CoverImageURL)!="" {
+					<div class="blog-card-cover sm:w-48 sm:flex-shrink-0 aspect-video sm:aspect-auto bg-cover bg-center"><img src={ blogCoverImage(post.CoverImageURL) } alt="" loading="lazy"/></div>
+				}
+				<div class="p-5 flex-1 min-w-0">
+					<div class="flex items-center gap-2 text-xs text-gray-500 mb-2 flex-wrap">
+						if post.PublishedAt!=nil {
+							<time datetime={ blogPostTime(post) } data-blog-date="short" class="font-medium text-gray-400">{ blogPostDate(post) }</time>
+						}
+						if len(post.Tags)>0 {
+							<span class="text-gray-700">·</span>
+							for index,tag:=range post.Tags {
+								if index<3 {
+									<span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">{ "#"+tag }</span>
+								}
+							}
+							if len(post.Tags)>3 {
+								<span class="text-[10px] text-gray-600">{ "+"+strconv.Itoa(len(post.Tags)-3) }</span>
+							}
+						}
+					</div>
+					<h2 class="text-lg font-semibold text-white mb-1">{ post.Title }</h2>
+					if post.Excerpt!=nil && *post.Excerpt!="" {
+						<p class="text-sm text-gray-400 line-clamp-3">{ *post.Excerpt }</p>
+					}
+				</div>
+			</div>
+		</a>
+	}
+}
+
+templ blogDetail(view blogDetailView) {
+	<article class="go-utility-page blog-detail w-full space-y-6" data-blog-detail data-controller="blog-dates">
+		if view.Preview {
+			<div class="blog-preview-banner rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap">
+				<div class="flex items-center gap-3 text-sm flex-wrap">
+					<span class="text-amber-300 text-base">
+						@icon("eye")
+					</span><span class="text-amber-200 font-medium">Preview mode</span><span class={ "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border",blogPreviewStatusClass(view.Post.Status) }>{ blogPreviewStatusLabel(view.Post.Status) }</span><span class="text-xs text-amber-300/70">This view is admin-only and not cached.</span>
+				</div><a href="/admin/blog" class="text-xs text-amber-200 hover:text-white underline whitespace-nowrap">Edit in admin</a>
+			</div>
+		}
+		<nav class="text-xs text-gray-500"><a href="/blog" class="hover:text-gray-300">← Blog</a></nav>
+		@utilityHeader(utilityHeaderView{Title: view.Post.Title, Description: blogDescription(view.Post), Eyebrow: "From EVE-KILL", Symbol: "newspaper", Meta: blogPostMeta(view)})
+		<div class="blog-article-content mx-auto max-w-3xl space-y-6">
+			if view.Cover != "" {
+				<img class="blog-post-cover w-full rounded-xl border border-white/[0.08]" src={ view.Cover } alt={ view.Post.Title } loading="eager"/>
+			}
+			<div class="blog-body">
+				@templ.Raw(view.Post.BodyHTML)
+			</div>
+			@blogAuthorCard(view.Post)
+			<section class="blog-comments pt-8 border-t border-white/[0.08]">
+				<h2 class="text-lg font-semibold text-white mb-4">Comments</h2>
+				if view.Preview && view.Post.Status != 1 {
+					<p class="blog-preview-comments-note text-xs text-gray-500 italic mb-3">Comments are mounted but will appear under this post's id only after publish.</p>
+				}
+				<div class="blog-comment-thread" data-comment-thread data-controller="comment-thread" data-action="click->comment-thread#click pagehide@window->comment-thread#hide pageshow@window->comment-thread#show" data-target-type="9" data-target-id={ strconv.FormatInt(view.Post.ID, 10) }>
+					<p class="blog-comments-loading" data-comments-status>Loading comments…</p>
+					<div data-comments-list></div>
+					<div data-comments-composer></div>
+				</div>
+			</section>
+		</div>
+	</article>
+}
+
+templ blogAuthorCard(post api.BlogPost) {
+	<div class="blog-author-card rounded-xl bg-white/[0.03] border border-white/[0.08] p-5">
+		<div class="flex items-start gap-4">
+			<a href={ idPath("character", post.AuthorID) } class="flex-shrink-0"><img src={ eveEntityImage("character", post.AuthorID, 128) } alt={ post.AuthorName } width="64" height="64" class="w-16 h-16 rounded-lg border border-white/[0.08]" loading="lazy"/></a>
+			<div class="min-w-0 flex-1">
+				<div class="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">Written by</div><a href={ idPath("character", post.AuthorID) } class="text-base font-semibold text-white hover:text-blue-300 transition-colors">{ post.AuthorName }</a>
+				if blogHasAffiliation(post.AuthorCorporationID)||blogHasAffiliation(post.AuthorAllianceID) {
+					<div class="mt-2 space-y-1 text-sm">
+						if blogHasAffiliation(post.AuthorCorporationID) {
+							<div class="flex items-center gap-2 text-gray-400"><img src={ eveEntityImage("corporation", *post.AuthorCorporationID, 32) } alt={ blogCorporationName(post) } width="16" height="16" class="w-4 h-4 rounded" loading="lazy"/><a href={ idPath("corporation", *post.AuthorCorporationID) } class="hover:text-white transition-colors truncate">{ blogCorporationName(post) }</a></div>
+						}
+						if blogHasAffiliation(post.AuthorAllianceID) {
+							<div class="flex items-center gap-2 text-gray-400"><img src={ eveEntityImage("alliance", *post.AuthorAllianceID, 32) } alt={ blogAllianceName(post) } width="16" height="16" class="w-4 h-4 rounded" loading="lazy"/><a href={ idPath("alliance", *post.AuthorAllianceID) } class="hover:text-white transition-colors truncate">{ blogAllianceName(post) }</a></div>
+						}
+					</div>
+				}
+				if post.PublishedAt!=nil {
+					<div class="mt-2 text-xs text-gray-500">Posted <time datetime={ blogPostTime(post.BlogListPost) } data-blog-date="long">{ blogPostLongDate(post.BlogListPost) }</time></div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ blogPostMeta(view blogDetailView) {
+	<div class="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+		if view.Post.PublishedAt!=nil {
+			<time datetime={ blogPostTime(view.Post.BlogListPost) } data-blog-date="long" class="font-medium text-gray-400">{ blogPostLongDate(view.Post.BlogListPost) }</time>
+		} else if view.Preview {
+			<span class="italic text-gray-500">unpublished</span>
+		}
+		if len(view.Post.Tags)>0 {
+			<span class="text-gray-700">·</span>
+			<div class="flex items-center gap-1.5 flex-wrap">
+				for _,tag:=range view.Post.Tags {
+					if view.Preview {
+						<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">{ "#"+tag }</span>
+					} else {
+						<a href={ blogTagURL(tag) } class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 transition-colors">{ "#"+tag }</a>
+					}
+				}
+			</div>
+		}
+		if !view.Preview && view.Post.Status==2 {
+			<span class="text-gray-700">·</span><span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-amber-500/20 text-amber-300 border-amber-500/30">Archived</span>
+		}
+	</div>
+}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"math"
@@ -466,7 +467,16 @@ func attachConflictBattleListTeams(
 			sort.Slice(aggregates, func(i, j int) bool {
 				left := float64(aggregates[i].Kills) + aggregates[i].Destroyed
 				right := float64(aggregates[j].Kills) + aggregates[j].Destroyed
-				return left > right
+				if left != right {
+					return left > right
+				}
+				a, b := aggregates[i], aggregates[j]
+				return cmp.Or(
+					cmp.Compare(fmt.Sprint(a.Name), fmt.Sprint(b.Name)),
+					cmp.Compare(fmt.Sprint(a.CorpName), fmt.Sprint(b.CorpName)),
+					cmp.Compare(fmt.Sprint(a.ID), fmt.Sprint(b.ID)),
+					cmp.Compare(fmt.Sprint(a.CorpID), fmt.Sprint(b.CorpID)),
+				) < 0
 			})
 			if len(aggregates) > 5 {
 				aggregates = aggregates[:5]

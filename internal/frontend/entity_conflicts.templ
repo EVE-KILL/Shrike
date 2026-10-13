@@ -1,0 +1,249 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ entityBattles(kind string, id int64, data api.EntityBattlesData) {
+	<section class="entity-conflicts" data-entity-conflicts="battles" data-entity-kind={ kind } data-entity-id={ strconv.FormatInt(id, 10) } data-page={ strconv.Itoa(data.Page) }>
+		if len(data.Battles) > 0 {
+			<div class="entity-battle-grid">
+				for _, battle := range data.Battles {
+					<a class="entity-battle-card" href={ idPath("battle", battle.BattleID) }>
+						<header><span><img src={ fmt.Sprintf("/images/systems/%d?size=32", battle.SolarSystemID) } alt="" width="20" height="20" loading="lazy"/><strong>{ battle.SolarSystemName }</strong><em class={ entityBattleSecurity(battle.SolarSystemSecurity) }>{ fmt.Sprintf("%.1f", battle.SolarSystemSecurity) }</em><small>· { battle.RegionName }</small></span><time>{ entityDate(battle.StartTime) }</time></header>
+						<div class="entity-battle-body">
+							for teamIndex, team := range battle.Teams {
+								if teamIndex < 2 {
+									<div class={ entityBattleTeamClass(teamIndex) }>
+										<div class="entity-battle-team-images">
+											for imageIndex, member := range team.TopAlliances {
+												if imageIndex < 3 {
+													if member.AllianceID > 0 {
+														<img src={ eveEntityImage("alliance", member.AllianceID, 64) } alt={ member.AllianceName } width="32" height="32" loading="lazy"/>
+													} else if member.CorporationID > 0 {
+														<img src={ eveEntityImage("corporation", member.CorporationID, 64) } alt={ member.CorporationName } width="32" height="32" loading="lazy"/>
+													}
+												}
+											}
+										</div>
+										<div>
+											<strong>
+												{ entityBattleTeamTitle(battle, teamIndex) }
+												if team.AllianceCount > 1 {
+													<small>+{ strconv.FormatInt(team.AllianceCount-1, 10) }</small>
+												}
+											</strong><span>{ strconv.FormatInt(team.TotalKills, 10) } kills · { compactNumber(team.TotalISKDestroyed) }</span>
+										</div>
+									</div>
+									if teamIndex == 0 {
+										<div class="entity-battle-total"><div><span style={ entityBattleShare(battle) }></span></div><small>{ strconv.FormatInt(battle.KillCount, 10) } kills · { compactNumber(battle.TotalISKDestroyed) } · { entityBattleDuration(battle.DurationMinutes) }</small></div>
+									}
+								}
+							}
+						</div>
+						if battle.IsMultiParty || battle.KillCount >= 100 || battle.TotalISKDestroyed >= 1e12 {
+							<div class="entity-battle-badges">
+								if battle.IsMultiParty {
+									<span>Multi-party</span>
+								}
+								if battle.KillCount >= 100 {
+									<span>Large Battle</span>
+								}
+								if battle.TotalISKDestroyed >= 1e12 {
+									<span>1T+ ISK</span>
+								}
+							</div>
+						}
+					</a>
+				}
+			</div>
+		} else {
+			<p class="entity-conflict-empty">No battles found</p>
+		}
+		@entityConflictPagination(data.Page, len(data.Battles) == 50)
+	</section>
+}
+
+templ entityWars(kind string, id int64, data api.EntityWarsData, sortBy string) {
+	<section class="entity-conflicts" data-entity-conflicts="wars" data-page={ strconv.Itoa(data.Page) } data-sort={ sortBy } data-entity-kind={ kind } data-entity-id={ strconv.FormatInt(id, 10) }>
+		<div class="entity-war-sort">
+			<span>Sort:</span>
+			for _, choice := range []struct{ Value, Label string }{{"recent", "Recent"}, {"kills", "Most Kills"}, {"isk", "Most ISK"}} {
+				<button type="button" class={ entityMemberButtonClass(sortBy == choice.Value) } data-focus-key={ "war-sort:" + choice.Value } data-war-sort={ choice.Value }>{ choice.Label }</button>
+			}
+		</div>
+		<div class="glass-panel entity-war-table">
+			<div class="entity-war-heading"><span>Aggressor</span><span></span><span>Defender</span><span>Started</span><span>Status</span></div>
+			for _, war := range data.Wars {
+				<a class="entity-war-row" href={ idPath("war", war.WarID) }>
+					<div class="entity-war-side"><img src={ entityWarImage(war.Aggressor) } alt="" width="32" height="32" loading="lazy"/><span><strong>{ war.Aggressor.Name }</strong><small>{ compactNumber(war.Aggressor.ISKDestroyed) } · { strconv.FormatInt(war.Aggressor.ShipsKilled, 10) } ships</small></span></div><b>VS</b>
+					<div class="entity-war-side"><img src={ entityWarImage(war.Defender) } alt="" width="32" height="32" loading="lazy"/><span><strong>{ war.Defender.Name }</strong><small>{ compactNumber(war.Defender.ISKDestroyed) } · { strconv.FormatInt(war.Defender.ShipsKilled, 10) } ships</small></span></div><time>{ entityMemberTimeAgo(war.Started) }</time>
+					<div class="entity-war-badges">
+						if war.Finished == "" {
+							<span class="active">Active</span>
+						} else {
+							<span>Finished</span>
+						}
+						if war.Mutual {
+							<span class="mutual">Mutual</span>
+						}
+						if war.OpenForAllies {
+							<span class="allies">Allies</span>
+						}
+					</div>
+				</a>
+			}
+			if len(data.Wars) == 0 {
+				<p class="entity-conflict-empty">No wars found</p>
+			}
+		</div>
+		@entityConflictPagination(data.Page, len(data.Wars) == 50)
+	</section>
+}
+
+templ entityConflictPagination(page int, hasNext bool) {
+	if page > 1 || hasNext {
+		<nav class="entity-conflict-pagination" aria-label="Conflict pages"><button type="button" data-focus-key="conflict-page:previous" data-conflict-page={ strconv.Itoa(page - 1) } disabled?={ page <= 1 }>Previous</button><span>Page { strconv.Itoa(page) }</span><button type="button" data-focus-key="conflict-page:next" data-conflict-page={ strconv.Itoa(page + 1) } disabled?={ !hasNext }>Next</button></nav>
+	}
+}
+
+templ entityCampaigns(kind string, id int64, data api.EntityCampaignsData) {
+	<section class="entity-conflicts" data-entity-conflicts="campaigns" data-page={ strconv.Itoa(data.Page) } data-entity-kind={ kind } data-entity-id={ strconv.FormatInt(id, 10) }>
+		if len(data.Campaigns) == 0 {
+			<div class="glass-panel entity-campaign-empty">
+				<svg class="entity-campaign-empty-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 22V4m0 0c4-2 8 2 12 0v12c-4 2-8-2-12 0M3 3l18 18"></path></svg>
+				<p>No campaigns feature this entity yet</p>
+				<a href="/campaigncreator">Start one →</a>
+			</div>
+		} else {
+			<div class="entity-campaign-grid">
+				for _, campaign := range data.Campaigns {
+					@campaignCard(campaign)
+				}
+			</div>
+			@entityConflictPagination(data.Page, data.HasMore)
+		}
+	</section>
+}
+
+templ campaignCard(campaign api.EntityCampaignEntry) {
+	<a class="entity-campaign-card" href={ "/campaign/" + campaign.CampaignID }>
+		<div class="entity-campaign-rail" style={ campaignRailStyle(campaign) }></div>
+		<header>
+			<div>
+				<h3>{ campaign.Name }</h3>
+				<small class="entity-campaign-date">
+					if campaignIsArea(campaign) {
+						@icon("map")
+					} else if len(campaign.Sides) == 1 {
+						<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M2 12h2m16 0h2"></path></svg>
+					} else {
+						@icon("swords")
+					}
+					<span>{ campaignDateRange(campaign) }</span>
+				</small>
+			</div>
+			<div class="entity-campaign-badges">
+				if campaign.Visibility == 2 {
+					<span class="visibility domain" title="Killboard only — not listed on EVE-KILL">
+						@icon("shield")
+					</span>
+				} else if campaign.Visibility == 1 {
+					<span class="visibility private" title="Private — owner and selected-domain members only">
+						@icon("lock")
+					</span>
+				}
+				<span class={ campaignStatusClass(campaign.Status) }>
+					if campaign.Status == 1 {
+						<i aria-hidden="true"></i>
+					} else if campaign.Status == 0 {
+						@icon("loader-2")
+					}
+					{ campaignStatus(campaign.Status) }
+				</span>
+			</div>
+		</header>
+		if campaign.Description != "" {
+			<p class="entity-campaign-description">{ campaign.Description }</p>
+		}
+		<div class="entity-campaign-body">
+			if campaignIsArea(campaign) {
+				<div class="entity-campaign-area">
+					@icon("map-pinned")
+					<div><strong>All battlefield activity</strong><small>{ campaignAreaLabel(campaign) }</small></div>
+				</div>
+			} else {
+				<div class="entity-campaign-balance">
+					if len(campaign.Sides) == 1 {
+						<span style={ fmt.Sprintf("width:%.2f%%;background-color:%s", campaignOneSidedShare(campaign.Sides[0]), campaignSideColors(campaign)[0]) }></span>
+						<span style={ fmt.Sprintf("width:%.2f%%;background-color:#ef4444", 100-campaignOneSidedShare(campaign.Sides[0])) }></span>
+					} else {
+						for index, side := range campaign.Sides {
+							<span style={ campaignSideBarStyle(campaign, side, index) }></span>
+						}
+					}
+				</div>
+				<div class="entity-campaign-sides">
+					for index, side := range campaign.Sides {
+						<div class="entity-campaign-side">
+							<div class="entity-campaign-portraits">
+								for entityIndex, member := range side.Entities {
+									if entityIndex < 4 {
+										<img src={ campaignEntityImage(member.EntityType, member.EntityID) } alt="" width="20" height="20" loading="lazy"/>
+									}
+								}
+								if len(side.Entities) > 4 {
+									<span>+{ strconv.Itoa(len(side.Entities)-4) }</span>
+								}
+							</div><strong style={ campaignSideStyle(campaign, index) }>{ side.Name }</strong><small><span class="kills">{ fullNumber(float64(side.Kills)) }</span> kills · <span class="isk">{ compactNumber(side.ISKDestroyed) }</span></small>
+						</div>
+					}
+				</div>
+			}
+		</div>
+		<footer>
+			<span>
+				if campaign.Totals != nil {
+					<span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3"></circle><path d="M12 1v3m0 16v3M1 12h3m16 0h3"></path></svg><b>{ fullNumber(float64(campaign.Totals.KillCount)) }</b> killmails</span>
+					<span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="5"></circle><path d="M8 5v6m-2-4h4m8 1a6 6 0 1 1-6 10"></path></svg><b>{ compactNumber(campaign.Totals.ISKDestroyed) }</b> destroyed</span>
+				} else {
+					Stats pending…
+				}
+			</span>
+			if campaign.Creator.Name != "" {
+				<small>by { campaign.Creator.Name }</small>
+			}
+		</footer>
+	</a>
+}
+
+func campaignStatus(value int) string {
+	switch value {
+	case 0:
+		return "Computing"
+	case 2:
+		return "Archived"
+	default:
+		return "Active"
+	}
+}
+
+func campaignStatusClass(value int) string {
+	switch value {
+	case 0:
+		return "computing"
+	case 2:
+		return "archived"
+	default:
+		return "active"
+	}
+}
+
+func entityBattleTeamClass(index int) string {
+	if index == 0 {
+		return "entity-battle-team red"
+	}
+	return "entity-battle-team blue"
+}

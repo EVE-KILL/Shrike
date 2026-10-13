@@ -1,0 +1,62 @@
+@theme {
+    --font-sans: 'Exo 2', 'Exo 2 Fallback', 'Exo 2 Roboto Fallback', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /*
+     * Themeable Color Overrides
+     *
+     * These override Tailwind's built-in color palette to reference CSS custom
+     * properties from variables.css. This allows the theme system (useTheme
+     * composable + ek_theme cookie) to change colors site-wide by updating
+     * the underlying CSS variables at runtime.
+     *
+     * Chain: @theme --color-blue-500 → var(--color-brand-primary)
+     *        variables.css defines default: --color-brand-primary: #3b82f6
+     *        useTheme composable overrides: documentElement.style.setProperty(...)
+     *
+     * Opacity modifiers (e.g. bg-blue-500/20) work via CSS color-mix().
+     */
+
+    /* Brand / accent — overrides Tailwind blue */
+    --color-blue-400: var(--color-brand-primary);
+    --color-blue-500: var(--color-brand-primary);
+    --color-blue-600: var(--color-brand-primary-hover);
+
+    /* Danger / error — overrides Tailwind red */
+    --color-red-400: var(--color-error);
+    --color-red-500: var(--color-error);
+    --color-red-600: color-mix(in srgb, var(--color-error) 80%, black);
+
+    /* Success — overrides Tailwind green */
+    --color-green-400: var(--color-success);
+    --color-green-500: var(--color-success);
+
+    /* Brand secondary — overrides Tailwind emerald */
+    --color-emerald-400: var(--color-brand-secondary);
+    --color-emerald-500: var(--color-brand-secondary);
+
+    /* Warning — overrides Tailwind yellow */
+    --color-yellow-400: var(--color-warning);
+    --color-yellow-500: var(--color-warning);
+
+    /* Custom semantic utilities — creates text-isk, text-npc, bg-isk, etc. */
+    --color-isk: var(--color-isk-value);
+    --color-npc: var(--color-npc-text);
+}
+@utility text-fine {
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+@utility loss-row {
+    background-color: var(--color-loss-bg);
+    border-left: 2px solid var(--color-loss-border);
+}
+@utility loss-row-hover {
+    &:hover {
+        background-color: var(--color-loss-hover);
+    }
+}
+@utility scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
+}

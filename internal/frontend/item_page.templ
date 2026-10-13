@@ -1,0 +1,386 @@
+package frontend
+
+import (
+	"fmt"
+	"github.com/eve-kill/shrike/internal/api"
+	"strconv"
+)
+
+templ itemPage(view itemPageView) {
+	<div class="universe-page item-page" data-universe-kind="item" data-universe-id={ strconv.FormatInt(view.ID, 10) } data-controller="universe" data-action="click->universe#click popstate@window->universe#history pagehide@window->universe#hide pageshow@window->universe#show">
+		<link rel="stylesheet" href={ assetURL("entity.css") }/>
+		<link rel="stylesheet" href={ assetURL("item.css") }/>
+		<header class="hero-surface glass-panel item-hero">
+			if view.Data.Item.IsShip {
+				<img class="item-hero-background" src={ itemImage(view, 1024) } alt="" width="1024" height="1024" loading="lazy"/>
+			}
+			<div class="item-hero-shade"></div>
+			<div class="item-hero-content">
+				<button type="button" class={ itemPortraitClass(view.Data.Item.IsShip) } data-item-image aria-label={ "View " + view.Data.Item.Name + " full size" }><img src={ itemImage(view, 256) } alt={ view.Data.Item.Name } width={ itemPortraitSize(view.Data.Item.IsShip) } height={ itemPortraitSize(view.Data.Item.IsShip) } fetchpriority="high"/></button>
+				<div class="item-hero-identity">
+					<div class="item-heading">
+						<h1>{ view.Data.Item.Name }</h1>
+						if view.Data.Item.MetaGroupName != "" {
+							<span class={ itemMetaGroupClass(view.Data.Item.MetaGroupName) }>{ view.Data.Item.MetaGroupName }</span>
+						}
+						if itemMarketLeaf(view) != "" {
+							<span>{ itemMarketLeaf(view) }</span>
+						}
+					</div>
+					if itemRolePhrase(view) != "" {
+						<h2 class="sr-only">{ view.Data.Item.Name } — { itemRolePhrase(view) }</h2>
+					}
+					<nav class="item-breadcrumb" aria-label="Breadcrumb">
+						for index, crumb := range itemBreadcrumb(view) {
+							if index > 0 {
+								<span>/</span>
+							}
+							if crumb.Path != "" {
+								<a href={ crumb.Path }>{ crumb.Name }</a>
+							} else {
+								<strong>{ crumb.Name }</strong>
+							}
+						}
+					</nav>
+					if view.Description != "" {
+						<div class="item-description">
+							@templ.Raw(view.Description)
+						</div>
+					}
+				</div>
+			</div>
+			@itemHeroStats(view)
+		</header>
+		<nav class="entity-tabs universe-tabs item-tabs" aria-label={ view.Data.Item.Name + " pages" }>
+			<a href={ idPath("item", view.ID) } class={ entityTabClass(view.Tab, "dashboard") } aria-current={ entityTabCurrent(view.Tab, "dashboard") } aria-label="Dashboard">
+				@icon("activity")
+				<span>Dashboard</span>
+			</a>
+			<a href={ idPath("item", view.ID) + "/kills" } class={ entityTabClass(view.Tab, "kills") } aria-current={ entityTabCurrent(view.Tab, "kills") } aria-label="Kills">
+				@icon("swords")
+				<span>Kills</span>
+			</a>
+			if view.Data.Item.IsShip {
+				<a href={ idPath("item", view.ID) + "/fittings" } class={ entityTabClass(view.Tab, "fittings") } aria-current={ entityTabCurrent(view.Tab, "fittings") } aria-label="Fittings">
+					@icon("wrench")
+					<span>Fittings</span>
+				</a>
+			}
+			if len(view.Data.MarketBreadcrumb) > 0 {
+				<a href={ idPath("item", view.ID) + "/market" } class={ entityTabClass(view.Tab, "market") } aria-current={ entityTabCurrent(view.Tab, "market") } aria-label="Market">
+					@icon("shopping-cart")
+					<span>Market</span>
+				</a>
+			}
+		</nav>
+		@itemMain(view)
+		<script type="module" src={ assetURL("market.js") }></script>
+		<script type="module" src={ assetURL("universe.js") }></script>
+	</div>
+}
+
+templ itemHeroStats(view itemPageView) {
+	if view.Data.Pricing.Summary != nil || view.Data.Pricing.CustomSummary != nil || view.Data.Item.IsShip || view.Data.Item.Volume > 0 || view.Data.Item.BasePrice > 0 {
+		<div class="item-hero-stats">
+			if view.Data.Pricing.CustomSummary != nil && view.Data.Pricing.CustomSummary.Latest > 0 {
+				@itemHeroStat("Est. Value", compactNumber(view.Data.Pricing.CustomSummary.Latest), "ISK", "orange")
+			}
+			if view.Data.Pricing.Summary != nil && view.Data.Pricing.Summary.Latest > 0 {
+				@itemHeroStat("Jita Price", compactNumber(view.Data.Pricing.Summary.Latest), "ISK", "gold")
+			}
+			if view.Data.Pricing.Summary != nil && view.Data.Pricing.Summary.Average90D > 0 {
+				@itemHeroStat("90d Avg", compactNumber(view.Data.Pricing.Summary.Average90D), "ISK", "")
+			}
+			if view.Data.Item.IsShip && itemRawHP(view) > 0 {
+				@itemHeroStat("Raw HP", fullNumber(itemRawHP(view)), "", "blue")
+			}
+			if speed, ok := itemAttribute(view, 37); view.Data.Item.IsShip && ok && speed > 0 {
+				@itemHeroStat("Max Speed", fmt.Sprintf("%.0f", speed), "m/s", "cyan")
+			}
+			if bandwidth, ok := itemAttribute(view, 283); view.Data.Item.IsShip && ok {
+				@itemHeroStat("Drone BW", fmt.Sprintf("%.0f", bandwidth), "Mbit/s", "green")
+			}
+			if !view.Data.Item.IsShip && view.Data.Item.Volume > 0 {
+				@itemHeroStat("Volume", itemQuantity(view.Data.Item.Volume), "m³", "")
+			}
+			if view.Data.Item.BasePrice > 0 {
+				@itemHeroStat("Base Price", compactNumber(view.Data.Item.BasePrice), "ISK", "")
+			}
+		</div>
+	}
+}
+
+templ itemHeroStat(label, value, unit, tone string) {
+	<div class={ "item-hero-stat " + tone }><span>{ label }</span><strong>{ value }<small>{ unit }</small></strong></div>
+}
+
+templ itemMain(view itemPageView) {
+	<section class="universe-main item-main" data-item-tab={ view.Tab } data-universe-kind="item" data-universe-id={ strconv.FormatInt(view.ID, 10) } data-universe-tab={ view.Tab } data-page-title={ itemMetadata(view).Title + " - EVE-KILL.com" } data-page-description={ itemMetadata(view).Description }>
+		if view.Tab == "kills" {
+			@killList(view.Kills, killListOptions{Kind: "item", Page: 1, Limit: 50})
+		} else if view.Tab == "dashboard" {
+			@itemDashboard(view)
+		} else if view.Tab == "market" {
+			@itemMarketPanel(view)
+		} else if view.Tab == "fittings" {
+			@itemFitsPanel(view)
+		}
+	</section>
+}
+
+templ itemDashboard(view itemPageView) {
+	<div class="item-dashboard">
+		if view.Data.Pricing.Summary != nil {
+			@itemPriceSummary("Jita Market (90d)", view.Data.Pricing.Summary, false)
+		}
+		if view.Data.Pricing.CustomSummary != nil {
+			@itemPriceSummary("Estimated Value (90d)", view.Data.Pricing.CustomSummary, true)
+		}
+		if len(view.Data.Variations) > 1 {
+			<section class="glass-panel item-panel">
+				<h2>
+					@icon("tags")
+					<span>Variations</span><small>({ strconv.Itoa(len(view.Data.Variations)) })</small>
+				</h2>
+				<div class="item-variation-grid">
+					for _, variation := range view.Data.Variations {
+						<a class={ itemVariationClass(variation.ID == view.ID) } href={ idPath("item", variation.ID) }><img src={ fmt.Sprintf("/images/types/%d/icon?size=32", variation.ID) } alt="" width="32" height="32" loading="lazy"/><span><strong>{ variation.Name }</strong><small>{ variation.MetaGroupName }</small></span></a>
+					}
+				</div>
+			</section>
+		}
+		<div class="item-content-grid">
+			<div class="item-content-left">
+				if len(view.Recent.Kills) > 0 {
+					<section class="glass-panel item-panel">
+						<h2>
+							@icon("swords")
+							<span>Recent Destructions</span><a href={ idPath("item", view.ID) + "/kills" }>View all →</a>
+						</h2>
+						<div class="item-recent-list">
+							for _, kill := range view.Recent.Kills {
+								<a href={ idPath("kill", kill.KillmailID) }><img src={ fmt.Sprintf("/images/types/%d/render?size=32", kill.ShipTypeID) } alt="" width="28" height="28" loading="lazy"/><strong>{ kill.ShipName }</strong><span>· { kill.VictimCharacterName } · { kill.SolarSystemName }</span><em>{ compactNumber(kill.TotalValue) }</em><time>{ kill.KillmailTime.UTC().Format("2006-01-02") }</time></a>
+							}
+						</div>
+					</section>
+				}
+				if len(view.Data.RequiredSkills) > 0 {
+					<section class="glass-panel item-panel">
+						<h2>
+							@icon("book-open")
+							<span>Required Skills</span>
+						</h2>
+						<div class="item-list">
+							for _, skill := range view.Data.RequiredSkills {
+								<div><a href={ idPath("item", skill.ID) }>{ skill.Name }</a><strong>{ itemRomanLevel(skill.Level) }</strong></div>
+							}
+						</div>
+					</section>
+				}
+				if view.Data.Item.IsShip {
+					<div class="item-attribute-grid">
+						for _, key := range []string{"defense", "fitting", "navigation", "capacitor", "targeting", "drones"} {
+							if len(view.Data.ShipAttributes[key]) > 0 {
+								@itemAttributePanel(key, view.Data.ShipAttributes[key])
+							}
+						}
+					</div>
+				} else if len(itemNamedAttributes(view.Data.Attributes)) > 0 {
+					@itemAttributePanel("attributes", itemNamedAttributes(view.Data.Attributes))
+				}
+				if len(view.Data.Materials) > 0 {
+					<section class="glass-panel item-panel">
+						<h2>
+							@icon("recycle")
+							<span>Reprocessing Materials</span>
+						</h2>
+						<div class="item-list">
+							for _, material := range view.Data.Materials {
+								<div><a href={ idPath("item", material.ID) }><img src={ fmt.Sprintf("/images/types/%d/icon?size=32", material.ID) } alt="" width="20" height="20" loading="lazy"/>{ material.Name }</a><strong>{ fullNumber(float64(material.Quantity)) }</strong></div>
+							}
+						</div>
+					</section>
+				}
+				@itemProperties(view)
+			</div>
+			<aside class="item-price-rail">
+				if len(view.Data.Pricing.CustomHistory) > 0 {
+					@itemPriceHistory("Estimated Value History", view.Data.Pricing.CustomHistory, true)
+				}
+				if len(view.Data.Pricing.History) > 0 {
+					@itemPriceHistory("Recent Prices (Jita)", view.Data.Pricing.History, false)
+				}
+				if len(view.Data.Pricing.Insurance) > 0 {
+					<section class="glass-panel item-panel">
+						<h2>
+							@icon("shield")
+							<span>Insurance</span>
+						</h2>
+						<div class="item-list">
+							for _, insurance := range view.Data.Pricing.Insurance {
+								<div><span>{ insurance.LevelName }</span><strong>{ compactNumber(insurance.Payout) } <small>/ { compactNumber(insurance.Cost) }</small></strong></div>
+							}
+						</div>
+					</section>
+				}
+			</aside>
+		</div>
+	</div>
+}
+
+templ itemPriceSummary(title string, summary *api.UniversePriceSummary, custom bool) {
+	<section class={ itemPriceSummaryClass(custom) }>
+		<h2>
+			@icon("chart-line")
+			<span>{ title }</span>
+		</h2>
+		<div class="item-price-summary-grid">
+			@itemPriceMetric(itemLatestPriceLabel(summary), compactNumber(summary.Latest), "ISK")
+			@itemPriceMetric("90d Average", compactNumber(summary.Average90D), "ISK")
+			@itemPriceMetric("90d High", compactNumber(summary.Highest90D), "ISK")
+			@itemPriceMetric("90d Low", compactNumber(summary.Lowest90D), "ISK")
+			if !custom {
+				@itemPriceMetric("Avg Daily Volume", fullNumber(float64(summary.AvgVolume90D)), "")
+			}
+		</div>
+	</section>
+}
+
+templ itemPriceMetric(label, value, unit string) {
+	<div><span>{ label }</span><strong>{ value } <small>{ unit }</small></strong></div>
+}
+
+templ itemAttributePanel(key string, attributes []api.UniverseAttribute) {
+	<section class="glass-panel item-panel">
+		<h2>
+			@icon("tags")
+			<span>{ itemAttributeGroupTitle(key) }</span>
+		</h2>
+		<div class="item-attributes">
+			for _, attribute := range attributes {
+				<div><span>{ attribute.Name }</span><strong class={ itemAttributeColor(attribute) }>{ itemAttributeValue(attribute) }</strong></div>
+			}
+		</div>
+	</section>
+}
+
+templ itemProperties(view itemPageView) {
+	<section class="glass-panel item-panel">
+		<h2>
+			@icon("box")
+			<span>Properties</span>
+		</h2>
+		<div class="item-properties">
+			@itemProperty("Type ID", strconv.FormatInt(view.ID, 10))
+			if view.Data.Item.GroupID > 0 {
+				<div><span>Group</span><a href={ idPath("group", view.Data.Item.GroupID) }>{ view.Data.Item.GroupName } ({ strconv.FormatInt(view.Data.Item.GroupID, 10) })</a></div>
+			}
+			if view.Data.Item.CategoryID > 0 {
+				@itemProperty("Category ID", strconv.FormatInt(view.Data.Item.CategoryID, 10))
+			}
+			if view.Data.Item.Mass > 0 {
+				@itemProperty("Mass", fullNumber(view.Data.Item.Mass)+" kg")
+			}
+			if view.Data.Item.Volume > 0 {
+				@itemProperty("Volume", itemQuantity(view.Data.Item.Volume)+" m³")
+			}
+			if view.Data.Item.PackagedVolume > 0 {
+				@itemProperty("Packaged Volume", itemQuantity(view.Data.Item.PackagedVolume)+" m³")
+			}
+			if view.Data.Item.Capacity > 0 {
+				@itemProperty("Capacity", itemQuantity(view.Data.Item.Capacity)+" m³")
+			}
+			if view.Data.Item.PortionSize > 0 {
+				@itemProperty("Portion Size", fullNumber(float64(view.Data.Item.PortionSize)))
+			}
+			if view.Data.Item.Radius > 0 {
+				@itemProperty("Radius", fullNumber(view.Data.Item.Radius)+" m")
+			}
+			if view.Data.Item.MetaLevel > 0 {
+				@itemProperty("Meta Level", strconv.FormatInt(view.Data.Item.MetaLevel, 10))
+			}
+			if view.Data.Item.TechLevel > 0 {
+				@itemProperty("Tech Level", strconv.FormatInt(view.Data.Item.TechLevel, 10))
+			}
+			if view.Data.Item.Published {
+				@itemProperty("Published", "Yes")
+			} else {
+				@itemProperty("Published", "No")
+			}
+		</div>
+	</section>
+}
+
+templ itemProperty(label, value string) {
+	<div><span>{ label }</span><strong>{ value }</strong></div>
+}
+
+templ itemPriceHistory(title string, rows []api.UniversePricePoint, custom bool) {
+	<section class={ itemPriceHistoryClass(custom) }>
+		<h2>
+			@icon("calendar")
+			<span>{ title }</span>
+		</h2>
+		<div class="item-price-table">
+			<header>
+				<span>Date</span><span>Price</span>
+				if !custom {
+					<span>Volume</span>
+				}
+			</header>
+			for index, row := range rows {
+				if index < 30 {
+					<div>
+						<span>{ row.Date }</span><strong>{ itemHistoryPrice(row, custom) }</strong>
+						if !custom {
+							<small>{ compactNumber(float64(row.Volume)) }</small>
+						}
+					</div>
+				}
+			}
+		</div>
+	</section>
+}
+
+func itemPortraitClass(ship bool) string {
+	if ship {
+		return "item-portrait ship"
+	}
+	return "item-portrait"
+}
+func itemPortraitSize(ship bool) string {
+	if ship {
+		return "160"
+	}
+	return "64"
+}
+func itemVariationClass(active bool) string {
+	if active {
+		return "item-variation active"
+	}
+	return "item-variation"
+}
+func itemPriceSummaryClass(custom bool) string {
+	if custom {
+		return "glass-panel item-price-summary custom"
+	}
+	return "glass-panel item-price-summary"
+}
+func itemPriceHistoryClass(custom bool) string {
+	if custom {
+		return "glass-panel item-panel item-price-history custom"
+	}
+	return "glass-panel item-panel item-price-history"
+}
+func itemHistoryPrice(point api.UniversePricePoint, custom bool) string {
+	if custom {
+		return compactNumber(point.Price)
+	}
+	return compactNumber(point.Average)
+}
+func itemLatestPriceLabel(summary *api.UniversePriceSummary) string {
+	if summary.LatestDate != "" {
+		return "Latest Price (" + summary.LatestDate + ")"
+	}
+	return "Latest Price"
+}

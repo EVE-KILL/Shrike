@@ -1,0 +1,12 @@
+new:
+  displayName: Shield Effective Kinetic Resonance
+  category: Shield
+  unit: "Inverse Absolute Percent"
+  highIsGood: false
+
+effects:
+  - on: isHull
+    category: passive
+    rules:
+      - {from: damageProfileKinetic}
+      - {mul: shieldKineticDamageResonance}

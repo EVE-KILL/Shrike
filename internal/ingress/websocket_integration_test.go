@@ -26,6 +26,7 @@ func TestWebSocketUpgradeThroughCaddy(t *testing.T) {
 	wsServer := shrikewebsocket.New(nil, zerolog.Nop())
 	surfaces := testSurfaces()
 	surfaces[SurfaceWS] = wsServer
+	surfaces[SurfaceFrontend] = http.NotFoundHandler()
 	manager := New(surfaces, zerolog.Nop())
 	if err := manager.Start(context.Background(), cfg); err != nil {
 		t.Fatalf("Start: %v", err)
@@ -44,7 +45,7 @@ func TestWebSocketUpgradeThroughCaddy(t *testing.T) {
 		_, _ = io.Copy(io.Discard, res.Body)
 		_ = res.Body.Close()
 		if res.StatusCode != http.StatusNotFound {
-			t.Errorf("%s status = %d, want Nuxt fallback 404", path, res.StatusCode)
+			t.Errorf("%s status = %d, want frontend 404", path, res.StatusCode)
 		}
 	}
 
