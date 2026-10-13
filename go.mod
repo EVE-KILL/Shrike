@@ -1,6 +1,6 @@
 module github.com/eve-kill/shrike
 
-go 1.27.0
+go 1.27.2
 
 replace github.com/eve-kill/shrike/frontend => ./frontend
 
@@ -32,7 +32,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	golang.org/x/image v0.46.0
-	golang.org/x/net v0.59.0
+	golang.org/x/net v0.60.0
 	golang.org/x/oauth2 v0.37.0
 	golang.org/x/sync v0.23.0
 	golang.org/x/term v0.46.0
