@@ -257,7 +257,7 @@ func buildDomainKilllistQuery(
 		}
 		idsArg := args.bind(ids)
 		victimWhere := []string{
-			victimColumn + " = ANY(" + idsArg + "::int[])",
+			victimColumn + " = entity.id",
 		}
 		if afterArg != "" {
 			victimWhere = append(
@@ -270,17 +270,20 @@ func buildDomainKilllistQuery(
 				locationColumn+" = "+locationArg,
 			)
 		}
-		legs = append(legs, fmt.Sprintf(`
-			(
-				SELECT killmail_id
-				FROM killmails
-				WHERE %s
-				ORDER BY killmail_id DESC
-				LIMIT %d
-			)`, strings.Join(victimWhere, " AND "), legLimit))
+		// One ordered index scan per entity avoids bitmap-scanning and
+		// sorting its entire history when = ANY cannot retain index order.
+		legs = append(legs, fmt.Sprintf(`(
+            SELECT candidate.killmail_id
+            FROM unnest(%s::int[]) entity(id)
+            CROSS JOIN LATERAL (
+                SELECT killmail_id FROM killmails WHERE %s
+                ORDER BY killmail_id DESC LIMIT %d
+            ) candidate
+            ORDER BY candidate.killmail_id DESC LIMIT %d
+        )`, idsArg, strings.Join(victimWhere, " AND "), legLimit, legLimit))
 
 		attackerWhere := []string{
-			attackerColumn + " = ANY(" + idsArg + "::int[])",
+			attackerColumn + " = entity.id",
 		}
 		if afterArg != "" {
 			attackerWhere = append(attackerWhere, `
@@ -289,14 +292,15 @@ func buildDomainKilllistQuery(
 					WHERE killmail_id = `+afterArg+`
 				)`)
 		}
-		legs = append(legs, fmt.Sprintf(`
-			(
-				SELECT killmail_id
-				FROM killmail_attackers
-				WHERE %s
-				ORDER BY killmail_time DESC
-				LIMIT %d
-			)`, strings.Join(attackerWhere, " AND "), legLimit))
+		legs = append(legs, fmt.Sprintf(`(
+            SELECT candidate.killmail_id
+            FROM unnest(%s::int[]) entity(id)
+            CROSS JOIN LATERAL (
+                SELECT killmail_id,killmail_time FROM killmail_attackers WHERE %s
+                ORDER BY killmail_time DESC LIMIT %d
+            ) candidate
+            ORDER BY candidate.killmail_time DESC LIMIT %d
+        )`, idsArg, strings.Join(attackerWhere, " AND "), legLimit, legLimit))
 	}
 
 	if scope != nil {
@@ -313,28 +317,34 @@ func buildDomainKilllistQuery(
 		candidates = strings.Join(legs, " UNION ")
 	}
 
-	where := []string{
-		"k.killmail_id IN (SELECT killmail_id FROM candidates)",
-	}
-	if predicate, known := killtype.Predicates()[kind]; known &&
-		predicate != "TRUE" {
+	where := []string{"TRUE"}
+	if predicate, known := killtype.Predicates()[kind]; known && predicate != "TRUE" {
 		where = append(where, predicate)
 	}
 	if locationArg != "" {
-		where = append(
-			where, "k."+locationColumn+" = "+locationArg,
-		)
+		where = append(where, "k."+locationColumn+" = "+locationArg)
 	}
 	if afterArg != "" {
 		where = append(where, "k.killmail_id < "+afterArg)
 	}
 	limitArg := args.bind(limit + 1)
-	query := `
-		WITH candidates AS MATERIALIZED (` + candidates + `)
-		` + campaignKilllistSelect + `
-		WHERE ` + strings.Join(where, " AND ") + `
-		ORDER BY k.killmail_id DESC
-		LIMIT ` + limitArg
+	// Bound and filter tenant IDs before enriching the rows. Without the
+	// lateral boundary PostgreSQL can join portraits and final blows for an
+	// entire busy system before applying the tenant's tiny candidate set.
+	// OFFSET 0 retains a parameterized primary-key lookup for each candidate.
+	selected := `
+        SELECT k.* FROM candidates candidate
+        CROSS JOIN LATERAL (
+            SELECT * FROM killmails
+            WHERE killmail_id = candidate.killmail_id
+            OFFSET 0
+        ) k
+        WHERE ` + strings.Join(where, " AND ") + `
+        ORDER BY k.killmail_id DESC LIMIT ` + limitArg
+	query := `WITH candidates AS MATERIALIZED (` + candidates + `),
+        selected AS MATERIALIZED (` + selected + `)
+        ` + strings.Replace(campaignKilllistSelect, "FROM killmails k", "FROM selected k", 1) + `
+        ORDER BY k.killmail_id DESC`
 	return query, args.values
 }
 
