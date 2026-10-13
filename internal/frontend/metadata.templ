@@ -59,6 +59,9 @@ templ pageHead(meta pageMetadata, development bool) {
 		for _, script := range meta.ModuleScripts {
 			<script type="module" src={ script }></script>
 		}
+		if meta.AnalyticsHost != "" {
+			<script defer src={ analyticsOrigin + "/script.js" } data-website-id={ analyticsWebsiteID } data-domains={ meta.AnalyticsHost }></script>
+		}
 		if development {
 			<meta name="shrike-dev-instance" content={ devInstanceID }/>
 			<link rel="stylesheet" href={ assetURL("diagnostics.css") }/>

@@ -12,6 +12,8 @@ import (
 )
 
 const canonicalOrigin = "https://eve-kill.com"
+const analyticsOrigin = "https://analytics.karbowiak.dk"
+const analyticsWebsiteID = "ee10fd70-9e08-4512-9e36-2f2c4c8145ff"
 const defaultDescription = "EVE Killboard — the community-driven EVE Online killboard. Real-time killmails, top pilots, corporations, alliances, and battle reports across New Eden."
 const contentSecurityPolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://images.evetech.net; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
 
@@ -59,6 +61,7 @@ type pageMetadata struct {
 	CSP                                                                      string
 	Stylesheets, ModuleScripts                                               []string
 	CommentEditor                                                            bool
+	AnalyticsHost                                                            string
 }
 
 func canonicalURL(relative string) (string, error) {
@@ -197,6 +200,21 @@ func resolveMetadata(r *http.Request, production bool, status int, meta Metadata
 		result.CSP += " 'sha256-" + base64.StdEncoding.EncodeToString(digest[:]) + "'"
 	} else if meta.NeedsWASM {
 		result.CSP += "; script-src 'self' 'wasm-unsafe-eval'"
+	}
+	if production {
+		host := strings.ToLower(strings.TrimSuffix(r.Host, "."))
+		if name, _, err := net.SplitHostPort(host); err == nil {
+			host = strings.TrimSuffix(name, ".")
+		}
+		if host != "" && host != "localhost" && !strings.HasSuffix(host, ".localhost") && net.ParseIP(host) == nil {
+			result.AnalyticsHost = host
+			result.CSP = strings.Replace(result.CSP, "connect-src 'self'", "connect-src 'self' "+analyticsOrigin, 1)
+			if strings.Contains(result.CSP, "; script-src ") {
+				result.CSP = strings.Replace(result.CSP, "script-src 'self'", "script-src 'self' "+analyticsOrigin, 1)
+			} else {
+				result.CSP += "; script-src 'self' " + analyticsOrigin
+			}
+		}
 	}
 	return result, nil
 }
