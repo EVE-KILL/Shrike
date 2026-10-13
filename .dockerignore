@@ -5,6 +5,8 @@ data
 
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
 
 *.log
