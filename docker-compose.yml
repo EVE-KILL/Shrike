@@ -77,7 +77,7 @@ services:
       retries: 10
 
   memgraph:
-    image: memgraph/memgraph:3.13.1
+    image: memgraph/memgraph:3.13.2
     ports:
       - "7687:7687"
     volumes:
