@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -36,7 +37,7 @@ func TestCampaignDetailRoutesAndScopedFragments(t *testing.T) {
 		return w
 	}
 	page := request("/campaign/" + testCampaignID)
-	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Test Campaign") || !strings.Contains(page.Body.String(), ">Akora</a>") || !strings.Contains(page.Body.String(), `href="`+canonicalOrigin+`/campaign/`+testCampaignID+`"`) {
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Test Campaign") || !regexp.MustCompile(`>\s*Akora\s*</a>`).MatchString(page.Body.String()) || !strings.Contains(page.Body.String(), `href="/system/30000163"`) || !strings.Contains(page.Body.String(), `href="`+canonicalOrigin+`/campaign/`+testCampaignID+`"`) {
 		t.Fatalf("campaign page status=%d markers missing", page.Code)
 	}
 	comments := request("/campaign/" + testCampaignID + "/comments")

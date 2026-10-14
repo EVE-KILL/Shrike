@@ -20,7 +20,7 @@ export class SettingsPreferencesController extends SettingsComponent{
       for(const item of requiredElement<HTMLElement>(menu,'[data-settings-select-options]').children)item.className='flex items-center w-full px-2.5 py-1.5 rounded-md text-xs transition-colors text-left cursor-pointer '+(item===option?'text-white bg-blue-500/[0.12]':'text-gray-400 hover:text-blue-400 hover:bg-blue-500/[0.06]')
       this.closeMenus();requiredElement<HTMLButtonElement>(menu,'button').focus();return
     }
-    if(menu){const open=requiredElement<HTMLElement>(menu,'[data-settings-select-options]').hidden;this.closeMenus();this.setOpen(menu,open);return}
+    if(menu){const open=Boolean(requiredElement<HTMLElement>(menu,'[data-settings-select-options]').hidden);this.closeMenus();this.setOpen(menu,open);return}
     const zone=target?.closest<HTMLElement>('[data-settings-zone]')?.dataset.settingsZone
     if(zone==='local'||zone==='eve'){
       document.cookie=`ek_tz=${zone}; Max-Age=31536000; Path=/; SameSite=Lax${location.protocol==='https:'?'; Secure':''}`

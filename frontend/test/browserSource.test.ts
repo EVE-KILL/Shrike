@@ -1,6 +1,8 @@
 import {readdir,readFile} from 'node:fs/promises'
 import {expect,test} from 'vitest'
-import ts from 'typescript'
+// TypeScript 7 provides the native CLI; its supported compatibility package
+// retains the compiler API used by these source-policy checks.
+import ts from '@typescript/typescript6'
 import config from '../tsconfig.json'
 
 test('all authored browser sources are strict TypeScript without legacy or type-check escapes',async()=>{

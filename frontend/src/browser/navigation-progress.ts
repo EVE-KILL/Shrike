@@ -5,7 +5,7 @@ import {eventElement,requiredElement} from './shared/dom'
 
 type BusyTask={source:Element|null;finish:(()=>void)|null}
 // Navigation API is optional on browsers without this progressive enhancement.
-type NavigationWindow=Window&{navigation?:Pick<EventTarget,'addEventListener'|'removeEventListener'>}
+type NavigationWindow={navigation?:Pick<EventTarget,'addEventListener'|'removeEventListener'>}
 
 export class NavigationProgressController extends Controller<HTMLElement> {
   private highlighted=new Set<Element>()

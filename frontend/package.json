@@ -20,17 +20,18 @@
     "flatbuffers": "25.2.10"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.129",
-    "@iconify/utils": "3.1.0",
+    "@iconify-json/lucide": "1.2.142",
+    "@iconify/utils": "3.1.7",
     "@tailwindcss/node": "4.3.3",
     "@tailwindcss/oxide": "4.3.3",
     "@types/d3-contour": "3.0.6",
     "@types/d3-delaunay": "6.0.4",
-    "@types/node": "24.19.1",
+    "@types/node": "26.6.5",
+    "@typescript/typescript6": "6.0.2",
     "esbuild": "0.28.2",
-    "happy-dom": "20.14.5",
+    "happy-dom": "20.14.6",
     "tsx": "4.23.15",
-    "typescript": "5.9.3",
+    "typescript": "7.0.2",
     "vitest": "5.0.3"
   }
 }

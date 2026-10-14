@@ -5,6 +5,19 @@ project under `frontend/`, compiled with TypeScript/esbuild. Stimulus manages
 component targets, actions and connection/disconnection on server-rendered HTML;
 there is no client renderer or page server. Node is a development/build dependency only.
 
+## Compiler compatibility
+
+TypeScript 7 runs the `tsc --noEmit` type-checking command. Source-policy AST
+checks use Microsoft's `@typescript/typescript6` compatibility package because
+TypeScript 7 does not expose the JavaScript compiler API. Both are build/test
+dependencies and do not enter the browser bundles or production runtime.
+
+The isolated API generator aliases its `typescript` dependency to
+`@typescript/typescript6`, preserving the compiler API expected by
+`@hey-api/openapi-ts`. Keep this alias when updating the generator; replacing it
+with TypeScript 7 breaks generation. See Microsoft's
+[supported side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-60).
+
 ## Source ownership
 
 - `frontend/src/browser`: page controllers, shared browser primitives and entry
