@@ -41,6 +41,15 @@ type Manifest struct {
 	ReleaseDate string `json:"releaseDate"`
 }
 
+// CacheDir keeps imports under the application's writable runtime state.
+// A non-root container cannot create a cache beside /app's installed assets.
+func CacheDir(dataDir string) string {
+	if dataDir == "" {
+		dataDir = "data"
+	}
+	return filepath.Join(dataDir, "sde")
+}
+
 // Source is an opened SDE archive.
 type Source struct {
 	Build    int64

@@ -117,9 +117,10 @@ func deps(ctx context.Context, pool *pgxpool.Pool, withQueue bool) (*workers.Dep
 	}
 
 	d := &workers.Deps{
-		Pool:  pool,
-		Redis: sharedRedis,
-		ESI:   esi.New(cfg),
+		Pool:    pool,
+		Redis:   sharedRedis,
+		DataDir: cfg.DataDir,
+		ESI:     esi.New(cfg),
 		SSO: &sso.Client{
 			ClientID:     cfg.EVEClientID,
 			ClientSecret: cfg.EVEClientSecret,

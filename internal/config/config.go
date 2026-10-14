@@ -78,8 +78,7 @@ type Config struct {
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
 
-	// DataDir is where the ingress keeps its own state, including the local
-	// development CA and localhost certificate.
+	// DataDir holds writable runtime state: ingress certificates and import caches.
 	DataDir string
 
 	// Observability / environment.
