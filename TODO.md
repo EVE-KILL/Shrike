@@ -1224,3 +1224,16 @@ The full requirement-by-requirement audit and limits are in
 [frontend-review.md](docs/operations/frontend-review.md#browser-migration-completion-audit-2026-10-09).
 Proof: /tmp/shrike-final-objective-audit.json, shrike-final-marker-runtime.json,
 shrike-final-marker-repro.json and /tmp/shrike-final-map-review/crowded-marker-choice.png.
+
+## Sentry performance leads, 2026-10-14
+
+- [x] Fix SHRIKE-B: distinguish HTTP request timeouts from listener shutdown; v0.2.7 deployed, feed delivery verified.
+- [ ] SHRIKE-C: rank entity breakdowns before enriching names. Warm production benchmarks reduce one corporation query from 9.1 ms to 0.8 ms; preserve ordering, ties, date windows and missing names.
+- [ ] Coalition directory: member counts measured at 5.6 s / 212k database pages. Validate a small partial index for live alliance members, preserving exact counts and ordering.
+- [ ] Affiliation refresh: sampled p95 4.9 s; current warm selection 444 ms / 223k pages. Validate an ordered partial index excluding never-active characters while retaining the dormant refresh index and selection rules.
+- [x] Benchmark shared campaign attacker input: rejected. On a bounded 20k-killmail sample, the existing entity-first joins finished in 1.5 s warm; sharing all attackers hit the 10 s limit twice. Preserve the selective joins; investigate the remaining campaign work separately.
+- [ ] Follow measured slow campaign candidate/materialization/stat queries, faction-warfare valuable kills, and solo ship matchups; record before/after plans and regression coverage before claiming improvements.
+
+Use production read-only plans for investigation and isolated databases for test
+fixtures. Keep real failures visible in Sentry; verify performance findings rather
+than optimizing solely to remove a warning. Releases follow docs/deployment/releases.md.
