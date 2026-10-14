@@ -487,11 +487,22 @@ func conflictWarsHandler(opts Options) legacyHandler {
 
 		where := make([]string, 0, 10)
 		args := make([]any, 0, 12)
+		var candidateParts []string
+		candidateCondition := -1
+		appendScope := func(scope *conflictEntityScope) {
+			candidateParts = conflictWarScopeConditions(scope, &args)
+			candidateCondition = len(where)
+			condition := "FALSE"
+			if len(candidateParts) > 0 {
+				condition = "(" + strings.Join(candidateParts, " OR ") + ")"
+			}
+			where = append(where, condition)
+		}
 		if scope != nil {
-			where = append(where, conflictWarScopeCondition(scope, &args))
+			appendScope(scope)
 		}
 		if !entityScope.empty() {
-			where = append(where, conflictWarScopeCondition(entityScope, &args))
+			appendScope(entityScope)
 		}
 		upcoming := req.Query.Get("upcoming") == "true"
 		finishedOnly := req.Query.Get("finished") == "true"
@@ -525,7 +536,7 @@ func conflictWarsHandler(opts Options) legacyHandler {
 
 		orderBy := "w.war_id DESC"
 		if upcoming {
-			orderBy = "w.started ASC"
+			orderBy = "w.started ASC, w.war_id DESC"
 		} else {
 			switch req.Query.Get("sort") {
 			case "kills":
@@ -542,7 +553,13 @@ func conflictWarsHandler(opts Options) legacyHandler {
 		}
 
 		args = append(args, limit, (page-1)*limit)
-		query := `
+		prefix := conflictWarPagePrefix(candidateParts, where, candidateCondition, orderBy, len(args)-1, len(args))
+		source, predicate := "wars w", strings.Join(where, " AND ")
+		pagination := fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)-1, len(args))
+		if prefix != "" {
+			source, predicate, pagination = "war_page w", "TRUE", ""
+		}
+		query := prefix + `
 			SELECT w.war_id, w.declared, w.started, w.finished,
 			       w.mutual, w.open_for_allies,
 			       w.aggressor_alliance_id, w.aggressor_corporation_id,
@@ -563,14 +580,14 @@ func conflictWarsHandler(opts Options) legacyHandler {
 			       da.ticker AS defender_alliance_ticker,
 			       dc.name AS defender_corporation_name,
 			       dc.ticker AS defender_corporation_ticker
-			FROM wars w
+			FROM ` + source + `
 			LEFT JOIN alliances aa ON aa.alliance_id = w.aggressor_alliance_id
 			LEFT JOIN corporations ac ON ac.corporation_id = w.aggressor_corporation_id
 			LEFT JOIN alliances da ON da.alliance_id = w.defender_alliance_id
 			LEFT JOIN corporations dc ON dc.corporation_id = w.defender_corporation_id
-			WHERE ` + strings.Join(where, " AND ") +
+			WHERE ` + predicate +
 			` ORDER BY ` + orderBy +
-			fmt.Sprintf(" LIMIT $%d OFFSET $%d", len(args)-1, len(args))
+			pagination
 		rows, err := queryMaps(ctx, opts.DB, query, args...)
 		if err != nil {
 			return legacyPayload{}, err
@@ -600,10 +617,10 @@ func conflictEmptyWars(page, limit int) legacyPayload {
 	})
 }
 
-func conflictWarScopeCondition(
+func conflictWarScopeConditions(
 	scope *conflictEntityScope,
 	args *[]any,
-) string {
+) []string {
 	parts := make([]string, 0, 6)
 	if len(scope.Alliances) > 0 {
 		*args = append(*args, scope.Alliances)
@@ -631,10 +648,36 @@ func conflictWarScopeCondition(
 			)`, n),
 		)
 	}
+	return parts
+}
+
+// Each participant range needs only the prefix through this page. A war in
+// the global first N rows must be in the first N of at least one matching
+// range. Apply every other filter before limiting and deduplicate overlaps.
+func conflictWarPagePrefix(parts, where []string, scopeIndex int, orderBy string, limitArg, offsetArg int) string {
 	if len(parts) == 0 {
-		return "FALSE"
+		return ""
 	}
-	return "(" + strings.Join(parts, " OR ") + ")"
+	filters := append([]string(nil), where[:scopeIndex]...)
+	filters = append(filters, where[scopeIndex+1:]...)
+	predicate := "TRUE"
+	if len(filters) > 0 {
+		predicate = strings.Join(filters, " AND ")
+	}
+	branches := make([]string, 0, len(parts))
+	for _, part := range parts {
+		branches = append(branches, fmt.Sprintf(`
+			(SELECT w.war_id FROM wars w
+			 WHERE (%s) AND %s
+			 ORDER BY %s LIMIT ($%d::bigint + $%d::bigint))`,
+			part, predicate, orderBy, limitArg, offsetArg))
+	}
+	return `WITH candidate_war_ids AS MATERIALIZED (` + strings.Join(branches, " UNION ") + fmt.Sprintf(`
+		), war_page AS MATERIALIZED (
+			SELECT w.* FROM wars w
+			JOIN candidate_war_ids candidate ON candidate.war_id = w.war_id
+			ORDER BY %s LIMIT $%d OFFSET $%d
+		)`, orderBy, limitArg, offsetArg)
 }
 
 func conflictWarEntityFromRow(row map[string]any, prefix string) map[string]any {

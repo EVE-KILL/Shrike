@@ -153,3 +153,30 @@ pool acquisitions. They took 1516 ms, 772 ms and 0.39 ms respectively within
 a 2720 ms job. This is one indexed check per day, not one query per killmail.
 Retain the day bounds and batched IDs. The alert is an investigated design
 tradeoff; no larger historical scan or speculative index was introduced.
+
+### Scoped war pagination
+
+The next production sample exposed scoped war lists that walked historical wars
+before finding participant matches. Each requested participant can match an
+aggressor, defender or ally. Select the prefix through the requested page in
+each matching range, combine IDs with `UNION`, then paginate before name lookup.
+
+Every nonparticipant filter applies before each range's limit. If both a custom
+domain and an explicit participant restrict the request, keep their intersection.
+Use the explicit participant for the candidate ranges. A globally selected row
+must occur in the corresponding prefix of at least one matching range.
+This preserves deep pages and removes overlapping IDs without widening the scan.
+Upcoming wars now use war ID as a deterministic tie-breaker for equal start times.
+
+Alternating read-only production runs for corporation 98169165 improved from
+107–117 ms to 3.1–3.6 ms. Database-page accesses fell from 26,925 to 515.
+Two no-match samples improved from 150–230 ms to 2–5 ms, touching 171 pages
+instead of 42,850. Two frequently involved corporations retained comparable
+performance: about 10 ms and 21–24 ms. No new indexes were added.
+
+Exact result objects match the original SQL inside repeatable-read snapshots
+for all five sampled corporations. A 336-case HTTP/database fixture compares
+the full-set reference query with the implementation across tenant scopes,
+participants, allies, overlap, filters, sorting, null start times and deep pages.
+Missing entity names stay visible. These are SQL measurements; verify released
+request latency and Sentry percentiles separately.

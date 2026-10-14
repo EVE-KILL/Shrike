@@ -1232,12 +1232,13 @@ shrike-final-marker-repro.json and /tmp/shrike-final-map-review/crowded-marker-c
 - [x] Coalition directory: v0.2.8 publishes a live-member partial index and maintenance policy. Regular vacuum reduces the 5.6 s / 212k-page query to 26–37 ms / 1,175 pages; exact totals verified in one snapshot.
 - [x] Affiliation refresh: v0.2.8 publishes the covering date index and maintenance threshold. Regular vacuum reduces warm selection from 444 ms / 223k pages to 13–23 ms / about 1.6k pages. Dormant index and selection rules retained.
 - [x] Benchmark shared campaign attacker input: rejected. On a bounded 20k-killmail sample, the existing entity-first joins finished in 1.5 s warm; sharing all attackers hit the 10 s limit twice. Preserve the selective joins; investigate the remaining campaign work separately.
-- [ ] Campaign valuable kills: rank ten before joining names; measured warm sample improves from 401 ms to 182–183 ms. Publish after scope/tie/missing-name regressions.
-- [ ] Faction-war valuable kills: the compound range reduces warm execution from 219–232 ms / 8,881 pages to 10–19 ms / 1,997 pages. The concurrent production index is valid; publish migration 30 and observe production percentiles.
-- [ ] Solo hull matchups: regular vacuum restores an index-only killmail scan with zero heap fetches; measured 9–12 ms warm. Publish the lower killmail vacuum threshold and observe production percentiles.
-- [ ] SHRIKE-E: cancel and drain cache loaders before dependency shutdown, including singleflight work abandoned by an HTTP waiter; deterministic concurrency and full race tests pass. Publish and verify rollout.
+- [x] Campaign valuable kills: v0.2.9 ranks ten before joining names; measured warm sample improves from 401 ms to 182–183 ms. Scope/tie/missing-name regressions pass.
+- [x] Faction-war valuable kills: v0.2.9 publishes migration 30. The valid compound index reduces warm execution from 219–232 ms / 8,881 pages to 10–19 ms / 1,997 pages.
+- [x] Solo hull matchups: v0.2.9 publishes the lower killmail vacuum threshold. Regular vacuum restores an index-only killmail scan with zero heap fetches; measured 9–12 ms warm.
+- [x] SHRIKE-E: v0.2.9 cancels and drains cache loaders before dependency shutdown. Deterministic/full race tests and a blocked-query local server check pass; all production services active and release error report empty.
 - [x] SHRIKE-D: investigate the fixed fourteen-day repair loop. It performs one array-based indexed check per day; keep day bounds and genuine performance signals visible.
 - [ ] Follow measured slow campaign candidate/materialization/stat queries, faction-warfare valuable kills, and solo ship matchups; record before/after plans and regression coverage before claiming improvements.
+- [ ] Scoped war lists: limit each participant range through the requested page before deduplicating and enriching. Warm sample improves from 107–117 ms to 3.1–3.6 ms; no-match samples fall from 150–230 ms to 2–5 ms. Publish after independent filter/paging/domain regressions and dense-participant benchmarks.
 
 Use production read-only plans for investigation and isolated databases for test
 fixtures. Keep real failures visible in Sentry; verify performance findings rather
