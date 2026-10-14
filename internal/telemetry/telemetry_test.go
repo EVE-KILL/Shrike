@@ -94,6 +94,9 @@ func TestLogAndMetricTraceCorrelation(t *testing.T) {
 	for _, event := range transport.Events() {
 		for _, entry := range event.Logs {
 			logs++
+			if entry.Attributes["service"].AsInterface() != "test" {
+				t.Fatal("log missing process service label")
+			}
 			if entry.TraceID != task.span.TraceID || entry.SpanID != task.span.SpanID {
 				t.Fatalf("unlinked log %+v", entry)
 			}
@@ -105,6 +108,9 @@ func TestLogAndMetricTraceCorrelation(t *testing.T) {
 			}
 		}
 		for _, metric := range event.Metrics {
+			if metric.Attributes["service"].AsInterface() != "test" {
+				t.Fatal("metric missing process service label")
+			}
 			if metric.Name == "job.duration" {
 				distributions++
 				if metric.TraceID != task.span.TraceID {
