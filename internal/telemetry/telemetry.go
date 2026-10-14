@@ -13,6 +13,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/config"
 	"github.com/getsentry/sentry-go"
+	"github.com/getsentry/sentry-go/attribute"
 	"github.com/rs/zerolog"
 )
 
@@ -79,7 +80,12 @@ func Init(opts Options) (*Runtime, error) {
 	}
 	r.client = client
 	sentry.CurrentHub().BindClient(client)
-	sentry.CurrentHub().ConfigureScope(func(scope *sentry.Scope) { scope.Clear(); scope.SetTag("service", opts.Service) })
+	sentry.CurrentHub().ConfigureScope(func(scope *sentry.Scope) {
+		scope.Clear()
+		scope.SetTag("service", opts.Service)
+		// Error/trace tags and log/metric attributes are separate SDK stores.
+		scope.SetAttributes(attribute.String("service", opts.Service))
+	})
 	active.Store(r)
 	go r.collect()
 	return r, nil
