@@ -178,7 +178,7 @@ func Capture(ctx context.Context, err error) *sentry.EventID {
 	if err == nil || !Enabled() || errors.Is(err, context.Canceled) {
 		return nil
 	}
-	if _, deferred := errors.AsType[*retry.Deferred](err); deferred {
+	if _, deferred := retry.Deferral(err); deferred {
 		return nil
 	}
 	if captured, ok := ctx.Value(captureStateKey{}).(*atomic.Bool); ok && captured.Swap(true) {
@@ -238,7 +238,7 @@ func FinishSpan(span *sentry.Span, err error) {
 	span.Status = sentry.SpanStatusOK
 	if err != nil {
 		span.Status = sentry.SpanStatusInternalError
-		if _, deferred := errors.AsType[*retry.Deferred](err); deferred {
+		if _, deferred := retry.Deferral(err); deferred {
 			span.Status = sentry.SpanStatusResourceExhausted
 		}
 		if errors.Is(err, context.Canceled) {

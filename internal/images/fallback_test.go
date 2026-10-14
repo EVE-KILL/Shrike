@@ -5,6 +5,7 @@ import (
 	"image"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,13 +40,17 @@ func TestUnavailableRenderFallsBackAndRechecksAfterExpiry(t *testing.T) {
 				}
 			}))
 			defer origin.Close()
-			now := time.Now()
+			now := time.Now().Truncate(time.Second)
 			store := newMemoryStore()
-			service := New(Options{Store: store, UpstreamURL: origin.URL, Now: func() time.Time { return now }})
+			options := Options{Store: store, UpstreamURL: origin.URL, Now: func() time.Time { return now }, CacheBytes: 1 << 20, CacheTTL: 48 * time.Hour}
+			service := New(options)
 			for _, size := range []int{32, 64} {
 				result, err := service.Type(t.Context(), 24497, "overlayrender", size, "webp")
 				if err != nil {
 					t.Fatal(err)
+				}
+				if result.CacheControl != "public, max-age=86400, s-maxage=86400, must-revalidate" {
+					t.Fatalf("fallback cache header = %q", result.CacheControl)
 				}
 				cfg, format, err := image.DecodeConfig(bytes.NewReader(result.Body))
 				if err != nil || format != "webp" || cfg.Width != size || cfg.Height != size {
@@ -55,10 +60,18 @@ func TestUnavailableRenderFallsBackAndRechecksAfterExpiry(t *testing.T) {
 			if renderCalls != 1 || iconCalls != 1 {
 				t.Fatalf("render calls=%d icon calls=%d", renderCalls, iconCalls)
 			}
-			now = now.Add(25 * time.Hour)
+			now = now.Add(23 * time.Hour)
+			for _, cached := range []*Service{service, New(options)} {
+				// Exercise both an in-memory response hit and a stored derived hit.
+				result, err := cached.Type(t.Context(), 24497, "overlayrender", 32, "webp")
+				if err != nil || result.CacheControl != "public, max-age=3600, s-maxage=3600, must-revalidate" || strings.Contains(result.CacheControl, "stale") {
+					t.Fatalf("cached fallback extended deadline: %q, err=%v", result.CacheControl, err)
+				}
+			}
+			now = now.Add(2 * time.Hour)
 			available = true
-			result, err := service.Type(t.Context(), 24497, "render", 0, "")
-			if err != nil || !bytes.Equal(result.Body, render) || renderCalls != 2 {
+			result, err := service.Type(t.Context(), 24497, "overlayrender", 32, "webp")
+			if err != nil || result.CacheControl != responseCacheControl || renderCalls != 2 {
 				t.Fatalf("render did not recover after expiry: calls=%d err=%v", renderCalls, err)
 			}
 		})

@@ -21,6 +21,31 @@ func (e *Deferred) Error() string {
 	return fmt.Sprintf("%s deferred for %s: %s", e.Operation, e.After, e.Reason)
 }
 
+// Deferral recognizes wrapped delays only when every error leaf is a Deferred.
+// An independent joined failure must retain normal retry and error reporting.
+func Deferral(err error) (*Deferred, bool) {
+	if deferred, ok := err.(*Deferred); ok {
+		return deferred, deferred != nil
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		var longest *Deferred
+		for _, cause := range joined.Unwrap() {
+			deferred, ok := Deferral(cause)
+			if !ok {
+				return nil, false
+			}
+			if longest == nil || deferred.After > longest.After {
+				longest = deferred
+			}
+		}
+		return longest, longest != nil
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		return Deferral(wrapped.Unwrap())
+	}
+	return nil, false
+}
+
 func Wait(ctx context.Context, delay time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err

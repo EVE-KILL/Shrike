@@ -2,7 +2,6 @@ package cron
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -134,7 +133,7 @@ func RunOnce(ctx context.Context, r *Registry, name string) (run Run, runErr err
 			panic(value)
 		}
 		outcome := "completed"
-		if _, deferred := errors.AsType[*retry.Deferred](runErr); deferred {
+		if _, deferred := retry.Deferral(runErr); deferred {
 			outcome = "deferred"
 		} else if runErr != nil {
 			outcome = "failed"

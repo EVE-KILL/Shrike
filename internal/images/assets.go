@@ -177,7 +177,7 @@ func (s *Service) loadType(
 			if contentType == "" {
 				contentType = contentTypeForFormat(targetFormat)
 			}
-			return newResult(derived.Body, contentType, sourceStamp), nil
+			return s.typeResult(derived.Body, contentType, sourceStamp, source), nil
 		}
 	}
 
@@ -208,7 +208,15 @@ func (s *Service) loadType(
 			return Result{}, fmt.Errorf("store type variant: %w", err)
 		}
 	}
-	return newResult(body, contentType, sourceStamp), nil
+	return s.typeResult(body, contentType, sourceStamp, source), nil
+}
+
+func (s *Service) typeResult(body []byte, contentType string, stamp time.Time, source *objectstore.Object) Result {
+	result := newResult(body, contentType, stamp)
+	if until, err := strconv.ParseInt(source.Metadata["fallback-until"], 10, 64); err == nil {
+		result.fallbackUntil = time.Unix(until, 0)
+	}
+	return result.withFreshness(s.now())
 }
 
 func typeExportSourceKey(id int64, variant string) string {
@@ -268,14 +276,16 @@ func (s *Service) loadUpstreamType(
 		if err != nil {
 			return nil, err
 		}
+		metadata := map[string]string{"fallback-until": strconv.FormatInt(s.now().Add(24*time.Hour).Unix(), 10)}
 		if err := s.store.PutWithOptions(context.WithoutCancel(ctx), key, icon.Body, objectstore.PutOptions{
-			ContentType: icon.ContentType, CacheControl: immutableCacheControl,
-			Metadata: map[string]string{"fallback-until": strconv.FormatInt(s.now().Add(24*time.Hour).Unix(), 10)},
+			ContentType: icon.ContentType, CacheControl: "public, max-age=86400, must-revalidate",
+			Metadata: metadata,
 		}); err != nil {
 			return nil, fmt.Errorf("store fallback type image: %w", err)
 		}
 		fallback := *icon
 		fallback.Key = key
+		fallback.Metadata = metadata
 		return &fallback, nil
 	}
 	if response.StatusCode == http.StatusNotFound {

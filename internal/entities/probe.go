@@ -109,7 +109,7 @@ func (p *Prober) ingest(ctx context.Context, id int32) (Cascade, error) {
 	// the second call is served from the ESI cache the probe just populated.
 	res, err := r.Character(ctx, id)
 	if err != nil {
-		if _, deferred := errors.AsType[*retry.Deferred](err); deferred {
+		if _, deferred := retry.Deferral(err); deferred {
 			return res.Cascade, fmt.Errorf("%w: %w", ErrTransient, err)
 		}
 		return res.Cascade, err

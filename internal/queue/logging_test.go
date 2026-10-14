@@ -150,6 +150,17 @@ func TestJobLogMiddlewareDefersEvenWithoutTelemetry(t *testing.T) {
 	}
 }
 
+func TestJobLogMiddlewarePreservesFailureJoinedWithDeferral(t *testing.T) {
+	var output bytes.Buffer
+	boom := errors.New("database write failed")
+	failure := errors.Join(&retry.Deferred{Operation: "sso", After: time.Minute}, boom)
+	err := newJobLogMiddleware(zerolog.New(&output)).Work(t.Context(), testJobRow(), func(context.Context) error { return failure })
+	if err != failure || !errors.Is(err, boom) {
+		t.Fatalf("joined failure became %v", err)
+	}
+	assertLogRecord(t, logRecords(t, output.String())[1], "warn", "job failed; retry scheduled")
+}
+
 func testJobRow() *rivertype.JobRow {
 	return &rivertype.JobRow{
 		ID:          42,

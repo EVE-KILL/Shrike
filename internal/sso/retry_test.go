@@ -79,3 +79,19 @@ func TestRefreshDoesNotReplayAmbiguousTransportFailure(t *testing.T) {
 		t.Fatalf("ambiguous refresh replayed: attempts=%d err=%v", attempts, err)
 	}
 }
+
+type truncatedTokenBody struct{}
+
+func (truncatedTokenBody) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
+func (truncatedTokenBody) Close() error             { return nil }
+
+func TestRefreshDoesNotReplayTruncatedSuccess(t *testing.T) {
+	attempts := 0
+	c := &Client{ClientID: "fixture", ClientSecret: "secret", HTTP: &http.Client{Transport: transportFunc(func(*http.Request) (*http.Response, error) {
+		attempts++
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: truncatedTokenBody{}}, nil
+	})}}
+	if _, err := c.Refresh(t.Context(), "original-refresh"); !errors.Is(err, io.ErrUnexpectedEOF) || attempts != 1 {
+		t.Fatalf("truncated success replayed: attempts=%d err=%v", attempts, err)
+	}
+}

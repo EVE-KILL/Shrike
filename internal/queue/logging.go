@@ -166,7 +166,7 @@ func (m *jobLogMiddleware) Work(
 
 func runWithDeferral(ctx context.Context, run func(context.Context) error) error {
 	err := run(ctx)
-	if deferred, ok := errors.AsType[*retry.Deferred](err); ok {
+	if deferred, ok := retry.Deferral(err); ok {
 		delay := max(time.Second, deferred.After)
 		// Jitter only adds time; a server's Retry-After remains the minimum.
 		jitter := time.Duration(rand.Int64N(int64(min(time.Second, delay/10)))) //nolint:gosec // Queue pacing, not a security decision.

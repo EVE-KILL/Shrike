@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -234,7 +233,7 @@ type statusUpdateSummary struct {
 func logCronRun(logger zerolog.Logger, run cron.Run) {
 	logger = logger.With().Ctx(run.Context).Bool("sentry_handled", true).Logger()
 	var event *zerolog.Event
-	_, deferred := errors.AsType[*retry.Deferred](run.Err)
+	_, deferred := retry.Deferral(run.Err)
 	if run.Err != nil && !deferred {
 		event = logger.Error().Err(run.Err)
 	} else {
