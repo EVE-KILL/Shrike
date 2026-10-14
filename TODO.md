@@ -1232,6 +1232,8 @@ shrike-final-marker-repro.json and /tmp/shrike-final-map-review/crowded-marker-c
 - [ ] Coalition directory: a live-member partial index plus regular vacuum reduces the 5.6 s / 212k-page query to 26–37 ms / 1,175 pages. Publish the tested migration and observe production percentiles.
 - [ ] Affiliation refresh: covering both dates plus regular vacuum reduces the warm 444 ms / 223k-page selection to 13–23 ms / about 1.6k pages. Keep the dormant index and selection rules; publish the tested migration and maintenance threshold.
 - [x] Benchmark shared campaign attacker input: rejected. On a bounded 20k-killmail sample, the existing entity-first joins finished in 1.5 s warm; sharing all attackers hit the 10 s limit twice. Preserve the selective joins; investigate the remaining campaign work separately.
+- [ ] Campaign valuable kills: rank ten before joining names; measured warm sample improves from 401 ms to 182–183 ms. Publish after scope/tie/missing-name regressions.
+- [ ] Faction-war valuable kills: replace the historical winner/date bitmap intersection with a compound range; validate production index benefit and exact results, then publish migration 30.
 - [ ] Follow measured slow campaign candidate/materialization/stat queries, faction-warfare valuable kills, and solo ship matchups; record before/after plans and regression coverage before claiming improvements.
 
 Use production read-only plans for investigation and isolated databases for test
