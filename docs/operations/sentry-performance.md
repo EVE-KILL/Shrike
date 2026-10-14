@@ -186,3 +186,17 @@ Both platform manifests are present; the ARM64 image reports the exact release
 commit. Flux automatically updated all four production deployments, and all
 replicas are ready. Longer-term request percentiles still need a representative
 post-release sample; the SQL timings above are controlled spot measurements.
+
+### Price-import alert
+
+SHRIKE-F appeared on v0.2.9 before the v0.2.10 rollout. Its repeated pattern is
+seven daily bulk price imports, each using PostgreSQL COPY and one merge. The
+cron attempts today and the preceding seven days so unavailable files and gaps
+can recover. It does not issue one query per price row.
+
+The captured 7.67 s job spent 2.66 s in bulk merges; staging-table creation,
+truncation and cleanup totalled 143 ms. Changing staging setup alone would
+address a small fraction of that sample. A useful follow-up is validating
+unchanged upstream files before repeated imports, while preserving repair of
+missing rows and the existing first-import price policy. No import behavior or
+alert suppression was changed for this finding.
