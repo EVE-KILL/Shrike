@@ -130,3 +130,26 @@ The sampled daily character-intel query runs in the rollup worker with one-day
 bounds; it does not recompute those aggregates during page rendering.
 The shared campaign-participant totals experiment was inconclusive: both variants
 hit the ten-second limit. No speculative attribution or totals rewrite was kept.
+
+### Cache shutdown and the repair-job alert
+
+SHRIKE-E captured `closed pool` from a cache loader while a v0.2.7 serve pod
+was shutting down. Detached refreshes had no service lifetime. Singleflight
+callbacks could also outlive an HTTP waiter after its request was cancelled.
+
+The response cache now tracks actual loader callbacks. Its close method prevents
+new callbacks, cancels background refreshes and waits for registered callbacks.
+Serve stops ingress, drains the API cache, then closes shared storage and database
+pools. Client cancellation still leaves detached refreshes running during normal
+service operation. Shutdown cancellation receives a separate metric outcome.
+
+Deterministic concurrency tests verify refresh cancellation, cleanup ordering,
+abandoned foreground loaders and refusal to load after closure. The full uncached
+race suite also passes. Genuine closed-pool errors remain visible to Sentry.
+
+SHRIKE-D flags the repair cron's fixed fourteen daily history checks. The trace
+contains fourteen HTTP requests, fourteen array-based database checks and fourteen
+pool acquisitions. They took 1516 ms, 772 ms and 0.39 ms respectively within
+a 2720 ms job. This is one indexed check per day, not one query per killmail.
+Retain the day bounds and batched IDs. The alert is an investigated design
+tradeoff; no larger historical scan or speculative index was introduced.

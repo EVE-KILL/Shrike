@@ -146,6 +146,7 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			},
 		}
 		apiService := api.New(opts)
+		defer apiService.Close()
 		// Published posts should be visible on the Go page as soon as the
 		// existing blog API (which also reads primary) can return them.
 		blogReader := api.NewHomepageReader(primaryPool)

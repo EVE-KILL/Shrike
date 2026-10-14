@@ -1235,6 +1235,8 @@ shrike-final-marker-repro.json and /tmp/shrike-final-map-review/crowded-marker-c
 - [ ] Campaign valuable kills: rank ten before joining names; measured warm sample improves from 401 ms to 182–183 ms. Publish after scope/tie/missing-name regressions.
 - [ ] Faction-war valuable kills: the compound range reduces warm execution from 219–232 ms / 8,881 pages to 10–19 ms / 1,997 pages. The concurrent production index is valid; publish migration 30 and observe production percentiles.
 - [ ] Solo hull matchups: regular vacuum restores an index-only killmail scan with zero heap fetches; measured 9–12 ms warm. Publish the lower killmail vacuum threshold and observe production percentiles.
+- [ ] SHRIKE-E: cancel and drain cache loaders before dependency shutdown, including singleflight work abandoned by an HTTP waiter; deterministic concurrency and full race tests pass. Publish and verify rollout.
+- [x] SHRIKE-D: investigate the fixed fourteen-day repair loop. It performs one array-based indexed check per day; keep day bounds and genuine performance signals visible.
 - [ ] Follow measured slow campaign candidate/materialization/stat queries, faction-warfare valuable kills, and solo ship matchups; record before/after plans and regression coverage before claiming improvements.
 
 Use production read-only plans for investigation and isolated databases for test
