@@ -1,21 +1,21 @@
 package frontend
 
-templ accountCard(mobile bool) {
+templ accountCard(user *navbarUser, mobile bool) {
 	<div class="relative block overflow-hidden rounded-lg" data-account-card>
-		<a data-account-character-link href="#"><img data-account-picture width="256" height="192" alt="" class="w-full aspect-[4/3] object-cover object-top"/><div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div></a>
+		<a data-account-character-link href={ accountCharacterPath(user) }><img data-account-picture loading="lazy" decoding="async" src={ accountPortrait(user, 256) } width="256" height="192" alt={ user.CharacterName } class="w-full aspect-[4/3] object-cover object-top"/><div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div></a>
 		<div data-account-balance title="Available EK Wallet balance" class={ "absolute px-2.5 py-1 rounded-md border border-amber-400/20 bg-black/70 font-bold text-amber-300 tabular-nums backdrop-blur-sm pointer-events-none",templ.KV("top-3 right-3 text-fine",!mobile),templ.KV("top-4 right-4 text-xs",mobile) }>…</div>
 		<div class={ "absolute bottom-0 left-0 right-0",templ.KV("p-3",!mobile),templ.KV("p-4",mobile) }>
-			<a data-account-name data-account-character-link href="#" class={ "font-bold text-white",templ.KV("text-sm",!mobile),templ.KV("text-base",mobile) }></a>
+			<a data-account-name data-account-character-link href={ accountCharacterPath(user) } class={ "font-bold text-white",templ.KV("text-sm",!mobile),templ.KV("text-base",mobile) }>{ user.CharacterName }</a>
 			<div class="flex items-center gap-3 mt-1.5">
-				for _,kind:=range []string{"corporation","alliance"} {
-					<a hidden data-account-entity={ kind } href="#" class="flex items-center gap-1.5 z-10 pointer-events-auto"><img width="20" height="20" alt="" class="w-5 h-5 rounded hover:scale-125 transition-transform"/><span class="text-xs text-gray-300 hover:text-blue-400 transition-colors"></span></a>
+				for _,entity:=range accountEntities(user) {
+					<a data-account-entity={ entity.Kind } href={ entity.Path } class="flex items-center gap-1.5 z-10 pointer-events-auto"><img src={ entity.Image } width="20" height="20" alt={ entity.Name } loading="lazy" class="w-5 h-5 rounded hover:scale-125 transition-transform"/><span class="text-xs text-gray-300 hover:text-blue-400 transition-colors">{ entity.Name }</span></a>
 				}
 			</div>
 		</div>
 	</div>
 }
 
-templ accountLinks(mobile bool) {
+templ accountLinks(user *navbarUser, mobile bool) {
 	for _,link:=range []struct{Label,Href,Icon string;Admin,Danger bool}{{"Admin","/admin","shield-alert",true,true},{"Tracker","/tracker","scan-eye",false,false},{"Manage Trackers","/trackers","radar",false,false},{"Settings","/settings","settings",false,false},{"Wallet","/settings/wallet","wallet-cards",false,false},{"Domains","/settings/domains","globe",false,false},{"Logout","","log-out",false,true}} {
 		if link.Href=="" {
 			<button type="button" data-account-logout data-action="click->account#logout" class={ accountMenuRow(mobile, link.Danger) + " w-full" }>
@@ -23,8 +23,8 @@ templ accountLinks(mobile bool) {
 					@icon(link.Icon)
 				</span>{ link.Label }
 			</button>
-		} else {
-			<a href={ link.Href } hidden?={ link.Admin } data-account-admin?={ link.Admin } class={ accountMenuRow(mobile, link.Danger) }>
+		} else if !link.Admin || user.IsAdmin {
+			<a href={ link.Href } data-account-admin?={ link.Admin } class={ accountMenuRow(mobile, link.Danger) }>
 				<span class={ accountMenuIcon(mobile, link.Danger) }>
 					@icon(link.Icon)
 				</span>{ link.Label }
@@ -35,7 +35,7 @@ templ accountLinks(mobile bool) {
 }
 
 templ notificationBell() {
-	<details hidden data-account-authenticated data-notifications data-controller="notifications" data-action="toggle->shell#exclusiveMenu toggle->notifications#open click->notifications#follow" class="nav-dropdown go-utility-page" name="desktop-nav">
+	<details data-account-authenticated data-notifications data-controller="notifications" data-action="toggle->shell#exclusiveMenu toggle->notifications#open click->notifications#follow" class="nav-dropdown go-utility-page" name="desktop-nav">
 		<summary class="icon-button relative" aria-label="Notifications" title="Notifications">
 			@icon("bell")
 			<span hidden data-notifications-badge data-notifications-target="badge" class="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-fine font-bold tabular-nums text-white ring-2 ring-black/80"></span>
@@ -62,4 +62,49 @@ templ notificationBell() {
 			</div>
 		</div>
 	</details>
+}
+
+// Both responsive variants share one private session lookup.
+templ accountFragmentContent(user *navbarUser) {
+	<div data-account-fragment data-account-session={ settingsJSON(user) }>
+		<template data-account-content="desktop">
+			if user!=nil {
+				<a data-account-authenticated class="icon-button" href="/tracker" aria-label="Tracker" title="Tracker">@icon("scan-eye")</a>
+				@notificationBell()
+			}
+			<details class="nav-dropdown nav-account" data-account-menu name="desktop-nav" data-action="toggle->shell#exclusiveMenu toggle->account#refreshBalance">
+				<summary class="icon-button" data-account-trigger aria-label={ accountTriggerLabel(user) } title={ accountTriggerLabel(user) }>
+					if user!=nil {
+						<img data-account-avatar decoding="async" src={ accountPortrait(user, 64) } width="32" height="32" alt={ user.CharacterName }/>
+					} else {
+						<span data-account-login-icon>@icon("log-in")</span>
+					}
+				</summary>
+				<div class="dropdown-panel align-right account-panel go-utility-page">
+					@accountContent(user, false)
+				</div>
+			</details>
+		</template>
+		<template data-account-content="mobile">@accountContent(user, true)</template>
+	</div>
+}
+
+templ accountContent(user *navbarUser, mobile bool) {
+	if user==nil {
+		<div data-account-guest>@loginPanel(mobile)</div>
+	} else {
+		<div data-account-user class={ templ.KV("w-72",!mobile),templ.KV("space-y-1",mobile) }>
+			@accountCard(user, mobile)
+			<div class="mt-1 border-t border-white/[0.08] pt-1">@accountLinks(user, mobile)</div>
+		</div>
+	}
+}
+
+templ accountPlaceholder(mobile bool) {
+	<button type="button" disabled data-account-retry data-action="click->account#retry" class={ "account-placeholder",templ.KV("icon-button",!mobile),templ.KV("account-placeholder-mobile",mobile) } aria-label="Loading account" title="Loading account">
+		<span class="account-loading-icon" aria-hidden="true">@icon("user-round")</span>
+		<span class="account-loading-label">Loading account…</span>
+	</button>
+	<noscript><style>.account-placeholder{display:none!important}</style>
+<a href="/auth/eve/start" class="icon-button" aria-label="Login with EVE Online">@icon("log-in")</a></noscript>
 }

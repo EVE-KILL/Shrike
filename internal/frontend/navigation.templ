@@ -3,7 +3,7 @@ package frontend
 import "github.com/eve-kill/shrike/internal/api"
 
 templ navbar(config *api.SiteDomainConfiguration) {
-	<nav data-shell-target="navbar" data-controller="account" data-action="click->account#closeMenus" class="navbar" aria-label="Main navigation">
+	<nav data-shell-target="navbar" data-controller="account" data-action="click->account#closeMenus pageshow@window->account#resume" class="navbar" aria-label="Main navigation">
 		<div class="nav-backdrop"></div>
 		<div class="nav-inner">
 			<div class="nav-left">
@@ -72,29 +72,9 @@ templ navbar(config *api.SiteDomainConfiguration) {
 						@navLinks(information)
 					</div>
 				</details>
-				<a hidden data-account-authenticated class="icon-button" href="/tracker" aria-label="Tracker" title="Tracker">
-					@icon("scan-eye")
-				</a>
-				@notificationBell()
-				<details class="nav-dropdown nav-account" data-account-menu name="desktop-nav" data-action="toggle->shell#exclusiveMenu toggle->account#refreshBalance">
-					<summary class="icon-button" data-account-trigger aria-label="Login with EVE Online" title="Login with EVE Online">
-						<span data-account-login-icon>
-							@icon("log-in")
-						</span>
-						<img hidden data-account-avatar width="32" height="32" alt=""/>
-					</summary>
-					<div class="dropdown-panel align-right account-panel go-utility-page">
-						<div data-account-guest>
-							@loginPanel(false)
-						</div>
-						<div hidden data-account-user class="w-72">
-							@accountCard(false)
-							<div class="mt-1 border-t border-white/[0.08] pt-1">
-								@accountLinks(false)
-							</div>
-						</div>
-					</div>
-				</details>
+				<div class="nav-account-controls" data-account-slot="desktop" data-loading-silent aria-busy="true">
+					@accountPlaceholder(false)
+				</div>
 			</div>
 			<details class="mobile-navigation" id="mobile-navigation" data-shell-target="mobile" data-action="toggle->shell#toggleMobile toggle->account#refreshBalance">
 				<summary class="icon-button" aria-label="Menu">
@@ -170,14 +150,8 @@ templ navbar(config *api.SiteDomainConfiguration) {
 						</section>
 						<section class="mobile-account">
 							<h3 class="text-lg font-bold text-white mb-3">Account</h3>
-							<div class="space-y-1">
-								<div data-account-guest>
-									@loginPanel(true)
-								</div>
-								<div hidden data-account-user class="space-y-1">
-									@accountCard(true)
-									@accountLinks(true)
-								</div>
+							<div class="space-y-1" data-account-slot="mobile" data-loading-silent aria-busy="true">
+								@accountPlaceholder(true)
 							</div>
 						</section>
 						<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-blue-500/[0.06]" id="mobile-background" data-action="click->shell#shuffle">

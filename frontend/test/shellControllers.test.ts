@@ -5,7 +5,7 @@ import {AccountController} from '../src/browser/account'
 import {registerController} from '../src/browser/controllers/application'
 import {trackerState,setTrackerUser} from '../src/browser/tracker-state'
 import {reconcileNotificationRows} from '../src/browser/notifications'
-import type {BrowserUser} from '../src/browser/browser-request'
+import {readBrowserSession,resetBrowserSession,type BrowserUser} from '../src/browser/browser-request'
 import type {AccountNotificationRepliesResponses} from '../shared/api/types.gen'
 
 const owner:BrowserUser={characterId:4242,characterName:'Fixture Owner',isAdmin:true,corporationId:10,corporationName:'Fixture Corp',allianceId:20,allianceName:'Fixture Alliance',lastSeenNotificationId:0}
@@ -14,32 +14,37 @@ const settle=()=>new Promise<void>(resolve=>setTimeout(resolve,0))
 const errors=vi.fn()
 let fetchMock:ReturnType<typeof vi.fn<typeof fetch>>
 function loginForm(){return '<form class="login-form" data-account-target="loginForm" data-action="input->account#preferences change->account#preferences"><input type="checkbox" name="charKm"><input type="checkbox" name="corpKm"><input type="hidden" name="delay"><input type="range" data-login-delay><span data-login-delay-label></span><button></button><p class="login-error"></p></form>'}
+function accountFragment(user:BrowserUser|null=owner){
+  const root=document.createElement('div');root.setAttribute('data-account-fragment','');root.dataset.accountSession=JSON.stringify(user)
+  const desktop=document.createElement('template');desktop.dataset.accountContent='desktop'
+  desktop.innerHTML=user?`<a data-account-authenticated href="/tracker">Tracker</a><details data-account-menu><summary data-account-trigger aria-label="Account"><img data-account-avatar src="https://images.evetech.net/characters/${user.characterId}/portrait?size=64" width="32" height="32" alt="${user.characterName}"></summary><div data-account-user><span data-account-name>${user.characterName}</span><span data-account-balance></span><button data-account-logout data-action="click->account#logout">Logout</button><p hidden data-account-error></p></div></details>
+    <details data-notifications data-controller="notifications" data-action="toggle->notifications#open click->notifications#follow"><summary>Notifications</summary>
+      <span data-notifications-target="badge"></span><span data-notifications-target="count"></span><button data-notifications-target="read" data-action="click->notifications#markRead">Mark read</button>
+      <div data-notifications-target="list"><p>Empty</p></div><div data-notifications-target="footer"></div></details>`:`<details><summary data-account-trigger>Login</summary><div data-account-guest>${loginForm()}</div></details>`
+  const mobile=document.createElement('template');mobile.dataset.accountContent='mobile'
+  mobile.innerHTML=user?`<div data-account-user><span data-account-name>${user.characterName}</span><span data-account-balance></span></div>`:`<div data-account-guest>${loginForm()}</div>`
+  root.append(desktop,mobile);return root.outerHTML
+}
+function placeholder(slot:string){return `<div data-account-slot="${slot}" data-loading-silent aria-busy="true"><button disabled data-account-retry data-action="click->account#retry" aria-label="Loading account"><span class="account-loading-label">Loading account…</span></button></div>`}
 function mount(){
   document.body.setAttribute('data-controller','shell')
   document.body.setAttribute('data-action','keydown@document->shell#keyboard click@document->shell#outside click@document->shell#rememberKillNavigation:capture')
-  document.body.innerHTML=`<nav class="navbar" data-shell-target="navbar" data-controller="account" data-action="click->account#closeMenus">
+  document.body.innerHTML=`<nav class="navbar" data-shell-target="navbar" data-controller="account" data-action="click->account#closeMenus pageshow@window->account#resume">
     <a class="home-link" href="/">Home</a><button class="search-trigger" data-action="click->shell#openSearch">Search</button>
     <details class="nav-dropdown"><summary>Menu</summary></details>
-    <details data-shell-target="mobile" data-action="toggle->shell#toggleMobile toggle->account#refreshBalance"><summary>Mobile</summary><button data-close-mobile data-action="click->shell#closeMobile">Close</button>${loginForm()}</details>
-    ${loginForm()}<span data-account-authenticated hidden></span><span data-account-guest></span><span data-account-login-icon></span>
-    <button data-account-trigger></button><img data-account-avatar hidden><span data-account-name></span><a data-account-character-link></a>
-    <img data-account-picture><span data-account-admin hidden></span><span data-account-balance></span>
-    <a data-account-entity="corporation"><span></span><img></a><a data-account-entity="alliance"><span></span><img></a>
-    <details data-notifications data-controller="notifications" data-action="toggle->notifications#open click->notifications#follow"><summary>Notifications</summary>
-      <span data-notifications-target="badge"></span><span data-notifications-target="count"></span><button data-notifications-target="read" data-action="click->notifications#markRead">Mark read</button>
-      <div data-notifications-target="list"><p>Empty</p></div><div data-notifications-target="footer"></div></details>
-    <button data-background="bg1" data-action="click->shell#selectBackground"></button></nav>
+    <details data-shell-target="mobile" data-action="toggle->shell#toggleMobile toggle->account#refreshBalance"><summary>Mobile</summary><button data-close-mobile data-action="click->shell#closeMobile">Close</button>${placeholder('mobile')}</details>
+    ${placeholder('desktop')}<button data-background="bg1" data-action="click->shell#selectBackground"></button></nav>
     <main class="content" data-shell-target="content"><div class="kill-list"><div class="kill-row" data-kill-id="101"><a href="/kill/101"><span>Pilot</span></a></div><div class="kill-row" data-kill-id="100"></div></div></main>
     <button data-shell-target="view" data-action="click->shell#toggleBackgroundView"><svg><use></use></svg></button>
     <dialog data-shell-target="dialog" data-action="close->shell#cancelSearch"><input data-shell-target="searchInput" data-action="input->shell#search keydown->shell#searchKeys"><div data-shell-target="searchResults" data-action="keydown->shell#resultKeys"></div></dialog>`
 }
 beforeEach(async()=>{
-  await setTrackerUser(null);localStorage.clear();sessionStorage.clear();errors.mockClear()
+  resetBrowserSession();await setTrackerUser(null);localStorage.clear();sessionStorage.clear();errors.mockClear()
   registerController('shell',ShellController).handleError=errors
   registerController('account',AccountController)
   fetchMock=vi.fn<typeof fetch>(async input=>{
     const path=String(input)
-    if(path==='/auth/me')return Response.json({user:owner})
+    if(path==='/_fragments/account')return new Response(accountFragment())
     if(path.startsWith('/api/me/trackers'))return Response.json({trackers:[],limit:50})
     if(path.startsWith('/api/me/tracker-notifications'))return Response.json({notifications:[],unreadCount:0})
     if(path.startsWith('/api/notifications/replies'))return Response.json({replies:[reply],highestId:9})
@@ -53,19 +58,70 @@ afterEach(async()=>{
   await settle();await setTrackerUser(null)
   document.documentElement.classList.remove('background-view','mobile-menu-open')
   expect(errors.mock.calls).toEqual([])
-  vi.unstubAllGlobals()
+  resetBrowserSession();vi.unstubAllGlobals()
 })
 
-test('shared account/notification controllers use the typed session and retain settings in both login forms',async()=>{
+test('shared account/notification controllers consume Go identity and share one private lookup',async()=>{
   mount();await settle();await settle()
-  expect(fetchMock.mock.calls.filter(([path])=>path==='/auth/me')).toHaveLength(1)
-  expect(document.querySelector('[data-account-name]')!.textContent).toBe('Fixture Owner')
+  expect(fetchMock.mock.calls.filter(([path])=>path==='/_fragments/account')).toHaveLength(1)
+  expect(fetchMock.mock.calls.filter(([path])=>path==='/auth/me')).toHaveLength(0)
+  expect([...document.querySelectorAll('[data-account-name]')].map(node=>node.textContent)).toEqual(['Fixture Owner','Fixture Owner'])
   expect(document.querySelector<HTMLImageElement>('[data-account-avatar]')!.src).toContain('/characters/4242/portrait')
   expect(document.querySelector('[data-account-balance]')!.textContent).toBe('25k ISK')
   expect(document.querySelector<HTMLAnchorElement>('[data-notification-row="reply:9"]')!.getAttribute('href')).toBe('/blog/test-post#comment-9')
+  expect(document.querySelector('[data-account-guest]')).toBeNull()
+})
+
+test('anonymous fragment retains preferences in desktop and mobile login forms',async()=>{
+  fetchMock.mockResolvedValueOnce(new Response(accountFragment(null)))
+  mount();await settle();await settle()
   const slider=document.querySelector<HTMLInputElement>('[data-login-delay]')!;slider.value='3';slider.dispatchEvent(new Event('input',{bubbles:true}))
   expect([...document.querySelectorAll<HTMLInputElement>('[name=delay]')].map(input=>input.value)).toEqual(['6','6'])
   expect([...document.querySelectorAll('[data-login-delay-label]')].map(label=>label.textContent)).toEqual(['6 hours','6 hours'])
+  expect(document.querySelector('[data-account-avatar]')).toBeNull()
+  expect(fetchMock.mock.calls.filter(([path])=>String(path).includes('/wallet/'))).toHaveLength(0)
+})
+
+test('delayed private rendering preserves search, menu and focus without flashing guest UI',async()=>{
+  let complete:(response:Response)=>void=()=>{}
+  fetchMock.mockImplementationOnce(()=>new Promise(resolve=>{complete=resolve}))
+  mount();await settle()
+  const input=document.querySelector<HTMLInputElement>('[data-shell-target=searchInput]')!,menu=document.querySelector<HTMLDetailsElement>('.nav-dropdown')!
+  input.value='unsent search';input.focus();menu.open=true
+  const shared=readBrowserSession()
+  expect(document.querySelector('[data-account-guest]')).toBeNull()
+  expect(document.querySelector('[data-account-avatar]')).toBeNull()
+  complete(new Response(accountFragment()));await shared;await settle();await settle()
+  expect(document.querySelector('[data-shell-target=searchInput]')).toBe(input)
+  expect(input.value).toBe('unsent search');expect(document.activeElement).toBe(input);expect(menu.open).toBe(true)
+  expect(fetchMock.mock.calls.filter(([path])=>path==='/_fragments/account')).toHaveLength(1)
+  expect(document.querySelector('[data-account-slot][aria-busy]')).toBeNull()
+})
+
+test('failure stays neutral and offers a retry rather than inventing a guest session',async()=>{
+  fetchMock.mockResolvedValueOnce(new Response('Service unavailable',{status:503}))
+  mount();await settle();await settle()
+  expect(document.querySelector('[data-account-guest]')).toBeNull()
+  const retry=document.querySelector<HTMLButtonElement>('[data-account-slot=desktop] [data-account-retry]')!
+  expect(retry.disabled).toBe(false);expect(retry.getAttribute('aria-label')).toBe('Retry loading account')
+  retry.focus();retry.click();await settle();await settle()
+  expect(document.querySelector('[data-account-name]')!.textContent).toBe('Fixture Owner')
+  expect(document.activeElement).toBe(document.querySelector('[data-account-trigger]'))
+  expect(fetchMock.mock.calls.filter(([path])=>path==='/_fragments/account')).toHaveLength(2)
+})
+
+test('BFCache restoration refreshes an expired session and removes private menu/tracker state',async()=>{
+  mount();await settle();await settle()
+  expect(document.querySelector('[data-account-avatar]')).not.toBeNull()
+  fetchMock.mockResolvedValueOnce(new Response(accountFragment(null)))
+  const event=new Event('pageshow');Object.defineProperty(event,'persisted',{value:true});window.dispatchEvent(event)
+  await settle();await settle()
+  expect(document.querySelector('[data-account-avatar]')).toBeNull()
+  expect(document.querySelector('[data-notifications]')).toBeNull()
+  expect(document.querySelectorAll('[data-account-guest]')).toHaveLength(2)
+  expect(trackerState.user).toBeNull()
+  expect(await readBrowserSession()).toBeNull()
+  expect(fetchMock.mock.calls.filter(([path])=>path==='/_fragments/account')).toHaveLength(2)
 })
 
 test('shell shortcuts, inert background/mobile state and reconnection keep one event binding',async()=>{

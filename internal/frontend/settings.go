@@ -143,23 +143,30 @@ func settingsSelection(id string) (string, string) {
 // Reuse the account APIs' authoritative authorization, validation, and reads.
 // No private account data enters a public/shared page cache.
 func (s *site) accountRead(r *http.Request, path string, out any) error {
+	_, err := s.accountReadHeaders(r, path, out)
+	return err
+}
+
+// Fragment callers also need authentication lifecycle headers (expired-cookie
+// clearing, for example) from the same authoritative account handler.
+func (s *site) accountReadHeaders(r *http.Request, path string, out any) (http.Header, error) {
 	if s.options.AccountAPI == nil {
-		return fmt.Errorf("account API unavailable")
+		return nil, fmt.Errorf("account API unavailable")
 	}
 	request := r.Clone(r.Context())
 	address := *r.URL
 	endpoint, err := url.ParseRequestURI(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	address.Path, address.RawPath, address.RawQuery = endpoint.Path, "", endpoint.RawQuery
 	request.URL, request.Method, request.RequestURI, request.Body, request.ContentLength = &address, http.MethodGet, "", nil, 0
 	response := httptest.NewRecorder()
 	s.options.AccountAPI.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
-		return accountPageError{response.Code}
+		return response.Header(), accountPageError{response.Code}
 	}
-	return json.Unmarshal(response.Body.Bytes(), out)
+	return response.Header(), json.Unmarshal(response.Body.Bytes(), out)
 }
 
 type accountPageError struct{ Status int }
