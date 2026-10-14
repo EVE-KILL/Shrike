@@ -39,6 +39,9 @@ type Deps struct {
 	Pool  *pgxpool.Pool
 	Redis *redis.Client
 
+	// DataDir is the configured writable state directory for import caches.
+	DataDir string
+
 	ESI *esi.Client
 	SSO *sso.Client
 

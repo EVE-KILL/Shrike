@@ -3,7 +3,6 @@ package workers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/entities"
@@ -455,7 +454,7 @@ func (d *Deps) cronSDEUpdate(ctx context.Context) (string, error) {
 	}
 
 	result, err := sde.ImportBuild(ctx, d.Pool, manifest, sde.ImportOptions{
-		CacheDir:  filepath.Join(".data", "sde"),
+		CacheDir:  sde.CacheDir(d.DataDir),
 		UserAgent: d.UserAgent,
 		Progress: func(message string) {
 			d.Log.Info().

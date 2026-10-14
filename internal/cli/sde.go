@@ -29,15 +29,19 @@ var (
 	flagDogmaOutput     string
 )
 
-// cacheDir resolves where archives are kept. Defaults under .data/ so it shares
-// the gitignored directory the docker stack uses and survives between runs — the
+// cacheDir resolves where archives are kept. Defaults under DATA_DIR so the
+// production container's non-root user can create the cache — the
 // archive is ~99 MB and immutable per build, so re-downloading it every run is
 // pure waste.
 func cacheDir() string {
 	if flagSDECacheDir != "" {
 		return flagSDECacheDir
 	}
-	return filepath.Join(".data", "sde")
+	dataDir := ""
+	if cfg != nil {
+		dataDir = cfg.DataDir
+	}
+	return sde.CacheDir(dataDir)
 }
 
 func userAgent() string {
@@ -108,7 +112,7 @@ var sdeImportCmd = &cobra.Command{
 	Short: "Import the Static Data Export into Postgres",
 	Long: `Downloads the published SDE archive and loads it into Postgres.
 
-The archive is cached per build under .data/sde, so re-running is cheap. Import
+The archive is cached per build under DATA_DIR/sde, so re-running is cheap. Import
 is idempotent: each table is staged with COPY and merged with ON CONFLICT DO
 UPDATE, so a partial or repeated run converges rather than duplicating.
 
@@ -499,12 +503,12 @@ func init() {
 		"Re-import even when the published build is already loaded")
 	for _, c := range []*cobra.Command{sdeImportCmd, sdeStatusCmd} {
 		c.Flags().StringVar(&flagSDECacheDir, "cache-dir", "",
-			"Where to keep downloaded archives (default .data/sde)")
+			"Where to keep downloaded archives (default DATA_DIR/sde)")
 	}
 	sdeBuildDogmaCmd.Flags().StringVar(&flagDogmaOutput, "output",
 		filepath.Join("frontend", "dogma", "dist", "upstream", "data", "dist"),
 		"Destination directory for generated FlatBuffer files")
 	sdeBuildDogmaCmd.Flags().StringVar(&flagSDECacheDir, "cache-dir", "",
-		"Where to keep downloaded archives (default .data/sde)")
+		"Where to keep downloaded archives (default DATA_DIR/sde)")
 	sdeCmd.AddCommand(sdeStatusCmd, sdeImportCmd, sdeVerifyCmd, sdeBuildDogmaCmd)
 }
