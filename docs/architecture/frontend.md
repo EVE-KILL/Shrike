@@ -13,6 +13,7 @@ The Nuxt application has been retired. Browser source and build tools live in `f
 | `metadata.go`, `metadata.templ` | Titles, descriptions, canonical URLs, social cards, structured data |
 | `layout.templ` | Shared document and page layout |
 | `navigation.templ`, `footer.templ` | Site navigation, dialogs, footer |
+| `account_fragment.go`, `account_navigation.templ` | Private desktop/mobile account fragment and safe session bootstrap |
 | `pages.templ` | Current page bodies and common page header |
 | `home_components.templ`, `kills_page.templ` | Reusable killboard widgets and category page layout |
 | `home_data.go`, `kills_page.go` | Typed page loading and category titles |
@@ -79,6 +80,28 @@ connected-node guards around asynchronous imports and replacements. Entity
 members, corporation sorting, conflict sorting/paging, top periods and killlist
 controls use this convention.
 Extract shared business logic from API handlers when a page needs it. Keep API endpoints until their remaining consumers have been checked.
+
+The public navbar contains fixed-width account placeholders, never a session
+identity or a guest login menu. `GET /_fragments/account` renders both desktop and
+mobile account controls with Go/templ. It reuses `/auth/me` in-process so session
+validation, activity updates and expired-cookie clearing keep the existing
+authentication behavior. Only display identity, notification cursor and browser
+preferences enter its HTML; tokens and owner hashes are excluded.
+
+The fragment always returns `private, no-store`, including errors. Keep the
+Cloudflare `/_fragments/` cache bypass for the apex and custom board hosts; do not
+rely on `Vary: Cookie` to separate personalized HTML at the edge. Cacheable page
+loaders must continue to return anonymous documents. The account fragment does
+not change any page's existing cache eligibility or authorization.
+
+`readBrowserSession` shares the private fragment request with page widgets and
+notifications. The account controller replaces only the two reserved account
+slots, retaining unrelated navigation, search, focus and menu state. Wallet
+balances, notifications, tracker transport, preferences and logout remain browser
+behaviors. A ten-second timeout and explicit retry keep failed session reads from
+masquerading as a logged-out account. BFCache restoration refreshes identity and
+clears the previous account menu while it reloads. Without JavaScript, a normal
+EVE login link remains available.
 
 `/wars` sends the directory and a fixed-size faction-war placeholder in its document. Its independent `/_fragments/wars/faction` request uses the existing cached aggregate reader; failures offer Retry without replacing the directory. Custom boards omit global faction data. Keep unrelated slow widgets outside the document loader when their content can arrive later.
 
@@ -231,7 +254,7 @@ Campaign creator ports `web/app/pages/campaigncreator.vue` and reuses the existi
 
 `searchPicker` and `initializeSearchPickers` port the source entity/location autocomplete. Parents own selection caps and duplicate rules; the picker debounces searches, cancels stale requests, and emits a typed `search-pick` event. Use `updateSearchPicker` to change selection or disabled state and `closeSearchPickers` before removing its subtree. Suggestions may extend beyond participant cards, so avoid clipping them with `overflow: hidden`.
 
-Authenticated SSR resolves the `evelogin` cookie through `SessionPageReader.BrowserSession`. It does not create or touch a session and never treats the display-only `ek_auth` cookie as authorization. Campaign creation HTML and `/_fragments/campaign/{id}/edit` remain private/no-store. The editor fragment checks the real session and campaign ownership before rendering. Owner changes retain the existing API validation, wallet transactions, funded-rule locks, and idempotency tokens. Background recomputation refreshes defer while an editor or prize dialog is open to preserve its draft, including when it opens during an in-flight poll. Campaign owner/prize widgets share one `/auth/me` request through `readBrowserSession`.
+Authenticated SSR resolves the `evelogin` cookie through `SessionPageReader.BrowserSession`. It does not create or touch a session and never treats the display-only `ek_auth` cookie as authorization. Campaign creation HTML and `/_fragments/campaign/{id}/edit` remain private/no-store. The editor fragment checks the real session and campaign ownership before rendering. Owner changes retain the existing API validation, wallet transactions, funded-rule locks, and idempotency tokens. Background recomputation refreshes defer while an editor or prize dialog is open to preserve its draft, including when it opens during an in-flight poll. Campaign owner/prize widgets share the navbar's private session request through `readBrowserSession`.
 
 Campaign killfeed fragments keep victim character/corporation/alliance IDs on the shared row markup. `killlist-sides.js` ports Nuxt's precedence and palette/fallback tint rules; the campaign supplies the small membership payload once. New cursor or side-filter rows receive their colors locally, without reloading campaign data from the database.
 

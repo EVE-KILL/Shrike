@@ -1,10 +1,11 @@
 import {Controller} from '@hotwired/stimulus'
-import {readBrowserSession,requestJSON,type BrowserUser} from './browser-request'
+import {readAccountFragment,readBrowserSession,resetBrowserSession,requestJSON,type BrowserUser} from './browser-request'
 import {formatWalletBalance,LOGIN_PREFS_DEFAULTS,ALLOWED_DELAYS} from './account-data'
 import {setTrackerUser} from './tracker-state'
 import './notifications'
 import {registerController} from './controllers/application'
 import {eventElement,formInput,requiredElement} from './shared/dom'
+import {replaceFragmentChildren} from './fragment'
 import {isRecord,readCookieJSON,errorMessage} from './shared/json'
 
 export class AccountController extends Controller<HTMLElement> {
@@ -17,12 +18,13 @@ export class AccountController extends Controller<HTMLElement> {
   private sequence=0
   private generation=0
   private request:AbortController|undefined
+  private placeholders=new Map<HTMLElement,Node[]>()
 
   connect(){
+    for(const slot of this.all('[data-account-slot]'))if(!this.placeholders.has(slot))this.placeholders.set(slot,Array.from(slot.childNodes,node=>node.cloneNode(true)))
     const raw=readCookieJSON('ek_login_prefs'),saved=isRecord(raw)?raw:{}
     this.prefs={...LOGIN_PREFS_DEFAULTS,charKm:typeof saved.charKm==='boolean'?saved.charKm:true,
       corpKm:typeof saved.corpKm==='boolean'?saved.corpKm:true,delay:typeof saved.delay==='number'?saved.delay:0}
-    this.renderLogin()
     void this.loadSession(++this.generation)
   }
   disconnect(){++this.generation;++this.sequence;this.request?.abort();this.user=null;void setTrackerUser(null)}
@@ -59,29 +61,42 @@ export class AccountController extends Controller<HTMLElement> {
     finally{if(sequence===this.sequence){this.walletLoading=false;this.renderBalance()}}
   }
   private async loadSession(generation:number){
-    let user:BrowserUser|null
-    try{user=await readBrowserSession()}catch{user=null}
-    if(generation!==this.generation||!this.element.isConnected)return
-    this.user=user
-    for(const item of this.all('[data-account-authenticated],[data-account-user]'))item.hidden=!user
-    for(const item of this.all('[data-account-guest],[data-account-login-icon]'))item.hidden=Boolean(user)
-    const trigger=requiredElement<HTMLElement>(this.element,'[data-account-trigger]')
-    trigger.setAttribute('aria-label',user?'Account':'Login with EVE Online');trigger.title=user?'Account':'Login with EVE Online'
-    const avatar=requiredElement<HTMLImageElement>(this.element,'[data-account-avatar]');avatar.hidden=!user
-    if(!user){void setTrackerUser(null);return}
-    const id=Number(user.characterId);avatar.src=`https://images.evetech.net/characters/${id}/portrait?size=64`;avatar.alt=user.characterName
-    for(const link of this.all<HTMLAnchorElement>('[data-account-character-link]'))link.href='/character/'+id
-    for(const name of this.all('[data-account-name]'))name.textContent=user.characterName
-    for(const picture of this.all<HTMLImageElement>('[data-account-picture]')){picture.src=`https://images.evetech.net/characters/${id}/portrait?size=256`;picture.alt=user.characterName}
-    for(const item of this.all('[data-account-admin]'))item.hidden=!user.isAdmin
-    for(const link of this.all<HTMLAnchorElement>('[data-account-entity]')){
-      const kind=link.dataset.accountEntity
-      if(kind!=='corporation'&&kind!=='alliance')continue
-      const entityId=Number(kind==='corporation'?user.corporationId:user.allianceId),name=(kind==='corporation'?user.corporationName:user.allianceName)||''
-      link.hidden=!entityId;if(!entityId)continue
-      link.href='/'+kind+'/'+entityId;requiredElement<HTMLElement>(link,'span').textContent=name
-      const image=requiredElement<HTMLImageElement>(link,'img');image.src=`https://images.evetech.net/${kind==='corporation'?'corporations':'alliances'}/${entityId}/logo?size=32`;image.alt=name
+    const focused=document.activeElement
+    const focusedSlot=focused instanceof HTMLElement?focused.closest<HTMLElement>('[data-account-slot]'):null
+    for(const slot of this.all('[data-account-slot]')){
+      slot.setAttribute('aria-busy','true')
+      const button=slot.querySelector<HTMLButtonElement>('[data-account-retry]')
+      if(button){button.disabled=true;button.title='Loading account';button.setAttribute('aria-label','Loading account')}
     }
+    let user:BrowserUser|null
+    try{
+      const [fragment,session]=await Promise.all([readAccountFragment(),readBrowserSession()])
+      if(generation!==this.generation||!this.element.isConnected)return
+      for(const slot of this.all('[data-account-slot]')){
+        const content=slot.dataset.accountSlot==='desktop'?fragment.desktop:fragment.mobile
+        replaceFragmentChildren(slot,document.importNode(content,true))
+        slot.removeAttribute('aria-busy')
+      }
+      if(focusedSlot&&(document.activeElement===focused||document.activeElement===document.body)){
+        const next=focusedSlot.querySelector<HTMLElement>('[data-account-trigger]')??focusedSlot.querySelector<HTMLElement>('button[type=submit],a')
+        next?.focus({preventScroll:true})
+      }
+      user=session
+    }catch{
+      if(generation!==this.generation||!this.element.isConnected)return
+      for(const slot of this.all('[data-account-slot]')){
+        slot.removeAttribute('aria-busy')
+        const button=slot.querySelector<HTMLButtonElement>('[data-account-retry]')
+        if(button){
+          button.disabled=false;button.title='Account unavailable. Click to retry.';button.setAttribute('aria-label','Retry loading account')
+          const label=button.querySelector('.account-loading-label');if(label)label.textContent='Account unavailable. Retry'
+        }
+      }
+      return
+    }
+    this.user=user
+    this.renderLogin()
+    if(!user){void setTrackerUser(null);return}
     if(!readCookieJSON('ek_theme')&&Object.keys(user.settings?.theme||{}).length){
       const {applySettingsTheme,minimalTheme}=await import('./settings-theme')
       if(generation!==this.generation||!this.element.isConnected)return
@@ -90,11 +105,20 @@ export class AccountController extends Controller<HTMLElement> {
     }
     void setTrackerUser(user);void this.refreshBalance()
   }
+  retry(){void this.loadSession(++this.generation)}
+  resume(event:PageTransitionEvent){
+    if(!event.persisted)return
+    ++this.sequence;this.request?.abort();this.user=null;this.wallet=null;this.walletLoading=false
+    void setTrackerUser(null)
+    resetBrowserSession()
+    for(const [slot,nodes] of this.placeholders)replaceFragmentChildren(slot,...nodes.map(node=>node.cloneNode(true)))
+    void this.loadSession(++this.generation)
+  }
   async logout(event:MouseEvent){
     if(!(event.currentTarget instanceof HTMLButtonElement))return
     const button=event.currentTarget,error=button.parentElement?.querySelector<HTMLElement>('[data-account-error]')
     button.disabled=true;if(error)error.hidden=true
-    try{await requestJSON('/auth/logout',{method:'POST'});void setTrackerUser(null);location.assign('/')}
+    try{await requestJSON('/auth/logout',{method:'POST'});resetBrowserSession();void setTrackerUser(null);location.assign('/')}
     catch(failure){if(button.isConnected){if(error){error.textContent=errorMessage(failure,'Logout failed');error.hidden=false}button.disabled=false}}
   }
   closeMenus(event:MouseEvent){if(eventElement(event.target)?.closest('a'))for(const menu of this.all<HTMLDetailsElement>('details[open]'))menu.open=false}

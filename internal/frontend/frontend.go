@@ -248,6 +248,7 @@ func New(options Options) http.Handler {
 		}, Content: fitEditorPage()},
 	}}
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /_fragments/account", s.accountFragment)
 	mux.HandleFunc("GET /assets/", serveAsset)
 	mux.HandleFunc("GET /robots.txt", s.robots)
 	mux.HandleFunc("GET /sitemap.xml", s.sitemap)
