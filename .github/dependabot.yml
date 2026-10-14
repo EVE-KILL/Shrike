@@ -19,11 +19,6 @@ updates:
         update-types:
           - minor
           - patch
-    ignore:
-      # Caddy 2.11.4 does not compile against cel-go 0.30, which changed
-      # interpreter.NewCall to take []InterpretableV2. This has to move with
-      # Caddy. See the matching note in go.mod.
-      - dependency-name: github.com/google/cel-go
 
   # Browser tooling and API generation only; engine/WASM pins move together.
   - package-ecosystem: npm

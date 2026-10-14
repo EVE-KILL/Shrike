@@ -1175,8 +1175,8 @@
     },
     {
       "path": "settings.js",
-      "bytes": 20792,
-      "sha256": "dfa1674feb8ab9513ff3ca2ecef5262a60e7c196e6b0b950bb0d202208b6a67c"
+      "bytes": 20794,
+      "sha256": "1f64c5113ae8a07b68c6eaf02e02862d714776fcc56b3ee84823fe314d4ef39d"
     },
     {
       "path": "site.js",

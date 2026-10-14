@@ -13,7 +13,7 @@ function q<T extends Element = HTMLElement>(root:ParentNode,selector:string):T {
 function toggle(menu:HTMLElement,state:'open'|'closed') {const event = new Event('toggle');Object.defineProperty(event,'newState',{value:state});menu.dispatchEvent(event)}
 async function mount(name = 'page') {
  const doc = new DOMParser().parseFromString(fixture(name),'text/html'),root = q<HTMLElement>(doc,'[data-fits-search]')
- for(const menu of root.querySelectorAll<HTMLElement>('[popover]')) {let open = false;const original = menu.matches.bind(menu);menu.matches = selector=>selector === ':popover-open' ? open : original(selector);menu.showPopover = ()=>{open = true;toggle(menu,'open')};menu.hidePopover = ()=>{open = false;toggle(menu,'closed')}}
+ for(const menu of root.querySelectorAll<HTMLElement>('[popover]')) {let open = false;const original = menu.matches.bind(menu);vi.spyOn(menu,'matches').mockImplementation((selector:string)=>selector === ':popover-open' ? open : original(selector));menu.showPopover = ()=>{open = true;toggle(menu,'open')};menu.hidePopover = ()=>{open = false;toggle(menu,'closed')}}
  document.body.append(root);await settle();await settle();return root
 }
 function pendingRequests() {const pending:Array<{path:string;signal:AbortSignal;complete:(response:Response)=>void}> = [];fetchMock.mockImplementation((path,options)=>new Promise(resolve=>pending.push({path:String(path),signal:options!.signal!,complete:resolve})));return pending}
