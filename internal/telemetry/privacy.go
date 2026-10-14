@@ -125,6 +125,12 @@ func (r *redactor) event(event *sentry.Event, _ *sentry.EventHint) *sentry.Event
 	event.User = sentry.User{}
 	if req := event.Request; req != nil {
 		req.URL = cleanURL(req.URL)
+		if _, pattern, ok := strings.Cut(event.Transaction, " "); ok && strings.HasPrefix(pattern, "/") {
+			if requestURL, err := url.Parse(req.URL); err == nil {
+				requestURL.Path, requestURL.RawPath = pattern, ""
+				req.URL = requestURL.String()
+			}
+		}
 		req.Headers = nil
 		req.Cookies = ""
 		req.Data = ""

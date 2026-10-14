@@ -194,17 +194,15 @@ func (s *Server) serveSocket(w http.ResponseWriter, r *http.Request, endpoint *E
 func (s *Server) register(c *client) {
 	s.mu.Lock()
 	s.clients[c] = struct{}{}
-	count := len(s.clients)
+	telemetry.Gauge(c.ctx, "websocket.connections", float64(len(s.clients)))
 	s.mu.Unlock()
-	telemetry.Gauge(c.ctx, "websocket.connections", float64(count))
 }
 
 func (s *Server) unregister(c *client) {
 	s.mu.Lock()
 	delete(s.clients, c)
-	count := len(s.clients)
+	telemetry.Gauge(c.ctx, "websocket.connections", float64(len(s.clients)))
 	s.mu.Unlock()
-	telemetry.Gauge(c.ctx, "websocket.connections", float64(count))
 	c.cancel()
 }
 
@@ -307,13 +305,16 @@ func (s *Server) broadcast(endpoint *Endpoint, routingKeys []string, payload []b
 	}
 	s.mu.RUnlock()
 
+	var delivered int64
 	for _, c := range clients {
 		if !c.enqueue(payload) {
 			telemetry.Count(s.ctx, "websocket.backpressure", 1, telemetry.Attributes("endpoint", endpoint.Path))
 			go c.close(coderws.StatusTryAgainLater, "client is too slow")
+		} else {
+			delivered++
 		}
 	}
-	telemetry.Count(s.ctx, "websocket.deliveries", int64(len(clients)), telemetry.Attributes("endpoint", endpoint.Path))
+	telemetry.Count(s.ctx, "websocket.deliveries", delivered, telemetry.Attributes("endpoint", endpoint.Path))
 }
 
 func (s *Server) serveDiscovery(w http.ResponseWriter, r *http.Request) {

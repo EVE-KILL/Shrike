@@ -112,7 +112,8 @@ func (w *Worker) Timeout(*river.Job[queue.CronArgs]) time.Duration { return 2 * 
 // This is `cron:run`, and it deliberately bypasses River: an operator running a
 // job by hand wants it to run now, in the foreground, with its output on their
 // terminal — not to insert a row and hope a worker somewhere picks it up.
-func RunOnce(ctx context.Context, r *Registry, name string) (Run, error) {
+// The caller owns error and panic reporting, as it does for other commands.
+func RunOnce(ctx context.Context, r *Registry, name string) (run Run, runErr error) {
 	declared := jobs.CronByName(name)
 	if declared == nil {
 		return Run{Name: name}, fmt.Errorf("cron %q is not declared", name)
@@ -125,14 +126,18 @@ func RunOnce(ctx context.Context, r *Registry, name string) (Run, error) {
 
 	start := time.Now()
 	ctx, task := telemetry.StartTask(ctx, "cron.run", declared.Name, "cron", declared.Name)
-	defer telemetry.RecoverAndRepanic(ctx)
+	defer func() {
+		if value := recover(); value != nil {
+			task.End("panic", fmt.Errorf("cron panic"))
+			panic(value)
+		}
+		outcome := "completed"
+		if runErr != nil {
+			outcome = "failed"
+		}
+		task.End(outcome, runErr)
+	}()
 	report, err := handler(ctx)
-	telemetry.Capture(ctx, err)
-	outcome := "completed"
-	if err != nil {
-		outcome = "failed"
-	}
-	task.End(outcome, err)
 	return Run{
 		Context: ctx,
 		Name:    declared.Name,

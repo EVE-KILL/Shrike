@@ -88,8 +88,13 @@ func HTTP(surface string, next http.Handler) http.Handler {
 		started := time.Now()
 		defer func() {
 			if value := recover(); value != nil {
-				Count(ctx, "http.requests", 1, Attributes("surface", surface, "status", "500", "route", routeFallback(r.URL.Path)))
-				Duration(ctx, "http.duration", time.Since(started), Attributes("surface", surface, "status", "500"))
+				if state.route == "" {
+					state.route = r.Method + " " + routeFallback(r.URL.Path)
+				}
+				transaction.Name, transaction.Source = state.route, sentry.SourceRoute
+				attrs := Attributes("surface", surface, "method", r.Method, "status", "500", "route", state.route)
+				Count(ctx, "http.requests", 1, attrs)
+				Duration(ctx, "http.duration", time.Since(started), attrs)
 				transaction.Status = sentry.SpanStatusInternalError
 				panic(value)
 			}

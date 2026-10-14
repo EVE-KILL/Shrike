@@ -98,6 +98,29 @@ Run `codex mcp login sentry` once. `.codex/` is gitignored; OAuth credentials
 remain in Codex's credential store. The Sentry CLI can independently inspect
 the same `eve-kill/shrike` project.
 
+## Recovery
+
+If verification fails, check these stages in order. Keep production serving
+requests while investigating; telemetry failures do not require a restart.
+
+1. Check that `SENTRY_DSN` and the verification feature settings are configured in the running process.
+2. Check the command's exit status and `delivered` result.
+3. If configuration fails, correct the invalid setting before retrying the command.
+4. If `delivered` is false, check DNS, TLS, egress rules, and connectivity to the DSN's ingest host.
+5. If `delivered` is true but signals are absent, select the matching project, environment, and time range in Sentry.
+6. Check Sentry's ingestion usage, quotas, rate limits, and service status for rejected or delayed envelopes.
+7. If delivery remains unclear, enable SDK transport diagnostics temporarily in an isolated verification process.
+8. Inspect transport errors and HTTP response codes without sharing credentials or unredacted diagnostic output.
+9. If telemetry affects service health, set `SENTRY_DSN` to an empty value through deployment configuration and roll out the change.
+10. Resolve intentional verification issues after all four signal types arrive.
+
+`delivered=true` confirms the SDK drained its buffer; it does not confirm Sentry
+accepted or indexed every signal. Verify ingestion by reading the returned IDs
+and metrics from Sentry. Avoid repeated verification runs while a quota or
+network failure remains unresolved.
+
+## Sources
+
 SDK references: [Go SDK](https://github.com/getsentry/sentry-go),
 [logging](https://docs.sentry.io/platforms/go/logs/),
 [metrics](https://docs.sentry.io/platforms/go/metrics/),
