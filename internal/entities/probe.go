@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/eve-kill/shrike/internal/esi"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -108,6 +109,9 @@ func (p *Prober) ingest(ctx context.Context, id int32) (Cascade, error) {
 	// the second call is served from the ESI cache the probe just populated.
 	res, err := r.Character(ctx, id)
 	if err != nil {
+		if _, deferred := errors.AsType[*retry.Deferred](err); deferred {
+			return res.Cascade, fmt.Errorf("%w: %w", ErrTransient, err)
+		}
 		return res.Cascade, err
 	}
 	if p.OnCascade != nil && !res.Cascade.Empty() {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/config"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/getsentry/sentry-go"
 	"github.com/getsentry/sentry-go/attribute"
 	"github.com/rs/zerolog"
@@ -177,6 +178,9 @@ func Capture(ctx context.Context, err error) *sentry.EventID {
 	if err == nil || !Enabled() || errors.Is(err, context.Canceled) {
 		return nil
 	}
+	if _, deferred := errors.AsType[*retry.Deferred](err); deferred {
+		return nil
+	}
 	if captured, ok := ctx.Value(captureStateKey{}).(*atomic.Bool); ok && captured.Swap(true) {
 		return nil
 	}
@@ -234,6 +238,9 @@ func FinishSpan(span *sentry.Span, err error) {
 	span.Status = sentry.SpanStatusOK
 	if err != nil {
 		span.Status = sentry.SpanStatusInternalError
+		if _, deferred := errors.AsType[*retry.Deferred](err); deferred {
+			span.Status = sentry.SpanStatusResourceExhausted
+		}
 		if errors.Is(err, context.Canceled) {
 			span.Status = sentry.SpanStatusCanceled
 		}

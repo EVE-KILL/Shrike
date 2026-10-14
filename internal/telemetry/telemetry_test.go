@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/config"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
 )
@@ -148,6 +149,25 @@ func TestConcurrentTaskIsolation(t *testing.T) {
 	}
 	if len(seen) != 2 {
 		t.Fatal(seen)
+	}
+}
+
+func TestExpectedDeferralIsNotCapturedAsFailure(t *testing.T) {
+	r, transport := testRuntime(t)
+	ctx, task := StartTask(t.Context(), "queue.job", "fixture")
+	deferred := &retry.Deferred{Operation: "esi", Reason: "admission", After: time.Minute}
+	Capture(ctx, deferred)
+	_, span := StartSpan(ctx, "http.client", "ESI admission")
+	FinishSpan(span, deferred)
+	if span.Status != sentry.SpanStatusResourceExhausted {
+		t.Fatalf("span status = %v", span.Status)
+	}
+	task.End("snoozed", nil)
+	r.Close()
+	for _, event := range transport.Events() {
+		if len(event.Exception) > 0 {
+			t.Fatal("expected admission delay was reported as an exception")
+		}
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/rs/zerolog/log"
 )
 
@@ -242,7 +243,8 @@ func writeResult(ctx huma.Context, result Result) {
 func writeError(ctx huma.Context, err error) {
 	status, message := asStatus(err)
 	if status >= 500 {
-		log.Error().Err(err).Msg("image request failed")
+		telemetry.Capture(ctx.Context(), err)
+		log.Error().Ctx(ctx.Context()).Bool("sentry_handled", true).Err(err).Msg("image request failed")
 	}
 	body, _ := json.Marshal(map[string]string{"error": message})
 	ctx.SetHeader("Content-Type", "application/json")

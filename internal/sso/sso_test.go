@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Two things here have teeth. Disabling a token that was only transiently
@@ -141,6 +142,7 @@ func ssoServer(t *testing.T, status int, body string) *Client {
 		UserAgent:    "shrike-test/1.0",
 		HTTP:         srv.Client(),
 		TokenURL:     srv.URL,
+		backoff:      []time.Duration{time.Millisecond, time.Millisecond, time.Millisecond},
 	}
 }
 

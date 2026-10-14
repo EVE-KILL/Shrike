@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"math/rand/v2"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/jobs"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/getsentry/sentry-go"
 
@@ -92,7 +95,7 @@ func (m *jobLogMiddleware) Work(
 		}()
 	}
 	if job.Queue == CronQueue {
-		return doInner(ctx)
+		return runWithDeferral(ctx, doInner)
 	}
 
 	logger := m.log.With().
@@ -106,7 +109,7 @@ func (m *jobLogMiddleware) Work(
 
 	logger.Info().Msg("job started")
 	started := time.Now()
-	err := doInner(ctx)
+	err := runWithDeferral(ctx, doInner)
 	elapsed := time.Since(started)
 
 	if err == nil {
@@ -158,6 +161,19 @@ func (m *jobLogMiddleware) Work(
 		Err(err).
 		Dur("duration", elapsed).
 		Msg("job failed permanently")
+	return err
+}
+
+func runWithDeferral(ctx context.Context, run func(context.Context) error) error {
+	err := run(ctx)
+	if deferred, ok := errors.AsType[*retry.Deferred](err); ok {
+		delay := max(time.Second, deferred.After)
+		// Jitter only adds time; a server's Retry-After remains the minimum.
+		jitter := time.Duration(rand.Int64N(int64(min(time.Second, delay/10)))) //nolint:gosec // Queue pacing, not a security decision.
+		jitter = min(jitter, time.Duration(math.MaxInt64)-delay)
+		telemetry.Count(ctx, "queue.deferrals", 1, telemetry.Attributes("operation", deferred.Operation, "reason", deferred.Reason))
+		return river.JobSnooze(delay + jitter)
+	}
 	return err
 }
 

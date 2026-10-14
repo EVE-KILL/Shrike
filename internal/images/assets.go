@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"path"
 	"slices"
@@ -229,8 +230,16 @@ func (s *Service) loadUpstreamType(
 	variant string,
 ) (*objectstore.Object, error) {
 	key := fmt.Sprintf("types/upstream/%d/%s/original", id, variant)
-	if object, err := s.store.GetObject(ctx, key); err != nil || object != nil {
-		return object, err
+	object, err := s.store.GetObject(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if object != nil {
+		expires := object.Metadata["fallback-until"]
+		until, _ := strconv.ParseInt(expires, 10, 64)
+		if expires == "" || until > s.now().Unix() {
+			return object, nil
+		}
 	}
 	url := fmt.Sprintf("%s/types/%d/%s", s.upstream, id, variant)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -249,6 +258,26 @@ func (s *Service) loadUpstreamType(
 		)
 	}
 	defer response.Body.Close()
+	if variant == "render" && (response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusNotFound) {
+		// Many types (modules, fighters, charges) have an icon but no render.
+		// Cache the icon under this variant for a day, then check for a newly
+		// available render. A missing icon still returns a real 404.
+		_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 64<<10))
+		_ = response.Body.Close()
+		icon, err := s.loadUpstreamType(ctx, id, "icon")
+		if err != nil {
+			return nil, err
+		}
+		if err := s.store.PutWithOptions(context.WithoutCancel(ctx), key, icon.Body, objectstore.PutOptions{
+			ContentType: icon.ContentType, CacheControl: immutableCacheControl,
+			Metadata: map[string]string{"fallback-until": strconv.FormatInt(s.now().Add(24*time.Hour).Unix(), 10)},
+		}); err != nil {
+			return nil, fmt.Errorf("store fallback type image: %w", err)
+		}
+		fallback := *icon
+		fallback.Key = key
+		return &fallback, nil
+	}
 	if response.StatusCode == http.StatusNotFound {
 		return nil, statusError(http.StatusNotFound, "Type image not found", nil)
 	}

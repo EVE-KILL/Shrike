@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/eve-kill/shrike/internal/config"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/getsentry/sentry-go"
+	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/rs/zerolog"
 )
@@ -63,6 +67,16 @@ func TestJobPropagationAndFailure(t *testing.T) {
 	if !errors.Is(err, boom) {
 		t.Fatal("instrumentation changed the returned error")
 	}
+	for _, queue := range []string{"killmail", CronQueue} {
+		job.Queue = queue
+		err = middleware.Work(t.Context(), job, func(context.Context) error {
+			return fmt.Errorf("fetch deferred: %w", &retry.Deferred{Operation: "esi", Reason: "admission", After: time.Minute})
+		})
+		if snooze, ok := errors.AsType[*river.JobSnoozeError](err); !ok || snooze.Duration < time.Minute {
+			t.Fatalf("expected snooze, got %v", err)
+		}
+	}
+	job.Queue = "killmail"
 	runtime.Close()
 	failures := 0
 	for _, event := range transport.Events() {

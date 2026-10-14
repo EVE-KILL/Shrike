@@ -25,6 +25,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/config"
 	"github.com/eve-kill/shrike/internal/redisx"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/getsentry/sentry-go"
 	"github.com/redis/go-redis/v9"
@@ -73,14 +74,13 @@ func waitCap(g Group) time.Duration {
 
 // Response is the outcome of a request.
 //
-// Status 0 means the request never reached ESI — every retry was exhausted, or
-// the pipeline gave up waiting. Callers must treat it as retryable rather than
-// as a 4xx.
+// Status 0 with retry.Deferred means local admission control postponed the
+// request. Actual transport failures carry their original error instead.
 type Response[T any] struct {
 	Data   *T     `json:"data"`
 	Status int    `json:"status"`
 	Group  string `json:"group,omitempty"`
-	// RetryAfter is set on 420 and 429, in seconds.
+	// RetryAfter is set on local deferrals, 420 and 429, in seconds.
 	RetryAfter int `json:"retry_after,omitempty"`
 	// Pages is the x-pages header, for endpoints that paginate.
 	Pages int `json:"pages,omitempty"`
@@ -241,6 +241,16 @@ func typed[T any](r raw, err error) (Response[T], error) {
 		Pages:      r.Pages,
 		Cached:     r.Cached,
 	}
+	if err == nil && (r.Status == 0 || r.Status == statusErrorLimited || r.Status == http.StatusTooManyRequests) {
+		reason := "rate_limit"
+		switch r.Status {
+		case statusErrorLimited:
+			reason = "error_limit"
+		case 0:
+			reason = "admission"
+		}
+		err = &retry.Deferred{Operation: "esi", Reason: reason, After: retry.RetryAfter(strconv.Itoa(max(1, r.RetryAfter)), time.Now())}
+	}
 	if err != nil || len(r.Body) == 0 {
 		return out, err
 	}
@@ -260,6 +270,7 @@ func (c *Client) doGet(ctx context.Context, path string) (outcome raw, resultErr
 	ctx, finish := beginRequest(ctx, http.MethodGet, group.Name, false)
 	defer func() { finish(outcome, resultErr) }()
 	etag := ""
+	var retryAt time.Time
 
 	for attempt := 0; attempt <= maxPipelineRetries; attempt++ {
 		// 1. Cache. A fresh entry ends the request without any coordination:
@@ -275,6 +286,7 @@ func (c *Client) doGet(ctx context.Context, path string) (outcome raw, resultErr
 
 		// 2. Global pause, set by anyone who saw a 420.
 		if wait := c.pauseRemaining(ctx); wait > 0 {
+			retryAt = time.Now().Add(wait)
 			if err := waitMeasured(ctx, "pause", group.Name, min(wait, pauseWaitCap)); err != nil {
 				return raw{Group: group.Name}, err
 			}
@@ -298,6 +310,9 @@ func (c *Client) doGet(ctx context.Context, path string) (outcome raw, resultErr
 		if claim == "" {
 			started := time.Now()
 			c.coord.WaitForClaim(ctx, url)
+			if err := ctx.Err(); err != nil {
+				return raw{Group: group.Name}, err
+			}
 			telemetry.Duration(ctx, "esi.wait", time.Since(started), telemetry.Attributes("reason", "singleflight", "group", group.Name))
 			continue
 		}
@@ -311,6 +326,7 @@ func (c *Client) doGet(ctx context.Context, path string) (outcome raw, resultErr
 			return raw{Group: group.Name}, err
 		}
 		if wait > 0 {
+			retryAt = time.Now().Add(wait)
 			c.coord.ReleaseClaim(ctx, url, claim)
 			if err := waitMeasured(ctx, "rate_limit", group.Name, min(wait, c.waitCapFor(group))); err != nil {
 				return raw{Group: group.Name}, err
@@ -328,7 +344,7 @@ func (c *Client) doGet(ctx context.Context, path string) (outcome raw, resultErr
 		if result == nil {
 			// Sequential lock timed out. Retryable, not an error.
 			c.coord.ReleaseClaim(ctx, url, claim)
-			return raw{Status: 0, Group: group.Name}, nil
+			return raw{Status: 0, Group: group.Name, RetryAfter: 5}, nil
 		}
 
 		// The claim is held until after the response is cached. Releasing it
@@ -341,7 +357,18 @@ func (c *Client) doGet(ctx context.Context, path string) (outcome raw, resultErr
 	}
 
 	// Every attempt was spent waiting rather than fetching.
-	return raw{Status: 0, Group: group.Name}, nil
+	return raw{Status: 0, Group: group.Name, RetryAfter: retrySeconds(time.Until(retryAt))}, nil
+}
+
+func retrySeconds(delay time.Duration) int {
+	if delay <= 0 {
+		return 1
+	}
+	seconds := delay / time.Second
+	if delay%time.Second != 0 {
+		seconds++
+	}
+	return int(seconds)
 }
 
 // doProbe performs an uncached GET without consulting the shared pause,
@@ -438,8 +465,12 @@ func (c *Client) doAuthenticated(ctx context.Context, path, accessToken string) 
 	ctx, finish := beginRequest(ctx, http.MethodGet, group.Name, true)
 	defer func() { finish(outcome, resultErr) }()
 
-	if !c.waitForPermit(ctx, group) {
-		return raw{Status: 0, Group: group.Name}, nil
+	wait, err := c.waitForPermit(ctx, group)
+	if err != nil {
+		return raw{Group: group.Name}, err
+	}
+	if wait > 0 {
+		return raw{Status: 0, Group: group.Name, RetryAfter: retrySeconds(wait)}, nil
 	}
 
 	result, err := c.executeGuarded(ctx, group, func() (httpResult, error) {
@@ -449,7 +480,7 @@ func (c *Client) doAuthenticated(ctx context.Context, path, accessToken string) 
 		return raw{Group: group.Name}, err
 	}
 	if result == nil {
-		return raw{Status: 0, Group: group.Name}, nil
+		return raw{Status: 0, Group: group.Name, RetryAfter: 5}, nil
 	}
 
 	out := raw{Status: result.Status, Group: group.Name, Pages: result.Pages}
@@ -477,8 +508,12 @@ func (c *Client) doPost(ctx context.Context, path string, body any) (outcome raw
 		return raw{Group: group.Name}, fmt.Errorf("encode request body: %w", err)
 	}
 
-	if !c.waitForPermit(ctx, group) {
-		return raw{Status: 0, Group: group.Name}, nil
+	wait, err := c.waitForPermit(ctx, group)
+	if err != nil {
+		return raw{Group: group.Name}, err
+	}
+	if wait > 0 {
+		return raw{Status: 0, Group: group.Name, RetryAfter: retrySeconds(wait)}, nil
 	}
 
 	result, err := c.executeGuarded(ctx, group, func() (httpResult, error) {
@@ -488,7 +523,7 @@ func (c *Client) doPost(ctx context.Context, path string, body any) (outcome raw
 		return raw{Group: group.Name}, err
 	}
 	if result == nil {
-		return raw{Status: 0, Group: group.Name}, nil
+		return raw{Status: 0, Group: group.Name, RetryAfter: 5}, nil
 	}
 
 	out := raw{Status: result.Status, Group: group.Name}
@@ -497,6 +532,8 @@ func (c *Client) doPost(ctx context.Context, path string, body any) (outcome raw
 		out.Body = result.Body
 	case statusErrorLimited:
 		out.RetryAfter = c.pause(ctx, result.Header)
+	case http.StatusTooManyRequests:
+		out.RetryAfter = result.RetryAfter
 	}
 	return out, nil
 }
@@ -504,32 +541,35 @@ func (c *Client) doPost(ctx context.Context, path string, body any) (outcome raw
 // --- Shared pipeline pieces ---
 
 // waitForPermit blocks until both the global pause and the token bucket allow a
-// request. False means it gave up.
-func (c *Client) waitForPermit(ctx context.Context, group Group) bool {
+// request. A positive duration asks the caller to defer; errors remain failures.
+func (c *Client) waitForPermit(ctx context.Context, group Group) (time.Duration, error) {
+	var retryAt time.Time
 	for attempt := 0; attempt <= maxPipelineRetries; attempt++ {
 		if wait := c.pauseRemaining(ctx); wait > 0 {
+			retryAt = time.Now().Add(wait)
 			if err := waitMeasured(ctx, "pause", group.Name, min(wait, pauseWaitCap)); err != nil {
-				return false
+				return 0, err
 			}
 			continue
 		}
 		wait, err := c.limiter.Acquire(ctx, group, TokenCost)
 		if err != nil {
-			return false
+			return 0, err
 		}
 		if wait == 0 {
 			if delay := c.errorBudgetDelay(ctx); delay > 0 {
 				if err := waitMeasured(ctx, "error_budget", group.Name, delay); err != nil {
-					return false
+					return 0, err
 				}
 			}
-			return true
+			return 0, nil
 		}
+		retryAt = time.Now().Add(wait)
 		if err := waitMeasured(ctx, "rate_limit", group.Name, min(wait, c.waitCapFor(group))); err != nil {
-			return false
+			return 0, err
 		}
 	}
-	return false
+	return max(time.Second, time.Until(retryAt)), nil
 }
 
 // executeGuarded takes the sequential lock when the group needs it, runs the
@@ -670,6 +710,7 @@ type httpResult struct {
 // spends error budget to be told the same thing again.
 func (c *Client) execute(ctx context.Context, method, url string, body []byte, etag, accessToken string) (httpResult, error) {
 	var last httpResult
+	var lastErr error
 
 	for attempt := 0; attempt <= maxHTTPRetries; attempt++ {
 		if attempt > 0 {
@@ -715,6 +756,7 @@ func (c *Client) execute(ctx context.Context, method, url string, body []byte, e
 				return last, ctx.Err()
 			}
 			last = httpResult{Header: http.Header{}}
+			lastErr = err
 			continue
 		}
 
@@ -736,6 +778,7 @@ func (c *Client) execute(ctx context.Context, method, url string, body []byte, e
 			resp.Body.Close()
 			if readErr != nil {
 				last = result
+				lastErr = readErr
 				continue
 			}
 			result.Body = data
@@ -744,6 +787,7 @@ func (c *Client) execute(ctx context.Context, method, url string, body []byte, e
 		case resp.StatusCode >= 500 && resp.StatusCode < 600:
 			resp.Body.Close()
 			last = result
+			lastErr = nil
 			continue
 
 		default:
@@ -757,7 +801,7 @@ func (c *Client) execute(ctx context.Context, method, url string, body []byte, e
 	if last.Header == nil {
 		last.Header = http.Header{}
 	}
-	return last, nil
+	return last, lastErr
 }
 
 func (c *Client) fullURL(path string) string {
