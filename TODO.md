@@ -1237,8 +1237,8 @@ shrike-final-marker-repro.json and /tmp/shrike-final-map-review/crowded-marker-c
 - [x] Solo hull matchups: v0.2.9 publishes the lower killmail vacuum threshold. Regular vacuum restores an index-only killmail scan with zero heap fetches; measured 9–12 ms warm.
 - [x] SHRIKE-E: v0.2.9 cancels and drains cache loaders before dependency shutdown. Deterministic/full race tests and a blocked-query local server check pass; all production services active and release error report empty.
 - [x] SHRIKE-D: investigate the fixed fourteen-day repair loop. It performs one array-based indexed check per day; keep day bounds and genuine performance signals visible.
-- [ ] Follow measured slow campaign candidate/materialization/stat queries, faction-warfare valuable kills, and solo ship matchups; record before/after plans and regression coverage before claiming improvements.
-- [ ] Scoped war lists: limit each participant range through the requested page before deduplicating and enriching. Warm sample improves from 107–117 ms to 3.1–3.6 ms; no-match samples fall from 150–230 ms to 2–5 ms. Publish after independent filter/paging/domain regressions and dense-participant benchmarks.
+- [ ] Follow the remaining slow campaign candidate/materialization/stat queries and scoped battle lists; record before/after plans and regression coverage before claiming improvements.
+- [x] Scoped war lists: v0.2.10 limits each participant range through the requested page before deduplicating and enriching. Warm sample improves from 107–117 ms to 3.1–3.6 ms; no-match samples fall from 150–230 ms to 2–5 ms. All 336 independent filter/paging/domain comparisons pass, dense-participant timings remain comparable, and exact production result objects match. Both platform images published; ARM64 runtime verified and all production replicas ready.
 
 Use production read-only plans for investigation and isolated databases for test
 fixtures. Keep real failures visible in Sentry; verify performance findings rather

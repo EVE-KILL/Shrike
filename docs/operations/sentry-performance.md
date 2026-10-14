@@ -180,3 +180,9 @@ the full-set reference query with the implementation across tenant scopes,
 participants, allies, overlap, filters, sorting, null start times and deep pages.
 Missing entity names stay visible. These are SQL measurements; verify released
 request latency and Sentry percentiles separately.
+
+Published as v0.2.10 at commit `bf1740dcaa51ab19fb66839e82dc8bae732d2718`.
+Both platform manifests are present; the ARM64 image reports the exact release
+commit. Flux automatically updated all four production deployments, and all
+replicas are ready. Longer-term request percentiles still need a representative
+post-release sample; the SQL timings above are controlled spot measurements.
