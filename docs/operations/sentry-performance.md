@@ -43,13 +43,36 @@ had no alliance when measured. Fixtures verify exact totals, including null
 
 The active affiliation selection executed in 444.023 ms warm, touching 223,069
 pages; its sampled p95 was 4.9 s. About 86% of characters had never been active.
-An ordered covering partial index excludes those rows from the active refresh
-walk. Keep the existing index for dormant refreshes. Fixtures verify candidate
+The retained partial index covers `last_active`, `updated_at` and `character_id`.
+It can reject recently checked characters without fetching their rows.
+Keep the existing index for dormant refreshes. Fixtures verify candidate
 priority, limits, cutoff boundaries, null timestamps and deleted characters.
 
 Migration 29 builds both indexes concurrently and verifies that each is valid
-before advancing the migration ledger. Production after-build measurements
-must be recorded before claiming either improvement.
+before advancing the migration ledger. Both production indexes are valid.
+The membership index occupies 4.5 MB; the active affiliation index occupies 107 MB.
+
+The first index builds exposed a maintenance problem. Membership scans still
+required 111,300 heap visibility checks, and PostgreSQL avoided the active index.
+A regular `VACUUM (ANALYZE, TRUNCATE FALSE) characters` restored visibility and
+refreshed the plans. Measured execution after vacuum was:
+
+| Query | Before | After | Before/after database pages |
+| --- | ---: | ---: | ---: |
+| Coalition overview | 5641.806 ms | 25.589–36.959 ms | 212,310 / 1,175 |
+| Active affiliation selection | 444.023 ms warm | 12.792–23.162 ms | 223,069 / 1,581–1,690 |
+
+The coalition baseline included disk reads. The initial affiliation run after
+vacuum included disk reads; later runs were warm. These are spot measurements;
+observe production percentiles as the table receives updates.
+
+The retained active index replaced an unsuccessful due-order variant before
+the migration was released. No existing application index was removed.
+Migration 29 also lowers this table's vacuum scale factor from 0.02 to 0.005.
+At 21 million rows, this triggers maintenance near 105,000 changes instead of
+420,000. Analyze thresholds and vacuum cost limits remain unchanged.
+This keeps the [visibility map](https://www.postgresql.org/docs/current/indexes-index-only-scans.html)
+current enough for index-only scans. The down migration restores the old factor.
 
 ### Rejected campaign experiment
 

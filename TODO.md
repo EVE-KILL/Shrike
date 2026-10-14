@@ -1229,8 +1229,8 @@ shrike-final-marker-repro.json and /tmp/shrike-final-map-review/crowded-marker-c
 
 - [x] Fix SHRIKE-B: distinguish HTTP request timeouts from listener shutdown; v0.2.7 deployed, feed delivery verified.
 - [ ] SHRIKE-C: rank entity breakdowns before enriching names. Warm production benchmarks reduce one corporation query from 9.1 ms to 0.8 ms; preserve ordering, ties, date windows and missing names.
-- [ ] Coalition directory: member counts measured at 5.6 s / 212k database pages. Validate a small partial index for live alliance members, preserving exact counts and ordering.
-- [ ] Affiliation refresh: sampled p95 4.9 s; current warm selection 444 ms / 223k pages. Validate an ordered partial index excluding never-active characters while retaining the dormant refresh index and selection rules.
+- [ ] Coalition directory: a live-member partial index plus regular vacuum reduces the 5.6 s / 212k-page query to 26–37 ms / 1,175 pages. Publish the tested migration and observe production percentiles.
+- [ ] Affiliation refresh: covering both dates plus regular vacuum reduces the warm 444 ms / 223k-page selection to 13–23 ms / about 1.6k pages. Keep the dormant index and selection rules; publish the tested migration and maintenance threshold.
 - [x] Benchmark shared campaign attacker input: rejected. On a bounded 20k-killmail sample, the existing entity-first joins finished in 1.5 s warm; sharing all attackers hit the 10 s limit twice. Preserve the selective joins; investigate the remaining campaign work separately.
 - [ ] Follow measured slow campaign candidate/materialization/stat queries, faction-warfare valuable kills, and solo ship matchups; record before/after plans and regression coverage before claiming improvements.
 

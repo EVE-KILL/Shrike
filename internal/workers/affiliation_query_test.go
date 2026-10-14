@@ -28,8 +28,8 @@ func TestAffiliationCandidateQueryPreservesPriorityAndBoundaries(t *testing.T) {
         (5,'2026-09-01',NULL,false),(6,'2026-08-01',NULL,true),
         (7,'2026-08-01','2025-09-06',false),(8,'2026-08-01','2025-09-05',NULL),
         (0,NULL,NULL,false),(-1,NULL,NULL,false),(9,'2026-08-01',NULL,false);
-        CREATE INDEX affiliation_test_active_due_idx ON characters(updated_at ASC NULLS FIRST,character_id)
-        INCLUDE(last_active) WHERE deleted IS NOT TRUE AND character_id>0 AND last_active IS NOT NULL;`)
+        CREATE INDEX affiliation_test_active_due_idx ON characters(last_active,updated_at ASC NULLS FIRST,character_id)
+        WHERE deleted IS NOT TRUE AND character_id>0 AND last_active IS NOT NULL;`)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,6 +17,8 @@ rules. It favors short, direct, and testable text.
   Deferred image cache and origin fallback design.
 - [TLS](operations/tls.md): Local HTTPS and the planned Cloudflare origin TLS
   configuration.
+- [Sentry performance investigation](operations/sentry-performance.md):
+  Production query measurements, regression coverage and rejected experiments.
 
 ## Deployment
 
