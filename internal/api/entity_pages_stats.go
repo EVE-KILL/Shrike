@@ -149,6 +149,13 @@ func loadEntityDashboardStats(
 	}
 	breakdownSQL += `
 			GROUP BY dim_category, dim_id
+		), top AS (
+			SELECT * FROM grouped
+			ORDER BY CASE
+			  WHEN dim_category IN (1, 21, 22) THEN losses
+			  ELSE kills
+			END DESC, dim_id
+			LIMIT 10
 		)
 		SELECT grouped.dim_category, grouped.dim_id,
 		       grouped.kills, grouped.losses,
@@ -158,7 +165,7 @@ func loadEntityDashboardStats(
 		         WHEN grouped.dim_category = 21 THEN COALESCE(c.name, 'Unknown')
 		         WHEN grouped.dim_category = 22 THEN COALESCE(a.name, 'Unknown')
 		       END AS name
-		FROM grouped
+		FROM top grouped
 		LEFT JOIN inv_types t
 		  ON grouped.dim_category IN (0, 1) AND t.type_id = grouped.dim_id
 		LEFT JOIN corporations c
@@ -168,8 +175,7 @@ func loadEntityDashboardStats(
 		ORDER BY CASE
 		  WHEN grouped.dim_category IN (1, 21, 22) THEN grouped.losses
 		  ELSE grouped.kills
-		END DESC, grouped.dim_id
-		LIMIT 10`
+		END DESC, grouped.dim_id`
 
 	queries := []databaseQuery{
 		{SQL: statsSQL, Args: statsArgs},
