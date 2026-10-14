@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 	"github.com/rs/zerolog"
@@ -122,6 +124,41 @@ func TestJobLogMiddlewareLeavesCronLoggingToCronWorker(t *testing.T) {
 	if output.Len() != 0 {
 		t.Fatalf("generic middleware duplicated cron logging: %s", output.String())
 	}
+}
+
+func TestJobLogMiddlewareDefersEvenWithoutTelemetry(t *testing.T) {
+	for _, queue := range []string{"killmail", CronQueue} {
+		t.Run(queue, func(t *testing.T) {
+			var output bytes.Buffer
+			middleware := newJobLogMiddleware(zerolog.New(&output))
+			job := testJobRow()
+			job.Queue = queue
+			job.Attempt = job.MaxAttempts
+			err := middleware.Work(t.Context(), job, func(context.Context) error {
+				return fmt.Errorf("fetch corporation: %w", &retry.Deferred{Operation: "esi", Reason: "admission", After: time.Minute})
+			})
+			snooze, ok := errors.AsType[*river.JobSnoozeError](err)
+			if !ok || snooze.Duration < time.Minute || snooze.Duration > time.Minute+time.Second {
+				t.Fatalf("deferral = %v", err)
+			}
+			if queue != CronQueue {
+				assertLogRecord(t, logRecords(t, output.String())[1], "info", "job snoozed")
+			} else if output.Len() != 0 {
+				t.Fatal("duplicated cron logging")
+			}
+		})
+	}
+}
+
+func TestJobLogMiddlewarePreservesFailureJoinedWithDeferral(t *testing.T) {
+	var output bytes.Buffer
+	boom := errors.New("database write failed")
+	failure := errors.Join(&retry.Deferred{Operation: "sso", After: time.Minute}, boom)
+	err := newJobLogMiddleware(zerolog.New(&output)).Work(t.Context(), testJobRow(), func(context.Context) error { return failure })
+	if err != failure || !errors.Is(err, boom) {
+		t.Fatalf("joined failure became %v", err)
+	}
+	assertLogRecord(t, logRecords(t, output.String())[1], "warn", "job failed; retry scheduled")
 }
 
 func testJobRow() *rivertype.JobRow {

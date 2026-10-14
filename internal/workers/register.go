@@ -10,6 +10,7 @@ import (
 	"github.com/eve-kill/shrike/internal/cron"
 	"github.com/eve-kill/shrike/internal/jobs"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/riverqueue/river"
 	"github.com/rs/zerolog"
 )
@@ -232,7 +233,8 @@ type statusUpdateSummary struct {
 func logCronRun(logger zerolog.Logger, run cron.Run) {
 	logger = logger.With().Ctx(run.Context).Bool("sentry_handled", true).Logger()
 	var event *zerolog.Event
-	if run.Err != nil {
+	_, deferred := retry.Deferral(run.Err)
+	if run.Err != nil && !deferred {
 		event = logger.Error().Err(run.Err)
 	} else {
 		event = logger.Info()
@@ -245,6 +247,8 @@ func logCronRun(logger zerolog.Logger, run cron.Run) {
 	switch {
 	case run.Skipped:
 		event.Msg("cron skipped")
+	case deferred:
+		event.Err(run.Err).Msg("cron deferred")
 	case run.Err != nil:
 		event.Msg("cron failed")
 	default:

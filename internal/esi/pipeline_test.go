@@ -3,12 +3,15 @@ package esi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/eve-kill/shrike/internal/retry"
 )
 
 // End-to-end tests through the whole pipeline, with a fake ESI standing in for
@@ -158,8 +161,8 @@ func TestErrorLimitPausesTheClient(t *testing.T) {
 	ctx := context.Background()
 
 	res, err := Get[character](ctx, c, "/latest/characters/4000/")
-	if err != nil {
-		t.Fatal(err)
+	if deferred, ok := errors.AsType[*retry.Deferred](err); !ok || deferred.After != 42*time.Second {
+		t.Fatalf("expected error-limit deferral, got %v", err)
 	}
 	if res.Status != statusErrorLimited {
 		t.Errorf("status = %d, want 420", res.Status)
@@ -186,8 +189,8 @@ func TestTooManyRequestsReportsRetryAfter(t *testing.T) {
 	c := testClient(t, rdb, fake.URL)
 
 	res, err := Get[character](context.Background(), c, "/latest/characters/4100/")
-	if err != nil {
-		t.Fatal(err)
+	if deferred, ok := errors.AsType[*retry.Deferred](err); !ok || deferred.After != 17*time.Second {
+		t.Fatalf("expected rate-limit deferral, got %v", err)
 	}
 	if res.Status != http.StatusTooManyRequests {
 		t.Errorf("status = %d", res.Status)
@@ -555,8 +558,9 @@ func TestExhaustedBucketBlocksTheRequest(t *testing.T) {
 	}
 
 	res, err := Get[character](ctx, c, "/latest/characters/5000/")
-	if err != nil {
-		t.Fatal(err)
+	deferred, ok := errors.AsType[*retry.Deferred](err)
+	if !ok || deferred.After < 29*time.Minute {
+		t.Fatalf("expected admission deferral respecting the bucket reset, got %v", err)
 	}
 	if res.Status != 0 {
 		t.Errorf("status = %d, want 0 (never reached ESI)", res.Status)

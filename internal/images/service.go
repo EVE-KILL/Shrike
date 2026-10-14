@@ -54,11 +54,20 @@ type Service struct {
 }
 
 type Result struct {
-	Body         []byte
-	ContentType  string
-	ETag         string
-	LastModified time.Time
-	CacheControl string
+	Body          []byte
+	ContentType   string
+	ETag          string
+	LastModified  time.Time
+	CacheControl  string
+	fallbackUntil time.Time
+}
+
+func (r Result) withFreshness(now time.Time) Result {
+	if !r.fallbackUntil.IsZero() {
+		seconds := max(0, int64(r.fallbackUntil.Sub(now)/time.Second))
+		r.CacheControl = fmt.Sprintf("public, max-age=%d, s-maxage=%d, must-revalidate", seconds, seconds)
+	}
+	return r
 }
 
 type Error struct {
@@ -96,6 +105,7 @@ func New(options Options) *Service {
 		now:   now, upstream: upstream,
 		maximum: defaultMaximumObject, social: options.Social,
 	}
+	service.cache.now = now
 	var lastHits, lastMisses uint64
 	telemetry.RegisterCollector("cache.images", func(ctx context.Context) {
 		stats := service.CacheStats()
@@ -165,11 +175,11 @@ func validateID(id int64) error {
 
 func (s *Service) cacheResult(key string, load func() (Result, error)) (Result, error) {
 	if result, ok := s.cache.Get(key); ok {
-		return result, nil
+		return result.withFreshness(s.now()), nil
 	}
 	value, err, _ := s.single.Do(key, func() (any, error) {
 		if result, ok := s.cache.Get(key); ok {
-			return result, nil
+			return result.withFreshness(s.now()), nil
 		}
 		result, loadErr := load()
 		if loadErr != nil {
@@ -185,5 +195,5 @@ func (s *Service) cacheResult(key string, load func() (Result, error)) (Result, 
 	if !ok {
 		return Result{}, fmt.Errorf("image singleflight returned %T", value)
 	}
-	return result, nil
+	return result.withFreshness(s.now()), nil
 }

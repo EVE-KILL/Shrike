@@ -7,6 +7,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/jobs"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/redis/go-redis/v9"
 	"github.com/riverqueue/river"
@@ -132,7 +133,9 @@ func RunOnce(ctx context.Context, r *Registry, name string) (run Run, runErr err
 			panic(value)
 		}
 		outcome := "completed"
-		if runErr != nil {
+		if _, deferred := retry.Deferral(runErr); deferred {
+			outcome = "deferred"
+		} else if runErr != nil {
 			outcome = "failed"
 		}
 		task.End(outcome, runErr)

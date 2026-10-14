@@ -91,6 +91,9 @@ func (c *Cache) Put(key string, value Result) {
 		key: key, value: value, size: size,
 		expiresAt: c.now().Add(c.ttl),
 	}
+	if !value.fallbackUntil.IsZero() && value.fallbackUntil.Before(entry.expiresAt) {
+		entry.expiresAt = value.fallbackUntil
+	}
 	entry.element = c.order.PushFront(entry)
 	c.entries[key] = entry
 	c.bytes += size

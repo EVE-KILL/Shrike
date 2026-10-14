@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/eve-kill/shrike/internal/telemetry"
 
 	"github.com/jackc/pgx/v5"
@@ -92,6 +93,8 @@ type Client struct {
 
 	// TokenURL is overridable for tests.
 	TokenURL string
+	// Tests shorten the bounded retry ladder; production uses the defaults.
+	backoff []time.Duration
 }
 
 // refreshResponse is SSO's reply.
@@ -122,49 +125,67 @@ func (c *Client) Refresh(ctx context.Context, refreshToken string) (*refreshResp
 		endpoint = TokenURL
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint,
-		strings.NewReader(form.Encode()))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", c.UserAgent)
-	req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString(
-		[]byte(c.ClientID+":"+c.ClientSecret)))
-
 	client := c.HTTP
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second, Transport: telemetry.Transport("ccp.sso", nil)}
 	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
+	backoff := c.backoff
+	if backoff == nil {
+		backoff = []time.Duration{250 * time.Millisecond, time.Second, 3 * time.Second}
 	}
-	defer resp.Body.Close() //nolint:errcheck // read-only body
-
-	body, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		// SSO signals a dead grant in the body rather than the status, and with
-		// more than one wording. Matching on the text is unpleasant but it is
-		// the only signal available.
-		text := string(body)
-		for _, marker := range []string{"invalid_grant", "Token missing", "expired"} {
-			if strings.Contains(text, marker) {
-				return nil, fmt.Errorf("%w: %s", ErrPermanentlyDead, marker)
+	for attempt := 0; ; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("User-Agent", c.UserAgent)
+		req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(c.ClientID+":"+c.ClientSecret)))
+		resp, err := client.Do(req)
+		if err != nil {
+			// Refresh tokens can rotate. A transport failure after a POST may
+			// hide a successful refresh, so do not blindly replay that request.
+			return nil, err
+		}
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("sso: read token response: %w", readErr)
+		}
+		if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnauthorized {
+			for _, marker := range []string{"invalid_grant", "Token missing", "expired"} {
+				if strings.Contains(string(body), marker) {
+					return nil, fmt.Errorf("%w: %s", ErrPermanentlyDead, marker)
+				}
 			}
 		}
-		return nil, fmt.Errorf("sso: token refresh returned %d", resp.StatusCode)
+		wait := retry.RetryAfter(resp.Header.Get("Retry-After"), time.Now())
+		transient := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 && resp.StatusCode < 600
+		if transient && wait > 10*time.Second {
+			return nil, &retry.Deferred{Operation: "sso", Reason: "retry_after", After: wait}
+		}
+		if transient && attempt < len(backoff) {
+			telemetry.Count(ctx, "sso.refresh.retries", 1, telemetry.Attributes("status", strconv.Itoa(resp.StatusCode)))
+			if err := retry.Wait(ctx, max(wait, backoff[attempt])); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, &retry.Deferred{Operation: "sso", Reason: "rate_limit", After: max(time.Second, wait)}
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("sso: token refresh returned %d", resp.StatusCode)
+		}
+		var out refreshResponse
+		if err := json.Unmarshal(body, &out); err != nil {
+			return nil, fmt.Errorf("sso: decode token response: %w", err)
+		}
+		if out.AccessToken == "" {
+			return nil, errors.New("sso: token response carried no access token")
+		}
+		return &out, nil
 	}
-
-	var out refreshResponse
-	if err := json.Unmarshal(body, &out); err != nil {
-		return nil, fmt.Errorf("sso: decode token response: %w", err)
-	}
-	if out.AccessToken == "" {
-		return nil, errors.New("sso: token response carried no access token")
-	}
-	return &out, nil
 }
 
 // ScopesFromAccessToken reads the granted scopes out of the access token.
