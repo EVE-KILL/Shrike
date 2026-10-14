@@ -218,15 +218,17 @@ func (l *Listener) Start(ctx context.Context) (Stats, error) {
 // listener that exits on the first bad minute R2Z2 has.
 func (l *Listener) step(ctx context.Context, sequence int64) (outcome, error) {
 	res, err := l.Client.Killmail(ctx, sequence)
+	// Client.Timeout also wraps context.DeadlineExceeded. Only the listener's
+	// own context can stop the feed; a request timeout must retry this sequence.
+	if contextErr := ctx.Err(); contextErr != nil {
+		return failed, contextErr
+	}
 
 	switch {
 	case errors.Is(err, ErrNotPublished):
 		l.stats.CaughtUp++
 		l.emit(Event{Sequence: sequence, Kind: "caught-up"})
 		return unpublished, l.pause(ctx, WaitOnCaughtUp)
-
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return failed, err
 
 	case errors.Is(err, ErrThrottled):
 		// A throttle says nothing about this entry, only about our pace, so it
