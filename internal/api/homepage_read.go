@@ -252,8 +252,8 @@ func cachedHomepage[T any](
 	if entry, fresh, ok := reader.cache.LoadState(ctx, key); ok {
 		if result, err := decode(entry); err == nil {
 			if !fresh {
-				reader.cache.Refresh(key, func() (any, error) {
-					refreshCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+				reader.cache.RefreshContext(ctx, key, func(ctx context.Context) (any, error) {
+					refreshCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 					defer cancel()
 					return loadAndCacheHomepage(refreshCtx, reader.cache, key, ttl, load)
 				})

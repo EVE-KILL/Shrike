@@ -24,6 +24,8 @@ rules. It favors short, direct, and testable text.
   manifest requirements.
 - [Release pipeline](deployment/releases.md): CI, version tags, container
   publication, and recovery.
+- [Sentry](deployment/observability.md): Runtime telemetry, configuration,
+  delivery verification, and recovery.
 
 ## Architecture
 

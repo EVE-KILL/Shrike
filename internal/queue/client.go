@@ -7,7 +7,11 @@ import (
 	"slices"
 	"time"
 
+	"context"
+
 	"github.com/eve-kill/shrike/internal/jobs"
+	"github.com/eve-kill/shrike/internal/logging"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
@@ -86,9 +90,12 @@ func New(opts Options) (*Client, error) {
 	}
 
 	var consuming []string
+	cfg.Middleware = []rivertype.Middleware{newJobLogMiddleware(log.Logger)}
+	if cfg.Logger == nil {
+		cfg.Logger = logging.Slog(log.With().Str("subsystem", "river").Logger())
+	}
 	if opts.Workers != nil {
 		cfg.Workers = opts.Workers
-		cfg.Middleware = []rivertype.Middleware{newJobLogMiddleware(log.Logger)}
 		cfg.Queues = map[string]river.QueueConfig{}
 
 		for _, q := range selectQueues(opts.Queues) {
@@ -112,6 +119,24 @@ func New(opts Options) (*Client, error) {
 	client, err := river.NewClient(riverpgxv5.New(opts.Pool), cfg)
 	if err != nil {
 		return nil, err
+	}
+	if opts.Workers != nil {
+		telemetry.RegisterCollector("queue.depth", func(ctx context.Context) {
+			depths, err := StatusDepths(ctx, opts.Pool)
+			if err != nil {
+				return
+			}
+			for _, depth := range depths {
+				if !slices.Contains(consuming, depth.Queue) {
+					continue
+				}
+				attrs := telemetry.Attributes("queue", depth.Queue)
+				telemetry.Gauge(ctx, "queue.depth", float64(depth.Pending()), attrs)
+				telemetry.Gauge(ctx, "queue.running", float64(depth.Running), attrs)
+				telemetry.Gauge(ctx, "queue.retryable", float64(depth.Retryable), attrs)
+				telemetry.Gauge(ctx, "queue.discarded", float64(depth.Discarded), attrs)
+			}
+		})
 	}
 	return &Client{Client: client, pool: opts.Pool, consuming: consuming}, nil
 }

@@ -2,8 +2,14 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/eve-kill/shrike/internal/jobs"
+	"github.com/eve-kill/shrike/internal/telemetry"
+	"github.com/getsentry/sentry-go"
 
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -30,12 +36,67 @@ func (m *jobLogMiddleware) Work(
 	ctx context.Context,
 	job *rivertype.JobRow,
 	doInner func(context.Context) error,
-) error {
+) (result error) {
+	name := job.Kind
+	attrs := []string{"queue", job.Queue, "kind", job.Kind}
+	if job.Queue == CronQueue {
+		var args CronArgs
+		if json.Unmarshal(job.EncodedArgs, &args) == nil && jobs.CronByName(args.Name) != nil {
+			name = args.Name
+		} else {
+			name = "unknown"
+		}
+		attrs = append(attrs, "cron", name)
+	}
+	var metadata struct {
+		Sentry telemetry.TraceCarrier `json:"_sentry"`
+	}
+	if telemetry.Enabled() {
+		_ = json.Unmarshal(job.Metadata, &metadata)
+	}
+	ctx, task := telemetry.StartTaskWithTrace(ctx, "queue.job", name, metadata.Sentry, attrs...)
+	if task != nil {
+		sentry.GetHubFromContext(ctx).Scope().SetContext("job", sentry.Context{"id": job.ID, "attempt": job.Attempt, "max_attempts": job.MaxAttempts})
+		if !job.ScheduledAt.IsZero() {
+			telemetry.Duration(ctx, "queue.wait", max(0, time.Since(job.ScheduledAt)), telemetry.Attributes("queue", job.Queue))
+		}
+		defer func() {
+			if value := recover(); value != nil {
+				sentry.GetHubFromContext(ctx).RecoverWithContext(ctx, value)
+				task.End("panic", fmt.Errorf("worker panic"))
+				panic(value)
+			}
+			outcome := "completed"
+			switch {
+			case result == nil:
+			case errors.Is(result, context.Canceled), errors.Is(result, river.ErrJobCancelledRemotely):
+				outcome = "interrupted"
+			default:
+				if _, ok := errors.AsType[*river.JobSnoozeError](result); ok {
+					outcome = "snoozed"
+				} else if _, ok := errors.AsType[*river.JobCancelError](result); ok {
+					outcome = "cancelled"
+				} else {
+					outcome = "retry"
+					if job.Attempt >= job.MaxAttempts {
+						outcome = "failed"
+					}
+					telemetry.Capture(ctx, result)
+				}
+			}
+			observedErr := result
+			if outcome == "snoozed" || outcome == "cancelled" {
+				observedErr = nil
+			}
+			task.End(outcome, observedErr)
+		}()
+	}
 	if job.Queue == CronQueue {
 		return doInner(ctx)
 	}
 
 	logger := m.log.With().
+		Ctx(ctx).Bool("sentry_handled", true).
 		Int64("job_id", job.ID).
 		Str("queue", job.Queue).
 		Str("kind", job.Kind).
@@ -100,4 +161,45 @@ func (m *jobLogMiddleware) Work(
 	return err
 }
 
-var _ rivertype.WorkerMiddleware = (*jobLogMiddleware)(nil)
+// InsertMany stores only trace IDs/sampling context beside existing metadata,
+// so downstream work can join its originating HTTP request or cron trace.
+func (m *jobLogMiddleware) InsertMany(ctx context.Context, params []*rivertype.JobInsertParams, inner func(context.Context) ([]*rivertype.JobInsertResult, error)) ([]*rivertype.JobInsertResult, error) {
+	ctx, span := telemetry.StartSpan(ctx, "queue.publish", "River job insert")
+	carrier := telemetry.Propagation(ctx)
+	if carrier.Trace != "" {
+		encoded, _ := json.Marshal(carrier)
+		for _, param := range params {
+			metadata := map[string]json.RawMessage{}
+			if len(param.Metadata) > 0 && json.Unmarshal(param.Metadata, &metadata) != nil {
+				continue
+			}
+			if metadata == nil {
+				metadata = map[string]json.RawMessage{}
+			}
+			metadata["_sentry"] = encoded
+			if value, err := json.Marshal(metadata); err == nil {
+				param.Metadata = value
+			}
+		}
+	}
+	started := time.Now()
+	results, err := inner(ctx)
+	telemetry.Observe(ctx, "queue.insert", time.Since(started), err)
+	for _, result := range results {
+		if result == nil || result.Job == nil {
+			continue
+		}
+		outcome := "inserted"
+		if result.UniqueSkippedAsDuplicate {
+			outcome = "duplicate"
+		}
+		telemetry.Count(ctx, "queue.enqueued", 1, telemetry.Attributes("queue", result.Job.Queue, "outcome", outcome))
+	}
+	telemetry.FinishSpan(span, err)
+	return results, err
+}
+
+var (
+	_ rivertype.WorkerMiddleware    = (*jobLogMiddleware)(nil)
+	_ rivertype.JobInsertMiddleware = (*jobLogMiddleware)(nil)
+)

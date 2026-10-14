@@ -17,6 +17,7 @@ import (
 	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/relay"
 	"github.com/eve-kill/shrike/internal/sso"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/eve-kill/shrike/internal/ticker"
 	"github.com/eve-kill/shrike/internal/ui"
 	"github.com/eve-kill/shrike/internal/workers"
@@ -242,6 +243,7 @@ gap from zKillboard's daily history index instead.`,
 // while sitting at the head of the feed, which is its normal state, and logging
 // them would bury everything else at ten lines a minute.
 func logZkbEvent(e zkb.Event) {
+	telemetry.Count(context.Background(), "ingest.feed.events", 1, telemetry.Attributes("outcome", e.Kind))
 	switch e.Kind {
 	case "new":
 		log.Info().Int64("killmail", e.KillmailID).Int64("seq", e.Sequence).Msg("queued")

@@ -43,9 +43,9 @@ func routeJSONCacheBy(
 			return cachedLegacyPayload(entry, cacheControl, "HIT"), nil
 		}
 		if ok {
-			opts.responseCache.Refresh(key, func() (any, error) {
+			opts.responseCache.RefreshContext(ctx, key, func(ctx context.Context) (any, error) {
 				refreshCtx, cancel := context.WithTimeout(
-					context.WithoutCancel(ctx), 2*time.Minute,
+					ctx, 2*time.Minute,
 				)
 				defer cancel()
 				if current, currentFresh, found := cacheLoadState(

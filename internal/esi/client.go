@@ -25,6 +25,8 @@ import (
 
 	"github.com/eve-kill/shrike/internal/config"
 	"github.com/eve-kill/shrike/internal/redisx"
+	"github.com/eve-kill/shrike/internal/telemetry"
+	"github.com/getsentry/sentry-go"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -161,7 +163,7 @@ func New(cfg *config.Config) *Client {
 	return &Client{
 		BaseURL:   DefaultBaseURL,
 		UserAgent: UserAgent(cfg),
-		HTTP:      &http.Client{Timeout: httpTimeout},
+		HTTP:      &http.Client{Timeout: httpTimeout, Transport: telemetry.Transport("esi", nil)},
 		limiter:   NewRateLimiter(sharedRedis),
 		coord:     NewCoordination(sharedRedis),
 		cache:     NewCache(sharedRedis),
@@ -252,9 +254,11 @@ func typed[T any](r raw, err error) (Response[T], error) {
 
 // --- The GET pipeline ---
 
-func (c *Client) doGet(ctx context.Context, path string) (raw, error) {
+func (c *Client) doGet(ctx context.Context, path string) (outcome raw, resultErr error) {
 	url := c.fullURL(path)
 	group := ResolveGroup(url)
+	ctx, finish := beginRequest(ctx, http.MethodGet, group.Name, false)
+	defer func() { finish(outcome, resultErr) }()
 	etag := ""
 
 	for attempt := 0; attempt <= maxPipelineRetries; attempt++ {
@@ -271,7 +275,7 @@ func (c *Client) doGet(ctx context.Context, path string) (raw, error) {
 
 		// 2. Global pause, set by anyone who saw a 420.
 		if wait := c.pauseRemaining(ctx); wait > 0 {
-			if err := sleep(ctx, min(wait, pauseWaitCap)); err != nil {
+			if err := waitMeasured(ctx, "pause", group.Name, min(wait, pauseWaitCap)); err != nil {
 				return raw{Group: group.Name}, err
 			}
 			continue
@@ -280,7 +284,7 @@ func (c *Client) doGet(ctx context.Context, path string) (raw, error) {
 		// 3. Error-budget pacing. Distinct from the rate limit: this throttles
 		// on how many errors we have already caused, before ESI cuts us off.
 		if delay := c.errorBudgetDelay(ctx); delay > 0 {
-			if err := sleep(ctx, delay); err != nil {
+			if err := waitMeasured(ctx, "error_budget", group.Name, delay); err != nil {
 				return raw{Group: group.Name}, err
 			}
 		}
@@ -292,7 +296,9 @@ func (c *Client) doGet(ctx context.Context, path string) (raw, error) {
 			return raw{Group: group.Name}, err
 		}
 		if claim == "" {
+			started := time.Now()
 			c.coord.WaitForClaim(ctx, url)
+			telemetry.Duration(ctx, "esi.wait", time.Since(started), telemetry.Attributes("reason", "singleflight", "group", group.Name))
 			continue
 		}
 
@@ -306,7 +312,7 @@ func (c *Client) doGet(ctx context.Context, path string) (raw, error) {
 		}
 		if wait > 0 {
 			c.coord.ReleaseClaim(ctx, url, claim)
-			if err := sleep(ctx, min(wait, c.waitCapFor(group))); err != nil {
+			if err := waitMeasured(ctx, "rate_limit", group.Name, min(wait, c.waitCapFor(group))); err != nil {
 				return raw{Group: group.Name}, err
 			}
 			continue
@@ -347,9 +353,11 @@ func (c *Client) doGet(ctx context.Context, path string) (raw, error) {
 // then every later check obeys it and can never observe recovery. A status
 // probe is cheap, scheduled once per cluster, and has its own generous ESI
 // budget, so it is both safe and necessary to let it reach ESI directly.
-func (c *Client) doProbe(ctx context.Context, path string) (raw, error) {
+func (c *Client) doProbe(ctx context.Context, path string) (outcome raw, resultErr error) {
 	url := c.fullURL(path)
 	group := ResolveGroup(url)
+	ctx, finish := beginRequest(ctx, http.MethodGet, group.Name, false)
+	defer func() { finish(outcome, resultErr) }()
 
 	result, err := c.execute(ctx, http.MethodGet, url, nil, "", "")
 	if err != nil {
@@ -424,9 +432,11 @@ func (c *Client) finishGet(ctx context.Context, url string, group Group, etag st
 
 // --- Authenticated GET ---
 
-func (c *Client) doAuthenticated(ctx context.Context, path, accessToken string) (raw, error) {
+func (c *Client) doAuthenticated(ctx context.Context, path, accessToken string) (outcome raw, resultErr error) {
 	url := c.fullURL(path)
 	group := ResolveGroup(url)
+	ctx, finish := beginRequest(ctx, http.MethodGet, group.Name, true)
+	defer func() { finish(outcome, resultErr) }()
 
 	if !c.waitForPermit(ctx, group) {
 		return raw{Status: 0, Group: group.Name}, nil
@@ -456,9 +466,11 @@ func (c *Client) doAuthenticated(ctx context.Context, path, accessToken string) 
 
 // --- POST ---
 
-func (c *Client) doPost(ctx context.Context, path string, body any) (raw, error) {
+func (c *Client) doPost(ctx context.Context, path string, body any) (outcome raw, resultErr error) {
 	url := c.fullURL(path)
 	group := ResolveGroup(url)
+	ctx, finish := beginRequest(ctx, http.MethodPost, group.Name, false)
+	defer func() { finish(outcome, resultErr) }()
 
 	payload, err := json.Marshal(body)
 	if err != nil {
@@ -496,7 +508,7 @@ func (c *Client) doPost(ctx context.Context, path string, body any) (raw, error)
 func (c *Client) waitForPermit(ctx context.Context, group Group) bool {
 	for attempt := 0; attempt <= maxPipelineRetries; attempt++ {
 		if wait := c.pauseRemaining(ctx); wait > 0 {
-			if err := sleep(ctx, min(wait, pauseWaitCap)); err != nil {
+			if err := waitMeasured(ctx, "pause", group.Name, min(wait, pauseWaitCap)); err != nil {
 				return false
 			}
 			continue
@@ -507,13 +519,13 @@ func (c *Client) waitForPermit(ctx context.Context, group Group) bool {
 		}
 		if wait == 0 {
 			if delay := c.errorBudgetDelay(ctx); delay > 0 {
-				if err := sleep(ctx, delay); err != nil {
+				if err := waitMeasured(ctx, "error_budget", group.Name, delay); err != nil {
 					return false
 				}
 			}
 			return true
 		}
-		if err := sleep(ctx, min(wait, c.waitCapFor(group))); err != nil {
+		if err := waitMeasured(ctx, "rate_limit", group.Name, min(wait, c.waitCapFor(group))); err != nil {
 			return false
 		}
 	}
@@ -558,6 +570,8 @@ func (c *Client) pause(ctx context.Context, header http.Header) int {
 		reset = v
 	}
 	_ = c.coordis.Set(ctx, keyPaused, "1", time.Duration(reset)*time.Second).Err()
+	telemetry.Count(ctx, "esi.error_limit.pauses", 1)
+	telemetry.Gauge(ctx, "esi.error_limit.pause_seconds", float64(reset), telemetry.WithUnit(sentry.UnitSecond))
 	return reset
 }
 
@@ -601,6 +615,9 @@ func (c *Client) errorBudgetDelay(ctx context.Context) time.Duration {
 func (c *Client) updateErrorBudget(ctx context.Context, header http.Header) {
 	if v := header.Get("x-esi-error-limit-remain"); v != "" {
 		_ = c.coordis.Set(ctx, keyErrorRemaining, v, 0).Err()
+		if n, err := strconv.Atoi(v); err == nil {
+			telemetry.Gauge(ctx, "esi.error_budget.remaining", float64(n))
+		}
 	}
 	if v := header.Get("x-esi-error-limit-reset"); v != "" {
 		if secs, err := strconv.Atoi(v); err == nil {
@@ -622,6 +639,7 @@ func (c *Client) applyRateLimitHeaders(ctx context.Context, group Group, header 
 	if err != nil {
 		return
 	}
+	telemetry.Gauge(ctx, "esi.rate_limit.remaining", float64(remainNum), telemetry.Attributes("group", group.Name))
 
 	// Most endpoints emitting x-ratelimit-remaining also emit x-ratelimit-reset.
 	// Killmails are the known exception — group, limit, remaining and used, but
@@ -655,6 +673,7 @@ func (c *Client) execute(ctx context.Context, method, url string, body []byte, e
 
 	for attempt := 0; attempt <= maxHTTPRetries; attempt++ {
 		if attempt > 0 {
+			telemetry.Count(ctx, "esi.http.retries", 1, telemetry.Attributes("group", ResolveGroup(url).Name))
 			if err := sleep(ctx, c.retryBackoff(attempt)); err != nil {
 				return last, err
 			}
@@ -685,6 +704,11 @@ func (c *Client) execute(ctx context.Context, method, url string, body []byte, e
 		}
 
 		resp, err := c.HTTP.Do(req)
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+		}
+		telemetry.Count(ctx, "esi.http.attempts", 1, telemetry.Attributes("group", ResolveGroup(url).Name, "status", strconv.Itoa(status), "method", method))
 		if err != nil {
 			// A cancelled context is a decision, not a transport failure.
 			if ctx.Err() != nil {

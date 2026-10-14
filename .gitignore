@@ -33,6 +33,9 @@ bin/
 # to be shared.
 .vscode/
 
+# Machine-local Codex MCP connections and settings.
+.codex/
+
 # Browser build dependencies and native engine output.
 node_modules/
 engine/dogma/target/

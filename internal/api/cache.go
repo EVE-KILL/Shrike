@@ -51,9 +51,9 @@ func responseCache(
 		}
 		staleTTL := min(policy.TTL, 10*time.Minute)
 		if found {
-			cache.Refresh(key, func() (any, error) {
+			cache.RefreshContext(r.Context(), key, func(ctx context.Context) (any, error) {
 				refreshCtx, cancel := context.WithTimeout(
-					context.WithoutCancel(r.Context()), 2*time.Minute,
+					ctx, 2*time.Minute,
 				)
 				defer cancel()
 				refreshRequest := r.Clone(refreshCtx)

@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/telemetry"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -132,7 +134,7 @@ func (c *Client) Refresh(ctx context.Context, refreshToken string) (*refreshResp
 
 	client := c.HTTP
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		client = &http.Client{Timeout: 30 * time.Second, Transport: telemetry.Transport("ccp.sso", nil)}
 	}
 	resp, err := client.Do(req)
 	if err != nil {

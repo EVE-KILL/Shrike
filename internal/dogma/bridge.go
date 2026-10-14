@@ -13,6 +13,9 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
+
+	"github.com/eve-kill/shrike/internal/telemetry"
 )
 
 type Slot struct {
@@ -114,7 +117,13 @@ type processPool struct {
 
 var shared processPool
 
-func Evaluate(ctx context.Context, fit Fit, skills *map[string]int64) (Stats, error) {
+func Evaluate(ctx context.Context, fit Fit, skills *map[string]int64) (stats Stats, resultErr error) {
+	ctx, span := telemetry.StartSpan(ctx, "dogma.evaluate", "Native fitting calculation")
+	started := time.Now()
+	defer func() {
+		telemetry.Observe(ctx, "dogma.evaluate", time.Since(started), resultErr)
+		telemetry.FinishSpan(span, resultErr)
+	}()
 	shared.once.Do(func() {
 		size := 4
 		if raw := os.Getenv("DOGMA_WORKER_PROCESSES"); raw != "" {
@@ -126,9 +135,14 @@ func Evaluate(ctx context.Context, fit Fit, skills *map[string]int64) (Stats, er
 		for range size {
 			shared.available <- &process{}
 		}
+		telemetry.RegisterCollector("dogma.pool", func(ctx context.Context) {
+			telemetry.Gauge(ctx, "dogma.pool.available", float64(len(shared.available)))
+			telemetry.Gauge(ctx, "dogma.pool.capacity", float64(cap(shared.available)))
+		})
 	})
 	select {
 	case p := <-shared.available:
+		telemetry.Duration(ctx, "dogma.pool.wait", time.Since(started))
 		defer func() { shared.available <- p }()
 		return p.evaluate(ctx, fit, skills)
 	case <-ctx.Done():

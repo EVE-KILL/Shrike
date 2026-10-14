@@ -9,6 +9,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/eve-kill/shrike/internal/requeststats"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/rs/zerolog/log"
 )
 
@@ -37,7 +38,13 @@ func (s *site) pageHandler(load pageLoader) http.Handler {
 			r = r.WithContext(ctx)
 		}
 		loaded := time.Now()
+		parentCtx := r.Context()
+		loadCtx, loadSpan := telemetry.StartSpan(parentCtx, "ui.load", "Page data")
+		r = r.WithContext(loadCtx)
 		page, err := load(r)
+		telemetry.Observe(r.Context(), "frontend.load", time.Since(loaded), err)
+		telemetry.FinishSpan(loadSpan, err)
+		r = r.WithContext(parentCtx)
 		requeststats.From(r.Context()).AddLoad(time.Since(loaded))
 		if err == nil && page.RedirectPath != "" {
 			if _, err = canonicalURL(page.RedirectPath); err == nil {
@@ -56,12 +63,14 @@ func (s *site) pageHandler(load pageLoader) http.Handler {
 		if errors.Is(err, ErrNotFound) {
 			status, title, description = http.StatusNotFound, "Page not found", "This page is not available."
 		} else {
-			log.Error().Err(err).Str("path", r.URL.Path).Msg("render frontend page")
+			telemetry.Capture(r.Context(), err)
+			log.Error().Ctx(r.Context()).Bool("sentry_handled", true).Err(err).Str("path", r.URL.Path).Msg("render frontend page")
 		}
 		if renderErr := s.render(w, r, Page{
 			Status: status, Metadata: Metadata{Title: title}, Content: errorPage(title, description),
 		}); renderErr != nil {
-			log.Error().Err(renderErr).Msg("render frontend error page")
+			telemetry.Capture(r.Context(), renderErr)
+			log.Error().Ctx(r.Context()).Bool("sentry_handled", true).Err(renderErr).Msg("render frontend error page")
 			w.Header().Set("Cache-Control", "private, no-store")
 			w.Header().Set("X-Robots-Tag", "noindex, nofollow")
 			http.Error(w, http.StatusText(status), status)
@@ -88,7 +97,10 @@ func (s *site) render(w http.ResponseWriter, r *http.Request, page Page) error {
 	defer templ.ReleaseBuffer(buffer)
 	// No headers or body are committed until the complete document renders.
 	renderStarted := time.Now()
-	err = layout(meta, page.Content, !s.options.Production).Render(r.Context(), buffer)
+	renderCtx, renderSpan := telemetry.StartSpan(r.Context(), "ui.render", "Page templates")
+	err = layout(meta, page.Content, !s.options.Production).Render(renderCtx, buffer)
+	telemetry.Observe(renderCtx, "frontend.render", time.Since(renderStarted), err, "kind", "page")
+	telemetry.FinishSpan(renderSpan, err)
 	requeststats.From(r.Context()).AddRender(time.Since(renderStarted))
 	if err != nil {
 		return err

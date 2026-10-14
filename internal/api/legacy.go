@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -98,6 +99,11 @@ func registerLegacy(a huma.API, op huma.Operation, handler legacyHandler) {
 
 	a.OpenAPI().AddOperation(&op)
 	a.Adapter().Handle(&op, func(hctx huma.Context) {
+		pattern := op.Path
+		if !strings.HasPrefix(pattern, "/auth") && !strings.HasPrefix(pattern, "/images") {
+			pattern = "/api" + pattern
+		}
+		telemetry.SetRoute(hctx.Context(), op.Method, pattern)
 		requestURL := hctx.URL()
 		req := &legacyRequest{
 			Huma:  hctx,
@@ -216,13 +222,14 @@ func writeLegacyError(ctx huma.Context, err error) {
 		// share a key, so completing one cancels the redundant request. That is
 		// client-driven control flow, not an API failure worth paging on.
 		requestURL := ctx.URL()
-		log.Debug().
+		log.Debug().Ctx(ctx.Context()).
 			Str("method", ctx.Method()).
 			Str("path", requestURL.Path).
 			Msg("API request canceled by client")
 	} else {
+		telemetry.Capture(ctx.Context(), err)
 		requestURL := ctx.URL()
-		log.Error().
+		log.Error().Ctx(ctx.Context()).Bool("sentry_handled", true).
 			Err(err).
 			Str("method", ctx.Method()).
 			Str("path", requestURL.Path).

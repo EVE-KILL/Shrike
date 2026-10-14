@@ -4,8 +4,11 @@ import (
 	"net/http"
 	"strconv"
 
+	"time"
+
 	"github.com/a-h/templ"
 	"github.com/eve-kill/shrike/internal/api"
+	"github.com/eve-kill/shrike/internal/telemetry"
 )
 
 func (s *site) mostValuableFragment(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +102,13 @@ func fragmentInt(raw string, fallback, minimum, maximum int) (int, error) {
 func (s *site) renderFragment(w http.ResponseWriter, r *http.Request, component templ.Component) {
 	buffer := templ.GetBuffer()
 	defer templ.ReleaseBuffer(buffer)
-	if err := component.Render(r.Context(), buffer); err != nil {
+	ctx, span := telemetry.StartSpan(r.Context(), "ui.render", "Fragment templates")
+	started := time.Now()
+	err := component.Render(ctx, buffer)
+	telemetry.Observe(ctx, "frontend.render", time.Since(started), err, "kind", "fragment")
+	telemetry.FinishSpan(span, err)
+	if err != nil {
+		telemetry.Capture(r.Context(), err)
 		http.Error(w, "Could not render section", http.StatusInternalServerError)
 		return
 	}

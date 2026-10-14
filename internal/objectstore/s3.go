@@ -20,7 +20,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/eve-kill/shrike/internal/telemetry"
 )
 
 const (
@@ -121,7 +122,7 @@ func NewS3Store(options S3Options) (*S3Store, error) {
 	}
 	client := options.HTTPClient
 	if client == nil {
-		client = &http.Client{Timeout: 20 * time.Second}
+		client = &http.Client{Timeout: 20 * time.Second, Transport: telemetry.Transport("objectstore", nil)}
 	}
 	var cacheTTL time.Duration
 	var cacheMaximum int64

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	coderws "github.com/coder/websocket"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
@@ -172,9 +173,11 @@ func (s *Server) serveSocket(w http.ResponseWriter, r *http.Request, endpoint *E
 		CompressionMode:    coderws.CompressionDisabled,
 	})
 	if err != nil {
+		telemetry.Count(r.Context(), "websocket.handshakes", 1, telemetry.Attributes("endpoint", endpoint.Path, "outcome", "error"))
 		return
 	}
 	conn.SetReadLimit(maxMessageBytes)
+	telemetry.Count(r.Context(), "websocket.handshakes", 1, telemetry.Attributes("endpoint", endpoint.Path, "outcome", "connected"))
 
 	c := newClient(s.ctx, conn, endpoint)
 	s.register(c)
@@ -191,12 +194,14 @@ func (s *Server) serveSocket(w http.ResponseWriter, r *http.Request, endpoint *E
 func (s *Server) register(c *client) {
 	s.mu.Lock()
 	s.clients[c] = struct{}{}
+	telemetry.Gauge(c.ctx, "websocket.connections", float64(len(s.clients)))
 	s.mu.Unlock()
 }
 
 func (s *Server) unregister(c *client) {
 	s.mu.Lock()
 	delete(s.clients, c)
+	telemetry.Gauge(c.ctx, "websocket.connections", float64(len(s.clients)))
 	s.mu.Unlock()
 	c.cancel()
 }
@@ -300,11 +305,16 @@ func (s *Server) broadcast(endpoint *Endpoint, routingKeys []string, payload []b
 	}
 	s.mu.RUnlock()
 
+	var delivered int64
 	for _, c := range clients {
 		if !c.enqueue(payload) {
+			telemetry.Count(s.ctx, "websocket.backpressure", 1, telemetry.Attributes("endpoint", endpoint.Path))
 			go c.close(coderws.StatusTryAgainLater, "client is too slow")
+		} else {
+			delivered++
 		}
 	}
+	telemetry.Count(s.ctx, "websocket.deliveries", delivered, telemetry.Attributes("endpoint", endpoint.Path))
 }
 
 func (s *Server) serveDiscovery(w http.ResponseWriter, r *http.Request) {

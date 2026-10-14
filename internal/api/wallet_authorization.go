@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/telemetry"
+
 	campaignengine "github.com/eve-kill/shrike/internal/campaign"
 	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/sso"
@@ -62,7 +64,7 @@ func newWalletAuthorizationService(
 		now:        time.Now,
 	}
 	if service.httpClient == nil {
-		service.httpClient = &http.Client{Timeout: 30 * time.Second}
+		service.httpClient = &http.Client{Timeout: 30 * time.Second, Transport: telemetry.Transport("ccp.esi", nil)}
 	}
 	if service.userAgent == "" {
 		service.userAgent = "EVE-Kill/2.0 (https://eve-kill.com)"

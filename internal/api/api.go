@@ -18,6 +18,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/eve-kill/shrike/internal/images"
 	"github.com/eve-kill/shrike/internal/mcpserver"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -137,7 +138,7 @@ func New(opts Options) *Service {
 	mux.NotFound(legacyFallback)
 
 	cached := responseCache(opts.responseCache, schemas, opts.Commit, mux)
-	site := sitePaths(cached)
+	site := sitePaths(routeTelemetry(mux, cached))
 	if opts.RequestGuard != nil {
 		site = opts.RequestGuard.Wrap(site)
 	}
@@ -146,6 +147,25 @@ func New(opts Options) *Service {
 		site:    site, document: a.OpenAPI(),
 		homepage: newCachedHomepageReader(opts.DB, opts.Graph, opts.responseCache, opts.Commit),
 	}
+}
+
+// Resolve templates before the response cache or router can return. Both Huma
+// and legacy handlers use this path, including cache hits and validation errors.
+func routeTelemetry(mux chi.Router, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if telemetry.Enabled() {
+			routes := chi.NewRouteContext()
+			pattern := "/unmatched"
+			if mux.Match(routes, r.Method, r.URL.Path) {
+				pattern = routes.RoutePattern()
+				if !strings.HasPrefix(pattern, "/auth") && !strings.HasPrefix(pattern, "/images") && pattern != "/health" && pattern != "/ready" {
+					pattern = "/api" + pattern
+				}
+			}
+			telemetry.SetRoute(r.Context(), r.Method, pattern)
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Homepage provides the shared cached reads used by the Go homepage widgets.

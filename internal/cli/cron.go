@@ -154,6 +154,11 @@ for it explicitly, you get it.`,
 		}
 
 		run, err := cron.RunOnce(cmd.Context(), registry, name)
+		if run.Context != nil {
+			// The command boundary reports failures once, using the cron's trace.
+			cmd.Root().SetContext(run.Context)
+			cmd.SetContext(run.Context)
+		}
 		if err != nil {
 			// A cron that is declared but unported is a fact about the port, not
 			// a failure of this invocation — say so plainly and list what does

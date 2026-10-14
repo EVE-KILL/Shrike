@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/config"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -49,8 +50,8 @@ func newPool(ctx context.Context, url string, configuredMax int, role string, tr
 		return nil, fmt.Errorf("parse %s database URL: %w", role, err)
 	}
 
-	if tracing {
-		poolCfg.ConnConfig.Tracer = queryTracer{}
+	if tracing || telemetry.Enabled() {
+		poolCfg.ConnConfig.Tracer = queryTracer{role: role}
 	}
 
 	maxConns := configuredMax
@@ -82,5 +83,14 @@ func newPool(ctx context.Context, url string, configuredMax int, role string, tr
 		pool.Close()
 		return nil, fmt.Errorf("connect to %s postgres: %w", role, err)
 	}
+	telemetry.RegisterCollector("db."+role, func(ctx context.Context) {
+		stats := pool.Stat()
+		attrs := telemetry.Attributes("pool", role)
+		telemetry.Gauge(ctx, "db.pool.connections", float64(stats.TotalConns()), attrs)
+		telemetry.Gauge(ctx, "db.pool.acquired", float64(stats.AcquiredConns()), attrs)
+		telemetry.Gauge(ctx, "db.pool.idle", float64(stats.IdleConns()), attrs)
+		telemetry.Gauge(ctx, "db.pool.max", float64(stats.MaxConns()), attrs)
+		telemetry.Gauge(ctx, "db.pool.empty_acquires", float64(stats.EmptyAcquireCount()), attrs)
+	})
 	return pool, nil
 }
