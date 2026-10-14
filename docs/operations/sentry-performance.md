@@ -106,10 +106,23 @@ the selected compound range, faction/date scope, stable ties and valid-type
 selection before the result limit. Validate the production build before claiming
 the index's performance benefit.
 
+The production build is valid and occupies 205 MB. After maintenance and before
+the build, warm runs took 219–232 ms and touched 8,881 pages. After the build,
+the unchanged query used the compound index and finished in 10–19 ms, touching
+1,997 pages. The first run needed ten disk reads; later runs were warm.
+These are database spot measurements. Observe production percentiles after rollout.
+
 The solo hull sample already uses the matchup indexes, including an attacker
-index-only existence probe. It finished in 105 ms with 5,625 disk reads. Most
-work was visibility checks on recent killmails; inspect table maintenance before
-adding another matchup index.
+index-only existence probe. It finished in 105 ms with 5,625 disk reads.
+Killmails had not been automatically vacuumed since August 31. A throttled regular
+vacuum restored an index-only killmail plan with zero heap fetches. The first run
+took 63 ms with 234 reads; warm runs took 9–12 ms. These timings include different
+cache states; they do not prove a corresponding reduction in production p95.
+No additional matchup index was needed.
+
+Migration 30 lowers the killmail vacuum factor from 0.02 to 0.001. This triggers
+maintenance near 96,000 dead tuples instead of 1.9 million at the measured size.
+Other table cost settings and the analyze threshold remain unchanged.
 
 Campaign candidate, materialization, side totals, intel and top-killer queries
 already scope their inputs to one campaign. Top killers rank before name joins.
