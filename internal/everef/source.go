@@ -23,6 +23,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/eve-kill/shrike/internal/telemetry"
 )
 
 // DefaultBaseURL is the root of every dataset.
@@ -77,7 +79,7 @@ func NewClient(userAgent string) *Client {
 	return &Client{
 		BaseURL:   DefaultBaseURL,
 		UserAgent: userAgent,
-		HTTP:      &http.Client{Timeout: requestTimeout},
+		HTTP:      &http.Client{Timeout: requestTimeout, Transport: telemetry.Transport("everef", nil)},
 	}
 }
 

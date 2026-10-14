@@ -5,8 +5,12 @@ package logging
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"os"
 	"time"
+
+	"github.com/eve-kill/shrike/internal/telemetry"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -21,15 +25,15 @@ func Init(level string, jsonFormat bool) {
 	}
 	zerolog.SetGlobalLevel(parsed)
 
-	if jsonFormat {
-		log.Logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
-		return
+	var output io.Writer = os.Stderr
+	if !jsonFormat {
+		output = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 	}
-
-	log.Logger = zerolog.New(zerolog.ConsoleWriter{
-		Out:        os.Stderr,
-		TimeFormat: time.RFC3339,
-	}).With().Timestamp().Logger()
+	if telemetry.Enabled() {
+		output = zerolog.MultiLevelWriter(output, telemetry.LogWriter{})
+	}
+	log.Logger = zerolog.New(output).Hook(telemetry.LogHook{}).With().Timestamp().Logger()
+	slog.SetDefault(Slog(log.Logger))
 }
 
 // ThirdParty adapts libraries that insist on their own logger (go-redis, for
@@ -41,6 +45,6 @@ func Init(level string, jsonFormat bool) {
 // package needs no dependency on the client libraries it tames.
 type ThirdParty struct{}
 
-func (ThirdParty) Printf(_ context.Context, format string, v ...any) {
-	log.Debug().Msgf(format, v...)
+func (ThirdParty) Printf(ctx context.Context, format string, v ...any) {
+	log.Debug().Ctx(ctx).Msgf(format, v...)
 }

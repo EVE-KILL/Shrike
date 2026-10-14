@@ -18,6 +18,7 @@ import (
 	"time"
 	"uuid"
 
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
@@ -174,7 +175,13 @@ func (c *Client) Read(
 	ctx context.Context,
 	cypher string,
 	params map[string]any,
-) ([]map[string]any, error) {
+) (records []map[string]any, resultErr error) {
+	ctx, span := telemetry.StartSpan(ctx, "db.cypher", telemetry.NormalizeSQL(cypher))
+	started := time.Now()
+	defer func() {
+		telemetry.Observe(ctx, "memgraph.read", time.Since(started), resultErr)
+		telemetry.FinishSpan(span, resultErr)
+	}()
 	if c == nil || c.driver == nil {
 		return nil, fmt.Errorf("memgraph is not configured")
 	}
@@ -263,7 +270,13 @@ type Killmail struct {
 // Every edge uses max-wins on last_seen rather than overwriting it. Killmails
 // arrive out of order — the repair cron backfills days-old kills alongside the
 // live feed — and an older one must not drag an edge's last_seen backwards.
-func (c *Client) Ingest(ctx context.Context, km Killmail) error {
+func (c *Client) Ingest(ctx context.Context, km Killmail) (resultErr error) {
+	ctx, span := telemetry.StartSpan(ctx, "db.cypher", "Memgraph killmail transaction")
+	started := time.Now()
+	defer func() {
+		telemetry.Observe(ctx, "memgraph.ingest", time.Since(started), resultErr)
+		telemetry.FinishSpan(span, resultErr)
+	}()
 	if c == nil || c.driver == nil {
 		return nil
 	}
@@ -648,7 +661,13 @@ type PurgeResult struct {
 // Batched rather than done in one statement. A single DELETE over ninety days
 // of edges is a transaction large enough to exhaust Memgraph's memory, and a
 // partial prune is harmless — the next run continues where this one stopped.
-func (c *Client) Purge(ctx context.Context, batchSize int) (PurgeResult, error) {
+func (c *Client) Purge(ctx context.Context, batchSize int) (result PurgeResult, resultErr error) {
+	ctx, span := telemetry.StartSpan(ctx, "db.cypher", "Memgraph retention purge")
+	started := time.Now()
+	defer func() {
+		telemetry.Observe(ctx, "memgraph.purge", time.Since(started), resultErr)
+		telemetry.FinishSpan(span, resultErr)
+	}()
 	out := PurgeResult{ByType: map[string]int64{}}
 	if c == nil || c.driver == nil {
 		return out, nil

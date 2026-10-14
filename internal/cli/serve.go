@@ -16,6 +16,7 @@ import (
 	"github.com/eve-kill/shrike/internal/objectstore"
 	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/requeststats"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/eve-kill/shrike/internal/ui"
 	shrikewebsocket "github.com/eve-kill/shrike/internal/websocket"
 	"github.com/rs/zerolog/log"
@@ -158,6 +159,9 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			ingress.SurfaceFrontend:   withRequestDeadline(frontend.New(frontend.Options{Production: cfg.IsProduction(), Homepage: apiService.Homepage(), Entities: apiService.Homepage(), Universe: apiService.Homepage(), Wallet: apiService.Homepage(), Legacy: apiService.Homepage(), Rankings: apiService.Homepage(), Statistics: apiService.Homepage(), Scans: apiService.Homepage(), Coalitions: apiService.Homepage(), Wars: apiService.Homepage(), FactionWars: apiService.Homepage(), BattleGenerator: apiService.Homepage(), Killmail: apiService.Homepage(), Blog: blogReader, BlogPreviewAPI: apiService.Site(), CommentsAPI: apiService.Site(), SitemapAPI: apiService.Site(), CampaignsAPI: apiService.Site(), Sessions: apiService.Session(), AccountAPI: apiService.Site(), ConflictsAPI: apiService.Site(), FittingsAPI: apiService.Site(), RoamReports: blogReader, AdvancedSearch: apiService.Homepage()}), 30*time.Second),
 		}
 
+		for name, handler := range surfaces {
+			surfaces[name] = telemetry.HTTP(name, handler)
+		}
 		manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
 		localHTTPS := mode.Name != "dev" && !cfg.IsProduction()
 

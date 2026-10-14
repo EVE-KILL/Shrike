@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/killmail"
+	"github.com/eve-kill/shrike/internal/telemetry"
 )
 
 // DefaultBaseURL is the ephemeral feed. "Ephemeral" is literal: entries are
@@ -128,7 +129,7 @@ func New(userAgent string) *Client {
 		BaseURL:    DefaultBaseURL,
 		HistoryURL: DefaultHistoryURL,
 		UserAgent:  userAgent,
-		HTTP:       &http.Client{Timeout: RequestTimeout},
+		HTTP:       &http.Client{Timeout: RequestTimeout, Transport: telemetry.Transport("zkillboard", nil)},
 		Limiter:    NewWindowLimiter(RateLimitPerSecond, time.Second),
 	}
 }
@@ -137,7 +138,7 @@ func (c *Client) httpClient() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
-	return &http.Client{Timeout: RequestTimeout}
+	return &http.Client{Timeout: RequestTimeout, Transport: telemetry.Transport("zkillboard", nil)}
 }
 
 func (c *Client) baseURL() string {

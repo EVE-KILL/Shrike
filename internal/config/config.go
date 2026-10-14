@@ -87,6 +87,15 @@ type Config struct {
 	LogLevel string
 	LogJSON  bool
 
+	// Sentry is optional locally. A missing DSN disables all telemetry.
+	SentryDSN              string
+	SentryEnvironment      string
+	SentryTracesSampleRate float64
+	SentryLogs             bool
+	SentryMetrics          bool
+	SentryLogLevel         string
+	SentryLogSampleRate    float64
+
 	// sources maps field name -> where its value came from.
 	sources map[string]Source
 }
@@ -201,6 +210,35 @@ func Load(explicitPath string) (*Config, error) {
 	c.GitSHA = get("GitSHA", "GIT_SHA", "unknown")
 	c.LogLevel = get("LogLevel", "LOG_LEVEL", "info")
 	c.LogJSON = strings.EqualFold(get("LogFormat", "LOG_FORMAT", "console"), "json")
+	c.SentryDSN = get("SentryDSN", "SENTRY_DSN", "")
+	c.SentryEnvironment = get("SentryEnvironment", "SENTRY_ENVIRONMENT", c.NodeEnv)
+	c.SentryLogLevel = get("SentryLogLevel", "SENTRY_LOG_LEVEL", "info")
+	getBool := func(field, key string, def bool) (bool, error) {
+		value, err := strconv.ParseBool(get(field, key, strconv.FormatBool(def)))
+		if err != nil {
+			return false, fmt.Errorf("%s must be true or false", key)
+		}
+		return value, nil
+	}
+	getRate := func(field, key string, def float64) (float64, error) {
+		value, err := strconv.ParseFloat(get(field, key, strconv.FormatFloat(def, 'f', -1, 64)), 64)
+		if err != nil || !(value >= 0 && value <= 1) {
+			return 0, fmt.Errorf("%s must be between 0 and 1", key)
+		}
+		return value, nil
+	}
+	if c.SentryLogs, err = getBool("SentryLogs", "SENTRY_LOGS", true); err != nil {
+		return nil, err
+	}
+	if c.SentryMetrics, err = getBool("SentryMetrics", "SENTRY_METRICS", true); err != nil {
+		return nil, err
+	}
+	if c.SentryTracesSampleRate, err = getRate("SentryTracesSampleRate", "SENTRY_TRACES_SAMPLE_RATE", 0.1); err != nil {
+		return nil, err
+	}
+	if c.SentryLogSampleRate, err = getRate("SentryLogSampleRate", "SENTRY_LOG_SAMPLE_RATE", 1); err != nil {
+		return nil, err
+	}
 
 	if dotenvPath != "" {
 		c.sources["_dotenvPath"] = Source(dotenvPath)

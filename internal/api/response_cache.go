@@ -9,6 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/telemetry"
+	"github.com/getsentry/sentry-go"
+
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 )
@@ -65,11 +68,29 @@ func (c *ResponseCache) LoadOnce(
 // Refresh starts one detached load for a key in this process. Callers use it
 // after serving a stale response, so the client request never owns the refresh.
 func (c *ResponseCache) Refresh(key string, load func() (any, error)) {
+	c.RefreshContext(context.Background(), key, func(context.Context) (any, error) { return load() })
+}
+
+// RefreshContext starts a separate background transaction; an already-served
+// HTTP request must not retain spans for a refresh that continues afterwards.
+func (c *ResponseCache) RefreshContext(ctx context.Context, key string, load func(context.Context) (any, error)) {
 	if c == nil {
 		return
 	}
+	carrier := telemetry.Propagation(ctx)
 	go func() {
-		_, _, _ = c.loads.Do(key, load)
+		_, _, _ = c.loads.Do(key, func() (any, error) {
+			ctx, task := telemetry.StartTaskWithTrace(context.Background(), "cache.refresh", "API cache refresh", carrier)
+			defer telemetry.RecoverAndRepanic(ctx)
+			value, err := load(ctx)
+			telemetry.Capture(ctx, err)
+			outcome := "completed"
+			if err != nil {
+				outcome = "failed"
+			}
+			task.End(outcome, err)
+			return value, err
+		})
 	}()
 }
 
@@ -87,10 +108,20 @@ func NewResponseCache(client *redis.Client, maxBytes int64) *ResponseCache {
 }
 
 func newResponseCache(shared responseCacheBackend, maxBytes int64) *ResponseCache {
-	return &ResponseCache{
+	cache := &ResponseCache{
 		local:  newResponseLRU(maxBytes),
 		shared: shared,
 	}
+	telemetry.RegisterCollector("cache.api", func(ctx context.Context) {
+		cache.local.mu.Lock()
+		entries, bytes, maximum := len(cache.local.items), cache.local.bytes, cache.local.maxBytes
+		cache.local.mu.Unlock()
+		attrs := telemetry.Attributes("cache", "api", "tier", "l1")
+		telemetry.Gauge(ctx, "cache.entries", float64(entries), attrs)
+		telemetry.Gauge(ctx, "cache.bytes", float64(bytes), attrs, telemetry.WithUnit(sentry.UnitByte))
+		telemetry.Gauge(ctx, "cache.capacity", float64(maximum), attrs, telemetry.WithUnit(sentry.UnitByte))
+	})
+	return cache
 }
 
 func (c *ResponseCache) Load(
@@ -154,7 +185,25 @@ func (c *ResponseCache) LoadState(
 	if c == nil {
 		return cachedResponse{}, false, false
 	}
+	ctx, span := telemetry.StartSpan(ctx, "cache.get", "API response cache")
+	started := time.Now()
+	tier, outcome := "l2", "miss"
+	defer func() {
+		attrs := telemetry.Attributes("cache", "api", "tier", tier, "outcome", outcome)
+		telemetry.Count(ctx, "cache.lookup", 1, attrs)
+		telemetry.Duration(ctx, "cache.lookup.duration", time.Since(started), attrs)
+		if span != nil {
+			span.SetData("cache.hit", outcome != "miss")
+			span.SetData("cache.tier", tier)
+			span.Status = sentry.SpanStatusOK
+			span.Finish()
+		}
+	}()
 	if entry, ok := c.local.Get(key, time.Now()); ok && !sharedOnlyResponse(key) {
+		tier, outcome = "l1", "hit"
+		if !responseIsFresh(entry, time.Now()) {
+			outcome = "stale"
+		}
 		return entry, responseIsFresh(entry, time.Now()), true
 	}
 	if c.shared == nil {
@@ -163,6 +212,10 @@ func (c *ResponseCache) LoadState(
 	entry, ttl, ok := c.shared.Load(ctx, key)
 	if !ok {
 		return cachedResponse{}, false, false
+	}
+	outcome = "hit"
+	if !responseIsFresh(entry, time.Now()) {
+		outcome = "stale"
 	}
 	if !sharedOnlyResponse(key) {
 		c.local.Put(key, entry, ttl, time.Now())

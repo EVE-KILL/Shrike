@@ -7,12 +7,14 @@ import (
 
 	"github.com/eve-kill/shrike/internal/jobs"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/redis/go-redis/v9"
 	"github.com/riverqueue/river"
 )
 
 // Run is one completed cron run, reported for display.
 type Run struct {
+	Context context.Context
 	Name    string
 	Report  string
 	Elapsed time.Duration
@@ -72,8 +74,9 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[queue.CronArgs]) error
 				"report":  "Tranquility is offline",
 				"skipped": true,
 			})
+			telemetry.Count(ctx, "cron.skipped", 1, telemetry.Attributes("cron", name))
 			if w.OnRun != nil {
-				w.OnRun(Run{Name: name, Skipped: true, Report: "Tranquility is offline"})
+				w.OnRun(Run{Context: ctx, Name: name, Skipped: true, Report: "Tranquility is offline"})
 			}
 			return nil
 		}
@@ -92,7 +95,7 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[queue.CronArgs]) error
 	}
 
 	if w.OnRun != nil {
-		w.OnRun(Run{Name: name, Report: report, Elapsed: elapsed, Err: err})
+		w.OnRun(Run{Context: ctx, Name: name, Report: report, Elapsed: elapsed, Err: err})
 	}
 	return err
 }
@@ -121,8 +124,17 @@ func RunOnce(ctx context.Context, r *Registry, name string) (Run, error) {
 	}
 
 	start := time.Now()
+	ctx, task := telemetry.StartTask(ctx, "cron.run", declared.Name, "cron", declared.Name)
+	defer telemetry.RecoverAndRepanic(ctx)
 	report, err := handler(ctx)
+	telemetry.Capture(ctx, err)
+	outcome := "completed"
+	if err != nil {
+		outcome = "failed"
+	}
+	task.End(outcome, err)
 	return Run{
+		Context: ctx,
 		Name:    declared.Name,
 		Report:  report,
 		Elapsed: time.Since(start),

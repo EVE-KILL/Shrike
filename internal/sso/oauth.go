@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/telemetry"
+
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 )
@@ -246,7 +248,7 @@ func (c *OAuthClient) httpClient() *http.Client {
 	if c.HTTP != nil {
 		return c.HTTP
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return &http.Client{Timeout: 30 * time.Second, Transport: telemetry.Transport("ccp.sso", nil)}
 }
 
 func scopesFromRawClaim(raw json.RawMessage) ([]string, error) {

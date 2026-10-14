@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/config"
 	"github.com/eve-kill/shrike/internal/logging"
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/eve-kill/shrike/internal/ui"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cobra"
@@ -17,6 +19,7 @@ import (
 // command's Run. Commands must not read it at construction time — flags have
 // not been parsed then.
 var cfg *config.Config
+var sentryRuntime *telemetry.Runtime
 
 var (
 	flagJSON    bool
@@ -55,6 +58,11 @@ var rootCmd = &cobra.Command{
 		if flagVerbose {
 			level = "debug"
 		}
+		sentryRuntime, err = telemetry.Init(telemetry.Options{Config: cfg, Version: ui.Version, Commit: ui.Commit,
+			Service: strings.TrimPrefix(cmd.CommandPath(), "shrike ")})
+		if err != nil {
+			return err
+		}
 		logging.Init(level, cfg.LogJSON || flagJSON)
 
 		// Stop go-redis writing pool diagnostics directly to stderr; route them
@@ -70,6 +78,14 @@ var rootCmd = &cobra.Command{
 // Execute parses argv and dispatches. It owns the process exit code so that
 // main stays a one-liner.
 func Execute(version, commit string) {
+	if code := execute(version, commit); code != 0 {
+		os.Exit(code)
+	}
+}
+
+func execute(version, commit string) int {
+	defer func() { sentryRuntime.Close() }()
+	defer telemetry.RecoverAndRepanic(context.Background())
 	ui.Version = version
 	ui.Commit = commit
 
@@ -95,13 +111,15 @@ func Execute(version, commit string) {
 	if err := rootCmd.Execute(); err != nil {
 		// Signal-initiated shutdown is a normal outcome, not a failure.
 		if errors.Is(err, errInterrupted) {
-			os.Exit(130) // 128 + SIGINT, the shell convention
+			return 130 // 128 + SIGINT, the shell convention
 		}
+		telemetry.Capture(rootCmd.Context(), err)
 		ui.Newline()
 		ui.Error("%v", err)
 		ui.Newline()
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 func init() {
@@ -137,6 +155,7 @@ func init() {
 		killmailCmd,
 		imagesCmd,
 		mcpCmd,
+		sentryCmd,
 		openAPICmd,
 		completionCmd,
 	)

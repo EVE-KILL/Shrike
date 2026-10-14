@@ -55,6 +55,13 @@ Credentials are redacted. The SOURCE column is the point of this command:
 			{"NodeEnv", "NODE_ENV", cfg.NodeEnv},
 			{"GitSHA", "GIT_SHA", cfg.GitSHA},
 			{"LogLevel", "LOG_LEVEL", cfg.LogLevel},
+			{"SentryDSN", "SENTRY_DSN", config.RedactSecret(cfg.SentryDSN)},
+			{"SentryEnvironment", "SENTRY_ENVIRONMENT", cfg.SentryEnvironment},
+			{"SentryTracesSampleRate", "SENTRY_TRACES_SAMPLE_RATE", strconv.FormatFloat(cfg.SentryTracesSampleRate, 'f', -1, 64)},
+			{"SentryLogs", "SENTRY_LOGS", strconv.FormatBool(cfg.SentryLogs)},
+			{"SentryMetrics", "SENTRY_METRICS", strconv.FormatBool(cfg.SentryMetrics)},
+			{"SentryLogLevel", "SENTRY_LOG_LEVEL", cfg.SentryLogLevel},
+			{"SentryLogSampleRate", "SENTRY_LOG_SAMPLE_RATE", strconv.FormatFloat(cfg.SentryLogSampleRate, 'f', -1, 64)},
 		}
 
 		if ui.JSONMode {

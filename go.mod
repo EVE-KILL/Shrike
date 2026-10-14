@@ -15,6 +15,7 @@ require (
 	github.com/deepteams/webp v1.2.8
 	github.com/eve-kill/shrike/frontend v0.0.0
 	github.com/felixge/httpsnoop v1.1.0
+	github.com/getsentry/sentry-go v0.50.0
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/google/flatbuffers v25.12.19+incompatible
 	github.com/google/jsonschema-go v0.4.3

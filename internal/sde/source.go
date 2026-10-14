@@ -18,6 +18,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/eve-kill/shrike/internal/telemetry"
 )
 
 const (
@@ -243,7 +245,8 @@ func get(ctx context.Context, url, userAgent string) (io.ReadCloser, error) {
 	// may throttle requests without one.
 	req.Header.Set("User-Agent", userAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Transport: telemetry.Transport("ccp.sde", http.DefaultTransport)}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

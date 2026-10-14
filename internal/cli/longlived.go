@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/eve-kill/shrike/internal/ui"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -57,7 +58,7 @@ func RunService(cmd *cobra.Command, name string, run func(ctx context.Context) e
 	log.Info().Str("service", name).Msg("starting")
 
 	done := make(chan error, 1)
-	go func() { done <- run(ctx) }()
+	go func() { defer telemetry.RecoverAndRepanic(ctx); done <- run(ctx) }()
 
 	// interruptResult maps the signal that stopped us onto a return value.
 	interruptResult := func() error {

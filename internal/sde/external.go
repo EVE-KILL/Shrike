@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/telemetry"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -46,7 +48,8 @@ func fetchJSON(ctx context.Context, url, userAgent string, into any) error {
 	}
 	req.Header.Set("User-Agent", userAgent)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Transport: telemetry.Transport("sde.external", http.DefaultTransport)}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

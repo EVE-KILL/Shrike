@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/objectstore"
+	"github.com/eve-kill/shrike/internal/telemetry"
+	"github.com/getsentry/sentry-go"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -78,7 +80,7 @@ func New(options Options) *Service {
 	store := normalizeObjectStore(options.Store)
 	client := options.HTTPClient
 	if client == nil {
-		client = &http.Client{Timeout: 20 * time.Second}
+		client = &http.Client{Timeout: 20 * time.Second, Transport: telemetry.Transport("eve.images", nil)}
 	}
 	now := options.Now
 	if now == nil {
@@ -88,12 +90,24 @@ func New(options Options) *Service {
 	if upstream == "" {
 		upstream = "https://images.evetech.net"
 	}
-	return &Service{
+	service := &Service{
 		store: store, client: client, userAgent: options.UserAgent,
 		cache: NewCache(options.CacheBytes, options.CacheTTL),
 		now:   now, upstream: upstream,
 		maximum: defaultMaximumObject, social: options.Social,
 	}
+	var lastHits, lastMisses uint64
+	telemetry.RegisterCollector("cache.images", func(ctx context.Context) {
+		stats := service.CacheStats()
+		attrs := telemetry.Attributes("cache", "images", "tier", "l1")
+		telemetry.Gauge(ctx, "cache.entries", float64(stats.Entries), attrs)
+		telemetry.Gauge(ctx, "cache.bytes", float64(stats.Bytes), attrs, telemetry.WithUnit(sentry.UnitByte))
+		telemetry.Gauge(ctx, "cache.capacity", float64(stats.Maximum), attrs, telemetry.WithUnit(sentry.UnitByte))
+		telemetry.Count(ctx, "cache.lookup", int64(stats.Hits-lastHits), telemetry.Attributes("cache", "images", "tier", "l1", "outcome", "hit"))
+		telemetry.Count(ctx, "cache.lookup", int64(stats.Misses-lastMisses), telemetry.Attributes("cache", "images", "tier", "l1", "outcome", "miss"))
+		lastHits, lastMisses = stats.Hits, stats.Misses
+	})
+	return service
 }
 
 // ObjectStore is an interface, so assigning a typed nil pointer to it produces

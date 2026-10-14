@@ -230,6 +230,7 @@ type statusUpdateSummary struct {
 }
 
 func logCronRun(logger zerolog.Logger, run cron.Run) {
+	logger = logger.With().Ctx(run.Context).Bool("sentry_handled", true).Logger()
 	var event *zerolog.Event
 	if run.Err != nil {
 		event = logger.Error().Err(run.Err)
