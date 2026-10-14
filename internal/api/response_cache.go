@@ -3,6 +3,7 @@ package api
 import (
 	"container/list"
 	"context"
+	"errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -26,6 +27,12 @@ type ResponseCache struct {
 	local  *responseLRU
 	shared responseCacheBackend
 	loads  singleflight.Group
+
+	lifecycleMu sync.Mutex
+	closed      bool
+	background  context.Context
+	cancel      context.CancelFunc
+	loaders     sync.WaitGroup
 }
 
 type responseCacheBackend interface {
@@ -56,7 +63,7 @@ func (c *ResponseCache) LoadOnce(
 		value, err := load()
 		return value, err, false
 	}
-	result := c.loads.DoChan(key, load)
+	result := c.loads.DoChan(key, func() (any, error) { return c.runLoad(load) })
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err(), false
@@ -80,18 +87,53 @@ func (c *ResponseCache) RefreshContext(ctx context.Context, key string, load fun
 	carrier := telemetry.Propagation(ctx)
 	go func() {
 		_, _, _ = c.loads.Do(key, func() (any, error) {
-			ctx, task := telemetry.StartTaskWithTrace(context.Background(), "cache.refresh", "API cache refresh", carrier)
-			defer telemetry.RecoverAndRepanic(ctx)
-			value, err := load(ctx)
-			telemetry.Capture(ctx, err)
-			outcome := "completed"
-			if err != nil {
-				outcome = "failed"
-			}
-			task.End(outcome, err)
-			return value, err
+			return c.runLoad(func() (any, error) {
+				ctx, task := telemetry.StartTaskWithTrace(c.background, "cache.refresh", "API cache refresh", carrier)
+				defer telemetry.RecoverAndRepanic(ctx)
+				value, err := load(ctx)
+				telemetry.Capture(ctx, err)
+				outcome := "completed"
+				if err != nil {
+					outcome = "failed"
+					if errors.Is(err, context.Canceled) {
+						outcome = "cancelled"
+					}
+				}
+				task.End(outcome, err)
+				return value, err
+			})
 		})
 	}()
+}
+
+// runLoad registers the callback, rather than its waiter: a cancelled HTTP
+// waiter can return while singleflight still owns work that uses the database.
+func (c *ResponseCache) runLoad(load func() (any, error)) (any, error) {
+	c.lifecycleMu.Lock()
+	if c.closed {
+		c.lifecycleMu.Unlock()
+		return nil, context.Canceled
+	}
+	c.loaders.Add(1)
+	c.lifecycleMu.Unlock()
+	defer c.loaders.Done()
+	return load()
+}
+
+// Close cancels detached refreshes and drains all registered loaders before
+// their database/cache dependencies can close. Repeated calls are safe.
+func (c *ResponseCache) Close() {
+	if c == nil {
+		return
+	}
+	c.lifecycleMu.Lock()
+	c.closed = true
+	cancel := c.cancel
+	c.lifecycleMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	c.loaders.Wait()
 }
 
 // NewResponseCache builds an L1 cache over a shared Valkey L2.
@@ -108,9 +150,12 @@ func NewResponseCache(client *redis.Client, maxBytes int64) *ResponseCache {
 }
 
 func newResponseCache(shared responseCacheBackend, maxBytes int64) *ResponseCache {
+	ctx, cancel := context.WithCancel(context.Background())
 	cache := &ResponseCache{
-		local:  newResponseLRU(maxBytes),
-		shared: shared,
+		local:      newResponseLRU(maxBytes),
+		shared:     shared,
+		background: ctx,
+		cancel:     cancel,
 	}
 	telemetry.RegisterCollector("cache.api", func(ctx context.Context) {
 		cache.local.mu.Lock()

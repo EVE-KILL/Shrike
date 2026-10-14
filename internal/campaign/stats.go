@@ -640,6 +640,13 @@ func loadTopSystems(ctx context.Context, tx pgx.Tx, campaignID string, blob *cam
 
 func loadMostValuable(ctx context.Context, tx pgx.Tx, campaignID string, blob *campaignStatsBlob) error {
 	rows, err := tx.Query(ctx, `
+        WITH ranked AS MATERIALIZED (
+            SELECT *
+            FROM campaign_scratch_killmails
+            WHERE campaign_id = $1
+            ORDER BY adj_value DESC, killmail_id DESC
+            LIMIT 10
+        )
         SELECT scratch.killmail_id,
                scratch.adj_value,
                scratch.victim_ship_type_id,
@@ -650,16 +657,14 @@ func loadMostValuable(ctx context.Context, tx pgx.Tx, campaignID string, blob *c
                corporation.name,
                scratch.victim_side,
                scratch.killmail_time
-        FROM campaign_scratch_killmails scratch
+        FROM ranked scratch
         LEFT JOIN inv_types ship
           ON ship.type_id = scratch.victim_ship_type_id
         LEFT JOIN characters character
           ON character.character_id = scratch.victim_character_id
         LEFT JOIN corporations corporation
           ON corporation.corporation_id = scratch.victim_corporation_id
-        WHERE scratch.campaign_id = $1
-        ORDER BY scratch.adj_value DESC
-        LIMIT 10`,
+        ORDER BY scratch.adj_value DESC, scratch.killmail_id DESC`,
 		campaignID,
 	)
 	if err != nil {

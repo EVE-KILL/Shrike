@@ -64,6 +64,7 @@ type Service struct {
 	document *huma.OpenAPI
 	homepage *HomepageReader
 	session  *SessionPageReader
+	cache    *ResponseCache
 }
 
 type sameOriginPrefixContextKey struct{}
@@ -143,9 +144,18 @@ func New(opts Options) *Service {
 		site = opts.RequestGuard.Wrap(site)
 	}
 	return &Service{
+		cache:   opts.responseCache,
 		session: &SessionPageReader{auth: newAuthService(opts)},
 		site:    site, document: a.OpenAPI(),
 		homepage: newCachedHomepageReader(opts.DB, opts.Graph, opts.responseCache, opts.Commit),
+	}
+}
+
+// Close drains work that can outlive an HTTP response. Stop ingress first;
+// close database and shared-cache dependencies only after this returns.
+func (s *Service) Close() {
+	if s != nil {
+		s.cache.Close()
 	}
 }
 
