@@ -1255,4 +1255,4 @@ than optimizing solely to remove a warning. Releases follow docs/deployment/rele
 - [x] Batch authenticated killmail delay writes; preserve duplicate hashes, earliest deadlines and immediate publication.
 - [x] Keep known retryable ESI failures in logs/traces until exhaustion; retain exception reporting for unexpected failures and actual job deadlines.
 - [x] Inspect River election warnings and existing C/D/F performance patterns; keep genuine infrastructure and performance signals visible.
-- [ ] Publish the validated fixes, verify production UI/worker health and inspect new-release Sentry events. Request timeout causes without sampled SQL remain under observation.
+- [x] Publish v0.2.11 and verify both platform images, the ARM64 runtime, public readiness/market/search responses, production browser flows and release-tagged telemetry from all four services. Main-site killmail automation encounters a Cloudflare challenge; the shared production templates pass on VOID. Private cluster access was unavailable. Request timeouts without sampled SQL and isolated River election timeouts remain under observation.

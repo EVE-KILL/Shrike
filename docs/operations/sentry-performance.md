@@ -258,3 +258,29 @@ reads, daily history repair and daily bulk price imports. They are distinct from
 the per-row delay writes fixed for K. Continue monitoring genuine request
 timeouts after rollout rather than treating missing sampled traces as proof
 that all timeout causes are resolved.
+
+
+Published as v0.2.11 at commit `7732a88c14edc805f7e4f692b1bc7759b1eaeb09`.
+The promotion workflow passed exact-commit CI and published both platform
+manifests. The ARM64 image reports that version and commit. The unified digest is
+`sha256:9f9a334b26f2f5d700f03010441e7a58e0951a0c2c731654aea512531d6249cc`.
+Flux commit `8f891a7e8405dec679a69739b3ed86a311fe0a29` updates all four services;
+Sentry receives production logs from serve, cron, queues and zkb on this release.
+
+Public readiness returns 200. `/item/74434/market` now returns 404 rather than 500;
+`/item/27788/market` and `/api/search?q=al` return 200. The main-site FAQ serves
+and runs the restored spotlight. Chromium and WebKit pass the full search and
+killmail interaction checks at 1440px and 390px against VOID's shared production
+renderer, including actual victim/attacker-name navigation. Controlled search
+responses exercise filters, recents, errors and keyboard behavior; a separate
+check also loads real production search results and images. Main-site killmail
+requests encounter Cloudflare's automated-browser challenge. This pass did not
+change security rules. Private Kubernetes access was unavailable, so exact
+replica readiness was not directly inspected.
+
+SHRIKE-G, 7, 8, P and K are resolved in `shrike@v0.2.11`, with status readback.
+The release and production deployment are registered in Sentry. Its error report
+is empty in the initial post-rollout sample; this is a short observation window,
+not proof against future failures. M/N request timeouts and H/J infrastructure
+timeouts remain open for observation. C/D/F retain their documented bounded
+performance signals. No schema migration was needed.
