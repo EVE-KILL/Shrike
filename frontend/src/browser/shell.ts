@@ -64,7 +64,7 @@ export class ShellController extends Controller<HTMLBodyElement> {
     this.element.querySelectorAll<HTMLDetailsElement>('.nav-dropdown[open]').forEach(other=>{if(other!==menu)other.open=false})
   }
   keyboard(event:KeyboardEvent){
-    if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){
+    if((event.metaKey||event.ctrlKey)&&event.key==='k'){
       event.preventDefault();event.stopPropagation()
       if(!(event.target instanceof Element&&event.target.closest('input,textarea,[contenteditable=true]'))){
         if(this.dialogTarget.open)this.dialogTarget.close();else this.openSearch()

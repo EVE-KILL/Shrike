@@ -126,6 +126,12 @@ test('BFCache restoration refreshes an expired session and removes private menu/
 
 test('shell shortcuts, inert background/mobile state and reconnection keep one event binding',async()=>{
   mount();await settle()
+  const consoleShortcut=new KeyboardEvent('keydown',{key:'K',ctrlKey:true,shiftKey:true,bubbles:true,cancelable:true})
+  document.dispatchEvent(consoleShortcut);expect(consoleShortcut.defaultPrevented).toBe(false)
+  expect(document.querySelector<HTMLDialogElement>('dialog')!.open).toBe(false)
+  const editing=document.createElement('input');document.body.append(editing);editing.focus()
+  editing.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}))
+  expect(document.querySelector<HTMLDialogElement>('dialog')!.open).toBe(false);editing.remove()
   const view=document.querySelector<HTMLButtonElement>('[data-shell-target=view]')!,content=document.querySelector<HTMLElement>('.content')!,navbar=document.querySelector<HTMLElement>('.navbar')!
   view.click();expect(content.inert).toBe(true);expect(navbar.inert).toBe(true)
   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true,cancelable:true}));await settle()
