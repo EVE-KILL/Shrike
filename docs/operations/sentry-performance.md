@@ -209,7 +209,9 @@ actions, fourteen community tools, recent searches using the existing storage
 key, category pills/groups, thumbnails/tickers, full search links, three-character
 minimum and 300 ms debounce. Retain native links, keyboard navigation in displayed
 order, cancellation and focus handling. Desktop uses the original 672 px modal
-at 15 vh; phones use its full-screen layout. Chromium and WebKit checks cover
+at 15 vh; phones use its full-screen layout. Match Nuxt's global typography
+overrides (fine 12/16, xs 14/20, sm 16/24), not Tailwind's smaller defaults,
+including mobile tool spacing and hover transitions. Chromium and WebKit checks cover
 desktop/390 px layouts, themes, filtering, recents, errors and navigation.
 
 Killmail victim names now link on phones as well as desktop; corporation-only
