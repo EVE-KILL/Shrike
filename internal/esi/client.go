@@ -256,7 +256,7 @@ func typed[T any](r raw, err error) (Response[T], error) {
 	}
 	var data T
 	if err := json.Unmarshal(r.Body, &data); err != nil {
-		return out, fmt.Errorf("decode ESI response: %w", err)
+		return out, retry.Upstream(r.Status, fmt.Errorf("decode ESI response: %w", err))
 	}
 	out.Data = &data
 	return out, nil

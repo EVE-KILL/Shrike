@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/esi"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -96,7 +97,7 @@ func (r *Refresher) Character(ctx context.Context, id int32) (Result, error) {
 		return out, r.markCharacterDeleted(ctx, id)
 	}
 	if !res.OK() {
-		return out, fmt.Errorf("%w: character %d returned %d", ErrTransient, id, res.Status)
+		return out, retry.Upstream(res.Status, fmt.Errorf("%w: character %d returned %d", ErrTransient, id, res.Status))
 	}
 
 	c := *res.Data
@@ -179,7 +180,7 @@ func (r *Refresher) Corporation(ctx context.Context, id int32) (Result, error) {
 		return out, err
 	}
 	if !res.OK() {
-		return out, fmt.Errorf("%w: corporation %d returned %d", ErrTransient, id, res.Status)
+		return out, retry.Upstream(res.Status, fmt.Errorf("%w: corporation %d returned %d", ErrTransient, id, res.Status))
 	}
 
 	c := *res.Data
@@ -268,7 +269,7 @@ func (r *Refresher) Alliance(ctx context.Context, id int32) (Result, error) {
 		return out, err
 	}
 	if !res.OK() {
-		return out, fmt.Errorf("%w: alliance %d returned %d", ErrTransient, id, res.Status)
+		return out, retry.Upstream(res.Status, fmt.Errorf("%w: alliance %d returned %d", ErrTransient, id, res.Status))
 	}
 
 	a := *res.Data
@@ -345,7 +346,7 @@ func (r *Refresher) CharacterHistory(ctx context.Context, id int32, force bool) 
 		return out, err
 	}
 	if !res.OK() {
-		return out, fmt.Errorf("%w: character history %d returned %d", ErrTransient, id, res.Status)
+		return out, retry.Upstream(res.Status, fmt.Errorf("%w: character history %d returned %d", ErrTransient, id, res.Status))
 	}
 
 	entries := *res.Data
@@ -438,7 +439,7 @@ func (r *Refresher) CorporationHistory(ctx context.Context, id int32, force bool
 		return out, err
 	}
 	if !res.OK() {
-		return out, fmt.Errorf("%w: corporation history %d returned %d", ErrTransient, id, res.Status)
+		return out, retry.Upstream(res.Status, fmt.Errorf("%w: corporation history %d returned %d", ErrTransient, id, res.Status))
 	}
 
 	entries := *res.Data

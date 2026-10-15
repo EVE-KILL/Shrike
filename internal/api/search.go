@@ -44,7 +44,7 @@ func searchHandler(opts Options) legacyHandler {
 		wants := func(entityType string) bool {
 			return len(typeSet) == 0 || typeSet[entityType]
 		}
-		limit := boundedQueryInt(req, "limit", 25, math.MinInt, 50)
+		limit := boundedQueryInt(req, "limit", 25, 1, 50)
 		start := time.Now()
 		useTrigram := len(query) >= 3
 		prefix := query + "%"
@@ -158,6 +158,14 @@ func searchHandler(opts Options) legacyHandler {
 			}), nil
 		}
 
+		if !useTrigram {
+			// Short prefixes have no similarity ranking within a category.
+			// Only its first limit candidates can enter the global page; avoid
+			// collecting every matching character before the UNION's sort.
+			for i, part := range parts {
+				parts[i] = "(" + part + " LIMIT $4)"
+			}
+		}
 		rows, err := queryMaps(ctx, opts.DB,
 			"SELECT * FROM ("+strings.Join(parts, " UNION ALL ")+
 				") sub ORDER BY score DESC LIMIT $4",

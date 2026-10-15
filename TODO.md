@@ -1244,3 +1244,15 @@ shrike-final-marker-repro.json and /tmp/shrike-final-map-review/crowded-marker-c
 Use production read-only plans for investigation and isolated databases for test
 fixtures. Keep real failures visible in Sentry; verify performance findings rather
 than optimizing solely to remove a warning. Releases follow docs/deployment/releases.md.
+
+## Frontend and Sentry follow-up, 2026-10-15
+
+- [x] Restore the original Nuxt spotlight layout and behavior from source, including desktop/mobile, quick actions, tools, recents, images, filters, keyboard navigation and cancellation.
+- [x] Restore killmail victim and featured-attacker text links, including mobile, corporation-only and environment/item identities.
+- [x] Preserve expected HTTP statuses in SSR instead of reporting reader 404s as 500s.
+- [x] Replace the empty market-book timestamp scan with the importer's atomic source bookmark.
+- [x] Bound short-prefix search candidates before the global sort; preserve category ranking and request limits.
+- [x] Batch authenticated killmail delay writes; preserve duplicate hashes, earliest deadlines and immediate publication.
+- [x] Keep known retryable ESI failures in logs/traces until exhaustion; retain exception reporting for unexpected failures and actual job deadlines.
+- [x] Inspect River election warnings and existing C/D/F performance patterns; keep genuine infrastructure and performance signals visible.
+- [ ] Publish the validated fixes, verify production UI/worker health and inspect new-release Sentry events. Request timeout causes without sampled SQL remain under observation.

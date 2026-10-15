@@ -9,6 +9,7 @@ import (
 	"github.com/eve-kill/shrike/internal/esi"
 	"github.com/eve-kill/shrike/internal/killmail"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/eve-kill/shrike/internal/sso"
 	"github.com/riverqueue/river"
 )
@@ -157,7 +158,7 @@ func (d *Deps) walkKillmails(ctx context.Context, accessToken, path string, char
 			return out, nil
 		}
 		if !res.OK() || res.Data == nil {
-			return out, fmt.Errorf("ESI returned %d for %s", res.Status, path)
+			return out, retry.Upstream(res.Status, fmt.Errorf("ESI returned %d for %s", res.Status, path))
 		}
 		if scope == sso.ScopeCharacterKillmails {
 			if err := sso.ResetCharacterKillmailFailures(ctx, d.Pool, characterID); err != nil {
@@ -238,12 +239,7 @@ func (d *Deps) enqueueKillmails(
 	}
 
 	if delayHours > 0 {
-		for _, ref := range unknown {
-			if err := killmail.Delay(ctx, d.Pool, ref, delayHours); err != nil {
-				return err
-			}
-		}
-		return nil
+		return killmail.DelayMany(ctx, d.Pool, unknown, delayHours)
 	}
 
 	ids := make([]int64, 0, len(unknown))

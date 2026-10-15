@@ -217,19 +217,53 @@ templ loginPanel(mobile bool) {
 }
 
 templ searchDialog() {
-	<dialog id="search-dialog" data-shell-target="dialog" data-action="click->shell#backdrop close->shell#cancelSearch" aria-labelledby="search-title">
-		<form method="dialog" class="dialog-heading">
-			<h2 id="search-title">Search New Eden</h2>
-			<button class="icon-button" aria-label="Close search">
-				@icon("x")
-			</button>
-		</form>
-		<div class="search-field">
-			@icon("search")
-			<input id="search-input" data-shell-target="searchInput" data-action="input->shell#search keydown->shell#searchKeys" type="search" placeholder="Search characters, corporations, ships, systems..." aria-label="Search New Eden" autocomplete="off"/>
+	<dialog id="search-dialog" data-shell-target="dialog" data-action="click->shell#backdrop click->shell#spotlightClick close->shell#cancelSearch" aria-label="Search New Eden">
+		<div class="spotlight-heading">
+			<button class="spotlight-back" type="button" data-spotlight-close aria-label="Close search">@icon("arrow-left")</button>
+			<div class="spotlight-field">
+				@icon("search")
+				<input id="search-input" data-shell-target="searchInput" data-action="input->shell#search keydown->shell#searchKeys" type="search" placeholder="Search characters, corporations, alliances, ships..." aria-label="Search New Eden" role="combobox" aria-autocomplete="list" aria-controls="spotlight-result-list" aria-expanded="false" autocomplete="off" spellcheck="false"/>
+				<button class="spotlight-clear" type="button" data-spotlight-clear aria-label="Clear search" hidden>@icon("x")</button>
+				<kbd>ESC</kbd>
+			</div>
+			<button class="spotlight-close" type="button" data-spotlight-close aria-label="Close search">@icon("x")</button>
 		</div>
-		<div id="search-results" data-shell-target="searchResults" data-action="keydown->shell#resultKeys" aria-live="polite"><p>Type at least two characters to search.</p></div>
-		<div class="dialog-footer"><span>Characters, corporations, alliances, ships &amp; locations</span><kbd>ESC</kbd> to close</div>
+		<div id="search-results" class="spotlight-body" data-shell-target="searchResults" data-action="keydown->shell#resultKeys" aria-live="polite"></div>
+		<div class="spotlight-footer">
+			<span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+			<span><kbd>↵</kbd> Select</span>
+			<span><kbd>ESC</kbd> Close</span>
+		</div>
+		<template data-spotlight-default>
+			<div class="spotlight-default">
+				<section>
+					<h3>Quick Actions</h3>
+					<div class="spotlight-actions">
+						for _, action := range spotlightActions {
+							<a href={ templ.URL(action.Href) }>@icon(action.Icon)<span>{ action.Label }</span></a>
+						}
+					</div>
+				</section>
+				<div class="spotlight-default-columns">
+					<section data-spotlight-recents hidden><h3>Recent Searches</h3><div data-spotlight-recent-list></div></section>
+					<section>
+						<h3>EVE Tools</h3>
+						<div class="spotlight-tools">
+							for _, tool := range community {
+								<a href={ templ.URL(tool.URL) } target="_blank" rel="noopener noreferrer" title={ tool.Title }>
+									<img src={ assetURL(tool.Icon) } alt="" width="16" height="16" loading="lazy"/>
+									if tool.Label!="" {
+										<span>{ tool.Label }</span>
+									} else {
+										<span>{ tool.Name }</span>
+									}
+								</a>
+							}
+						</div>
+					</section>
+				</div>
+			</div>
+		</template>
 	</dialog>
 }
 

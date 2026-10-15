@@ -126,11 +126,21 @@ test('BFCache restoration refreshes an expired session and removes private menu/
 
 test('shell shortcuts, inert background/mobile state and reconnection keep one event binding',async()=>{
   mount();await settle()
+  const consoleShortcut=new KeyboardEvent('keydown',{key:'K',ctrlKey:true,shiftKey:true,bubbles:true,cancelable:true})
+  document.dispatchEvent(consoleShortcut);expect(consoleShortcut.defaultPrevented).toBe(false)
+  expect(document.querySelector<HTMLDialogElement>('dialog')!.open).toBe(false)
+  const editing=document.createElement('input');document.body.append(editing);editing.focus()
+  editing.dispatchEvent(new KeyboardEvent('keydown',{key:'k',ctrlKey:true,bubbles:true,cancelable:true}))
+  expect(document.querySelector<HTMLDialogElement>('dialog')!.open).toBe(false);editing.remove()
   const view=document.querySelector<HTMLButtonElement>('[data-shell-target=view]')!,content=document.querySelector<HTMLElement>('.content')!,navbar=document.querySelector<HTMLElement>('.navbar')!
   view.click();expect(content.inert).toBe(true);expect(navbar.inert).toBe(true)
   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true,cancelable:true}));await settle()
   const dialog=document.querySelector<HTMLDialogElement>('dialog')!,input=document.querySelector<HTMLInputElement>('[data-shell-target=searchInput]')!
   expect(dialog.open).toBe(true);expect(document.activeElement).toBe(input);expect(content.inert).toBe(false)
+  input.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true,cancelable:true}));await settle()
+  expect(dialog.open).toBe(false)
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true,cancelable:true}));await settle()
+  expect(dialog.open).toBe(true);expect(document.activeElement).toBe(input)
   document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle();expect(dialog.open).toBe(false)
   const mobile=document.querySelector<HTMLDetailsElement>('[data-shell-target=mobile]')!;mobile.open=true;mobile.dispatchEvent(new Event('toggle'));await settle()
   expect(content.inert).toBe(true);expect(document.activeElement).toBe(mobile.querySelector('button'))
@@ -148,7 +158,7 @@ test('closing the shared search cancels pending work and ignores its late respon
   fetchMock.mockImplementationOnce(()=>new Promise(resolve=>{complete=resolve}))
   const shell=registerController('shell',ShellController).getControllerForElementAndIdentifier(document.body,'shell') as ShellController
   shell.openSearch();const input=document.querySelector<HTMLInputElement>('[data-shell-target=searchInput]')!;input.value='rifter';input.dispatchEvent(new Event('input',{bubbles:true}))
-  await new Promise(resolve=>setTimeout(resolve,220))
+  await new Promise(resolve=>setTimeout(resolve,330))
   const call=fetchMock.mock.calls.find(([path])=>String(path).startsWith('/api/search'))!
   document.querySelector<HTMLDialogElement>('dialog')!.close();await settle()
   expect(call[1]!.signal!.aborted).toBe(true)

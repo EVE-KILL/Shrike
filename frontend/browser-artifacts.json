@@ -629,6 +629,11 @@
       "sha256": "c09a3fa2c1d51929b9f21f50d63127229dc5d40d61521c33163f472f5c62fd96"
     },
     {
+      "path": "chunks/chunk-NYPNQOYQ.js",
+      "bytes": 2120,
+      "sha256": "267bcde7b18ba0f8971b5d10c56eb7d80e5c4029322140f2c919d3f0e652c5ae"
+    },
+    {
       "path": "chunks/chunk-OH6SMVLO.js",
       "bytes": 1813,
       "sha256": "6c4419a5ce0b314af192d9f6820d3fbe8a16746ee4ba6204caf1dd4211184028"
@@ -1150,8 +1155,8 @@
     },
     {
       "path": "search.js",
-      "bytes": 7066,
-      "sha256": "124609037d6795134a923372b2fa186d8ee5340ca8a906e095cc56a16ae7bae0"
+      "bytes": 5200,
+      "sha256": "617154e543abc59a62fd474514469ccea8351aeedaea17ae1872a03b50d8d3ce"
     },
     {
       "path": "select-menu.js",
@@ -1180,8 +1185,8 @@
     },
     {
       "path": "site.js",
-      "bytes": 40274,
-      "sha256": "4055c59001e52244c2a307bedab69bc313ac79c516c050b9d2f97b9ed55debc2"
+      "bytes": 46598,
+      "sha256": "df9de8c84e25c0e198bc821c028fe485eaeb36eb9d79898805f1d6c5fa7a6fdc"
     },
     {
       "path": "statistics.js",
