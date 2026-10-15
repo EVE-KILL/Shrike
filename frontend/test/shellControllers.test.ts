@@ -137,6 +137,10 @@ test('shell shortcuts, inert background/mobile state and reconnection keep one e
   document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true,cancelable:true}));await settle()
   const dialog=document.querySelector<HTMLDialogElement>('dialog')!,input=document.querySelector<HTMLInputElement>('[data-shell-target=searchInput]')!
   expect(dialog.open).toBe(true);expect(document.activeElement).toBe(input);expect(content.inert).toBe(false)
+  input.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true,cancelable:true}));await settle()
+  expect(dialog.open).toBe(false)
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'k',metaKey:true,bubbles:true,cancelable:true}));await settle()
+  expect(dialog.open).toBe(true);expect(document.activeElement).toBe(input)
   document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await settle();expect(dialog.open).toBe(false)
   const mobile=document.querySelector<HTMLDetailsElement>('[data-shell-target=mobile]')!;mobile.open=true;mobile.dispatchEvent(new Event('toggle'));await settle()
   expect(content.inert).toBe(true);expect(document.activeElement).toBe(mobile.querySelector('button'))

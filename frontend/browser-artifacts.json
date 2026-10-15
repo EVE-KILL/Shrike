@@ -1185,8 +1185,8 @@
     },
     {
       "path": "site.js",
-      "bytes": 46600,
-      "sha256": "aa5a098f05cd8d028718e315cb584d4cfe39140607974a5e6dd71eee66f79574"
+      "bytes": 46598,
+      "sha256": "df9de8c84e25c0e198bc821c028fe485eaeb36eb9d79898805f1d6c5fa7a6fdc"
     },
     {
       "path": "statistics.js",

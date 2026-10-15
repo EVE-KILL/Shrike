@@ -217,6 +217,10 @@ victims link to their corporation. Final-blow/top-damage names link to a charact
 corporation or item according to the actual identity. Ship/weapon names also
 link to items. The existing category-aware environment/structure image rules stay
 intact. Browser checks use populated killmails 138563696 and 138885892.
+Review also covers unresolved entity names: displayed fallback text and its
+destination come from one shared view, so a corporation name never points at an
+unresolved character. Spotlight's shortcut closes the focused dialog while
+respecting editing elsewhere and the native browser console shortcut.
 
 - SHRIKE-G: an in-process market reader's expected 404 was being rendered and
   reported as 500. The page renderer now preserves wrapped HTTP error statuses

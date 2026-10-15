@@ -66,9 +66,8 @@ export class ShellController extends Controller<HTMLBodyElement> {
   keyboard(event:KeyboardEvent){
     if((event.metaKey||event.ctrlKey)&&event.key==='k'){
       event.preventDefault();event.stopPropagation()
-      if(!(event.target instanceof Element&&event.target.closest('input,textarea,[contenteditable=true]'))){
-        if(this.dialogTarget.open)this.dialogTarget.close();else this.openSearch()
-      }
+      if(this.dialogTarget.open)this.dialogTarget.close()
+      else if(!(event.target instanceof Element&&event.target.closest('input,textarea,[contenteditable=true]')))this.openSearch()
       return
     }
     if(event.key==='Escape'){

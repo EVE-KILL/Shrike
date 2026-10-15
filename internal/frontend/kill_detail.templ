@@ -384,17 +384,7 @@ templ killVictimCard(view killDetailView) {
 			</div>
 			<div class="kill-victim-name">
 				<strong>
-					if view.Data.Victim.CharacterID!=nil {
-						<a
-							href={ idPath("character", *view.Data.Victim.CharacterID) }
-						>
-							{ killWho(view.Data) }
-						</a>
-					} else if killID(view.Data.Victim.CorporationID)>0 {
-						<a href={ idPath("corporation", *view.Data.Victim.CorporationID) }>{ killWho(view.Data) }</a>
-					} else {
-						{ killWho(view.Data) }
-					}
+					@killLinkedName(killVictimNameLink(view.Data.Victim))
 				</strong>
 				if view.Data.Victim.CharacterName!="" && view.Data.Victim.CorporationID!=nil {
 					<a
@@ -429,11 +419,7 @@ templ killVictimCompact(view killDetailView) {
 			}
 			<div>
 				<strong>
-					if killID(view.Data.Victim.CharacterID)>0 {
-						@killEntityName("character", view.Data.Victim.CharacterID, killWho(view.Data))
-					} else {
-						@killEntityName("corporation", view.Data.Victim.CorporationID, killWho(view.Data))
-					}
+					@killLinkedName(killVictimNameLink(view.Data.Victim))
 				</strong>
 				<span>@killEntityName("corporation", view.Data.Victim.CorporationID, view.Data.Victim.CorporationName)</span>
 				<small>@killEntityName("alliance", view.Data.Victim.AllianceID, view.Data.Victim.AllianceName)</small>
@@ -733,14 +719,8 @@ templ killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, t
 		}
 		<div class="kill-featured-label">
 			<strong>
-				if killID(attacker.CharacterID)>0 {
-					@killEntityName("character", attacker.CharacterID, killAttackerName(attacker))
-				} else if killID(attacker.CorporationID)>0 {
-					@killEntityName("corporation", attacker.CorporationID, killAttackerName(attacker))
-				} else {
-					@killEntityName("item", attacker.ShipTypeID, killAttackerName(attacker))
-				}
-			</strong>
+					@killLinkedName(killAttackerNameLink(attacker))
+				</strong>
 			<span>
 				@killEntityName("item", attacker.ShipTypeID, attacker.ShipName)
 				if attacker.WeaponName!="" {
@@ -754,10 +734,14 @@ templ killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, t
 	</div>
 }
 
+templ killLinkedName(link killNameLink) {
+    @killEntityName(link.Kind, link.ID, link.Name)
+}
+
 templ killEntityName(kind string, id *int64, name string) {
-	if killID(id)>0 {
+	if name!="" && killID(id)>0 {
 		<a href={ idPath(kind, *id) }>{ name }</a>
-	} else {
+	} else if name!="" {
 		{ name }
 	}
 }
@@ -809,17 +793,7 @@ templ killAttackerRow(attacker api.KillmailAttacker, index int, total, highest i
 			}
 			<div class="kill-attacker-info">
 				<strong>
-					if attacker.CharacterID!=nil {
-						<a
-							href={ idPath("character", *attacker.CharacterID) }
-						>{ attacker.CharacterName }</a>
-					} else if attacker.CorporationID!=nil {
-						<a
-							href={ idPath("corporation", *attacker.CorporationID) }
-						>{ attacker.CorporationName }</a>
-					} else {
-						{ attacker.ShipName }
-					}
+					@killLinkedName(killAttackerNameLink(attacker))
 					if attacker.FinalBlow {
 						<b>FB</b>
 					}

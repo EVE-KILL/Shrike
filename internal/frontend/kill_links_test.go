@@ -59,6 +59,37 @@ func TestKillNamesWithoutCharactersUseCorporationOrItem(t *testing.T) {
 	}
 }
 
+func TestUnresolvedIdentityNamesLinkToTheirDisplayedFallback(t *testing.T) {
+	victim := api.KillmailVictim{CharacterID: ptrKill[int64](42), CorporationID: ptrKill[int64](77), CorporationName: "Owner"}
+	view := killBuildView(api.KillmailPageData{Victim: victim})
+	for name, component := range map[string]templ.Component{"desktop": killVictimCard(view), "mobile": killVictimCompact(view)} {
+		links := killNameLinks(t, component)
+		if !strings.Contains(strings.Join(links["/corporation/77"], "|"), "Owner") || strings.Contains(strings.Join(links["/character/42"], "|"), "Owner") {
+			t.Fatalf("%s victim fallback has the wrong destination: %v", name, links)
+		}
+	}
+	for _, tc := range []struct {
+		attacker api.KillmailAttacker
+		path     string
+		name     string
+	}{
+		{api.KillmailAttacker{CharacterID: ptrKill[int64](42), CorporationID: ptrKill[int64](77), CorporationName: "Owner", ShipTypeID: ptrKill[int64](587)}, "/corporation/77", "Owner"},
+		{api.KillmailAttacker{CharacterID: ptrKill[int64](42), CorporationID: ptrKill[int64](77), ShipTypeID: ptrKill[int64](587), ShipName: "Rifter"}, "/item/587", "Rifter"},
+		{api.KillmailAttacker{CharacterID: ptrKill[int64](42), CorporationID: ptrKill[int64](77), ShipTypeID: ptrKill[int64](587)}, "", "NPC"},
+		{api.KillmailAttacker{CharacterName: "Known name without ID", CorporationID: ptrKill[int64](77), CorporationName: "Owner"}, "", "Known name without ID"},
+	} {
+		links := killNameLinks(t, killFeaturedAttacker(tc.attacker, "FB", "final", 1, false))
+		if tc.path != "" && !strings.Contains(strings.Join(links[tc.path], "|"), tc.name) {
+			t.Fatalf("displayed fallback lacks its destination: %v", links)
+		}
+		for path, labels := range links {
+			if path != tc.path && strings.Contains(strings.Join(labels, "|"), tc.name) {
+				t.Fatalf("%q links to %s instead of %s", tc.name, path, tc.path)
+			}
+		}
+	}
+}
+
 func killNameLinks(t *testing.T, component templ.Component) map[string][]string {
 	t.Helper()
 	var body strings.Builder

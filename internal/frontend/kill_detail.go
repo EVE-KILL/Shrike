@@ -393,15 +393,24 @@ func killSecClass(s *float64) string {
 	}
 	return "null"
 }
-func killWho(data api.KillmailPageData) string {
-	if data.Victim.CharacterName != "" {
-		return data.Victim.CharacterName
-	}
-	if data.Victim.CorporationName != "" {
-		return data.Victim.CorporationName
-	}
-	return "Unknown"
+
+type killNameLink struct {
+	Name string
+	Kind string
+	ID   *int64
 }
+
+func killVictimNameLink(victim api.KillmailVictim) killNameLink {
+	if victim.CharacterName != "" {
+		return killNameLink{victim.CharacterName, "character", victim.CharacterID}
+	}
+	if victim.CorporationName != "" {
+		return killNameLink{victim.CorporationName, "corporation", victim.CorporationID}
+	}
+	return killNameLink{Name: "Unknown"}
+}
+
+func killWho(data api.KillmailPageData) string { return killVictimNameLink(data.Victim).Name }
 func killShip(data api.KillmailPageData) string {
 	if data.Victim.ShipName != "" {
 		return data.Victim.ShipName
@@ -562,18 +571,19 @@ func killItemStatus(item api.KillmailItem) string {
 	}
 	return "destroyed"
 }
-func killAttackerName(attacker api.KillmailAttacker) string {
+func killAttackerNameLink(attacker api.KillmailAttacker) killNameLink {
 	if attacker.CharacterName != "" {
-		return attacker.CharacterName
+		return killNameLink{attacker.CharacterName, "character", attacker.CharacterID}
 	}
 	if attacker.CorporationName != "" {
-		return attacker.CorporationName
+		return killNameLink{attacker.CorporationName, "corporation", attacker.CorporationID}
 	}
 	if attacker.ShipName != "" {
-		return attacker.ShipName
+		return killNameLink{attacker.ShipName, "item", attacker.ShipTypeID}
 	}
-	return "NPC"
+	return killNameLink{Name: "NPC"}
 }
+
 func killDamageWidth(value, top int64) float64 {
 	if top <= 0 {
 		return 2
