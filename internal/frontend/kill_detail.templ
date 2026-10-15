@@ -719,8 +719,8 @@ templ killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, t
 		}
 		<div class="kill-featured-label">
 			<strong>
-					@killLinkedName(killAttackerNameLink(attacker))
-				</strong>
+				@killLinkedName(killAttackerNameLink(attacker))
+			</strong>
 			<span>
 				@killEntityName("item", attacker.ShipTypeID, attacker.ShipName)
 				if attacker.WeaponName!="" {
@@ -735,7 +735,7 @@ templ killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, t
 }
 
 templ killLinkedName(link killNameLink) {
-    @killEntityName(link.Kind, link.ID, link.Name)
+	@killEntityName(link.Kind, link.ID, link.Name)
 }
 
 templ killEntityName(kind string, id *int64, name string) {
