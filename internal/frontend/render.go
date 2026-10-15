@@ -60,8 +60,14 @@ func (s *site) pageHandler(load pageLoader) http.Handler {
 		}
 		status := http.StatusInternalServerError
 		title, description := "Something went wrong", "We could not load this page. Please try again."
-		if errors.Is(err, ErrNotFound) {
+		var statusError interface{ GetStatus() int }
+		if errors.As(err, &statusError) && statusError.GetStatus() >= 400 && statusError.GetStatus() < 600 {
+			status = statusError.GetStatus()
+		}
+		if errors.Is(err, ErrNotFound) || status == http.StatusNotFound {
 			status, title, description = http.StatusNotFound, "Page not found", "This page is not available."
+		} else if status < http.StatusInternalServerError {
+			title, description = http.StatusText(status), "We could not complete this request."
 		} else {
 			telemetry.Capture(r.Context(), err)
 			log.Error().Ctx(r.Context()).Bool("sentry_handled", true).Err(err).Str("path", r.URL.Path).Msg("render frontend page")

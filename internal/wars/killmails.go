@@ -6,6 +6,7 @@ import (
 
 	"github.com/eve-kill/shrike/internal/esi"
 	"github.com/eve-kill/shrike/internal/killmail"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -64,7 +65,7 @@ func MissingKillmails(ctx context.Context, pool *pgxpool.Pool, client *esi.Clien
 			return out, nil
 		}
 		if !res.OK() || res.Data == nil {
-			return out, fmt.Errorf("ESI returned %d for war %d killmail page %d", res.Status, warID, page)
+			return out, retry.Upstream(res.Status, fmt.Errorf("ESI returned %d for war %d killmail page %d", res.Status, warID, page))
 		}
 		refs := *res.Data
 		if len(refs) == 0 {

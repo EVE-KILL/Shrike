@@ -1,5 +1,5 @@
 import {Controller} from '@hotwired/stimulus'
-import type {SearchResponse} from '../../shared/api/types.gen'
+import {SpotlightSearch} from './shared/spotlight'
 import {registerController} from './controllers/application'
 import {eventElement,formInput,requiredElement} from './shared/dom'
 import {errorMessage} from './shared/json'
@@ -13,8 +13,8 @@ export class ShellController extends Controller<HTMLBodyElement> {
   declare readonly viewTarget:HTMLButtonElement
   declare readonly searchInputTarget:HTMLInputElement
   declare readonly searchResultsTarget:HTMLElement
-  private timer:ReturnType<typeof setTimeout>|undefined
-  private request:AbortController|undefined
+  private searchUI:SpotlightSearch|undefined
+  private get spotlight(){return this.searchUI??=new SpotlightSearch(this.dialogTarget)}
   private readonly killTokens=new WeakMap<HTMLElement,string>()
 
   connect(){
@@ -26,7 +26,7 @@ export class ShellController extends Controller<HTMLBodyElement> {
     this.element.querySelectorAll<HTMLElement>('[data-background]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.background===initial)))
     this.scroll()
   }
-  disconnect(){this.cancelSearch()}
+  disconnect(){this.cancelSearch();this.searchUI=undefined}
   private get root(){return this.element.ownerDocument.documentElement}
   private closeMenus(){this.element.querySelectorAll<HTMLDetailsElement>('.nav-dropdown[open]').forEach(menu=>{menu.open=false})}
   private restoreView(){
@@ -38,7 +38,7 @@ export class ShellController extends Controller<HTMLBodyElement> {
   openSearch(){
     this.restoreView();this.closeMenus();this.mobileTarget.open=false
     if(!this.dialogTarget.open)this.dialogTarget.showModal()
-    this.searchInputTarget.focus()
+    this.spotlight.open()
   }
   closeMobile(){
     const wasOpen=this.mobileTarget.open
@@ -64,7 +64,13 @@ export class ShellController extends Controller<HTMLBodyElement> {
     this.element.querySelectorAll<HTMLDetailsElement>('.nav-dropdown[open]').forEach(other=>{if(other!==menu)other.open=false})
   }
   keyboard(event:KeyboardEvent){
-    if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){event.preventDefault();this.openSearch()}
+    if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){
+      event.preventDefault();event.stopPropagation()
+      if(!(event.target instanceof Element&&event.target.closest('input,textarea,[contenteditable=true]'))){
+        if(this.dialogTarget.open)this.dialogTarget.close();else this.openSearch()
+      }
+      return
+    }
     if(event.key==='Escape'){
       if(this.dialogTarget.open){event.preventDefault();this.dialogTarget.close()}
       const menu=this.element.querySelector<HTMLDetailsElement>('.nav-dropdown[open]')
@@ -102,43 +108,11 @@ export class ShellController extends Controller<HTMLBodyElement> {
     this.viewTarget.setAttribute('aria-pressed',String(hidden))
     requiredElement<SVGUseElement>(this.viewTarget,'use').setAttribute('href',`/assets/icons.svg#${hidden?'eye-off':'eye'}`)
   }
-  cancelSearch(){clearTimeout(this.timer);this.request?.abort();this.request=undefined}
-  private message(text:string){const p=document.createElement('p');p.textContent=text;this.searchResultsTarget.replaceChildren(p)}
-  search(){
-    this.cancelSearch()
-    const query=this.searchInputTarget.value.trim()
-    if(query.length<2){this.message('Type at least two characters to search.');return}
-    this.message('Searching…')
-    const request=new AbortController();this.request=request
-    this.timer=setTimeout(async()=>{
-      try{
-        const response=await fetch(`/api/search?q=${encodeURIComponent(query)}`,{signal:request.signal})
-        if(!response.ok)throw new Error('Search unavailable')
-        const data:SearchResponse=await response.json()
-        if(request!==this.request||!this.element.isConnected)return
-        const types=new Set(['character','corporation','alliance','faction','system','region','constellation','ship','item'])
-        const hits=(data.hits||[]).map(hit=>({...hit,numericID:String(hit.id).replace(/^[a-z]+_/, '')}))
-          .filter(hit=>typeof hit.type==='string'&&types.has(hit.type)&&/^\d+$/.test(hit.numericID))
-        if(!hits.length){this.message('No results found.');return}
-        this.searchResultsTarget.replaceChildren(...hits.map(hit=>{
-          const link=document.createElement('a');link.className='search-result'
-          link.href=`/${hit.type==='ship'?'item':hit.type}/${hit.numericID}`
-          const name=document.createElement('span');name.textContent=hit.name||''
-          const type=document.createElement('span');type.textContent=hit.type||''
-          link.append(name,type);return link
-        }))
-      }catch(error){if(!(error instanceof Error&&error.name==='AbortError')&&request===this.request&&this.element.isConnected)this.message('Search is unavailable. Please try again.')}
-    },200)
-  }
-  searchKeys(event:KeyboardEvent){
-    if(event.key==='ArrowDown'){event.preventDefault();this.searchResultsTarget.querySelector<HTMLAnchorElement>('a')?.focus()}
-    if(event.key==='Enter'){event.preventDefault();this.searchResultsTarget.querySelector<HTMLAnchorElement>('a')?.click()}
-  }
-  resultKeys(event:KeyboardEvent){
-    const target=eventElement(event.target)
-    if(event.key==='ArrowDown'){event.preventDefault();if(target?.nextElementSibling instanceof HTMLElement)target.nextElementSibling.focus()}
-    if(event.key==='ArrowUp'){event.preventDefault();const previous=target?.previousElementSibling;if(previous instanceof HTMLElement)previous.focus();else this.searchInputTarget.focus()}
-  }
+  cancelSearch(){this.searchUI?.close()}
+  search(){this.spotlight.search()}
+  searchKeys(event:KeyboardEvent){this.spotlight.key(event)}
+  resultKeys(event:KeyboardEvent){this.spotlight.key(event)}
+  spotlightClick(event:MouseEvent){this.spotlight.click(event)}
   async login(event:SubmitEvent){
     if(!(event.target instanceof HTMLFormElement))return
     event.preventDefault()

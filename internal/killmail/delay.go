@@ -32,16 +32,37 @@ type Ref struct {
 // one we are entitled to publish at — taking the later would hold back a kill
 // somebody is already allowed to see.
 func Delay(ctx context.Context, pool *pgxpool.Pool, km Ref, hours int) error {
-	if hours <= 0 {
+	return DelayMany(ctx, pool, []Ref{km}, hours)
+}
+
+// DelayMany records one authenticated batch in one statement. A duplicate ID
+// keeps its last supplied hash, matching sequential Delay calls, and an existing
+// earlier release time always wins. Sort lock acquisition by ID across workers.
+func DelayMany(ctx context.Context, pool *pgxpool.Pool, refs []Ref, hours int) error {
+	if hours <= 0 || len(refs) == 0 {
 		return nil
+	}
+	ids := make([]int64, 0, len(refs))
+	hashes := make([]string, 0, len(refs))
+	positions := make(map[int64]int, len(refs))
+	for _, ref := range refs {
+		if index, exists := positions[ref.KillmailID]; exists {
+			hashes[index] = ref.KillmailHash
+			continue
+		}
+		positions[ref.KillmailID] = len(ids)
+		ids = append(ids, ref.KillmailID)
+		hashes = append(hashes, ref.KillmailHash)
 	}
 	_, err := pool.Exec(ctx, `
         INSERT INTO esi_killmail_delayed (killmail_id, killmail_hash, delayed_until)
-        VALUES ($1, $2, now() + make_interval(hours => $3))
+        SELECT killmail_id, killmail_hash, now() + make_interval(hours => $3)
+        FROM unnest($1::bigint[], $2::text[]) AS refs(killmail_id, killmail_hash)
+        ORDER BY killmail_id
         ON CONFLICT (killmail_id) DO UPDATE SET
             killmail_hash = EXCLUDED.killmail_hash,
             delayed_until = LEAST(esi_killmail_delayed.delayed_until, EXCLUDED.delayed_until)`,
-		km.KillmailID, km.KillmailHash, hours)
+		ids, hashes, hours)
 	return err
 }
 

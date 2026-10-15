@@ -84,7 +84,12 @@ func (m *jobLogMiddleware) Work(
 					if job.Attempt >= job.MaxAttempts {
 						outcome = "failed"
 					}
-					telemetry.Capture(ctx, result)
+					// Recoverable upstream attempts remain in warning logs, traces
+					// and retry metrics. Exhaustion and unexpected failures still
+					// become error issues immediately.
+					if outcome == "failed" || ctx.Err() != nil || !retry.Transient(result) {
+						telemetry.Capture(ctx, result)
+					}
 				}
 			}
 			observedErr := result

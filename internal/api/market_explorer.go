@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/jackc/pgx/v5"
 )
 
 const (
@@ -134,7 +136,13 @@ func marketItemOrdersHandler(opts Options) legacyHandler {
 		} else if len(buyers) > 0 {
 			snapshot = buyers[0]["snapshot_at"]
 		} else {
-			_ = opts.DB.QueryRow(ctx, `SELECT max(snapshot_at) FROM market_orders`).Scan(&snapshot)
+			// The importer commits this bookmark atomically with the order book.
+			// Empty item results must not scan every order for a global timestamp.
+			if err := opts.DB.QueryRow(ctx, `
+				SELECT file_time FROM market_source_files
+				WHERE source_path = '/market-orders/market-orders-latest.v3.csv.bz2'`).Scan(&snapshot); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+				return legacyPayload{}, err
+			}
 		}
 
 		return jsonPayload(map[string]any{

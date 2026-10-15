@@ -47,6 +47,16 @@ func loadMenu[T any](path string) T {
 
 var navigation = loadMenu[[]navLink]("data/navigation.json")
 var community = loadMenu[[]communityLink]("data/community.json")
+var spotlightActions = []navLink{
+	{Label: "Latest Kills", Href: "/kills/latest", Icon: "zap"},
+	{Label: "Big Kills", Href: "/kills/big", Icon: "trending-up"},
+	{Label: "Solo Kills", Href: "/kills/solo", Icon: "swords"},
+	{Label: "Battles", Href: "/battles", Icon: "shield"},
+	{Label: "Stats", Href: "/stats", Icon: "bar-chart-3"},
+	{Label: "Map", Href: "/map", Icon: "map"},
+	{Label: "Wars", Href: "/wars", Icon: "flag"},
+	{Label: "Advanced Search", Href: "/advancedsearch", Icon: "search"},
+}
 var information = []navLink{
 	{Label: "Blog", Href: "/blog", Icon: "file-text"},
 	{Label: "FAQ", Href: "/faq", Icon: "circle-help"},

@@ -200,3 +200,55 @@ address a small fraction of that sample. A useful follow-up is validating
 unchanged upstream files before repeated imports, while preserving repair of
 missing rows and the existing first-import price policy. No import behavior or
 alert suppression was changed for this finding.
+
+### Frontend and Sentry follow-up, 2026-10-15
+
+Restore spotlight from the original Nuxt SpotlightSearch, SpotlightContent and
+useSpotlightSearch sources at the parent of migration commit 5516a38: eight quick
+actions, fourteen community tools, recent searches using the existing storage
+key, category pills/groups, thumbnails/tickers, full search links, three-character
+minimum and 300 ms debounce. Retain native links, keyboard navigation in displayed
+order, cancellation and focus handling. Desktop uses the original 672 px modal
+at 15 vh; phones use its full-screen layout. Chromium and WebKit checks cover
+desktop/390 px layouts, themes, filtering, recents, errors and navigation.
+
+Killmail victim names now link on phones as well as desktop; corporation-only
+victims link to their corporation. Final-blow/top-damage names link to a character,
+corporation or item according to the actual identity. Ship/weapon names also
+link to items. The existing category-aware environment/structure image rules stay
+intact. Browser checks use populated killmails 138563696 and 138885892.
+
+- SHRIKE-G: an in-process market reader's expected 404 was being rendered and
+  reported as 500. The page renderer now preserves wrapped HTTP error statuses
+  and reports server failures; private backend details stay out of the page.
+- SHRIKE-N: remove the empty-order-book fallback's global timestamp scan. The
+  importer already commits the matching source timestamp atomically with the
+  book. A read-only production spot comparison measured 145.534 ms / 27,401 page
+  accesses for the old aggregate and 0.254 ms / 4 accesses for the bookmark.
+  This removes unnecessary work; the original timeout's trace has no sampled SQL,
+  so it does not establish that this scan caused every timeout.
+- SHRIKE-M: bound short-prefix candidates per category before the global sort.
+  Their category score is constant without trigram ranking. A character/faction
+  spot sample measured 3,819.737 ms / 367,705 page accesses before and 2.922 ms /
+  98 accesses after. These are partial-query spot measurements, not full API
+  percentiles or a matched-cache benchmark. Fixtures preserve category ranking
+  and bounds. Spotlight also regains Nuxt's three-character minimum.
+- SHRIKE-K: the corporation importer issued one delay upsert per unknown killmail
+  (45 in the captured pattern). It now uses one batch statement. Duplicate IDs
+  keep their final supplied hash, existing earlier deadlines win, and immediate
+  public observations still remove delays.
+- SHRIKE-7/8/P: the sampled ESI 502/client-timeout jobs completed on their second
+  attempts. Known upstream retries retain warning logs, failed spans and retry
+  metrics without opening exception issues before exhaustion. Terminal attempts,
+  unexpected/independent joined failures and a worker's own expired context
+  remain exceptions. Retry timing and attempt budgets are unchanged.
+- SHRIKE-H/J: River election/reelection each timed out once around 00:58 UTC.
+  No recurring failure was present in the inspected events. Retain these
+  infrastructure signals; no global timeout suppression or lease-policy change
+  is justified by the available evidence.
+
+The existing C/D/F performance patterns remain visible: bounded entity-category
+reads, daily history repair and daily bulk price imports. They are distinct from
+the per-row delay writes fixed for K. Continue monitoring genuine request
+timeouts after rollout rather than treating missing sampled traces as proof
+that all timeout causes are resolved.

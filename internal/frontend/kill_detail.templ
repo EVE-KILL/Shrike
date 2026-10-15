@@ -390,6 +390,8 @@ templ killVictimCard(view killDetailView) {
 						>
 							{ killWho(view.Data) }
 						</a>
+					} else if killID(view.Data.Victim.CorporationID)>0 {
+						<a href={ idPath("corporation", *view.Data.Victim.CorporationID) }>{ killWho(view.Data) }</a>
 					} else {
 						{ killWho(view.Data) }
 					}
@@ -427,8 +429,14 @@ templ killVictimCompact(view killDetailView) {
 			}
 			<div>
 				<strong>
-					{ killWho(view.Data) }
-				</strong><span>{ view.Data.Victim.CorporationName }</span><small>{ view.Data.Victim.AllianceName }</small>
+					if killID(view.Data.Victim.CharacterID)>0 {
+						@killEntityName("character", view.Data.Victim.CharacterID, killWho(view.Data))
+					} else {
+						@killEntityName("corporation", view.Data.Victim.CorporationID, killWho(view.Data))
+					}
+				</strong>
+				<span>@killEntityName("corporation", view.Data.Victim.CorporationID, view.Data.Victim.CorporationName)</span>
+				<small>@killEntityName("alliance", view.Data.Victim.AllianceID, view.Data.Victim.AllianceName)</small>
 			</div>
 			if view.Data.Victim.CorporationID!=nil {
 				<img
@@ -725,12 +733,18 @@ templ killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, t
 		}
 		<div class="kill-featured-label">
 			<strong>
-				{ killAttackerName(attacker) }
+				if killID(attacker.CharacterID)>0 {
+					@killEntityName("character", attacker.CharacterID, killAttackerName(attacker))
+				} else if killID(attacker.CorporationID)>0 {
+					@killEntityName("corporation", attacker.CorporationID, killAttackerName(attacker))
+				} else {
+					@killEntityName("item", attacker.ShipTypeID, killAttackerName(attacker))
+				}
 			</strong>
 			<span>
-				{ attacker.ShipName }
+				@killEntityName("item", attacker.ShipTypeID, attacker.ShipName)
 				if attacker.WeaponName!="" {
-					— { attacker.WeaponName }
+					— @killEntityName("item", attacker.WeaponTypeID, attacker.WeaponName)
 				}
 			</span>
 			<small>
@@ -738,6 +752,14 @@ templ killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, t
 			</small>
 		</div>
 	</div>
+}
+
+templ killEntityName(kind string, id *int64, name string) {
+	if killID(id)>0 {
+		<a href={ idPath(kind, *id) }>{ name }</a>
+	} else {
+		{ name }
+	}
 }
 
 templ killAttackerRow(attacker api.KillmailAttacker, index int, total, highest int64) {

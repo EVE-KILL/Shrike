@@ -148,7 +148,7 @@ test('closing the shared search cancels pending work and ignores its late respon
   fetchMock.mockImplementationOnce(()=>new Promise(resolve=>{complete=resolve}))
   const shell=registerController('shell',ShellController).getControllerForElementAndIdentifier(document.body,'shell') as ShellController
   shell.openSearch();const input=document.querySelector<HTMLInputElement>('[data-shell-target=searchInput]')!;input.value='rifter';input.dispatchEvent(new Event('input',{bubbles:true}))
-  await new Promise(resolve=>setTimeout(resolve,220))
+  await new Promise(resolve=>setTimeout(resolve,330))
   const call=fetchMock.mock.calls.find(([path])=>String(path).startsWith('/api/search'))!
   document.querySelector<HTMLDialogElement>('dialog')!.close();await settle()
   expect(call[1]!.signal!.aborted).toBe(true)

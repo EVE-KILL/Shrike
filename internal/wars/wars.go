@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/esi"
+	"github.com/eve-kill/shrike/internal/retry"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -37,7 +38,7 @@ func Refresh(ctx context.Context, pool *pgxpool.Pool, client *esi.Client, warID 
 		return nil, nil
 	}
 	if !res.OK() || res.Data == nil {
-		return nil, fmt.Errorf("ESI returned %d for war %d", res.Status, warID)
+		return nil, retry.Upstream(res.Status, fmt.Errorf("ESI returned %d for war %d", res.Status, warID))
 	}
 
 	w := *res.Data
@@ -100,7 +101,7 @@ func Find(ctx context.Context, pool *pgxpool.Pool, client *esi.Client) (Discover
 		return out, err
 	}
 	if !res.OK() || res.Data == nil {
-		return out, fmt.Errorf("ESI returned %d for the war list", res.Status)
+		return out, retry.Upstream(res.Status, fmt.Errorf("ESI returned %d for the war list", res.Status))
 	}
 
 	latest := *res.Data
