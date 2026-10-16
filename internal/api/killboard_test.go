@@ -76,6 +76,39 @@ func TestAdvancedTimeBoundsUseEVETime(t *testing.T) {
 	}
 }
 
+func TestAdvancedSearchOptionalTimeBounds(t *testing.T) {
+	now := time.Date(2026, time.October, 16, 12, 0, 0, 0, time.UTC)
+	for _, tt := range []struct {
+		name, filters, predicate string
+		args                     int
+		invalid                  bool
+	}{
+		{"default", `{}`, "k.killmail_time >= $1", 1, false},
+		{"all time", `{"timeRange":{"preset":null}}`, "TRUE", 0, false},
+		{"start only", `{"timeRange":{"from":"2026-10-01T00:00"}}`, "k.killmail_time >= $1", 1, false},
+		{"end only", `{"timeRange":{"to":"2026-10-16T12:00"}}`, "k.killmail_time <= $1", 1, false},
+		{"invalid start", `{"timeRange":{"from":"invalid"}}`, "", 0, true},
+		{"invalid end", `{"timeRange":{"to":"invalid"}}`, "", 0, true},
+		{"reversed", `{"timeRange":{"from":"2026-10-16","to":"2026-10-01"}}`, "", 0, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			query, err := parseAdvancedKilllistQuery(&legacyRequest{Query: url.Values{"filters": {tt.filters}}}, now)
+			if (err != nil) != tt.invalid {
+				t.Fatalf("error=%v, invalid=%v", err, tt.invalid)
+			}
+			if tt.invalid {
+				return
+			}
+			if query.whereSQL() != tt.predicate || len(query.Args) != tt.args {
+				t.Fatalf("predicate=%q, args=%v", query.whereSQL(), query.Args)
+			}
+			if tt.name == "default" && !query.Args[0].(time.Time).Equal(now.AddDate(0, 0, -30)) {
+				t.Fatal("default search lost its 30-day bound")
+			}
+		})
+	}
+}
+
 func TestAdvancedQueryUsesBoundedExistsFiltersAndStableCursor(t *testing.T) {
 	filters := url.QueryEscape(`{
 		"entities":{

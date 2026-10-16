@@ -270,6 +270,15 @@ func advancedSerializedFilters(f advancedSearchFilters) string {
 func advancedHasFilters(f advancedSearchFilters) bool {
 	return f.Label != "" || len(f.Entities["victim"])+len(f.Entities["attacker"])+len(f.Entities["both"])+len(f.Items)+len(f.Location.SecurityTypes) > 0 || f.Location.SystemID+f.Location.RegionID+f.Location.ConstellationID != 0 || f.AttackerCount != "" || f.AttackerType != "" || f.ISKValue != "" || f.ISKMin != "" || f.ISKMax != "" || f.ShipCategory != "" || f.TechLevel != ""
 }
+func advancedExtraFilterCount(f advancedSearchFilters) int {
+	count := 0
+	for _, active := range []bool{f.Label != "", f.AttackerCount != "", f.AttackerType != "", f.ISKValue != "", f.ISKMin != "" || f.ISKMax != "", f.ShipCategory != "", f.TechLevel != "", f.TimeRange.From != "" || f.TimeRange.To != ""} {
+		if active {
+			count++
+		}
+	}
+	return count
+}
 func advancedChoice(f advancedSearchFilters, key string) string {
 	switch key {
 	case "attackerCount":
@@ -356,8 +365,15 @@ func advancedActiveChips(view advancedSearchView) []advancedChip {
 	}
 	if f.TimeRange.Preset != nil && *f.TimeRange.Preset != "" {
 		chips = append(chips, advancedChip{"timePreset", "Time", advancedOptionLabel(advancedTimeOptions, *f.TimeRange.Preset)})
-	} else if f.TimeRange.From != "" {
-		chips = append(chips, advancedChip{"timeRange", "Time", strings.ReplaceAll(f.TimeRange.From, "T", " ") + " → " + strings.ReplaceAll(f.TimeRange.To, "T", " ") + " EVE"})
+	} else if f.TimeRange.From != "" || f.TimeRange.To != "" {
+		from, to := strings.ReplaceAll(f.TimeRange.From, "T", " "), strings.ReplaceAll(f.TimeRange.To, "T", " ")
+		label := from + " → " + to
+		if from == "" {
+			label = "Until " + to
+		} else if to == "" {
+			label = "From " + from
+		}
+		chips = append(chips, advancedChip{"timeRange", "Time", label + " EVE"})
 	}
 	return chips
 }

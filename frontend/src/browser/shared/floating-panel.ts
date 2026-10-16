@@ -10,7 +10,7 @@ export function positionViewportPanel(panel:HTMLElement,anchor:DOMRectReadOnly){
 }
 
 export function placeFloatingPanel(anchor:HTMLElement,panel:HTMLElement){
-  panel.style.maxHeight='';panel.style.overflowY=''
+  panel.style.maxHeight='';panel.style.overflowY='';panel.style.translate=''
   let top=8,bottom=innerHeight-8
   // Native dialogs sit above the site header. Ordinary page popups must leave
   // room for a fixed/sticky navbar rather than hide their first controls behind it.
@@ -30,4 +30,7 @@ export function placeFloatingPanel(anchor:HTMLElement,panel:HTMLElement){
   const upwards=below<height&&above>below,available=Math.max(0,(upwards?above:below)-4)
   panel.classList.toggle('bottom-full',upwards);panel.classList.toggle('mb-1',upwards);panel.classList.toggle('mt-1',!upwards)
   if(available<height){panel.style.maxHeight=available+'px';panel.style.overflowY='auto'}
+  const bounds=panel.getBoundingClientRect(),width=panel.ownerDocument.documentElement.clientWidth||innerWidth
+  const shift=bounds.left<8?8-bounds.left:bounds.right>width-8?width-8-bounds.right:0
+  if(shift)panel.style.translate=`${shift}px 0px`
 }

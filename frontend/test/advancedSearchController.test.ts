@@ -5,6 +5,7 @@ import {afterEach,beforeEach,expect,test,vi} from 'vitest'
 import {AdvancedSearchController} from '../src/browser/advanced-search'
 import {registerController} from '../src/browser/controllers/application'
 import {readBrowserSession} from '../src/browser/browser-request'
+import {savedSearchDocument} from '../src/browser/saved-search-data'
 
 vi.mock('../src/browser/browser-request',async original=>({...await original<typeof import('../src/browser/browser-request')>(),readBrowserSession:vi.fn()}))
 const markup=readFileSync(resolve(import.meta.dirname,'fixtures/advanced-search.html'),'utf8'),settle=()=>new Promise<void>(resolve=>setTimeout(resolve,0)),errors=vi.fn()
@@ -16,7 +17,24 @@ function pendingReads(){const pending:Array<{path:string;signal:AbortSignal;comp
 beforeEach(()=>{registerController('advanced-search',AdvancedSearchController).handleError=errors;errors.mockClear();history.replaceState({},'','/advancedsearch');localStorage.clear();vi.mocked(readBrowserSession).mockResolvedValue(null);fetchMock=vi.fn<typeof fetch>(async path=>String(path).startsWith('/api/search')?Response.json({hits:[]}):new Response(result));vi.stubGlobal('fetch',fetchMock)})
 afterEach(async()=>{vi.useRealTimers();document.body.replaceChildren();await settle();expect(errors.mock.calls).toEqual([]);vi.unstubAllGlobals();vi.restoreAllMocks()})
 
-test('initial SSR mounts without issuing an unfiltered result query and keeps declarative saved searches',async()=>{const root=await mount();expect(fetchMock).not.toHaveBeenCalled();expect(q(root,'[data-advanced-results]').textContent).toContain('Add filters');q<HTMLButtonElement>(root,'[data-saved-create]').click();expect(q<HTMLFormElement>(root,'[data-saved-editor]').hidden).toBe(false);expect(q(root,'[data-saved-error]').hidden).toBe(true)})
+test('initial SSR mounts without issuing an unfiltered result query and keeps declarative saved searches',async()=>{const root=await mount();expect(fetchMock).not.toHaveBeenCalled();expect(q(root,'[data-advanced-results]').textContent).toContain('Start with a pilot');expect(q<HTMLDetailsElement>(root,'[data-advanced-more]').open).toBe(false);q<HTMLButtonElement>(root,'[data-saved-create]').click();expect(q<HTMLFormElement>(root,'[data-saved-editor]').hidden).toBe(false);expect(q(root,'[data-saved-error]').hidden).toBe(true)})
+test('additional filter disclosure preserves the query, applied choices and result controls',async()=>{
+ const root=await mount(),more=q<HTMLDetailsElement>(root,'[data-advanced-more]');vi.useFakeTimers()
+ more.open=true;q<HTMLButtonElement>(root,'[data-advanced-option="shipCategory"][data-value="frigates"]').click();await vi.advanceTimersByTimeAsync(1)
+ const selectedURL=location.href,reads=fetchMock.mock.calls.length;more.open=false
+ q<HTMLButtonElement>(root,'[data-advanced-collapse]').click();expect(q(root,'[data-advanced-panels]').hidden).toBe(true);expect(q(root,'[data-advanced-sort]').hidden).toBe(false)
+ expect(location.href).toBe(selectedURL);expect(fetchMock.mock.calls).toHaveLength(reads);expect(q(root,'[data-advanced-applied]').textContent).toContain('Frigates');expect(q(root,'[data-advanced-more-count]').textContent).toBe('1 applied')
+ q<HTMLButtonElement>(root,'[data-advanced-collapse]').click();q<HTMLButtonElement>(root,'[data-advanced-option="security"][data-value="highsec"]').click();await vi.advanceTimersByTimeAsync(1);expect(more.open).toBe(false)
+ q<HTMLButtonElement>(root,'[data-advanced-clear]').click();await vi.advanceTimersByTimeAsync(1);expect(more.open).toBe(false);expect(q(root,'[data-advanced-more-count]').hidden).toBe(true)
+})
+test('Back and saved searches reveal restored specialist filters without adding disclosure state to links',async()=>{
+ const root=await mount(),more=q<HTMLDetailsElement>(root,'[data-advanced-more]');vi.useFakeTimers()
+ q<HTMLButtonElement>(root,'[data-advanced-collapse]').click();history.replaceState({},'','/advancedsearch?q='+encodeURIComponent('{"iskMin":"1b"}'));window.dispatchEvent(new PopStateEvent('popstate'));await vi.advanceTimersByTimeAsync(1)
+ expect(more.open).toBe(true);expect(q(root,'[data-advanced-panels]').hidden).toBe(false);expect(q<HTMLInputElement>(root,'[data-advanced-isk="iskMin"]').value).toBe('1b')
+ more.open=false;const detail={document:savedSearchDocument('{"techLevel":"t2","timeRange":{"to":"2026-10-16T12:00"}}',{view:'fits',dedup:'exact'})};root.dispatchEvent(new CustomEvent('saved-searches:load',{bubbles:true,detail}));await vi.advanceTimersByTimeAsync(1)
+ expect(more.open).toBe(true);expect(q(root,'[data-advanced-more-count]').textContent).toBe('2 applied');expect(q(root,'[data-advanced-option="techLevel"][data-value="t2"]').getAttribute('aria-pressed')).toBe('true');expect(q<HTMLInputElement>(root,'[name="advanced_to"]').value).toBe('2026-10-16T12:00')
+ const params=new URL(location.href).searchParams;expect(params.get('view')).toBe('fits');expect(params.get('dedup')).toBe('exact');expect([...params.keys()].sort()).toEqual(['dedup','q','view'])
+})
 test('filters update links, debounce ISK input and cancel superseded result reads',async()=>{
   const root=await mount(),pending=pendingReads();vi.useFakeTimers();const input=q<HTMLInputElement>(root,'[data-advanced-isk="iskMin"]');input.value='500m';input.dispatchEvent(new Event('input',{bubbles:true}));await vi.advanceTimersByTimeAsync(499);expect(pending).toHaveLength(0);await vi.advanceTimersByTimeAsync(2);expect(pending).toHaveLength(1);expect(JSON.parse(new URL(pending[0].path,location.origin).searchParams.get('q')!).iskMin).toBe('500m')
   q<HTMLButtonElement>(root,'[data-advanced-option="security"][data-value="highsec"]').click();await vi.advanceTimersByTimeAsync(1);expect(pending[0].signal.aborted).toBe(true);pending[1].complete(new Response(result));await vi.advanceTimersByTimeAsync(0);pending[0].complete(new Response('<div data-advanced-result-content>Stale results</div>'));await vi.advanceTimersByTimeAsync(0);expect(root.textContent).not.toContain('Stale results');expect(q(root,'[data-advanced-results]').hasAttribute('aria-busy')).toBe(false)

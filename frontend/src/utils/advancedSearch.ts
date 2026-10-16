@@ -47,7 +47,7 @@ export function restoreAdvancedFilters(parsed:unknown):AdvancedFilters {
   const location=parsed.location
   if(isRecord(location)){if(Array.isArray(location.securityTypes))filters.location.securityTypes=location.securityTypes.filter((value):value is string=>typeof value==='string');for(const kind of advancedLocations){const id=location[`${kind}Id`];if(positiveID(id)){filters.location[`${kind}Id`]=id;filters.location[`${kind}Name`]=text(location[`${kind}Name`])}}}
   const time=parsed.timeRange
-  if(isRecord(time)){if(typeof time.from==='string')filters.timeRange={from:time.from,...(typeof time.to==='string'?{to:time.to}:{})};else if(time.preset===null||typeof time.preset==='string')filters.timeRange={preset:time.preset}}
+  if(isRecord(time)){if(typeof time.from==='string'||typeof time.to==='string')filters.timeRange={from:typeof time.from==='string'?time.from:'',...(typeof time.to==='string'?{to:time.to}:{})};else if(time.preset===null||typeof time.preset==='string')filters.timeRange={preset:time.preset}}
   for(const key of advancedScalarFilters)filters[key]=text(parsed[key])
   for(const key of ['iskMin','iskMax'] as const)if(typeof parsed[key]==='string'||typeof parsed[key]==='number')filters[key]=String(parsed[key])
   if(isRecord(parsed.sort)){filters.sort.field=text(parsed.sort.field)??'killmail_time';filters.sort.direction=text(parsed.sort.direction)??'desc'}
@@ -102,7 +102,7 @@ export function advancedActiveChips(filters:AdvancedFilters,options:AdvancedOpti
   if(filters.iskMin||filters.iskMax)out.push({key:'iskRange',group:'ISK',label:`${filters.iskMin||'0'} – ${filters.iskMax||'∞'}`})
   if(filters.shipCategory)out.push({key:'shipCategory',group:'Ships',label:labelOf(groups.get('shipCategory'),filters.shipCategory)})
   if(filters.techLevel)out.push({key:'techLevel',group:'Tech',label:labelOf(options.tech,filters.techLevel)})
-  const range=filters.timeRange;if('preset' in range&&range.preset)out.push({key:'timePreset',group:'Time',label:labelOf(options.time,range.preset)});else if('from' in range&&range.from)out.push({key:'timeRange',group:'Time',label:`${range.from.replace('T',' ')} → ${(range.to??'').replace('T',' ')} EVE`})
+  const range=filters.timeRange;if('preset' in range&&range.preset)out.push({key:'timePreset',group:'Time',label:labelOf(options.time,range.preset)});else if(range.from||range.to){const from=(range.from??'').replace('T',' '),to=(range.to??'').replace('T',' ');out.push({key:'timeRange',group:'Time',label:(from&&to?`${from} → ${to}`:from?`From ${from}`:`Until ${to}`)+' EVE'})}
   return out
 }
 export function clearAdvancedChip(filters:AdvancedFilters,key:string){

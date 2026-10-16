@@ -35,10 +35,45 @@ func TestAdvancedSearchRendersControlsWithoutAnUnfilteredQuery(t *testing.T) {
 	if w.Code != 200 || len(reader.queries) != 0 {
 		t.Fatalf("initial search status=%d reads=%d", w.Code, len(reader.queries))
 	}
-	for _, text := range []string{"Advanced Search", "Killmail Label", "Security Space", "Attacker Count", "Attacker Type", "ISK Value", "Ship Category", "Tech Level", "Time Range", "Sort descending", "Saved searches", "Add filters above to find killmails", "data-date-time-picker", `data-controller="advanced-search saved-searches"`, "saved-searches:current->advanced-search#savedCurrent"} {
+	for _, text := range []string{"Advanced Search", "Killmail Label", "Security Space", "Attacker Count", "Attacker Type", "ISK Value", "Ship Category", "Tech Level", "Time Range", "Sort descending", "Saved searches", "Start with a pilot, ship or location", "More filters", "data-date-time-picker", `data-controller="advanced-search saved-searches"`, "saved-searches:current->advanced-search#savedCurrent"} {
 		if !strings.Contains(w.Body.String(), text) {
 			t.Errorf("missing control %q", text)
 		}
+	}
+}
+
+func TestAdvancedSearchRevealsAdditionalFiltersInSharedLinks(t *testing.T) {
+	for _, tt := range []struct {
+		name, filters string
+		open          bool
+	}{
+		{"initial", "", false},
+		{"common space", `{"location":{"securityTypes":["highsec"]}}`, false},
+		{"ISK range", `{"iskMin":"500m"}`, true},
+		{"ship and tech", `{"shipCategory":"frigates","techLevel":"t2"}`, true},
+		{"custom end date", `{"timeRange":{"to":"2026-10-16T12:00"}}`, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			handler := New(Options{Production: true, AdvancedSearch: &advancedTestReader{}})
+			query := url.Values{}
+			if tt.filters != "" {
+				query.Set("q", tt.filters)
+			}
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, canonicalOrigin+"/advancedsearch?"+query.Encode(), nil))
+			body := w.Body.String()
+			_, tail, found := strings.Cut(body, "data-advanced-more")
+			if w.Code != 200 || !found {
+				t.Fatalf("missing additional filters: status=%d", w.Code)
+			}
+			tag, _, _ := strings.Cut(tail, ">")
+			if got := strings.Contains(tag, " open"); got != tt.open {
+				t.Fatalf("additional filters open=%v, want %v", got, tt.open)
+			}
+			if tt.name == "custom end date" && !strings.Contains(body, "Until 2026-10-16 12:00 EVE") {
+				t.Fatal("end-only date missing from the applied criteria")
+			}
+		})
 	}
 }
 

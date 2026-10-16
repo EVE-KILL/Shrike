@@ -39,6 +39,14 @@ It produced these changes:
 - Clearer spotlight focus, default-action navigation, result announcements, and empty-state guidance.
 - An explicit fitting statistics prompt before hull selection or completed calculation.
 - Distinct labels for recorded hull-and-fit values, module values, and the item breakdown subtotal.
+- Advanced Search keeps common time/space choices visible and groups specialist controls behind a native More filters disclosure.
+- Shared links and saved searches reveal their specialist criteria; collapsing filters keeps result sorting and view controls available.
+- Custom ranges with only an end date survive restoration and appear in applied criteria.
+- Date-picker popups stay inside narrow viewport edges.
+
+Advanced Search accepts open-ended custom ranges in both the UI and API.
+Omitting a timeframe still defaults to 30 days; explicitly clearing it removes the time bound.
+Malformed dates and reversed ranges remain invalid.
 
 The valuation changes affect presentation only.
 Stored kill values include the hull and fitted items, including drones and fighter tubes.
@@ -62,12 +70,16 @@ Default colors, the existing purple preference, an Amarr accent, and custom dark
 Temporary theme changes were restored.
 Keyboard checks covered valuable-list tabs, search, and map controls.
 Browser controller tests cover the shared tab behavior, map camera movement, cancellation, fitting calculations, and search states.
+The Advanced Search follow-up exercised a real linked pilot/ISK/end-date query,
+sorting with collapsed filters, fitting mode's empty state, native keyboard disclosure,
+and date-picker placement at 320px. Saved-search restoration is covered by controller tests;
+no account writes were performed.
 
 The `.templ` detector needs explicit coverage or the configured extension.
 Without that configuration, a directory scan can silently omit templates.
 Static scans cannot evaluate dynamic templ attributes or generated image URLs reliably.
 Rendered checks remain necessary.
-The final 18 page/viewport scans reported no low-contrast text findings.
+The initial polish pass's 18 page/viewport scans reported no low-contrast text findings.
 This is sampled detector evidence, not an accessibility certification.
 
 ## Failure modes and remaining work
@@ -79,7 +91,6 @@ Semantic heatmap colors, compact data groups, and fitting diagrams require conte
 
 The following work remains outside this pass:
 
-- Reorganize Advanced Search choices for newcomers while retaining expert filters and linked queries.
 - Review mobile fitting-toolbar action groups and disclosure before changing the established workflow.
 - Extend semantic theme tokens through remaining route-specific surfaces and verify custom light palettes.
 - Run authenticated save/post workflows against disposable accounts and data.

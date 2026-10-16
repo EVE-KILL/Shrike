@@ -155,7 +155,7 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
     tags.replaceChildren(...rows);
     tags.hidden = !rows.length;
   }
-  function render() {
+  function render(revealFilters = false) {
     const f = state.filters;
     renderTags();
     const chips = advancedActiveChips(f, options),
@@ -213,7 +213,13 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
           : "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:text-link");
     }
     q<HTMLElement>("[data-advanced-copy]").hidden = q("[data-advanced-clear]").hidden = !hasAdvancedFilters(f);
-    q<HTMLElement>("[data-advanced-panels]").hidden = q("[data-advanced-sort]").hidden = collapsed;
+    const extraCount = [f.label,f.attackerCount,f.attackerType,f.iskValue,f.iskMin||f.iskMax,f.shipCategory,f.techLevel,f.timeRange.from||f.timeRange.to].filter(Boolean).length,
+      more = q<HTMLDetailsElement>("[data-advanced-more]"),
+      moreCount = q<HTMLElement>("[data-advanced-more-count]");
+    moreCount.hidden = extraCount === 0;
+    moreCount.textContent = `${extraCount} applied`;
+    if(revealFilters) {more.open = extraCount > 0;if(extraCount) collapsed = false;}
+    q<HTMLElement>("[data-advanced-panels]").hidden = collapsed;
     const count = q<HTMLElement>("[data-advanced-collapse-count]");
     count.hidden = !(collapsed && chips.length);
     count.textContent = `(${chips.length} applied)`;
@@ -637,6 +643,7 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
         state.filters = defaultAdvancedFilters();
         state.showResults = false;
         setDates();
+        q<HTMLDetailsElement>("[data-advanced-more]").open = false;
         changed();
         return;
       }
@@ -758,7 +765,7 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
         document.filters.timeRange?.from ?? "",
         document.filters.timeRange?.to ?? "",
       );
-      render();
+      render(true);
       syncURL(true, new URLSearchParams(query));
       cursors = [null];
       loadResults();
@@ -783,7 +790,7 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
         state.filters.timeRange?.from ?? "",
         state.filters.timeRange?.to ?? "",
       );
-      render();
+      render(true);
       cursors = [null];
       loadResults();
     } catch {
@@ -803,7 +810,7 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
   }
   function resume(){if(interrupted){interrupted=false;state.showResults=Boolean(hasAdvancedFilters(state.filters)||state.hash||state.view==='fits');void loadResults()}}
 
-  render();
+  render(true);
   readPager();
   return {click,input:inputChanged,change,keyboard,outside,popstate,hide,resume,current:savedCallbacks.current,load:savedCallbacks.load};
 }

@@ -14,6 +14,15 @@ import {
 } from "../src/utils/savedSearches";
 
 describe("Go advanced search interoperability", () => {
+  test('end-only dates survive shared links and saved documents with a visible applied chip',()=>{
+    const filters=restoreAdvancedFilters({timeRange:{to:'2026-10-16T12:00'}}),range={from:'',to:'2026-10-16T12:00'}
+    expect(filters.timeRange).toEqual(range)
+    expect(JSON.parse(serializeAdvancedFilters(filters)).timeRange).toEqual(range)
+    const document=savedSearchDocument(advancedFiltersForURL(filters)!)
+    expect(document.filters.timeRange).toEqual(range)
+    expect(restoreAdvancedFilters(document.filters).timeRange).toEqual(range)
+    expect(advancedActiveChips(filters,readAdvancedOptions({}))).toEqual([{key:'timeRange',group:'Time',label:'Until 2026-10-16 12:00 EVE'}])
+  })
   test('unknown filter input is narrowed without retaining prototype keys or malformed rows',()=>{
     const filters=restoreAdvancedFilters(JSON.parse('{"__proto__":{"polluted":true},"entities":{"victim":[null,{"id":-1},{"id":42,"type":"character","name":"Pilot","exclude":true}]},"items":[null,{"typeId":34}],"location":{"systemId":"bad","regionId":10000042,"securityTypes":["highsec",{}]},"timeRange":{"from":"2026-01-01"}}'))
     expect(filters.entities.victim).toEqual([{id:42,type:'character',name:'Pilot',exclude:true}]);expect(filters.items[0]).toMatchObject({typeId:34,slot:'any',side:'victim'});expect(filters.location.systemId).toBeNull();expect(filters.location.securityTypes).toEqual(['highsec']);expect(Object.hasOwn(filters,'__proto__')).toBe(false)

@@ -16,7 +16,7 @@ templ advancedSearchPage(view advancedSearchView) {
 					<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-400/15 bg-blue-500/10 text-lg text-link">
 						@icon("search-code")
 					</span>
-					<div class="min-w-0"><h1 class="text-xl font-bold text-white">Advanced Search</h1><div class="mt-1.5 max-w-3xl text-sm leading-relaxed text-secondary">Build a query from pilots, corporations, alliances, ships, items and space, then narrow it by time, ISK and engagement size. Searches can be linked or saved.</div></div>
+					<div class="min-w-0"><h1 class="text-xl font-bold text-white">Advanced Search</h1><div class="mt-1.5 max-w-3xl text-sm leading-relaxed text-secondary">Find killmails and fittings by pilot, ship or location. Add filters to narrow the results.</div></div>
 				</div>
 				<div class="relative shrink-0">
 					<div class="flex items-center gap-2 flex-shrink-0">
@@ -60,68 +60,61 @@ templ advancedSearchPage(view advancedSearchView) {
 			}
 		</div>
 		<div class="flex items-center justify-between gap-3 mb-2">
-			<button type="button" data-advanced-collapse aria-expanded="true" class="flex items-center gap-1.5 text-fine font-bold uppercase tracking-wider text-secondary hover:text-link transition-colors cursor-pointer">
+			<button type="button" data-advanced-collapse aria-expanded="true" aria-controls="advanced-filter-panels" class="flex items-center gap-1.5 text-fine font-bold uppercase tracking-wider text-secondary hover:text-link transition-colors cursor-pointer">
 				@icon("chevron-down")
 				<span>Filters</span><span data-advanced-collapse-count hidden class="text-link normal-case tracking-normal"></span>
 			</button><button type="button" data-advanced-clear hidden?={ !advancedHasFilters(view.State.Filters) } class="px-2.5 py-1 text-fine font-medium rounded border transition-colors bg-white/[0.04] text-secondary border-white/[0.08] hover:bg-blue-500/[0.08] cursor-pointer">Clear All</button>
 		</div>
-		<div data-advanced-panels class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
-			<div class="glass-panel p-3">
-				<label for="label-filter" class="block text-fine font-bold uppercase tracking-wider text-secondary mb-2">Killmail Label</label>
-				<select id="label-filter" data-advanced-label class="w-full px-2 py-1.5 text-xs bg-[#181818] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none">
-					<option value="">Any label</option>
-					for _,category:=range advancedLabelCategories(view.Labels) {
-						<optgroup label={ category }>
-							for _,label:=range view.Labels {
-								if label.Category==category {
-									<option value={ label.ID } selected?={ view.State.Filters.Label==label.ID }>
-										{ label.Name }
-									</option>
-								}
-							}
-						</optgroup>
-					}
-				</select>
-			</div>
-			for _,group:=range advancedOptionGroups {
-				<div class="glass-panel p-3">
-					<div class="text-fine font-bold uppercase tracking-wider text-secondary mb-2">
-						{ group.Label }
-					</div>
-					<div class={ "flex flex-wrap gap-1 " + killBoolClass(group.Key == "iskValue", "mb-2", "") }>
-						for _,option:=range group.Options {
-							@advancedOptionButton(group.Key, option, killBoolClass(group.Key == "security", strconv.FormatBool(member(option.Value, view.State.Filters.Location.SecurityTypes...)), strconv.FormatBool(advancedChoice(view.State.Filters, group.Key) == option.Value)) == "true")
+		<div id="advanced-filter-panels" data-advanced-panels class="mb-4">
+			<div class="glass-panel advanced-common-filters">
+				<fieldset class="advanced-filter-group">
+					<legend>Time Range</legend>
+					<div class="flex flex-wrap gap-1">
+						for _,option:=range advancedTimeOptions {
+							@advancedOptionButton("timePreset", option, advancedChoice(view.State.Filters, "timePreset") == option.Value)
 						}
 					</div>
-					if group.Key=="iskValue" {
-						<div class="grid grid-cols-2 gap-2"><div><label for="advanced-isk-min" class="block text-fine text-secondary mb-1">Min</label><input id="advanced-isk-min" data-advanced-isk="iskMin" value={ string(view.State.Filters.ISKMin) } type="text" placeholder="e.g. 500m" class="w-full px-2 py-1 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none"/></div><div><label for="advanced-isk-max" class="block text-fine text-secondary mb-1">Max</label><input id="advanced-isk-max" data-advanced-isk="iskMax" value={ string(view.State.Filters.ISKMax) } type="text" placeholder="e.g. 5b" class="w-full px-2 py-1 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none"/></div></div>
-					}
-					if group.Key=="shipCategory" {
-						<div class="text-fine font-bold uppercase tracking-wider text-secondary mt-3 mb-2">Tech Level</div>
-						<div class="flex flex-wrap gap-1">
-							for _,option:=range advancedTechOptions {
-								@advancedOptionButton("techLevel", option, view.State.Filters.TechLevel == option.Value)
-							}
-						</div>
-					}
-				</div>
-			}
-			<div class="glass-panel p-3">
-				<div class="text-fine font-bold uppercase tracking-wider text-secondary mb-2">Time Range</div>
-				<div class="flex flex-wrap gap-1 mb-2">
-					for _,option:=range advancedTimeOptions {
-						@advancedOptionButton("timePreset", option, advancedChoice(view.State.Filters, "timePreset") == option.Value)
-					}
-				</div>
-				<div class="grid grid-cols-2 gap-2">
-					<div>
-						<label class="block text-fine text-secondary mb-1">From <span class="text-gray-700">(EVE)</span></label>@dateTimePicker(dateTimePickerOptions{Name: "advanced_from", Value: view.State.Filters.TimeRange.From, Placeholder: "From", Compact: true})
-					</div>
-					<div>
-						<label class="block text-fine text-secondary mb-1">To <span class="text-gray-700">(EVE)</span></label>@dateTimePicker(dateTimePickerOptions{Name: "advanced_to", Value: view.State.Filters.TimeRange.To, Placeholder: "To", Compact: true})
-					</div>
-				</div>
+				</fieldset>
+				@advancedFilterGroup(view, advancedOptionGroups[0])
 			</div>
+			<details class="glass-panel advanced-more-filters" data-advanced-more open?={ advancedExtraFilterCount(view.State.Filters)>0 }>
+				<summary>
+					@icon("chevron-right")
+					<strong>More filters</strong>
+					<span data-advanced-more-count hidden?={ advancedExtraFilterCount(view.State.Filters)==0 }>{ strconv.Itoa(advancedExtraFilterCount(view.State.Filters)) } applied</span>
+					<small>Ships, ISK, attackers, labels and custom dates</small>
+				</summary>
+				<div class="advanced-more-grid">
+					@advancedFilterGroup(view, advancedOptionGroups[4])
+					@advancedFilterGroup(view, advancedOptionGroups[3])
+					<div class="advanced-engagement-filters">
+						@advancedFilterGroup(view, advancedOptionGroups[1])
+						@advancedFilterGroup(view, advancedOptionGroups[2])
+					</div>
+					<div class="advanced-filter-group">
+						<label for="label-filter">Killmail Label</label>
+						<select id="label-filter" data-advanced-label>
+							<option value="">Any label</option>
+							for _,category:=range advancedLabelCategories(view.Labels) {
+								<optgroup label={ category }>
+									for _,label:=range view.Labels {
+										if label.Category==category {
+											<option value={ label.ID } selected?={ view.State.Filters.Label==label.ID }>{ label.Name }</option>
+										}
+									}
+								</optgroup>
+							}
+						</select>
+					</div>
+					<fieldset class="advanced-filter-group advanced-custom-dates">
+						<legend>Custom dates <span>(EVE / UTC)</span></legend>
+						<div class="grid grid-cols-2 gap-2">
+							<div><label class="block text-fine text-secondary mb-1">From</label>@dateTimePicker(dateTimePickerOptions{Name: "advanced_from", Value: view.State.Filters.TimeRange.From, Placeholder: "From", Compact: true})</div>
+							<div><label class="block text-fine text-secondary mb-1">To</label>@dateTimePicker(dateTimePickerOptions{Name: "advanced_to", Value: view.State.Filters.TimeRange.To, Placeholder: "To", Compact: true})</div>
+						</div>
+					</fieldset>
+				</div>
+			</details>
 		</div>
 		<div data-advanced-sort class="flex flex-wrap items-center gap-3 mb-4">
 			<div class="flex flex-wrap items-center gap-1">
@@ -158,6 +151,33 @@ templ advancedSearchPage(view advancedSearchView) {
 		@advancedSearchTemplates()
 		@savedSearchPanel()
 	</div>
+}
+
+templ advancedFilterGroup(view advancedSearchView, group advancedOptionGroup) {
+	<fieldset class="advanced-filter-group">
+		<legend>{ group.Label }</legend>
+		<div class="flex flex-wrap gap-1">
+			for _,option:=range group.Options {
+				@advancedOptionButton(group.Key, option, (group.Key == "security" && member(option.Value, view.State.Filters.Location.SecurityTypes...)) || (group.Key != "security" && advancedChoice(view.State.Filters, group.Key) == option.Value))
+			}
+		</div>
+		if group.Key=="iskValue" {
+			<div class="grid grid-cols-2 gap-2 mt-2">
+				<div><label for="advanced-isk-min" class="block text-fine text-secondary mb-1">Min</label><input id="advanced-isk-min" data-advanced-isk="iskMin" value={ string(view.State.Filters.ISKMin) } type="text" placeholder="e.g. 500m"/></div>
+				<div><label for="advanced-isk-max" class="block text-fine text-secondary mb-1">Max</label><input id="advanced-isk-max" data-advanced-isk="iskMax" value={ string(view.State.Filters.ISKMax) } type="text" placeholder="e.g. 5b"/></div>
+			</div>
+		}
+		if group.Key=="shipCategory" {
+			<fieldset class="advanced-filter-group advanced-tech-filter">
+				<legend>Tech Level</legend>
+				<div class="flex flex-wrap gap-1">
+					for _,option:=range advancedTechOptions {
+						@advancedOptionButton("techLevel", option, view.State.Filters.TechLevel == option.Value)
+					}
+				</div>
+			</fieldset>
+		}
+	</fieldset>
 }
 
 templ advancedOptionButton(key string, option advancedOption, active bool) {
@@ -244,8 +264,8 @@ templ advancedSearchResults(view advancedSearchView) {
 				<span class="text-3xl text-secondary mb-3">
 					@icon("search")
 				</span>
-				<div class="text-sm text-secondary">Add filters above to find killmails</div>
-				<div class="text-xs text-secondary mt-1">Use the search bar to add pilots, corps, alliances, ships, or items</div>
+				<div class="text-sm text-white">Start with a pilot, ship or location</div>
+				<div class="text-xs text-secondary mt-1">Use the search field above, or choose a filter to find matching killmails and fittings.</div>
 			</div>
 		} else if view.State.View=="kills" {
 			if view.State.Hash!="" {

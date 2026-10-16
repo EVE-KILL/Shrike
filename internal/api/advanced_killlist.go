@@ -170,8 +170,10 @@ func parseAdvancedKilllistQuery(
 	if err != nil {
 		return query, err
 	}
-	query.Where = append(query.Where,
-		"k.killmail_time >= "+query.bind(since))
+	if !since.IsZero() {
+		query.Where = append(query.Where,
+			"k.killmail_time >= "+query.bind(since))
+	}
 	if until != nil {
 		query.Where = append(query.Where,
 			"k.killmail_time <= "+query.bind(*until))
@@ -326,24 +328,32 @@ func advancedTimeBounds(
 			return now.AddDate(0, 0, -30), nil, nil
 		}
 	}
-	from, err := parseAdvancedTime(input.From)
-	if err != nil {
-		return time.Time{}, nil, apiError(
-			http.StatusBadRequest, "Invalid timeRange.from",
-		)
+	var from time.Time
+	if input.From != "" {
+		var err error
+		from, err = parseAdvancedTime(input.From)
+		if err != nil {
+			return time.Time{}, nil, apiError(
+				http.StatusBadRequest, "Invalid timeRange.from",
+			)
+		}
 	}
-	to, err := parseAdvancedTime(input.To)
-	if err != nil {
-		return time.Time{}, nil, apiError(
-			http.StatusBadRequest, "Invalid timeRange.to",
-		)
+	var until *time.Time
+	if input.To != "" {
+		to, err := parseAdvancedTime(input.To)
+		if err != nil {
+			return time.Time{}, nil, apiError(
+				http.StatusBadRequest, "Invalid timeRange.to",
+			)
+		}
+		until = &to
 	}
-	if to.Before(from) {
+	if !from.IsZero() && until != nil && until.Before(from) {
 		return time.Time{}, nil, apiError(
 			http.StatusBadRequest, "timeRange.from must be before timeRange.to",
 		)
 	}
-	return from, &to, nil
+	return from, until, nil
 }
 
 func parseAdvancedTime(raw string) (time.Time, error) {
