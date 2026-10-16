@@ -294,12 +294,6 @@ templ entityHeader(view entityPageView) {
 			<button class="entity-portrait" type="button" data-entity-portrait aria-label={ "View " + view.Identity.Name + " full size" }>
 				<img src={ view.Image } alt={ view.Identity.Name } width="160" height="160" fetchpriority="high"/>
 				if view.Kind == "character" {
-					if view.Identity.RaceName != "" {
-						<span class="entity-race">{ view.Identity.RaceName }</span>
-					}
-					if view.Identity.BloodlineName != "" {
-						<span class="entity-bloodline">{ view.Identity.BloodlineName }</span>
-					}
 					<span class="entity-security">{ fmt.Sprintf("%.2f", view.Identity.SecurityStatus) }</span>
 				}
 			</button>
@@ -321,10 +315,10 @@ templ entityHeader(view entityPageView) {
 					}
 				</h1>
 				if view.Identity.CorporationID > 0 && view.Kind == "character" {
-					<a href={ idPath("corporation", view.Identity.CorporationID) }><img src={ eveEntityImage("corporation", view.Identity.CorporationID, 64) } alt="" width="20" height="20"/>{ view.Identity.CorporationName } <small>[{ view.Identity.CorporationTicker }]</small></a>
+					<a href={ idPath("corporation", view.Identity.CorporationID) }><img src={ eveEntityImage("corporation", view.Identity.CorporationID, 64) } alt="" width="20" height="20"/><span>{ view.Identity.CorporationName } <small>[{ view.Identity.CorporationTicker }]</small></span></a>
 				}
 				if view.Identity.AllianceID > 0 && (view.Kind == "character" || view.Kind == "corporation") {
-					<a href={ idPath("alliance", view.Identity.AllianceID) }><img src={ eveEntityImage("alliance", view.Identity.AllianceID, 64) } alt="" width="20" height="20"/>{ view.Identity.AllianceName } <small>[{ view.Identity.AllianceTicker }]</small></a>
+					<a href={ idPath("alliance", view.Identity.AllianceID) }><img src={ eveEntityImage("alliance", view.Identity.AllianceID, 64) } alt="" width="20" height="20"/><span>{ view.Identity.AllianceName } <small>[{ view.Identity.AllianceTicker }]</small></span></a>
 				}
 				if view.Kind != "faction" && view.Identity.FactionID > 0 {
 					<a href={ idPath("faction", view.Identity.FactionID) }>
@@ -333,8 +327,18 @@ templ entityHeader(view entityPageView) {
 						}
 					</a>
 				}
-				if view.Identity.Title != "" {
-					<p class="entity-title">{ view.Identity.Title }</p>
+				if view.Identity.Title != "" || (view.Kind == "character" && (view.Identity.RaceName != "" || view.Identity.BloodlineName != "")) {
+					<p class="entity-descriptors">
+						if view.Identity.Title != "" {
+							<span class="entity-title">{ view.Identity.Title }</span>
+						}
+						if view.Kind == "character" && view.Identity.RaceName != "" {
+							<span>{ view.Identity.RaceName }</span>
+						}
+						if view.Kind == "character" && view.Identity.BloodlineName != "" {
+							<span>{ view.Identity.BloodlineName }</span>
+						}
+					</p>
 				}
 				if view.Kind == "corporation" && view.Identity.CEOId > 0 {
 					<a href={ idPath("character", view.Identity.CEOId) }>
@@ -345,10 +349,12 @@ templ entityHeader(view entityPageView) {
 				if view.Kind == "alliance" && view.Identity.ExecutorCorporationID > 0 {
 					<a href={ idPath("corporation", view.Identity.ExecutorCorporationID) }>
 						<img src={ eveEntityImage("corporation", view.Identity.ExecutorCorporationID, 64) } alt="" width="20" height="20"/>
-						<span>Executor: { view.Identity.ExecutorName }</span>
-						if view.Identity.ExecutorTicker != "" {
-							<small>[{ view.Identity.ExecutorTicker }]</small>
-						}
+						<span>
+							Executor: { view.Identity.ExecutorName }
+							if view.Identity.ExecutorTicker != "" {
+								<small>[{ view.Identity.ExecutorTicker }]</small>
+							}
+						</span>
 					</a>
 				}
 			</div>
@@ -436,14 +442,18 @@ templ entityHeader(view entityPageView) {
 				if view.Ranking.Population > 0 {
 					<a class="entity-ranking" href="/rankings"><span>EVE-KILL Rating</span><strong>{ fullNumber(float64(view.Ranking.Rating)) }</strong><small>#{ fullNumber(float64(view.Ranking.Rank)) } of { fullNumber(float64(view.Ranking.Population)) }</small></a>
 				}
-				if view.Kind == "character" && view.Identity.CorporationID > 0 {
-					<a href={ idPath("corporation", view.Identity.CorporationID) }><img src={ eveEntityImage("corporation", view.Identity.CorporationID, 128) } alt={ view.Identity.CorporationName } width="80" height="80"/></a>
-				}
-				if (view.Kind == "character" || view.Kind == "corporation") && view.Identity.AllianceID > 0 {
-					<a href={ idPath("alliance", view.Identity.AllianceID) }><img src={ eveEntityImage("alliance", view.Identity.AllianceID, 128) } alt={ view.Identity.AllianceName } width="80" height="80"/></a>
-				}
-				if view.Kind == "alliance" && view.Identity.ExecutorCorporationID > 0 {
-					<a href={ idPath("corporation", view.Identity.ExecutorCorporationID) }><img src={ eveEntityImage("corporation", view.Identity.ExecutorCorporationID, 128) } alt="Executor corporation" width="80" height="80"/></a>
+				if (view.Kind == "character" && view.Identity.CorporationID > 0) || ((view.Kind == "character" || view.Kind == "corporation") && view.Identity.AllianceID > 0) || (view.Kind == "alliance" && view.Identity.ExecutorCorporationID > 0) {
+					<div class="entity-affiliations">
+						if view.Kind == "character" && view.Identity.CorporationID > 0 {
+							<a href={ idPath("corporation", view.Identity.CorporationID) }><img src={ eveEntityImage("corporation", view.Identity.CorporationID, 128) } alt={ view.Identity.CorporationName } width="80" height="80"/></a>
+						}
+						if (view.Kind == "character" || view.Kind == "corporation") && view.Identity.AllianceID > 0 {
+							<a href={ idPath("alliance", view.Identity.AllianceID) }><img src={ eveEntityImage("alliance", view.Identity.AllianceID, 128) } alt={ view.Identity.AllianceName } width="80" height="80"/></a>
+						}
+						if view.Kind == "alliance" && view.Identity.ExecutorCorporationID > 0 {
+							<a href={ idPath("corporation", view.Identity.ExecutorCorporationID) }><img src={ eveEntityImage("corporation", view.Identity.ExecutorCorporationID, 128) } alt="Executor corporation" width="80" height="80"/></a>
+						}
+					</div>
 				}
 			</div>
 		</div>

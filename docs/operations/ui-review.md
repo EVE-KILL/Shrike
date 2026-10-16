@@ -32,6 +32,8 @@ It produced these changes:
 - Theme-aware neutral colors and brighter semantic values in killmail item tables.
 - Larger mobile controls without expanding desktop data rows.
 - Profile navigation before showcase panels, with all mobile labels visible.
+- Compact entity headers with identity and metadata grouped together, and affiliation logos side by side.
+- Character origin details and ratings visible on mobile, with readable wrapping for affiliation names and tickers.
 - Associated valuable-list tabs with arrow, Home, End, and native activation keys.
 - Map zoom buttons, keyboard pan/zoom/reset, center inspection, and keyboard instructions.
 - Clearer spotlight focus, default-action navigation, result announcements, and empty-state guidance.
@@ -51,7 +53,10 @@ It did not submit killmails, save fittings, post comments, or change production 
 Browser coverage included home, latest kills, character, corporation, alliance, kill detail, advanced search, market, map, fitting, FAQ, and API documentation.
 Responsive checks included 320px, 390px, and 768px widths, plus desktop layouts.
 The expanded fitting wheel remained separate from statistics at 1280px.
-The mobile profile navigation moved from approximately 1033px to 682px below the document start.
+The mobile profile navigation moved from approximately 1033px to 703px below the document start,
+while restoring the rating and character origin information previously hidden on mobile.
+The character header above the statistics shrank from 322px to approximately 205px on desktop.
+Character, corporation, and alliance headers fit at 320px and 768px, including ratings and metadata.
 
 Default colors, the existing purple preference, an Amarr accent, and custom dark-theme colors were checked.
 Temporary theme changes were restored.
