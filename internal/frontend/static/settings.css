@@ -13,7 +13,7 @@
 .settings-page [data-settings-domains] :is(input,textarea,select) { min-width:0; }
 .settings-page [data-settings-domains] [hidden] { display:none; }
 .settings-page [data-domain-tabs] { overflow-x:auto; }
-.esi-detail-dialog { position:fixed;top:50%;left:50%;margin:0;transform:translate(-50%,-50%);width:min(512px,calc(100% - 32px));max-width:none;max-height:calc(100dvh - 32px);background:#141414;border-color:#ffffff1a;box-sizing:border-box; }
+.esi-detail-dialog { position:fixed;top:50%;left:50%;margin:0;transform:translate(-50%,-50%);width:min(512px,calc(100% - 32px));max-width:none;max-height:calc(100dvh - 32px);background:var(--theme-surface-primary,#141414);border-color:color-mix(in srgb,var(--color-text-primary) 10.196%,transparent);box-sizing:border-box; }
 .esi-detail-dialog::backdrop { background:#0009; backdrop-filter:blur(8px); }
 .esi-detail-dialog .icon { width:14px;height:14px; }
 @media(max-width:767px){.settings-page .settings-nav{max-width:100%;}.settings-page .settings-nav>div{max-width:100%;}.settings-page [data-settings-session-device]{width:40px;height:40px;}}

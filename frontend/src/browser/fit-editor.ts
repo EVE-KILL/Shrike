@@ -16,8 +16,33 @@ export class FitEditorController extends RequestComponent {
  private bindings:ActionBinding[] = []
  private ownedTimers = new Set<ReturnType<typeof setTimeout>>()
  private observers:Array<{node:HTMLElement;callback:()=>void;observer:ResizeObserver}> = []
- connect() {this.alive = true;if(!this.runtime) void this.load()}
+ private mobileActions:boolean|undefined
+ connect() {this.alive = true;this.resizeActions();this.element.classList.add('fit-editor-ready');if(!this.runtime) void this.load()}
+ resizeActions() {
+  const mobile = window.matchMedia('(max-width:700px)').matches
+  if(mobile === this.mobileActions) return
+  this.mobileActions = mobile
+  const more = this.element.querySelector<HTMLDetailsElement>('[data-fit-more-actions]')
+  if(more) more.open = !mobile
+ }
+ dismissActions(event:Event) {
+  const more = this.element.querySelector<HTMLDetailsElement>('[data-fit-more-actions]'),target = eventElement(event.target)
+  if(!this.mobileActions || !more?.open || !target) return
+  if(event instanceof KeyboardEvent) {
+   if(event.key !== 'Escape') return
+   event.preventDefault();more.open = false;more.querySelector('summary')?.focus()
+  }else if(!more.contains(target) || target.closest('button[data-fit-action]')) more.open = false
+ }
  loadSde():Promise<SdeData> {return loadSde()}
+ async retryLoad() {
+  if(!this.alive || this.loading || this.runtime) return
+  const error = this.element.querySelector<HTMLElement>('[data-fit-load-error]')
+  if(error) error.hidden = true
+  this.q('[data-fit-status]').textContent = 'Loading fitting data…'
+  this.q('[data-fit-catalog]').textContent = 'Loading fitting data…'
+  await this.load()
+  if(this.alive && error?.hidden) this.q<HTMLInputElement>('[data-fit-search]').focus({preventScroll:true})
+ }
  private async load() {
   if(this.loading) return this.loading
   const generation = this.generation
@@ -32,7 +57,7 @@ export class FitEditorController extends RequestComponent {
      json:(path,options)=>this.request<unknown>(path,options),text:(path,options)=>this.text(path,'Could not load fitting data',options),
     }
     this.runtime = createEditorRuntime(this.element,scope);await this.runtime.ready
-   }catch(error) {if(this.alive && generation === this.generation && !isAbortError(error)) {console.error('Could not initialize fitting editor',error);this.q('[data-fit-status]').textContent = 'Fitting data unavailable';this.q('[data-fit-catalog]').textContent = 'The fitting data could not be loaded. Please refresh the page.'}}
+   }catch(error) {if(this.alive && generation === this.generation && !isAbortError(error)) {console.error('Could not initialize fitting editor',error);this.q('[data-fit-status]').textContent = 'Fitting data unavailable';this.q('[data-fit-catalog]').textContent = 'Fitting data unavailable';const box = this.element.querySelector<HTMLElement>('[data-fit-load-error]');if(box) box.hidden = false}}
    finally {if(generation === this.generation) this.loading = undefined}
   })()
   return this.loading

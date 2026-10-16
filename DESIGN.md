@@ -66,6 +66,12 @@ Use secondary text for supporting labels.
 Check small text against its actual surface, including translucent surfaces over backgrounds.
 Use a visible selected treatment as well as color for active controls.
 
+`frontend/src/utils/applyTheme.ts` applies the same colors before first paint and during appearance previews.
+Its derived `--theme-surface-primary` lets legacy dark surfaces follow a customized background,
+while preserving their original dark defaults when no background override is present.
+Legacy white/gray utilities now follow foreground, supporting-text, border, and background roles.
+Keep explicit image overlays, EVE security colors, star-map scenes, and fitting-wheel artwork separate from interface surfaces.
+
 Retain EVE security colors, corporation accents, loss rows, and ISK colors.
 These colors convey data; they are not interchangeable decoration.
 

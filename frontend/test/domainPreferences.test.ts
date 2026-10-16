@@ -12,3 +12,9 @@ test('domain defaults apply before paint while explicit personal preferences win
 test('unapproved background URLs cannot become CSS resources',async()=>{
  document.documentElement.dataset.domainBackground='https://unsafe.example/background';await apply();expect(document.documentElement.style.getPropertyValue('--site-bg')).toBe('')
 })
+test('custom light colors reach shared surfaces before paint and clearing the theme restores dark defaults',async()=>{
+ const root=document.documentElement
+ document.cookie='ek_theme='+encodeURIComponent(JSON.stringify({bgPrimary:'#f8fafc',textPrimary:'#0f172a',textSecondary:'#475569'}))
+ await apply();expect(root.style.getPropertyValue('--theme-surface-primary')).toBe('#f8fafc');expect(root.style.colorScheme).toBe('light');expect(root.style.getPropertyValue('--color-text-primary')).toBe('#0f172a')
+ document.cookie='ek_theme='+encodeURIComponent('{}');await apply();expect(root.style.getPropertyValue('--theme-surface-primary')).toBe('');expect(root.style.colorScheme).toBe('');expect(root.style.getPropertyValue('--color-text-primary')).toBe('')
+})

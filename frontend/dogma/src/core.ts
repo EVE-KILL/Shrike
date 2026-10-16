@@ -32,13 +32,15 @@ export interface DogmaApi {
 }
 export function createDogma(io:DogmaIO):DogmaApi {
  let sdeCache:Promise<SdeData>|null=null,engineCache:Promise<LoadedEngine>|null=null,pair:Promise<{sde:SdeData;engine:LoadedEngine}>|null=null
- const loadSde=()=>sdeCache??=io.loadSdeBytes().then(decodeSdeFromBytes)
- const loadEngine=()=>engineCache??=io.loadEngineBytes().then(instantiateEngineFromBytes)
+ // Share successful loads, but let an explicit retry recover from a transient
+ // network or decode failure rather than caching its rejection until reload.
+ const loadSde=()=>sdeCache??=io.loadSdeBytes().then(decodeSdeFromBytes).catch(error=>{sdeCache=null;throw error})
+ const loadEngine=()=>engineCache??=io.loadEngineBytes().then(instantiateEngineFromBytes).catch(error=>{engineCache=null;throw error})
  const getEngine=()=>pair??=Promise.all([loadSde(),loadEngine()]).then(([sde,engine])=>{
   const build=engine.load_sde(sde.bytes)
   if(build!==sde.buildNumber)throw new Error('Fitting catalogue and engine SDE builds differ')
   return{sde,engine}
- })
+ }).catch(error=>{pair=null;throw error})
  const calculateFit=async(fit:EsfFit,skills?:SkillMap)=>{const{sde,engine}=await getEngine();return engine.calculate(fit,skills??allFive(sde))}
  const itemStat=(sde:SdeData,item:ComputedItem,name:string)=>{const id=sde.attributeNameToId.get(name);const attr=id===undefined?undefined:item.attributes.get(id);return attr?.value??attr?.base_value??null}
  const getItemStat=async(item:ComputedItem,name:string)=>itemStat(await loadSde(),item,name)

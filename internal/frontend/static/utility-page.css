@@ -56,7 +56,7 @@
 .go-utility-page [data-date-time-panel] .icon {
   width: 16px;
   height: 16px;
-  color: #6b7280;
+  color:var(--color-text-secondary);
 }
 .go-utility-page [data-date-time-trigger] > .icon:last-child {
   width: 12px;

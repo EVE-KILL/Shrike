@@ -57,7 +57,7 @@ export class SavedSearchesController extends RequestComponent {
     const accounts=this.q<HTMLElement>('[data-saved-account-rows]'),browsers=this.q<HTMLElement>('[data-saved-browser-rows]');accounts.replaceChildren();browsers.replaceChildren()
     if(this.user){
       if(this.ready&&!this.account.length)accounts.append(node('p','text-xs text-gray-500 py-2','No account searches yet.'))
-      for(const row of this.account){const card=node('div','py-3 border-b border-white/[0.06]'),name=this.action(row.name,'load-account',row.id),actions=node('div','flex flex-wrap gap-3 mt-2 text-xs text-gray-400');name.className='text-sm text-gray-200 text-left break-words';actions.append(this.action('Rename','rename',row.id,Boolean(this.busy)),this.action('Use current filters','replace',row.id,Boolean(this.busy)),this.action('Delete','delete-account',row.id,Boolean(this.busy)));card.append(name,actions);accounts.append(card)}
+      for(const row of this.account){const card=node('div','py-3 border-b border-white/[0.06]'),name=this.action(row.name,'load-account',row.id),actions=node('div','flex flex-wrap gap-3 mt-2 text-xs text-gray-400');name.className='text-sm text-gray-200 text-left break-words';actions.append(this.action('Rename','rename',row.id,Boolean(this.busy)||!this.ready),this.action('Use current filters','replace',row.id,Boolean(this.busy)||!this.ready),this.action('Delete','delete-account',row.id,Boolean(this.busy)||!this.ready));card.append(name,actions);accounts.append(card)}
     }else if(!this.local.length)browsers.append(node('p','text-xs text-gray-500 py-2','No browser searches yet.'))
     this.q<HTMLElement>('[data-saved-import-note]').hidden=!(this.user&&this.local.length)
     for(const [index,row]of this.local.entries()){const card=node('div','py-3 border-b border-white/[0.06]'),name=this.action(row.name,'load-local',index),actions=node('div','flex gap-3 mt-2 text-xs text-gray-400');name.className='text-sm text-gray-200 text-left break-words';if(this.user)actions.append(this.action('Import to account','import',index,Boolean(this.busy)||!this.ready));actions.append(this.action('Delete browser copy','delete-local',index,Boolean(this.busy)));card.append(name,actions);browsers.append(card)}
@@ -76,7 +76,7 @@ export class SavedSearchesController extends RequestComponent {
     this.renderRows();this.layout()
   }
   private async refresh(){
-    this.pending?.abort();const controller=new AbortController();this.pending=controller;this.account=[];this.ready=false;this.errorText=''
+    this.pending?.abort();const controller=new AbortController();this.pending=controller;this.ready=false;this.errorText='';this.message=''
     if(!this.user){this.pending=undefined;this.loading=false;this.render();return}
     const owner=this.user.characterId;this.loading=true;this.render()
     try{const result=await this.request<AccountSavedSearchesGetResponses[200]>('/api/me/saved-searches',{signal:controller.signal});if(this.pending===controller&&this.user?.characterId===owner){this.account=result.searches;this.ready=true}}
@@ -87,7 +87,7 @@ export class SavedSearchesController extends RequestComponent {
     try{
       const next=event?(await this.request<AuthMeLegacyResponses[200]>('/auth/me')).user??null:await readBrowserSession()
       if(epoch!==this.identityGeneration||!this.element.isConnected)return
-      if(this.user?.characterId!==next?.characterId){const opened=this.opened;this.hide();this.opened=opened;this.user=next;this.editor=this.deleting=null;this.errorText=this.message='';await this.refresh()}
+      if(this.user?.characterId!==next?.characterId){const opened=this.opened;this.hide();this.opened=opened;this.user=next;this.account=[];this.editor=this.deleting=null;this.errorText=this.message='';await this.refresh()}
       else if(next&&!this.ready)await this.refresh()
     }catch{/* Anonymous/browser searches remain available if identity is unavailable. */}
     finally{if(epoch===this.identityGeneration&&this.element.isConnected){this.identifying=false;this.render()}}

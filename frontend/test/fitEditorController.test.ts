@@ -39,6 +39,12 @@ afterEach(async()=>{document.body.replaceChildren();await settle();expect(errors
 test('actual Go editor starts at hulls, loads real SDE and supports keyboard hull selection',async()=>{
  const root = await mount();expect(fetchMock).not.toHaveBeenCalled();const search = q<HTMLInputElement>(root,'[data-fit-search]');input(search,'Rifter');expect(root.querySelectorAll('[data-fit-hull]')).toHaveLength(1);search.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await completed(root);expect(q<HTMLImageElement>(root,'[data-fit-hull-image]').getAttribute('src')).toContain('/587/');expect(root.querySelectorAll('[data-fit-slot]')).toHaveLength(31);expect(history.state).toEqual({retained:true})
 })
+test('catalogue tabs have one tab stop and arrow activation labels their retained panel',async()=>{
+ const root=await mount(),hulls=q<HTMLButtonElement>(root,'[data-fit-tab="hulls"]'),hardware=q<HTMLButtonElement>(root,'[data-fit-tab="hardware"]'),panel=q(root,'[data-fit-catalog]')
+ expect(hulls.tabIndex).toBe(0);expect(hardware.tabIndex).toBe(-1);expect(hulls.getAttribute('aria-controls')).toBe(panel.id)
+ hulls.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));expect(document.activeElement).toBe(hardware);expect(hardware.getAttribute('aria-selected')).toBe('true');expect(panel.getAttribute('aria-labelledby')).toBe(hardware.id)
+ hardware.dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true,cancelable:true}));expect(hulls.tabIndex).toBe(0);expect(hardware.tabIndex).toBe(-1);expect(hulls.getAttribute('aria-selected')).toBe('true')
+})
 
 test('a hull query typed during a cold SDE load filters the catalogue when ready',async()=>{
  const sde = await dogma.loadSde();let release!:(value:typeof sde)=>void
@@ -47,6 +53,25 @@ test('a hull query typed during a cold SDE load filters the catalogue when ready
  const search = q<HTMLInputElement>(root,'[data-fit-search]');input(search,'Rifter');release(sde)
  await vi.waitFor(()=>expect(root.querySelectorAll('[data-fit-hull]')).toHaveLength(1));await completed(root)
  expect(search.value).toBe('Rifter');expect(q(root,'[data-fit-hull]').textContent).toContain('Rifter')
+})
+
+test('mobile action disclosure dismisses without changing the fit, and desktop resize exposes the same actions',async()=>{
+ let mobile=true;const media=window.matchMedia.bind(window)
+ vi.spyOn(window,'matchMedia').mockImplementation(query=>{const result=media(query);Object.defineProperty(result,'matches',{get:()=>mobile});return result})
+ const root=await mount(emptyFit(587)),more=q<HTMLDetailsElement>(root,'[data-fit-more-actions]'),summary=q<HTMLElement>(more,'summary'),wheel=q(root,'[data-fit-slot="High:1"]')
+ expect(more.open).toBe(false);more.open=true;summary.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));expect(more.open).toBe(false);expect(document.activeElement).toBe(summary)
+ more.open=true;click(root,'rename');expect(more.open).toBe(false);expect(q<HTMLDialogElement>(root,'[data-fit-rename-dialog]').open).toBe(true);click(root,'cancel-rename')
+ more.open=true;q<HTMLInputElement>(root,'[data-fit-search]').click();expect(more.open).toBe(false)
+ mobile=false;window.dispatchEvent(new Event('resize'));expect(more.open).toBe(true)
+ mobile=true;window.dispatchEvent(new Event('resize'));expect(more.open).toBe(false);expect(q(root,'[data-fit-slot="High:1"]')).toBe(wheel)
+})
+
+test('a failed catalogue load can retry once without losing the URL or typed query',async()=>{
+ vi.spyOn(console,'error').mockImplementation(()=>{});vi.mocked(dogma.loadSde).mockRejectedValueOnce(new Error('Temporary download failure'))
+ history.replaceState({retained:true},'','/fits/create?keep=1');const root=coldMount();await settle();await settle()
+ const error=q<HTMLElement>(root,'[data-fit-load-error]'),search=q<HTMLInputElement>(root,'[data-fit-search]');expect(error.hidden).toBe(false);input(search,'Rifter')
+ const before=vi.mocked(dogma.loadSde).mock.calls.length;q<HTMLButtonElement>(root,'[data-fit-retry]').click();q<HTMLButtonElement>(root,'[data-fit-retry]').click()
+ await completed(root);expect(vi.mocked(dogma.loadSde).mock.calls.length-before).toBe(1);expect(error.hidden).toBe(true);expect(search.value).toBe('Rifter');expect(root.querySelectorAll('[data-fit-hull]')).toHaveLength(1);expect(location.search).toBe('?keep=1');expect(history.state).toEqual({retained:true});expect(document.activeElement).toBe(search)
 })
 
 test('actual Go saved-fit page starts its editor and retains modules, charges, drones and cargo',async()=>{

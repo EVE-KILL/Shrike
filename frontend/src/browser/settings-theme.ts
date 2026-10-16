@@ -1,4 +1,5 @@
 import {DEFAULT_THEME,CSS_VAR_MAP,THEME_PRESETS,type ThemeConfig} from '../utils/themeData'
+import {applyThemeColors} from '../utils/applyTheme'
 export type ThemeOverrides=Partial<ThemeConfig>
 export function minimalTheme(overrides:ThemeOverrides|Record<string,unknown>={}):ThemeOverrides {
   return Object.fromEntries(Object.entries(overrides).filter(([key,value])=>Object.hasOwn(CSS_VAR_MAP,key)&&typeof value==='string'&&value&&value!==DEFAULT_THEME[key as keyof ThemeConfig]))
@@ -17,9 +18,5 @@ export function detectThemePreset(overrides:ThemeOverrides):string {
   return Object.keys(overrides).length===0?'default':'custom'
 }
 export function applySettingsTheme(overrides:ThemeOverrides,root:HTMLElement=document.documentElement):void {
-  for(const [key,variable] of Object.entries(CSS_VAR_MAP)){
-    const value=overrides[key as keyof ThemeConfig]
-    if(typeof value==='string'&&CSS.supports('color',value))root.style.setProperty(variable,value)
-    else root.style.removeProperty(variable)
-  }
+  applyThemeColors(overrides,root)
 }

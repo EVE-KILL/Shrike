@@ -12,11 +12,11 @@ beforeEach(()=>{
  vi.stubGlobal('cancelAnimationFrame',vi.fn())
  vi.stubGlobal('ResizeObserver',class {observe(){} disconnect(){}})
 })
-afterEach(()=>{map?.destroy();map=undefined;document.body.replaceChildren();vi.unstubAllGlobals();vi.restoreAllMocks()})
-function setup() {
+afterEach(()=>{map?.destroy();map=undefined;document.body.replaceChildren();vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks()})
+function setup(baseLayer:'geography'|'live'='geography') {
  const host=document.createElement('div');document.body.append(host)
  Object.defineProperties(host,{clientWidth:{value:390},clientHeight:{value:600}})
- const inspect=vi.fn();map=createGoMap(host,{baseLayer:'geography',onBattleRegion:inspect})
+ const inspect=vi.fn();map=createGoMap(host,{baseLayer,onBattleRegion:inspect})
  map.setData({systems:[{solar_system_id:1,system_name:'Fixture',region_id:10,security:.5,x:0,z:0}],regions:[{region_id:10,name:'Region'}]})
  const flush=()=>{const pending=frames.splice(0);pending.forEach(callback=>callback(0))}
  const canvas=host.querySelector('canvas')!
@@ -39,4 +39,11 @@ test('Enter inspects the center and a detached map no longer reacts to keyboard 
  const {canvas,press,inspect}=setup();press('Enter');expect(inspect).toHaveBeenCalledWith(10)
  map!.destroy();map=undefined;translate.mockClear();canvas.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight'}))
  expect(translate).not.toHaveBeenCalled()
+})
+test('reduced-motion live signals stay static, expire and release their timer on teardown',()=>{
+ vi.useFakeTimers({toFake:['setTimeout','clearTimeout','performance']})
+ const media=window.matchMedia('(prefers-reduced-motion: reduce)');Object.defineProperty(media,'matches',{value:true});vi.spyOn(window,'matchMedia').mockReturnValue(media)
+ const {flush}=setup('live');map!.pulseKill(1,1e9);flush();expect(frames).toHaveLength(0);expect(vi.getTimerCount()).toBe(1)
+ vi.advanceTimersByTime(45001);flush();expect(frames).toHaveLength(0);expect(vi.getTimerCount()).toBe(0)
+ map!.pulseKill(1,1e9);flush();expect(vi.getTimerCount()).toBe(1);map!.destroy();map=undefined;expect(vi.getTimerCount()).toBe(0)
 })

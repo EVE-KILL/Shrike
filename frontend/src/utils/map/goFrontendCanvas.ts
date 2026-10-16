@@ -194,6 +194,8 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
     let drag: { x: number; y: number; moved: boolean } | null = null
     let frame = 0
     let pulseFrame = 0
+    let pulseExpiry:ReturnType<typeof setTimeout>|undefined
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
     let destroyed = false
     const livePulses = new Map<number, { startedAt: number; value: number }>()
     let focusedLiveSystem: { id: number; origin: { x: number; y: number } } | null = null
@@ -369,6 +371,7 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
     // their own transparent canvas so each pulse does not redraw the full map.
     const drawPulses = () => {
         pulseFrame = 0
+        clearTimeout(pulseExpiry);pulseExpiry = undefined
         if (destroyed) return
         const width = host.clientWidth, height = host.clientHeight
         if (!width || !height) return
@@ -381,30 +384,33 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
         pulseContext.clearRect(0, 0, width, height)
         if (options.baseLayer !== 'live' && options.baseLayer !== 'aiid') return
         const now = performance.now()
+        const reducedMotion = motionPreference.matches
+        let nextExpiry = Infinity
         const lifetime = options.baseLayer === 'aiid' ? 15 * 60 : 45
         pulseContext.translate(camera.x, camera.y)
         pulseContext.scale(camera.scale, camera.scale)
         for (const [id, pulse] of livePulses) {
             const node = scene.byID.get(id)
             const age = (now - pulse.startedAt) / 1000
-            if (!node || age > lifetime) { livePulses.delete(id); continue }
+            if (!node || age >= lifetime) { livePulses.delete(id); continue }
+            nextExpiry = Math.min(nextExpiry, lifetime * 1000 - (now - pulse.startedAt))
             const life = 1 - age / lifetime
             const ringLife = Math.max(0, 1 - age / (options.baseLayer === 'aiid' ? 30 : 18))
             const valueScale = Math.min(1, Math.max(0, Math.log10(Math.max(pulse.value, 1) / 1e6) / 5))
             const color = valueScale > .72 ? '#facc15' : valueScale > .38 ? '#fb923c' : '#fb7185'
-            const radius = 3.5 + valueScale * 4 + Math.sin(age * 5) * .8
+            const radius = 3.5 + valueScale * 4 + (reducedMotion ? 0 : Math.sin(age * 5) * .8)
             pulseContext.fillStyle = color
             pulseContext.globalAlpha = .42 * life
             pulseContext.beginPath(); pulseContext.arc(node.x, node.y, radius * 2.4, 0, Math.PI * 2); pulseContext.fill()
             pulseContext.globalAlpha = .95 * life
             pulseContext.beginPath(); pulseContext.arc(node.x, node.y, Math.max(1.5, radius * life), 0, Math.PI * 2); pulseContext.fill()
-            if (ringLife > 0) {
+            if (!reducedMotion && ringLife > 0) {
                 pulseContext.globalAlpha = .85 * ringLife
                 pulseContext.strokeStyle = color
                 pulseContext.lineWidth = 1.5
                 pulseContext.beginPath(); pulseContext.arc(node.x, node.y, radius + age * 2.2, 0, Math.PI * 2); pulseContext.stroke()
             }
-            if (age < 5) {
+            if (!reducedMotion && age < 5) {
                 pulseContext.globalAlpha = .9 - age * .12
                 pulseContext.fillStyle = '#fff'
                 pulseContext.beginPath(); pulseContext.arc(node.x, node.y, radius * .35, 0, Math.PI * 2); pulseContext.fill()
@@ -420,14 +426,18 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
             pulseContext.beginPath(); pulseContext.moveTo(origin.x, origin.y)
             pulseContext.bezierCurveTo(origin.x + bend, origin.y, target.x - bend * .35, target.y, target.x, target.y); pulseContext.stroke()
             pulseContext.globalAlpha = .22; pulseContext.fillStyle = '#fb7185'
-            pulseContext.beginPath(); pulseContext.arc(target.x, target.y, 9 + Math.sin(now / 130) * 2, 0, Math.PI * 2); pulseContext.fill()
+            const focusRadius = 9 + (reducedMotion ? 0 : Math.sin(now / 130) * 2)
+            pulseContext.beginPath(); pulseContext.arc(target.x, target.y, focusRadius, 0, Math.PI * 2); pulseContext.fill()
             pulseContext.globalAlpha = .9; pulseContext.strokeStyle = '#fff'
-            pulseContext.beginPath(); pulseContext.arc(target.x, target.y, 9 + Math.sin(now / 130) * 2, 0, Math.PI * 2); pulseContext.stroke()
+            pulseContext.beginPath(); pulseContext.arc(target.x, target.y, focusRadius, 0, Math.PI * 2); pulseContext.stroke()
             pulseContext.globalAlpha = 1; pulseContext.fillStyle = '#fff'
             pulseContext.beginPath(); pulseContext.arc(target.x, target.y, 3.5, 0, Math.PI * 2); pulseContext.fill()
         }
         pulseContext.globalAlpha = 1
-        if ((livePulses.size || focused) && !document.hidden) requestPulseDraw()
+        if (!document.hidden) {
+            if (!reducedMotion && (livePulses.size || focused)) requestPulseDraw()
+            else if (Number.isFinite(nextExpiry)) pulseExpiry = setTimeout(requestPulseDraw, Math.max(1, nextExpiry))
+        }
     }
     const requestPulseDraw = () => {
         if (pulseFrame || destroyed || document.hidden) return
@@ -793,6 +803,8 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
     reset.addEventListener('click', resetView)
     const onVisibility = () => { if (!document.hidden) requestPulseDraw() }
     document.addEventListener('visibilitychange', onVisibility)
+    const onMotion = () => { if(pulseFrame)cancelAnimationFrame(pulseFrame);pulseFrame=0;requestPulseDraw() }
+    motionPreference.addEventListener('change',onMotion)
     const observer = new ResizeObserver(resetView)
     observer.observe(host)
 
@@ -837,6 +849,8 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
             markerPicker.hide()
             if (frame) cancelAnimationFrame(frame)
             if (pulseFrame) cancelAnimationFrame(pulseFrame)
+            clearTimeout(pulseExpiry)
+            motionPreference.removeEventListener('change',onMotion)
             observer.disconnect()
             canvas.removeEventListener('pointermove', onMove)
             canvas.removeEventListener('pointerdown', onDown)

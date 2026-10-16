@@ -64,6 +64,7 @@ func main() {
 func runCommand() error {
 	backend := flag.String("backend", "", "Render current Go assets against an existing fixture API; no database is created")
 	backendPort := flag.Int("backend-port", 4451, "Loopback port for current rendering against an existing backend")
+	fixturePort := flag.Int("fixture-port", 4450, "Loopback port for a new disposable account/API fixture")
 	referencePort := flag.Int("reference-port", 0, "Optional loopback port serving the retained renderer and its assets through a read-only anonymous proxy")
 	public := flag.String("public", "http://127.0.0.1:4200", "Public read-only Go preview")
 	publicReview := flag.Bool("public-review", false, "Compare complete public renderers against the read-only Go preview; no database is created")
@@ -98,7 +99,7 @@ func runCommand() error {
 	if *publicReview {
 		return runPublicReview(ctx, *public, *reviewGoPort, *faultFixtures)
 	}
-	return run(ctx, *backend, *public, *mediaFixtures, *faultFixtures, *trackerRelay, *blogFixtures, *adminFixtures, *submissionFixtures, *referenceCoalitions, *referenceEntities, *referencePublicKills, *referenceFittings, *referenceMaps, *referenceWars, *referenceRoam, *referenceTools, *referenceAnalysis, *referenceStatus, *referenceLegacy, *referenceUniverse, *entityDatabase, *backendPort, *referencePort)
+	return run(ctx, *backend, *public, *mediaFixtures, *faultFixtures, *trackerRelay, *blogFixtures, *adminFixtures, *submissionFixtures, *referenceCoalitions, *referenceEntities, *referencePublicKills, *referenceFittings, *referenceMaps, *referenceWars, *referenceRoam, *referenceTools, *referenceAnalysis, *referenceStatus, *referenceLegacy, *referenceUniverse, *entityDatabase, *backendPort, *referencePort, *fixturePort)
 }
 
 func localURL(raw string) (*url.URL, error) {
@@ -109,7 +110,10 @@ func localURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-func run(ctx context.Context, backend, public string, mediaFixtures, faultFixtures, trackerRelay, blogFixtures, adminFixtures, submissionFixtures, referenceCoalitions, referenceEntities, referencePublicKills, referenceFittings, referenceMaps, referenceWars, referenceRoam, referenceTools, referenceAnalysis, referenceStatus, referenceLegacy, referenceUniverse, entityDatabase bool, backendPort, referencePort int) error {
+func run(ctx context.Context, backend, public string, mediaFixtures, faultFixtures, trackerRelay, blogFixtures, adminFixtures, submissionFixtures, referenceCoalitions, referenceEntities, referencePublicKills, referenceFittings, referenceMaps, referenceWars, referenceRoam, referenceTools, referenceAnalysis, referenceStatus, referenceLegacy, referenceUniverse, entityDatabase bool, backendPort, referencePort, fixturePort int) error {
+	if fixturePort < 1 || fixturePort > 65535 {
+		return errors.New("fixture-port needs a valid loopback port")
+	}
 	faults := &fixtureFaults{enabled: faultFixtures}
 	if backend != "" && (backendPort < 1 || backendPort > 65535) {
 		return errors.New("backend-port needs a valid loopback port")
@@ -270,7 +274,7 @@ func run(ctx context.Context, backend, public string, mediaFixtures, faultFixtur
 			relay, previous := newFixtureStatusRelay(), wrap
 			wrap = func(handler http.Handler) http.Handler { return previous(relay.wrap(handler)) }
 		}
-		servers := []*http.Server{{Addr: fmt.Sprintf("127.0.0.1:%d", backendPort), Handler: wrap(comparison(ui))}}
+		servers := []*http.Server{{Addr: fmt.Sprintf("127.0.0.1:%d", backendPort), Handler: wrap(comparison(fixtureGlobalSite(ui)))}}
 		if referencePort != 0 {
 			reference := referenceRenderer(target)
 			if referenceCoalitions {
@@ -573,15 +577,28 @@ func run(ctx context.Context, backend, public string, mediaFixtures, faultFixtur
 		site.ServeHTTP(w, r)
 	})
 	ui := fixtureFrameHandler(frontend.New(frontend.Options{CampaignsAPI: apiHandler, ConflictsAPI: apiHandler, FittingsAPI: apiHandler, BattleGenerator: service.Homepage(), Statistics: service.Homepage(), Scans: service.Homepage(), RoamReports: service.Homepage(), Killmail: service.Homepage(), CommentsAPI: service.Site(), Sessions: service.Session(), AccountAPI: faults.wrap(apiHandler), Blog: service.Homepage(), BlogPreviewAPI: site}))
+	renderUI := fixtureGlobalSite(ui)
 	goHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if backendPath(r.URL.Path) {
 			apiHandler.ServeHTTP(w, r)
 		} else {
-			ui.ServeHTTP(w, r)
+			renderUI.ServeHTTP(w, r)
 		}
 	})
-	log.Print("Fixture ready: 4450 Go/API; use frontend-parity.localhost to isolate test cookies")
-	return serve(ctx, []*http.Server{{Addr: "127.0.0.1:4450", Handler: faults.wrap(goHandler)}})
+	log.Printf("Fixture ready: %d Go/API; use frontend-parity.localhost to isolate test cookies", fixturePort)
+	return serve(ctx, []*http.Server{{Addr: fmt.Sprintf("127.0.0.1:%d", fixturePort), Handler: faults.wrap(goHandler)}})
+}
+
+// Keep the documented cookie-isolation host on the global frontend rather
+// than treating it as a custom killboard. API origins and sessions are intact.
+func fixtureGlobalSite(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.EqualFold(r.URL.Hostname(), "frontend-parity.localhost") || strings.HasPrefix(strings.ToLower(r.Host), "frontend-parity.localhost:") || strings.EqualFold(r.Host, "frontend-parity.localhost") {
+			r = r.Clone(r.Context())
+			r.Host = "localhost"
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 var fixtureEntityImagePattern = regexp.MustCompile(`^/images/(characters|corporations|alliances)/(\d+)/(portrait|logo)$`)

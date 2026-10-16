@@ -7,6 +7,7 @@ import type {FitResourceField} from '../browser/fit-resources'
 import {eventElement,requiredElement} from '../browser/shared/dom'
 import {BrowserRequestError} from '../browser/browser-request'
 import {isRecord,errorMessage,isAbortError} from '../browser/shared/json'
+import {moveTabFocus} from '../browser/shared/tabs'
 import {encodeEditorFit,decodeEditorFit} from './editor-codec'
 import {editorSlots,editorToEngineFit,readSavedEditorFit,readEditorFamilies,readEditorPrices,restoreEditorWorkspace} from './editor-model'
 import {escapeHTML} from '../browser/shared/html';
@@ -506,7 +507,8 @@ export function createEditorRuntime(root:HTMLElement,scope:EditorScope) {
     state.previewTarget = null;
     state.previewGeneration++;
     renderHeader();
-    for (const button of root.querySelectorAll<HTMLElement>('[data-fit-tab]')) button.setAttribute('aria-selected', String(button.dataset.fitTab === state.tab));
+    for (const button of root.querySelectorAll<HTMLElement>('[data-fit-tab]')) {const active=button.dataset.fitTab === state.tab;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1}
+    $('[data-fit-catalog]').setAttribute('aria-labelledby',`fit-catalog-${state.tab}`);
     $('[data-fit-search]').placeholder = state.tab === 'hulls' ? 'Search hulls…' : 'Search modules & charges…';
     for (const action of ['copy-eft', 'share', 'rename', 'save', 'fork']) $(`[data-fit-action="${action}"]`).disabled = !state.fit;
     $('[data-fit-action="new"]').disabled = !state.fit;
@@ -1141,6 +1143,7 @@ export function createEditorRuntime(root:HTMLElement,scope:EditorScope) {
     else if (module) removeSlot(type, index);
   });
   scope.on(root, 'keydown', (event) => { const eventTargetElement=eventElement(event.target);if(!eventTargetElement)return;
+    if(eventTargetElement.closest('[data-fit-tab]')) {moveTabFocus(event,true);return}
     const row = eventTargetElement.closest<HTMLElement>('.fit-editor-table tr[data-fit-slot]');
     if (!row) return;
     const [type, rawIndex] = (row.dataset.fitSlot ?? '').split(':'), index = Number(rawIndex);

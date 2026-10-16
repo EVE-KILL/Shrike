@@ -33,3 +33,7 @@ Unlike the creator, saved details omit the shortcut-help overlay. The combined
 editor test proves initialization still renders the gun/charge, three active and
 two stored drones, cargo quantity and calculated stats. No new save was submitted
 to obtain this capture.
+
+The October UI polish refreshed `editor.html` and `saved-editor.html` from the
+actual Go component, retaining the saved payload above. These two captures now
+contain only the editor root, avoiding unrelated shell scripts and asset hashes.

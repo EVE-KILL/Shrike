@@ -338,7 +338,7 @@ func savedFitError(id string, status int, title string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else if status == 403 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p>The owner has restricted this fit to their corp or alliance and you're not a member.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p>Your current account doesn't have permission to view this fit.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

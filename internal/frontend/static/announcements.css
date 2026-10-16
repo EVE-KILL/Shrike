@@ -1,7 +1,7 @@
 .announcement-surfaces[hidden],.announcement-surfaces [hidden]{display:none!important}
 .announcement-surfaces .icon{width:1em;height:1em}
 .background-controls,.powered-badge{bottom:calc(16px + var(--announcement-footer-height,0px))}
-.announcement-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(448px,calc(100% - 32px));max-width:none;max-height:none;margin:0;padding:0;border:1px solid #ffffff1a;border-radius:12px;background:#141414;box-shadow:0 25px 50px -12px #0009;overflow:hidden}
+.announcement-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(448px,calc(100% - 32px));max-width:none;max-height:none;margin:0;padding:0;border:1px solid color-mix(in srgb,var(--color-text-primary) 10.196%,transparent);border-radius:12px;background:var(--theme-surface-primary,#141414);box-shadow:0 25px 50px -12px #0009;overflow:hidden}
 .announcement-modal::backdrop{background:#000000b3;backdrop-filter:blur(8px)}
 .announcement-surfaces .ticker-bg{isolation:isolate;transform:translateZ(0)}
 .announcement-surfaces .ticker-bg::before{content:'';position:absolute;inset:0;z-index:0;background:rgba(0,0,0,.4);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transform:translateZ(0)}

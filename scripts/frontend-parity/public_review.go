@@ -43,7 +43,7 @@ func runPublicReview(ctx context.Context, public string, port int, injectFaults 
 	}
 	proxy := publicReviewProxy(target)
 	faults := &fixtureFaults{enabled: injectFaults}
-	renderer := fixtureFrameHandler(proxy)
+	renderer := fixtureGlobalSite(fixtureFrameHandler(proxy))
 	handler := faults.wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if fixtureViewportPage(w, r) || fixtureAudioTrace(w, r) {
 			return

@@ -70,7 +70,7 @@ templ savedFitError(id string, status int, title string) {
 			if status == 404 {
 				<p>We couldn't find a fit with ID <code>{ id }</code>. It may have been deleted.</p>
 			} else if status == 403 {
-				<p>The owner has restricted this fit to their corp or alliance and you're not a member.</p>
+				<p>Your current account doesn't have permission to view this fit.</p>
 			} else {
 				<p>Failed to load the fit. Try again in a moment.</p>
 				<a href={ templ.SafeURL("/fit/" + id) }>Try again</a>

@@ -12,8 +12,8 @@
 .fits-catalog [data-tone="blue"]{--catalog-color:var(--color-brand-primary);--catalog-light:#93c5fd}
 .fits-catalog [data-tone="cyan"]{--catalog-color:#22d3ee;--catalog-light:#67e8f9}
 .fits-catalog [data-tone="cyan"] .fits-catalog-eyebrow{color:color-mix(in srgb,var(--color-brand-primary) 80%,transparent)}
-.fits-catalog [data-fits-modes] button{color:#6b7280}
-.fits-catalog [data-fits-modes] button:hover{background:#ffffff0a;color:#d1d5db}
+.fits-catalog [data-fits-modes] button{color:var(--color-text-secondary)}
+.fits-catalog [data-fits-modes] button:hover{background:color-mix(in srgb,var(--color-text-primary) 3.922%,transparent);color:var(--color-text-primary)}
 .fits-catalog [data-fits-modes="flavor"] button.active{background:#fbbf241a;color:#fcd34d}
 .fits-catalog [data-fits-modes="doctrines"] button.active{background:#c084fc26;color:#e9d5ff;box-shadow:0 1px 2px #0001}
 .fits-catalog [data-fits-part][aria-busy="true"]{opacity:.65}

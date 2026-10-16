@@ -1,5 +1,6 @@
-import {CSS_VAR_MAP,THEME_PRESETS,type ThemeConfig} from '../utils/themeData'
+import {THEME_PRESETS} from '../utils/themeData'
 import {isRecord} from './shared/json'
+import {applyThemeColors} from '../utils/applyTheme'
 
 // Compiled separately as a tiny synchronous script to apply appearance before paint.
 try {
@@ -19,8 +20,5 @@ try {
   const domain:unknown=JSON.parse(root.dataset.domainTheme)
   if(isRecord(domain))theme={...THEME_PRESETS.find(preset=>preset.id===domain.defaultThemePreset)?.overrides,...(isRecord(domain.defaultThemeOverrides)?domain.defaultThemeOverrides:{})}
  }
- if(isRecord(theme))for(const [key,variable] of Object.entries(CSS_VAR_MAP)){
-  const value=theme[key as keyof ThemeConfig]
-  if(typeof value==='string'&&CSS.supports('color',value))root.style.setProperty(variable,value)
- }
+ if(isRecord(theme))applyThemeColors(theme,root)
 }catch{/* Malformed preferences must not prevent rendering. */}

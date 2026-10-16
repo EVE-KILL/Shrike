@@ -78,14 +78,14 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-controller=\"fit-editor\" data-action=\"click->fit-editor#bootAction pagehide@window->fit-editor#hide pageshow@window->fit-editor#show\" data-fit-editor data-fit-detail=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" data-controller=\"fit-editor\" data-action=\"click->fit-editor#bootAction click@document->fit-editor#dismissActions keydown->fit-editor#dismissActions resize@window->fit-editor#resizeActions pagehide@window->fit-editor#hide pageshow@window->fit-editor#show\" data-fit-editor data-fit-detail=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(config.Detail))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 10, Col: 265}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 10, Col: 382}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +98,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(config.Owner))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 10, Col: 309}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 10, Col: 426}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -178,33 +178,17 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span>Paste</span></button> <button type=\"button\" data-fit-action=\"copy-eft\" disabled>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = fitIcon("copy").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<span>Copy EFT</span></button> <button type=\"button\" data-fit-action=\"share\" disabled>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = fitIcon("link").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<span>Share Link</span></button> <button type=\"button\" data-fit-action=\"save\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span>Paste</span></button> <button type=\"button\" data-fit-action=\"save\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if config.viewOnly() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " hidden")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, " hidden")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " disabled>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, " disabled>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -212,53 +196,17 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<span data-fit-save-label>Save</span></button> <button type=\"button\" data-fit-action=\"rename\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if config.viewOnly() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " hidden")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, " disabled>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = fitIcon("pencil").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<span>Rename</span></button> <button type=\"button\" data-fit-action=\"new\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if config.viewOnly() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, " hidden")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, ">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = fitIcon("plus").Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span>New</span></button> <button type=\"button\" data-fit-action=\"fork\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<span data-fit-save-label>Save</span></button> <button type=\"button\" data-fit-action=\"fork\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if !config.viewOnly() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, " hidden")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, " hidden")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, " disabled>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " disabled>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -266,20 +214,80 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<span>Fork</span></button></div><div class=\"fit-editor-meta\"><strong data-fit-name>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<span>Fork</span></button> <details class=\"fit-editor-more-actions\" data-fit-more-actions open><summary aria-label=\"More fitting actions\">More ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = fitIcon("chevron-down").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</summary><div class=\"fit-editor-secondary-actions\"><button type=\"button\" data-fit-action=\"copy-eft\" disabled>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = fitIcon("copy").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<span>Copy EFT</span></button> <button type=\"button\" data-fit-action=\"share\" disabled>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = fitIcon("link").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<span>Share Link</span></button> <button type=\"button\" data-fit-action=\"rename\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if config.viewOnly() {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, " hidden")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, " disabled>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = fitIcon("pencil").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<span>Rename</span></button> <button type=\"button\" data-fit-action=\"new\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if config.viewOnly() {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, " hidden")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, ">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = fitIcon("plus").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<span>New</span></button></div></details></div><div class=\"fit-editor-meta\"><strong data-fit-name>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(config.Data.Fit.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 53, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 46, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</strong><span class=\"fit-editor-validity\" data-fit-validity hidden>Valid</span><span class=\"fit-editor-price\" data-fit-price hidden>— ISK</span> <label class=\"fit-editor-skill\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</strong><span class=\"fit-editor-validity\" data-fit-validity hidden>Valid</span><span class=\"fit-editor-price\" data-fit-price hidden>— ISK</span> <label class=\"fit-editor-skill\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -287,17 +295,17 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<select data-fit-skill aria-label=\"Fitting skill profile\"><option value=\"5\">All Skills L5</option><option value=\"4\">All Skills L4</option><option value=\"3\">All Skills L3</option></select></label> <button type=\"button\" data-fit-action=\"expand\" aria-label=\"Expand\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<select data-fit-skill aria-label=\"Fitting skill profile\"><option value=\"5\">All Skills L5</option><option value=\"4\">All Skills L4</option><option value=\"3\">All Skills L3</option></select></label> <button type=\"button\" data-fit-action=\"expand\" aria-label=\"Expand\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if config.Detail {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, " hidden")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, " hidden")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, ">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, ">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -305,7 +313,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span data-fit-expand-label>Expand</span></button><span data-fit-status>Loading fitting data…</span></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<span data-fit-expand-label>Expand</span></button><span data-fit-status>Loading fitting data…</span></div></div><div class=\"fit-editor-load-error\" data-fit-load-error role=\"alert\" hidden><p>Fitting data could not be loaded. Your current link and search have been kept.</p><button type=\"button\" data-action=\"click->fit-editor#retryLoad\" data-fit-retry>Try again</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -315,33 +323,59 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"fit-editor-grid\"><div class=\"fit-editor-workspace\"><div class=\"fit-editor-top\"><aside class=\"fit-editor-sidebar\" aria-label=\"Fitting browser\"><div class=\"fit-editor-sidebar-tabs glass-panel\" role=\"tablist\" aria-label=\"Fitting browser\"><button type=\"button\" role=\"tab\" data-fit-tab=\"hulls\" aria-selected=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<div class=\"fit-editor-grid\"><div class=\"fit-editor-workspace\"><div class=\"fit-editor-top\"><aside class=\"fit-editor-sidebar\" aria-label=\"Fitting browser\"><div class=\"fit-editor-sidebar-tabs glass-panel\" role=\"tablist\" aria-label=\"Fitting browser\"><button id=\"fit-catalog-hulls\" type=\"button\" role=\"tab\" data-fit-tab=\"hulls\" aria-controls=\"fit-catalog-panel\" aria-selected=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(!config.Detail))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 71, Col: 195}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 68, Col: 252}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\">Hulls</button><button type=\"button\" role=\"tab\" data-fit-tab=\"hardware\" aria-selected=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" tabindex=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var9 string
-		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(config.Detail))
+		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(killBoolClass(!config.Detail, "0", "-1"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 71, Col: 310}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 68, Col: 306}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\">Hardware</button></div><div class=\"fit-editor-catalog-panel glass-panel\"><div class=\"fit-editor-search\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\">Hulls</button><button id=\"fit-catalog-hardware\" type=\"button\" role=\"tab\" data-fit-tab=\"hardware\" aria-controls=\"fit-catalog-panel\" aria-selected=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(config.Detail))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 68, Col: 481}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" tabindex=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var11 string
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(killBoolClass(config.Detail, "0", "-1"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 68, Col: 534}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "\">Hardware</button></div><div class=\"fit-editor-catalog-panel glass-panel\"><div class=\"fit-editor-search\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -349,32 +383,45 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<input type=\"search\" data-fit-search placeholder=\"Search hulls…\" autocomplete=\"off\" aria-label=\"Search hulls and hardware\"></div><div class=\"fit-editor-filter-pills\" data-fit-filter-pills></div><div class=\"fit-editor-catalog\" data-fit-catalog role=\"tabpanel\"><p class=\"fit-editor-empty\">Loading fitting data…</p></div></div></aside><div class=\"fit-editor-main\"><div class=\"fit-editor-view-toggle\" role=\"group\" aria-label=\"Fitting view\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<input type=\"search\" data-fit-search placeholder=\"Search hulls…\" autocomplete=\"off\" aria-label=\"Search hulls and hardware\"></div><div class=\"fit-editor-filter-pills\" data-fit-filter-pills></div><div id=\"fit-catalog-panel\" class=\"fit-editor-catalog\" data-fit-catalog role=\"tabpanel\" aria-labelledby=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var12 string
+		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(killBoolClass(config.Detail, "fit-catalog-hardware", "fit-catalog-hulls"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 75, Col: 186}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\"><p class=\"fit-editor-empty\">Loading fitting data…</p></div></div></aside><div class=\"fit-editor-main\"><div class=\"fit-editor-view-toggle\" role=\"group\" aria-label=\"Fitting view\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if config.Detail {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, " hidden")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, " hidden")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "><button type=\"button\" data-fit-view=\"ship\" aria-pressed=\"true\">Ship</button><button type=\"button\" data-fit-view=\"table\" aria-pressed=\"false\">Table</button><span class=\"fit-editor-hull-compact\" data-fit-hull-compact hidden><img data-fit-hull-image width=\"28\" height=\"28\" alt=\"\"><span><strong data-fit-hull-title></strong><small data-fit-hull-group></small></span></span></div><div class=\"fit-editor-stage\"><div class=\"fit-editor-stage-body\" data-fit-stage>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "><button type=\"button\" data-fit-view=\"ship\" aria-pressed=\"true\">Ship</button><button type=\"button\" data-fit-view=\"table\" aria-pressed=\"false\">Table</button><span class=\"fit-editor-hull-compact\" data-fit-hull-compact hidden><img data-fit-hull-image width=\"28\" height=\"28\" alt=\"\"><span><strong data-fit-hull-title></strong><small data-fit-hull-group></small></span></span></div><div class=\"fit-editor-stage\"><div class=\"fit-editor-stage-body\" data-fit-stage>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if config.Detail {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<p class=\"fit-editor-empty\">Loading dogma engine…</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<p class=\"fit-editor-empty\">Loading dogma engine…</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<p class=\"fit-editor-empty\">Pick a hull to start</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"fit-editor-empty\">Pick a hull to start</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "</div></div></div></div><div class=\"fit-editor-resources glass-panel\" data-fit-resources hidden><div>CPU <b>—</b></div><div>Power <b>—</b></div><div>Drone Bay <b>—</b></div><div>Bandwidth <b>—</b></div><div>Cargo <b>—</b></div></div><div class=\"fit-editor-bays\" data-fit-bays hidden></div></div><aside class=\"fit-editor-stats glass-panel\" aria-label=\"Ship statistics\"><h2 class=\"fit-editor-sr-only\">Ship Statistics</h2><div class=\"fit-editor-identity\" data-fit-identity></div><div data-fit-stats></div></aside><aside class=\"fit-editor-variants glass-panel\" data-fit-variants hidden aria-label=\"Observed fits\"><header><strong>◈ Observed Fits</strong><span class=\"fit-editor-variants-subtitle\"><small data-fit-variants-subtitle>Pick a hull to see observed fits.</small><button type=\"button\" data-fit-variant-action=\"toggle-comparison\" hidden>Compare</button></span></header><div class=\"fit-editor-variants-list\" data-fit-variants-list></div></aside></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</div></div></div></div><div class=\"fit-editor-resources glass-panel\" data-fit-resources hidden><div>CPU <b>—</b></div><div>Power <b>—</b></div><div>Drone Bay <b>—</b></div><div>Bandwidth <b>—</b></div><div>Cargo <b>—</b></div></div><div class=\"fit-editor-bays\" data-fit-bays hidden></div></div><aside class=\"fit-editor-stats glass-panel\" aria-label=\"Ship statistics\"><h2 class=\"fit-editor-sr-only\">Ship Statistics</h2><div class=\"fit-editor-identity\" data-fit-identity></div><div data-fit-stats></div></aside><aside class=\"fit-editor-variants glass-panel\" data-fit-variants hidden aria-label=\"Observed fits\"><header><strong>◈ Observed Fits</strong><span class=\"fit-editor-variants-subtitle\"><small data-fit-variants-subtitle>Pick a hull to see observed fits.</small><button type=\"button\" data-fit-variant-action=\"toggle-comparison\" hidden>Compare</button></span></header><div class=\"fit-editor-variants-list\" data-fit-variants-list></div></aside></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -384,17 +431,17 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<div class=\"fit-editor-toast\" data-fit-toast role=\"status\" aria-live=\"polite\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<div class=\"fit-editor-toast\" data-fit-toast role=\"status\" aria-live=\"polite\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if !config.Detail {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<div class=\"fit-editor-shortcuts\" data-fit-shortcuts hidden><div class=\"fit-editor-shortcuts-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"fit-shortcuts-title\"><header><h2 id=\"fit-shortcuts-title\">Fitting shortcuts</h2><button type=\"button\" data-fit-action=\"close-shortcuts\" aria-label=\"Close shortcuts\">×</button></header><div class=\"fit-editor-shortcuts-grid\"><kbd>⌘/Ctrl K</kbd><span>Search hulls or hardware</span> <kbd>↑ / ↓</kbd><span>Move through search or table rows</span> <kbd>Enter</kbd><span>Fit the selected result</span> <kbd>Shift Enter</kbd><span>Fill compatible high slots</span> <kbd>Shift Click</kbd><span>Fill compatible high slots</span> <kbd>Delete</kbd><span>Remove charge, then selected module</span> <kbd>⌘/Ctrl Z</kbd><span>Undo</span> <kbd>⌘/Ctrl Shift Z</kbd><span>Redo</span> <kbd>?</kbd><span>Toggle this help</span> <kbd>Escape</kbd><span>Close transient UI; fullscreen stays open</span></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<div class=\"fit-editor-shortcuts\" data-fit-shortcuts hidden><div class=\"fit-editor-shortcuts-panel\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"fit-shortcuts-title\"><header><h2 id=\"fit-shortcuts-title\">Fitting shortcuts</h2><button type=\"button\" data-fit-action=\"close-shortcuts\" aria-label=\"Close shortcuts\">×</button></header><div class=\"fit-editor-shortcuts-grid\"><kbd>⌘/Ctrl K</kbd><span>Search hulls or hardware</span> <kbd>↑ / ↓</kbd><span>Move through search or table rows</span> <kbd>Enter</kbd><span>Fit the selected result</span> <kbd>Shift Enter</kbd><span>Fill compatible high slots</span> <kbd>Shift Click</kbd><span>Fill compatible high slots</span> <kbd>Delete</kbd><span>Remove charge, then selected module</span> <kbd>⌘/Ctrl Z</kbd><span>Undo</span> <kbd>⌘/Ctrl Shift Z</kbd><span>Redo</span> <kbd>?</kbd><span>Toggle this help</span> <kbd>Escape</kbd><span>Close transient UI; fullscreen stays open</span></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<dialog class=\"fit-editor-save fit-editor-save--fit\" data-fit-save-dialog aria-labelledby=\"fit-save-title\" tabindex=\"-1\"><form method=\"dialog\" data-fit-save-form><header class=\"fit-editor-save-header\"><h2 id=\"fit-save-title\">Save Fit</h2><button type=\"button\" data-fit-action=\"cancel-save\" aria-label=\"Close save dialog\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<dialog class=\"fit-editor-save fit-editor-save--fit\" data-fit-save-dialog aria-labelledby=\"fit-save-title\" tabindex=\"-1\"><form method=\"dialog\" data-fit-save-form><header class=\"fit-editor-save-header\"><h2 id=\"fit-save-title\">Save Fit</h2><button type=\"button\" data-fit-action=\"cancel-save\" aria-label=\"Close save dialog\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -402,7 +449,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</button></header><div class=\"fit-editor-save-body\"><label class=\"fit-editor-save-field\">Fit Name<input name=\"name\" maxlength=\"100\" required placeholder=\"Muninn — Fury HM\"></label> <label class=\"fit-editor-save-field\">Description <small>(optional)</small><textarea name=\"description\" maxlength=\"2000\" rows=\"3\" placeholder=\"Notes, use case, skill prereqs, anything useful for the next pilot who flies this.\"></textarea></label><fieldset class=\"fit-editor-save-visibility\"><legend>Visibility</legend>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</button></header><div class=\"fit-editor-save-body\"><label class=\"fit-editor-save-field\">Fit Name<input name=\"name\" maxlength=\"100\" required placeholder=\"Muninn — Fury HM\"></label> <label class=\"fit-editor-save-field\">Description <small>(optional)</small><textarea name=\"description\" maxlength=\"2000\" rows=\"3\" placeholder=\"Notes, use case, skill prereqs, anything useful for the next pilot who flies this.\"></textarea></label><fieldset class=\"fit-editor-save-visibility\"><legend>Visibility</legend>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -422,7 +469,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</fieldset><p class=\"fit-editor-save-error\" data-fit-save-error role=\"alert\" hidden></p><p class=\"fit-editor-save-existing\" data-fit-save-existing hidden>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</fieldset><p class=\"fit-editor-save-error\" data-fit-save-error role=\"alert\" hidden></p><p class=\"fit-editor-save-existing\" data-fit-save-existing hidden>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -430,7 +477,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<span>Updating existing fit <code data-fit-save-id></code> — items will be replaced.</span></p></div><div class=\"fit-editor-save-actions\"><button type=\"button\" data-fit-action=\"cancel-save\">Cancel</button> <button type=\"submit\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<span>Updating existing fit <code data-fit-save-id></code> — items will be replaced.</span></p></div><div class=\"fit-editor-save-actions\"><button type=\"button\" data-fit-action=\"cancel-save\">Cancel</button> <button type=\"submit\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -438,7 +485,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<span data-fit-submit-label>Save</span></button></div></form></dialog> <dialog class=\"fit-editor-save fit-editor-modal fit-editor-modal--nuxt\" data-fit-rename-dialog aria-labelledby=\"fit-rename-title\"><form method=\"dialog\" data-fit-rename-form><header class=\"fit-editor-save-header\"><h2 id=\"fit-rename-title\">Rename fit</h2><button type=\"button\" data-fit-action=\"cancel-rename\" aria-label=\"Close rename dialog\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<span data-fit-submit-label>Save</span></button></div></form></dialog> <dialog class=\"fit-editor-save fit-editor-modal fit-editor-modal--nuxt\" data-fit-rename-dialog aria-labelledby=\"fit-rename-title\"><form method=\"dialog\" data-fit-rename-form><header class=\"fit-editor-save-header\"><h2 id=\"fit-rename-title\">Rename fit</h2><button type=\"button\" data-fit-action=\"cancel-rename\" aria-label=\"Close rename dialog\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -446,7 +493,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</button></header><div class=\"fit-editor-modal-body\"><label for=\"fit-editor-rename\">Fit name</label><input id=\"fit-editor-rename\" name=\"name\" maxlength=\"120\" required placeholder=\"Name this fitting\"></div><div class=\"fit-editor-modal-actions\"><button type=\"button\" data-fit-action=\"cancel-rename\">Cancel</button><button type=\"submit\">Rename</button></div></form></dialog> <dialog class=\"fit-editor-save fit-editor-modal fit-editor-modal--nuxt\" data-fit-discard-dialog aria-labelledby=\"fit-discard-title\"><header class=\"fit-editor-save-header\"><h2 id=\"fit-discard-title\">Start a new fit</h2><button type=\"button\" data-fit-action=\"cancel-discard\" aria-label=\"Close new fit dialog\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "</button></header><div class=\"fit-editor-modal-body\"><label for=\"fit-editor-rename\">Fit name</label><input id=\"fit-editor-rename\" name=\"name\" maxlength=\"120\" required placeholder=\"Name this fitting\"></div><div class=\"fit-editor-modal-actions\"><button type=\"button\" data-fit-action=\"cancel-rename\">Cancel</button><button type=\"submit\">Rename</button></div></form></dialog> <dialog class=\"fit-editor-save fit-editor-modal fit-editor-modal--nuxt\" data-fit-discard-dialog aria-labelledby=\"fit-discard-title\"><header class=\"fit-editor-save-header\"><h2 id=\"fit-discard-title\">Start a new fit</h2><button type=\"button\" data-fit-action=\"cancel-discard\" aria-label=\"Close new fit dialog\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -454,7 +501,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</button></header><div class=\"fit-editor-modal-body fit-editor-discard-body\"><span class=\"fit-editor-discard-icon\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</button></header><div class=\"fit-editor-modal-body fit-editor-discard-body\"><span class=\"fit-editor-discard-icon\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -462,7 +509,7 @@ func fitEditorContent(config fitEditorConfig) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</span><span><strong>Discard the current fitting?</strong><small>Your current hull, modules, drones, and cargo will be cleared. You can still cancel and save or copy it first.</small></span></div><div class=\"fit-editor-modal-actions\"><button type=\"button\" data-fit-action=\"cancel-discard\">Keep editing</button><button type=\"button\" data-fit-action=\"confirm-discard\">Discard and start new</button></div></dialog></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</span><span><strong>Discard the current fitting?</strong><small>Your current hull, modules, drones, and cargo will be cleared. You can still cancel and save or copy it first.</small></span></div><div class=\"fit-editor-modal-actions\"><button type=\"button\" data-fit-action=\"cancel-discard\">Keep editing</button><button type=\"button\" data-fit-action=\"confirm-discard\">Discard and start new</button></div></dialog></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -486,25 +533,25 @@ func fitIcon(name string) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var10 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var10 == nil {
-			templ_7745c5c3_Var10 = templ.NopComponent
+		templ_7745c5c3_Var13 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var13 == nil {
+			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<svg class=\"fit-editor-icon\" aria-hidden=\"true\" viewBox=\"0 0 24 24\"><use href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<svg class=\"fit-editor-icon\" aria-hidden=\"true\" viewBox=\"0 0 24 24\"><use href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(assetURL("fit-icons.svg") + "#" + name)
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(assetURL("fit-icons.svg") + "#" + name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 186, Col: 119}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 183, Col: 119}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\"></use></svg>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\"></use></svg>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -528,35 +575,35 @@ func fitSaveVisibility(value, label, hint, iconName string, selected bool) templ
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var12 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var12 == nil {
-			templ_7745c5c3_Var12 = templ.NopComponent
+		templ_7745c5c3_Var15 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var15 == nil {
+			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<label class=\"fit-editor-save-choice\"><input type=\"radio\" name=\"visibility\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<label class=\"fit-editor-save-choice\"><input type=\"radio\" name=\"visibility\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var13 string
-		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
+		var templ_7745c5c3_Var16 string
+		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 191, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 188, Col: 53}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if selected {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, " checked")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, " checked")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, ">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, ">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -564,33 +611,33 @@ func fitSaveVisibility(value, label, hint, iconName string, selected bool) templ
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<span><strong>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "<span><strong>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(label)
+		var templ_7745c5c3_Var17 string
+		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 192, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 189, Col: 23}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "</strong><small>")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(hint)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 192, Col: 47}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</strong><small>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</small></span></label>")
+		var templ_7745c5c3_Var18 string
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(hint)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `fit_editor.templ`, Line: 189, Col: 47}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</small></span></label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

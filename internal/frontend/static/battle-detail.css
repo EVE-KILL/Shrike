@@ -11,7 +11,7 @@
 .battle-detail [data-battle-content] { transition: opacity .1s; min-width: 0; }
 .battle-detail [data-battle-content][aria-busy="true"] { cursor: progress; }
 .battle-detail [data-battle-killfeed].loading { opacity: .55; }
-.battle-detail [data-battle-filters] select { color: #9ca3af; }
+.battle-detail [data-battle-filters] select { color:var(--color-text-secondary); }
 .battle-detail [data-battle-histogram] > a { border-radius: 0; }
 .battle-detail .h-3 > .icon { width:12px; height:12px; }
 .battle-detail [data-replay-big] .icon { width:14px; height:14px; }

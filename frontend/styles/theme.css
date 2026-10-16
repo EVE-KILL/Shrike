@@ -17,11 +17,27 @@
      */
 
     /* Brand / accent — overrides Tailwind blue */
+    --color-blue-300: color-mix(in srgb, var(--color-brand-primary) 65%, var(--color-text-primary));
     --color-blue-400: var(--color-brand-primary);
     --color-blue-500: var(--color-brand-primary);
     --color-blue-600: var(--color-brand-primary-hover);
 
+    /* Legacy utility names retain their roles in custom light palettes. */
+    --color-white: var(--color-text-primary);
+    --color-black: var(--theme-surface-primary, #000);
+    --color-gray-50: var(--color-text-primary);
+    --color-gray-100: var(--color-text-primary);
+    --color-gray-200: var(--color-text-primary);
+    --color-gray-300: var(--color-text-primary);
+    --color-gray-400: var(--color-text-secondary);
+    --color-gray-500: var(--color-text-secondary);
+    --color-gray-600: var(--color-text-tertiary);
+    --color-gray-700: var(--color-border-medium);
+    --color-gray-800: var(--color-bg-tertiary);
+    --color-gray-900: var(--color-bg-primary);
+
     /* Danger / error — overrides Tailwind red */
+    --color-red-300: color-mix(in srgb, var(--color-error) 65%, var(--color-text-primary));
     --color-red-400: var(--color-error);
     --color-red-500: var(--color-error);
     --color-red-600: color-mix(in srgb, var(--color-error) 80%, black);

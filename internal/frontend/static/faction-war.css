@@ -1,16 +1,16 @@
 .faction-war [hidden]{display:none!important}
-.faction-war [data-fw-tab]{color:#6b7280;border-color:transparent}
+.faction-war [data-fw-tab]{color:var(--color-text-secondary);border-color:transparent}
 .faction-war [data-fw-tab]:hover{color:var(--color-brand-primary)}
-.faction-war [data-fw-tab][aria-pressed=true]{color:#fff;border-color:#fff}
+.faction-war [data-fw-tab][aria-pressed=true]{color:var(--color-text-primary);border-color:#fff}
 .faction-war [data-fw-tab=side1][aria-pressed=true]{border-color:var(--color-error)}
 .faction-war [data-fw-tab=side2][aria-pressed=true]{border-color:var(--color-brand-primary)}
 .faction-war [data-fw-tab] .icon{width:16px;height:16px;flex:none}
-.faction-war [data-fw-period]{color:#6b7280}
+.faction-war [data-fw-period]{color:var(--color-text-secondary)}
 .faction-war [data-fw-period][aria-pressed=true]{background:color-mix(in srgb,var(--color-brand-primary) 15%,transparent);color:var(--color-brand-primary)}
 .faction-war [data-fw-retry]{margin-left:8px;color:var(--color-brand-primary);text-decoration:underline;cursor:pointer}
 .faction-war [data-fw-system-sort=kills],.faction-war [data-fw-system-sort=isk]{margin-left:auto}
-.faction-war [data-fw-member-sort-controls]>span{color:#6b7280;font-size:11px;letter-spacing:.05em;text-transform:uppercase}
-.faction-war .war-members-table td:first-child a>span{font-weight:500;color:#e5e7eb}
+.faction-war [data-fw-member-sort-controls]>span{color:var(--color-text-secondary);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+.faction-war .war-members-table td:first-child a>span{font-weight:500;color:var(--color-text-primary)}
 .faction-war .war-members-table td:first-child small{font-weight:400}
 .faction-war .war-members-table td:first-child small.aggressor{color:color-mix(in srgb,var(--color-error) 70.196%,transparent)}
 .faction-war .war-members-table td:first-child small.defender{color:color-mix(in srgb,var(--color-brand-primary) 70.196%,transparent)}
