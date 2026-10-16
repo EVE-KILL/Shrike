@@ -11,7 +11,7 @@ const response={hits:[
 let fetchMock:ReturnType<typeof vi.fn<typeof fetch>>
 function mount(){
   const dialog=document.createElement('dialog')
-  dialog.innerHTML='<input data-shell-target="searchInput"><button data-spotlight-clear hidden>Clear</button><div data-shell-target="searchResults"></div><template data-spotlight-default><div class="spotlight-default"><a href="/kills/latest">Latest Kills</a><section data-spotlight-recents hidden><div data-spotlight-recent-list></div></section><section>EVE Tools</section></div></template>'
+  dialog.innerHTML='<input data-shell-target="searchInput"><button data-spotlight-clear hidden>Clear</button><div data-shell-target="searchResults"></div><template data-spotlight-default><div class="spotlight-default"><div class="spotlight-actions"><a href="/kills/latest">Latest Kills</a><a href="/map">Map</a></div><section data-spotlight-recents hidden><div data-spotlight-recent-list></div></section><section>EVE Tools</section></div></template>'
   document.body.append(dialog);dialog.showModal()
   const search=new SpotlightSearch(dialog),input=dialog.querySelector('input')!,navigated:string[]=[]
   dialog.addEventListener('click',event=>{
@@ -55,6 +55,18 @@ test('groups, small images, tickers, category toggles and keyboard follow the di
   expect(dialog.querySelector('[aria-selected=true]')!.getAttribute('href')).toBe('/item/588')
   input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))
   expect(navigated).toEqual(['/item/588']);expect(dialog.open).toBe(false)
+})
+test('empty search supports arrow navigation through default actions without intercepting native activation',()=>{
+  const {dialog,input}=mount(),actions=dialog.querySelectorAll<HTMLAnchorElement>('.spotlight-actions a')
+  input.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));expect(document.activeElement).toBe(actions[0])
+  actions[0]!.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));expect(document.activeElement).toBe(actions[1])
+  const enter=new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true});actions[1]!.dispatchEvent(enter);expect(enter.defaultPrevented).toBe(false)
+})
+test('IME composition and modified Enter never open a result',async()=>{
+  const {input,type,navigated}=mount();type('Rifter');await vi.advanceTimersByTimeAsync(300)
+  input.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}))
+  for(const init of [{isComposing:true},{metaKey:true},{ctrlKey:true}])input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',...init,bubbles:true}))
+  expect(navigated).toEqual([])
 })
 test('multiple results require keyboard selection, while one visible result opens on Enter',async()=>{
   const {dialog,input,type,navigated}=mount();type('Rifter');await vi.advanceTimersByTimeAsync(300)
@@ -105,7 +117,7 @@ test('late or cancelled responses cannot repopulate a closed or newer search',as
 test('empty results, malformed hits and failed requests have distinct safe states',async()=>{
   const {dialog,type}=mount();fetchMock.mockResolvedValueOnce(Response.json({hits:[{id:'ship_javascript:1',type:'ship',name:'Bad'}]}))
   type('Nothing');await vi.advanceTimersByTimeAsync(300)
-  expect(dialog.textContent).toContain('No results found');expect(dialog.querySelector('.spotlight-result')).toBeNull()
+  expect(dialog.textContent).toContain('No results for "Nothing"');expect(dialog.textContent).toContain('Try a different name or fewer words.');expect(dialog.querySelector('.spotlight-result')).toBeNull()
   fetchMock.mockResolvedValueOnce(new Response('',{status:503}));type('Retry');await vi.advanceTimersByTimeAsync(300)
   expect(dialog.textContent).toContain('Search is unavailable')
   type('Retry');await vi.advanceTimersByTimeAsync(300);expect(dialog.querySelectorAll('.spotlight-result')).toHaveLength(4)

@@ -24,7 +24,7 @@ templ marketPage(view marketPageView) {
 			</aside>
 			<section class="market-content">
 				if view.Active==nil || !view.Active.HasTypes {
-					<section class="market-intro glass-panel"><small>{ marketIntroEyebrow(view) }</small><h1>{ marketIntroTitle(view) }</h1><p>{ marketIntroDescription(view) }</p></section>
+					<section class="market-intro glass-panel"><h1>{ marketIntroTitle(view) }</h1><p>{ marketIntroDescription(view) }</p></section>
 					<div class="market-groups">
 						for _, group := range marketVisibleGroups(view) {
 							@marketGroupCard(view, group)

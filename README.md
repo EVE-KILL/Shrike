@@ -63,6 +63,7 @@ the relevant assets and Go, then automatically reload open development pages.
 ## Documentation
 
 Read the [documentation index](docs/README.md) for operational guides.
+Read [product context](PRODUCT.md) and [design conventions](DESIGN.md) before changing the frontend experience.
 
 All new documents follow the [documentation style](docs/STYLE.md). The style
 uses a practical subset of ASD-STE100 and George Orwell's writing rules.

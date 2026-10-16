@@ -7,6 +7,7 @@ import {searchID,readSearchResults} from './shared/search-model'
 import {replaceFragment} from './fragment'
 import {createRelayConnection} from '../utils/relaySocketCore'
 import {liveRow,parseLiveKill,friendlyDay,element as node} from './kill-row'
+import {moveTabFocus} from './shared/tabs'
 
 const tabs = {kills:'',top:'Top Lists',valuable:'Valuable'} as const
 const validTab = (value:unknown):value is keyof typeof tabs=>typeof value === 'string' && Object.hasOwn(tabs,value)
@@ -39,7 +40,7 @@ export class HomeController extends RequestComponent {
   syncTab() {
     if(!this.element.hasAttribute('data-kills-page')) return
     const selected = location.hash.slice(1),tab = validTab(selected) ? selected : 'kills';this.element.dataset.tab = tab
-    for(const button of this.all<HTMLElement>('[data-kills-tab]')) button.setAttribute('aria-selected',String(button.dataset.killsTab === tab))
+    for(const button of this.all<HTMLElement>('[data-kills-tab]')) {const active = button.dataset.killsTab === tab;button.setAttribute('aria-selected',String(active));button.tabIndex = active ? 0 : -1}
     document.title = `${this.element.dataset.title}${tabs[tab] ? ` (${tabs[tab]})` : ''} - EVE-KILL.com`
     for(const box of this.all('[data-top-pending]')) box.dispatchEvent(new Event('home:top'))
   }
@@ -96,6 +97,7 @@ export class HomeController extends RequestComponent {
     this.searchTimers.clear();this.blurTimers.clear();this.searches.clear()
   }
   private changed() {this.cursors = [];this.renderFilters();void this.loadKills(1)}
+  keydown(event:KeyboardEvent) {moveTabFocus(event,event.target instanceof Element && !!event.target.closest('[data-kills-tab]'))}
   click(event:MouseEvent) {
     const target = eventElement(event.target);if(!this.alive || !target) return
     const mobile = target.closest<HTMLElement>('[data-kills-tab]');if(mobile && validTab(mobile.dataset.killsTab)) {history.pushState(history.state,'',location.pathname+location.search+(mobile.dataset.killsTab === 'kills' ? '' : '#'+mobile.dataset.killsTab));this.syncTab();return}

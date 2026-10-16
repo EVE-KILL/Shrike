@@ -128,7 +128,7 @@ templ killDetailPage(view killDetailView) {
 				@killHeroTile("Total value", compactNumber(view.Data.TotalValue)+" ISK", "coins", "total")
 				@killHeroTile("Destroyed", compactNumber(view.Data.DestroyedValue), "flame", "destroyed")
 				@killHeroTile("Dropped", compactNumber(view.Data.DroppedValue), "package", "dropped")
-				@killHeroTile("Fitted", compactNumber(view.Data.FittedValue), "wrench", "fitted")
+				@killHeroTile("Hull & fit", compactNumber(view.Data.FittedValue), "wrench", "fitted")
 				@killHeroTile("Damage", killNumber(view.Data.TotalDamage), "zap", "damage")
 				@killHeroTile("Attackers", strconv.Itoa(view.Data.AttackerCount), "users", "attackers")
 			</div>
@@ -543,7 +543,7 @@ templ killInfoStats(view killDetailView, interactive bool) {
 		</div>
 		if view.FittedValue>0 {
 			<div>
-				<span>Fitted</span>
+				<span>Modules</span>
 				<strong>
 					{ compactNumber(view.FittedValue) }
 				</strong>
@@ -621,7 +621,7 @@ templ killItemsTable(view killDetailView) {
 		<div class="kill-items-footer">
 			if view.FittedValue>0 {
 				<div>
-					<span>Fitted</span>
+					<span>Modules</span>
 					<strong>
 						{ compactNumber(view.FittedValue) }
 					</strong>
@@ -644,12 +644,13 @@ templ killItemsTable(view killDetailView) {
 				</div>
 			}
 			<div class="total">
-				<span>Total</span>
+				<span>Breakdown subtotal</span>
 				<strong>
 					{ compactNumber(view.Data.Victim.ShipPrice+view.FittedValue+view.OtherValue) }
 				</strong>
 			</div>
 		</div>
+		<p class="kill-items-valuation-note">Prices in the breakdown can differ from the recorded kill value.</p>
 	</div>
 }
 

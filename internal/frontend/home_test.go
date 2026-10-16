@@ -92,6 +92,10 @@ func TestHomepageRendersDataAndReusableFragments(t *testing.T) {
 		"Example factions", "Example ships", "Example systems", "Example regions",
 		"data-kill-id=\"1\"", "https://images.evetech.net/characters/42/portrait?size=64",
 		"aria-label=\"3 involved\"", "icons.svg#users",
+		`id="valuable-tab-kills" aria-controls="valuable-panel" tabindex="0"`,
+		`id="valuable-tab-ships" aria-controls="valuable-panel" tabindex="-1"`,
+		`role="tabpanel" aria-labelledby="valuable-tab-kills"`,
+		`keydown->home#keydown`,
 	} {
 		if !strings.Contains(page.Body.String(), text) {
 			t.Errorf("homepage lacks %q", text)

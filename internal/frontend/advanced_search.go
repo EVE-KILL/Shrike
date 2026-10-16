@@ -294,7 +294,7 @@ func advancedChoice(f advancedSearchFilters, key string) string {
 	return ""
 }
 func advancedButtonClass(active bool) string {
-	return killBoolClass(active, "bg-blue-500/20 text-blue-400 border-blue-500/40", "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400")
+	return killBoolClass(active, "bg-blue-500/20 text-link border-blue-500/40", "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-link")
 }
 func advancedOptionLabel(options []advancedOption, value string) string {
 	for _, option := range options {
@@ -369,7 +369,7 @@ func advancedRoleColor(role string, exclude bool) string {
 	case "victim":
 		return "bg-red-500/20 text-red-400 border-red-500/30"
 	case "attacker":
-		return "bg-blue-500/20 text-blue-400 border-blue-500/30"
+		return "bg-blue-500/20 text-link border-blue-500/30"
 	default:
 		return "bg-green-500/20 text-green-400 border-green-500/30"
 	}

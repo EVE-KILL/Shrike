@@ -35,14 +35,14 @@ func killsPage(view killsPageView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"kills-page\" data-controller=\"home\" data-action=\"click->home#click input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show\" data-kills-page data-tab=\"kills\" data-title=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"kills-page\" data-controller=\"home\" data-action=\"click->home#click keydown->home#keydown input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show\" data-kills-page data-tab=\"kills\" data-title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(view.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kills_page.templ`, Line: 10, Col: 385}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kills_page.templ`, Line: 10, Col: 407}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -61,7 +61,7 @@ func killsPage(view killsPageView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</h1><div class=\"kills-mobile-tabs\" role=\"tablist\" aria-label=\"Kill page sections\"><button type=\"button\" role=\"tab\" aria-selected=\"true\" aria-controls=\"kills-panel\" data-kills-tab=\"kills\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</h1><div class=\"kills-mobile-tabs\" role=\"tablist\" aria-label=\"Kill page sections\"><button type=\"button\" role=\"tab\" aria-selected=\"true\" aria-controls=\"kills-panel\" id=\"kills-tab-kills\" tabindex=\"0\" data-kills-tab=\"kills\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -69,7 +69,7 @@ func killsPage(view killsPageView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " Kills</button> <button type=\"button\" role=\"tab\" aria-selected=\"false\" aria-controls=\"top-panel\" data-kills-tab=\"top\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " Kills</button> <button type=\"button\" role=\"tab\" aria-selected=\"false\" aria-controls=\"top-panel\" id=\"kills-tab-top\" tabindex=\"-1\" data-kills-tab=\"top\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -77,7 +77,7 @@ func killsPage(view killsPageView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " Top Lists</button> <button type=\"button\" role=\"tab\" aria-selected=\"false\" aria-controls=\"valuable-panel\" data-kills-tab=\"valuable\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " Top Lists</button> <button type=\"button\" role=\"tab\" aria-selected=\"false\" aria-controls=\"valuable-panel\" id=\"kills-tab-valuable\" tabindex=\"-1\" data-kills-tab=\"valuable\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -85,7 +85,7 @@ func killsPage(view killsPageView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " Valuable</button></div><div id=\"valuable-panel\" class=\"kills-valuable-panel\" role=\"tabpanel\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " Valuable</button></div><div aria-labelledby=\"kills-tab-valuable\" id=\"valuable-panel\" class=\"kills-valuable-panel\" role=\"tabpanel\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -93,7 +93,7 @@ func killsPage(view killsPageView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div><div class=\"kills-grid\"><aside id=\"top-panel\" class=\"kills-top-panel\" role=\"tabpanel\" aria-label=\"Top killers\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div><div class=\"kills-grid\"><aside aria-labelledby=\"kills-tab-top\" id=\"top-panel\" class=\"kills-top-panel\" role=\"tabpanel\" aria-label=\"Top killers\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -110,7 +110,7 @@ func killsPage(view killsPageView) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</aside><div id=\"kills-panel\" class=\"kills-list-panel\" role=\"tabpanel\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</aside><div aria-labelledby=\"kills-tab-kills\" id=\"kills-panel\" class=\"kills-list-panel\" role=\"tabpanel\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -173,7 +173,7 @@ func topBoxPlaceholder(box topBoxView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -186,7 +186,7 @@ func topBoxPlaceholder(box topBoxView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</h3><div class=\"top-box-entries\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</h2><div class=\"top-box-entries\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

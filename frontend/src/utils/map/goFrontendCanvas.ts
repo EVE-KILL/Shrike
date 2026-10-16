@@ -56,6 +56,7 @@ type Node = {
 type Cell = { points: number[]; region_id: number; security: number }
 type Link = { from: Node; to: Node }
 type Region = MapRegionSummary & { x: number; y: number; busiestValue: number }
+let mapSequence = 0
 type Scene = {
     nodes: Node[]
     links: Link[]
@@ -189,6 +190,7 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
     let allianceLabels: Array<{ id: number; label: string; x: number; y: number; fontSize: number }> = []
     let changeSystemIDs = new Set<number>()
     let camera = { x: 0, y: 0, scale: 1 }
+    let minimumScale = .25
     let drag: { x: number; y: number; moved: boolean } | null = null
     let frame = 0
     let pulseFrame = 0
@@ -202,6 +204,13 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
     const canvas = document.createElement('canvas')
     canvas.className = 'go-map-canvas'
     canvas.setAttribute('aria-label', 'EVE Online star map')
+    canvas.setAttribute('role', 'application')
+    canvas.tabIndex = 0
+    const keyboardHelp = document.createElement('span')
+    keyboardHelp.id = `go-map-keyboard-help-${++mapSequence}`
+    keyboardHelp.className = 'go-map-keyboard-help'
+    keyboardHelp.textContent = 'Use arrow keys to pan, plus or minus to zoom, 0 to reset, and Enter to inspect the center. Tab leaves the map. Use map search to find a system or region by name.'
+    canvas.setAttribute('aria-describedby', keyboardHelp.id)
     const context = canvas.getContext('2d', { alpha: false })
     if (!context) throw new Error('Canvas2D is unavailable')
     const pulseCanvas = document.createElement('canvas')
@@ -215,6 +224,18 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
     reset.className = 'go-map-reset'
     reset.type = 'button'
     reset.textContent = 'Reset view'
+    const controls = document.createElement('div')
+    controls.className = 'go-map-controls'
+    controls.setAttribute('role', 'group')
+    controls.setAttribute('aria-label', 'Map zoom')
+    const zoomIn = document.createElement('button'), zoomOut = document.createElement('button')
+    for (const [button, label, path] of [[zoomIn, 'Zoom in', 'M12 5v14M5 12h14'], [zoomOut, 'Zoom out', 'M5 12h14']] as const) {
+        button.type = 'button'
+        button.setAttribute('aria-label', label)
+        button.title = label
+        button.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="${path}"/></svg>`
+        controls.append(button)
+    }
     const hint = document.createElement('span')
     hint.className = 'go-map-hint'
     hint.textContent = initial.battleSystems
@@ -223,7 +244,7 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
         : initial.baseLayer === 'live' ? 'Watching New Eden · scroll to zoom · drag to pan'
         : initial.baseLayer === 'aiid' ? 'Ten-jump watch area · scroll to zoom · drag to pan'
         : 'Scroll to zoom · drag to pan · click a region'
-    host.append(canvas, pulseCanvas, markerLayer, reset, hint)
+    host.append(canvas, pulseCanvas, markerLayer, reset, controls, hint, keyboardHelp)
     const markerPicker=createMapMarkerPicker(host)
     const overview = initial.showScopeDetails ? document.createElement('div') : null
     const overviewCount = document.createElement('span')
@@ -671,6 +692,7 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
         const bottomEdge = hasPanel && mobile && panel ? panel.top - hostRect.top - 12 : height - (mobile ? 56 : 0)
         const availableWidth = Math.max(1, width - leftInset), availableHeight = Math.max(1, bottomEdge - topInset)
         const scale = Math.min(availableWidth / bounds.width, availableHeight / bounds.height) * .96
+        minimumScale = Math.min(.25, scale / 2)
         camera = { x: leftInset + availableWidth / 2 - (bounds.x + bounds.width / 2) * scale,
             y: topInset + availableHeight / 2 - (bounds.y + bounds.height / 2) * scale, scale }
         requestDraw()
@@ -715,7 +737,10 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
         drag = null
         if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId)
         if (moved) return
-        const point = pointer(event), world = toWorld(point.x, point.y), bounds = scene.bounds
+        inspectPoint(pointer(event))
+    }
+    const inspectPoint = (point: { x: number; y: number }) => {
+        const world = toWorld(point.x, point.y), bounds = scene.bounds
         const inside = world.x >= bounds.x && world.x <= bounds.x + bounds.width && world.y >= bounds.y && world.y <= bounds.y + bounds.height
         if (!inside) return
         if (options.baseLayer === 'sovereignty') {
@@ -729,9 +754,29 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
     }
     const onWheel = (event: WheelEvent) => {
         event.preventDefault()
-        const point = pointer(event), before = toWorld(point.x, point.y)
-        const scale = Math.min(10, Math.max(.25, camera.scale * (event.deltaY < 0 ? 1.15 : 1 / 1.15)))
+        zoomAt(event.deltaY < 0 ? 1.15 : 1 / 1.15, pointer(event))
+    }
+    const zoomAt = (factor: number, point = { x: host.clientWidth / 2, y: host.clientHeight / 2 }) => {
+        const before = toWorld(point.x, point.y)
+        const scale = Math.min(10, Math.max(minimumScale, camera.scale * factor))
         camera = { x: point.x - before.x * scale, y: point.y - before.y * scale, scale }
+        requestDraw()
+    }
+    const onKey = (event: KeyboardEvent) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return
+        const step = event.shiftKey ? 120 : 40
+        switch (event.key) {
+            case 'ArrowLeft': camera.x += step; break
+            case 'ArrowRight': camera.x -= step; break
+            case 'ArrowUp': camera.y += step; break
+            case 'ArrowDown': camera.y -= step; break
+            case '+': case '=': zoomAt(1.15); break
+            case '-': case '_': zoomAt(1 / 1.15); break
+            case '0': resetView(); break
+            case 'Enter': inspectPoint({ x: host.clientWidth / 2, y: host.clientHeight / 2 }); break
+            default: return
+        }
+        event.preventDefault()
         requestDraw()
     }
     canvas.addEventListener('pointermove', onMove)
@@ -742,6 +787,9 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
         if (!drag) { hoverRegionId = null; hoverAllianceId = null; options.onHoverAlliance?.(null, { x: 0, y: 0 }); options.onHoverRegion?.(null, { x: 0, y: 0 }); requestDraw() }
     })
     canvas.addEventListener('wheel', onWheel, { passive: false })
+    canvas.addEventListener('keydown', onKey)
+    zoomIn.addEventListener('click', () => zoomAt(1.15))
+    zoomOut.addEventListener('click', () => zoomAt(1 / 1.15))
     reset.addEventListener('click', resetView)
     const onVisibility = () => { if (!document.hidden) requestPulseDraw() }
     document.addEventListener('visibilitychange', onVisibility)
@@ -795,6 +843,7 @@ export function createGoMap(host: HTMLElement, initial: GoMapOptions = {}): GoMa
             canvas.removeEventListener('pointerup', onUp)
             canvas.removeEventListener('pointercancel', onUp)
             canvas.removeEventListener('wheel', onWheel)
+            canvas.removeEventListener('keydown', onKey)
             document.removeEventListener('visibilitychange', onVisibility)
             host.replaceChildren()
         },

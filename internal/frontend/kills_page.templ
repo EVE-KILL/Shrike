@@ -7,27 +7,27 @@ import (
 )
 
 templ killsPage(view killsPageView) {
-	<div class="kills-page" data-controller="home" data-action="click->home#click input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show" data-kills-page data-tab="kills" data-title={ view.Title }>
+	<div class="kills-page" data-controller="home" data-action="click->home#click keydown->home#keydown input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show" data-kills-page data-tab="kills" data-title={ view.Title }>
 		<h1>{ view.Title }</h1>
 		<div class="kills-mobile-tabs" role="tablist" aria-label="Kill page sections">
-			<button type="button" role="tab" aria-selected="true" aria-controls="kills-panel" data-kills-tab="kills">
+			<button type="button" role="tab" aria-selected="true" aria-controls="kills-panel" id="kills-tab-kills" tabindex="0" data-kills-tab="kills">
 				@icon("swords")
 				Kills
 			</button>
-			<button type="button" role="tab" aria-selected="false" aria-controls="top-panel" data-kills-tab="top">
+			<button type="button" role="tab" aria-selected="false" aria-controls="top-panel" id="kills-tab-top" tabindex="-1" data-kills-tab="top">
 				@icon("list-ordered")
 				Top Lists
 			</button>
-			<button type="button" role="tab" aria-selected="false" aria-controls="valuable-panel" data-kills-tab="valuable">
+			<button type="button" role="tab" aria-selected="false" aria-controls="valuable-panel" id="kills-tab-valuable" tabindex="-1" data-kills-tab="valuable">
 				@icon("gem")
 				Valuable
 			</button>
 		</div>
-		<div id="valuable-panel" class="kills-valuable-panel" role="tabpanel">
+		<div aria-labelledby="kills-tab-valuable" id="valuable-panel" class="kills-valuable-panel" role="tabpanel">
 			@filteredValuable(view.Valuable)
 		</div>
 		<div class="kills-grid">
-			<aside id="top-panel" class="kills-top-panel" role="tabpanel" aria-label="Top killers">
+			<aside aria-labelledby="kills-tab-top" id="top-panel" class="kills-top-panel" role="tabpanel" aria-label="Top killers">
 				for _, box := range view.TopBoxes {
 					if box.Pending {
 						@topBoxPlaceholder(box)
@@ -36,7 +36,7 @@ templ killsPage(view killsPageView) {
 					}
 				}
 			</aside>
-			<div id="kills-panel" class="kills-list-panel" role="tabpanel">
+			<div aria-labelledby="kills-tab-kills" id="kills-panel" class="kills-list-panel" role="tabpanel">
 				@killList(view.Killlist, killListOptions{Kind: view.Kind, Page: 1, Limit: 50, Live: true})
 			</div>
 		</div>
@@ -45,7 +45,7 @@ templ killsPage(view killsPageView) {
 
 templ topBoxPlaceholder(box topBoxView) {
 	<section class="top-box glass-panel top-box-loading" data-top-pending={ box.DataType } data-controller="home-top" data-action="home:top->home-top#refresh resize@window->home-top#refresh click->home-top#click pagehide@window->home-top#hide pageshow@window->home-top#show" aria-busy="true" aria-label={ box.Title }>
-		<h3>{ box.Title }</h3>
+		<h2>{ box.Title }</h2>
 		<div class="top-box-entries">
 			for index := 0; index < box.Limit; index++ {
 				<div class="top-box-entry" aria-hidden="true">

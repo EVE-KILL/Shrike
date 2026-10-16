@@ -61,6 +61,7 @@ export class SpotlightSearch {
   }
   private message(icon:string,title:string,detail?:string) {
     const message=searchNode('div','spotlight-message');message.append(searchIcon(icon),searchNode('p','',title))
+    message.setAttribute('role','status')
     if(detail)message.append(searchNode('small','',detail))
     this.content.replaceChildren(message)
   }
@@ -92,7 +93,7 @@ export class SpotlightSearch {
   }
   private renderResults(query:string) {
     const results=this.results
-    if(!results?.hits.length){this.message('search-x','No results found','No results for "'+query+'"');return}
+    if(!results?.hits.length){this.message('search-x','No results for "'+query+'"','Try a different name or fewer words.');return}
     const wrapper=searchNode('div','spotlight-results'),counts=Object.entries(results.counts) as [SearchType,number][]
     if(counts.length>1){
       const filters=searchNode('div','spotlight-filters')
@@ -150,6 +151,15 @@ export class SpotlightSearch {
     if(target instanceof HTMLAnchorElement)this.dialog.close()
   }
   key(event:KeyboardEvent) {
+    if(event.isComposing || event.altKey || event.ctrlKey || event.metaKey)return
+    if(!this.input.value.trim()) {
+      const actions=[...this.content.querySelectorAll<HTMLElement>('.spotlight-actions a,.spotlight-recent-select,.spotlight-tools a')]
+      const index=actions.findIndex(action=>action===event.target || event.target instanceof Node && action.contains(event.target))
+      if(event.target!==this.input && index<0 || !actions.length || event.key!=='ArrowDown' && event.key!=='ArrowUp')return
+      event.preventDefault()
+      actions[event.key==='ArrowDown'?(index+1)%actions.length:(index<=0?actions.length:index)-1]?.focus()
+      return
+    }
     const focused=event.target instanceof Element?event.target.closest<HTMLElement>('[data-spotlight-result]'):null
     if(event.target!==this.input&&!focused)return
     if(focused){

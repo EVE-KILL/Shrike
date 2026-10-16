@@ -1,6 +1,6 @@
 .blog-comment-thread { color:#d1d5db; }
 .blog-comment-thread [hidden] { display:none!important; }
-.blog-comment-thread>p { margin:0; padding:.85rem; border:1px solid #ffffff0f; border-radius:8px; background:#1a1a1a4d; box-shadow:0 1px 2px #0000001a; color:#6b7280; font-size:16px; line-height:24px; font-style:italic; text-align:center; }
+.blog-comment-thread>p { margin:0; padding:.85rem; border:1px solid #ffffff0f; border-radius:8px; background:#1a1a1a4d; box-shadow:0 1px 2px #0000001a; color:var(--color-text-secondary); font-size:16px; line-height:24px; font-style:italic; text-align:center; }
 .blog-comment-thread>[data-comments-status]:not([data-state]) { padding:32px 0; border:0; border-radius:0; background:none; box-shadow:none; }
 .blog-comment-thread>[data-state=error] { color:var(--color-error); font-style:normal; }
 .comment-node { position:relative; }
@@ -13,10 +13,10 @@
 .comment-card header>div { flex:1; min-width:0; }
 .comment-card header .comment-author { display:block; overflow:hidden; color:#fff; font-size:16px; line-height:24px; font-weight:600; text-decoration:none; text-overflow:ellipsis; white-space:nowrap; }
 .comment-card header .comment-author:hover,.comment-card header small a:hover { color:var(--color-brand-primary); }
-.comment-card header small { display:block; overflow:hidden; color:#6b7280; font-size:14px; line-height:20px; text-overflow:ellipsis; white-space:nowrap; }
+.comment-card header small { display:block; overflow:hidden; color:var(--color-text-secondary); font-size:14px; line-height:20px; text-overflow:ellipsis; white-space:nowrap; }
 .comment-card header small a { color:inherit; text-decoration:none; }
-.comment-card header time { flex:none; color:#4b5563; font-size:14px; }
-.comment-card header button { flex:none; width:24px; height:24px; border:0; border-radius:4px; background:none; color:#6b7280; cursor:pointer; }
+.comment-card header time { flex:none; color:var(--color-text-secondary); font-size:14px; }
+.comment-card header button { flex:none; width:24px; height:24px; border:0; border-radius:4px; background:none; color:var(--color-text-secondary); cursor:pointer; }
 .comment-card header button:hover { background:#ffffff0f; color:var(--color-brand-primary); }
 .comment-body { color:#e5e7eb; font-size:16px; line-height:1.5; overflow-wrap:anywhere; }
 .comment-body p { margin:5px 0; }
@@ -32,12 +32,12 @@
 .comment-children { display:flex; flex-direction:column; gap:.6rem; margin:.6rem 0 0 14px; }
 .comment-more { display:block; width:100%; margin:0 0 12px; padding:8px; border:0; background:none; color:var(--color-brand-primary); font-size:12px; cursor:pointer; }
 .comment-more:hover { color:#93c5fd; }
-.comment-identity { display:flex; align-items:center; gap:8px; margin:16px 4px 8px; color:#6b7280; font-size:14px; line-height:20px; min-width:0; }
+.comment-identity { display:flex; align-items:center; gap:8px; margin:16px 4px 8px; color:var(--color-text-secondary); font-size:14px; line-height:20px; min-width:0; }
 .comment-identity img { display:block; width:24px; height:24px; border-radius:4px; }
 .comment-identity a { color:#fff; font-weight:600; text-decoration:none; }
 .comment-signin { margin-top:16px; padding:32px 16px; border:1px dashed #ffffff1a; border-radius:12px; background:linear-gradient(180deg,color-mix(in srgb,var(--color-brand-primary) 3.922%,transparent),#ffffff03); text-align:center; }
 .comment-signin p { margin:0; color:#d1d5db; font-size:16px; line-height:24px; font-weight:500; }
-.comment-signin small { display:block; margin:4px 0 16px; color:#6b7280; font-size:14px; line-height:20px; }
+.comment-signin small { display:block; margin:4px 0 16px; color:var(--color-text-secondary); font-size:14px; line-height:20px; }
 @media(max-width:639px) { .comment-card header time { display:none; } .comment-identity-corp { display:none; } }
 
 .comment-node.has-line { padding-left:18px; }
@@ -50,7 +50,7 @@
 .thread-expand-btn .icon { width:12px;height:12px; }
 .comment-inline-editor { margin:8px 0; }
 .comment-hidden { opacity:.5; }
-.comment-removed { color:#6b7280;font-size:16px;font-style:italic; }
+.comment-removed { color:var(--color-text-secondary);font-size:16px;font-style:italic; }
 .comment-edited { color:#374151;font-size:14px;font-style:italic;white-space:nowrap; }
 .comment-card header button { display:inline-flex;align-items:center;justify-content:center; }
 .comment-card header button .icon { width:12px;height:12px; }
@@ -72,8 +72,8 @@
 .comment-list-header [data-comments-count] { font-size:12px;color:#93c5fd;background:color-mix(in srgb,var(--color-brand-primary) 12.157%,transparent);border:1px solid color-mix(in srgb,var(--color-brand-primary) 20.000%,transparent);border-radius:999px;padding:0 6px; }
 .comment-list-header [data-comments-connection] { color:#fbbf24;font-size:14px; }
 .comment-list-header [data-comments-connection]::before { content:'';display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:currentColor; }
-.comment-list-header [data-comments-connection].connected { color:#6b7280; }
+.comment-list-header [data-comments-connection].connected { color:var(--color-text-secondary); }
 .comment-list-header [data-comments-connection].connected::before { background:var(--color-success); }
 .comment-identity>a:first-child,.comment-identity>span:nth-child(2) { flex:none; }
 .comment-identity>a:not(:first-child),.comment-identity-corp { min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }
-.comment-identity-corp a { color:#6b7280;font-weight:400; }
+.comment-identity-corp a { color:var(--color-text-secondary);font-weight:400; }

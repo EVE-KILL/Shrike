@@ -22,6 +22,8 @@ bin/
 /*.md
 !CLAUDE.md
 !TODO.md
+!PRODUCT.md
+!DESIGN.md
 
 # Local product-research issues and implementation notes. These are kept as a
 # working backlog without turning unfinished ideas into repository policy.
@@ -35,6 +37,10 @@ bin/
 
 # Machine-local Codex MCP connections and settings.
 .codex/
+.agents/skills/impeccable
+.impeccable/config.local.json
+.impeccable/hook.cache.json
+.impeccable/critique/
 
 # Browser build dependencies and native engine output.
 node_modules/

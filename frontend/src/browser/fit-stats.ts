@@ -4,6 +4,8 @@ export type FitStatsProps = FitRenderState & FitRenderAssets & {expanded:boolean
 type EwarKind = 'web'|'scram'|'ecm'|'damp'|'painter'|'td'|'burst'|'hic'
 /** Port of web/app/components/fit/stats/ShipStatistics.vue and its row components. */
 export function renderFitStats({ fit, stats, sde, expanded, opened, uiIcon, iconOf, nameOf, escape }:FitStatsProps) {
+  if (!fit) return '<p class="fit-editor-empty" role="status">Select a hull to calculate statistics.</p>';
+  if (!stats) return '<p class="fit-editor-empty" role="status">Statistics are not available yet.</p>';
   const attrId = (name:string) => sde?.attributeNameToId.get(name);
   const raw = (name:string, kind:'hull'|'char' = 'hull') => {
     if (!stats || !sde) return null;

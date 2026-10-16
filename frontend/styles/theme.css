@@ -46,6 +46,12 @@
     font-size: 0.75rem;
     line-height: 1rem;
 }
+@utility text-secondary {
+    color: var(--color-text-secondary);
+}
+@utility text-link {
+    color: color-mix(in srgb, var(--color-brand-primary) 65%, var(--color-text-primary));
+}
 @utility loss-row {
     background-color: var(--color-loss-bg);
     border-left: 2px solid var(--color-loss-border);

@@ -113,3 +113,23 @@ func TestKillDetailRoute(t *testing.T) {
 		}
 	}
 }
+
+func TestKillDetailDistinguishesRecordedFitFromItemBreakdown(t *testing.T) {
+	view := killBuildView(api.KillmailPageData{
+		TotalValue: 200, FittedValue: 180,
+		Victim: api.KillmailVictim{ShipPrice: 100},
+		Items:  []api.KillmailItem{{TypeID: 10, Slot: "high", QuantityDestroyed: 1, Price: 20}},
+	})
+	var body strings.Builder
+	if err := killDetailPage(view).Render(context.Background(), &body); err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{`class="fitted">180</strong>`, "Hull &amp; fit", "Modules", "Breakdown subtotal", "Prices in the breakdown can differ from the recorded kill value."} {
+		if !strings.Contains(body.String(), text) {
+			t.Errorf("kill detail lacks valuation context %q", text)
+		}
+	}
+	if strings.Contains(body.String(), ">Fitted<") {
+		t.Error("different valuation definitions still share the Fitted label")
+	}
+}

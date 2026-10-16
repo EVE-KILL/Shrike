@@ -47,7 +47,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<header class=\"page-header hero-surface glass-panel relative overflow-hidden p-5 mb-4\"><div class=\"relative flex flex-wrap items-start justify-between gap-4\"><div class=\"flex min-w-0 items-start gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-400/15 bg-blue-500/10 text-lg text-blue-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<header class=\"page-header hero-surface glass-panel relative overflow-hidden p-5 mb-4\"><div class=\"relative flex flex-wrap items-start justify-between gap-4\"><div class=\"flex min-w-0 items-start gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-blue-400/15 bg-blue-500/10 text-lg text-link\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -55,7 +55,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span><div class=\"min-w-0\"><p class=\"text-fine font-bold uppercase tracking-[0.16em] text-blue-400/70\">Build a killmail query</p><h1 class=\"text-xl font-bold text-white\">Advanced Search</h1><div class=\"mt-1.5 max-w-3xl text-sm leading-relaxed text-gray-500\">Build a query from pilots, corporations, alliances, ships, items and space, then narrow it by time, ISK and engagement size. Searches can be linked or saved.</div></div></div><div class=\"relative shrink-0\"><div class=\"flex items-center gap-2 flex-shrink-0\"><button type=\"button\" data-advanced-copy")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</span><div class=\"min-w-0\"><h1 class=\"text-xl font-bold text-white\">Advanced Search</h1><div class=\"mt-1.5 max-w-3xl text-sm leading-relaxed text-secondary\">Build a query from pilots, corporations, alliances, ships, items and space, then narrow it by time, ISK and engagement size. Searches can be linked or saved.</div></div></div><div class=\"relative shrink-0\"><div class=\"flex items-center gap-2 flex-shrink-0\"><button type=\"button\" data-advanced-copy")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -81,7 +81,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></div></div></header><div data-advanced-search-box class=\"relative mb-4\"><div class=\"glass-panel flex items-center gap-2 px-3 py-2.5 focus-within:border-blue-500/40 transition-colors\"><span class=\"text-base text-gray-500 flex-shrink-0\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></div></div></header><div data-advanced-search-box class=\"relative mb-4\"><div class=\"glass-panel flex items-center gap-2 px-3 py-2.5 focus-within:border-blue-500/40 transition-colors\"><span class=\"text-base text-secondary flex-shrink-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -89,7 +89,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</span><input type=\"search\" data-advanced-query aria-label=\"Search entities, ships, items and locations\" autocomplete=\"off\" placeholder=\"Search for pilots, corporations, alliances, ships, items, systems, regions...\" class=\"flex-1 min-w-0 bg-transparent text-white text-sm outline-none placeholder-gray-600\"> <span data-advanced-search-spinner hidden class=\"text-base text-gray-500 animate-spin\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</span><input type=\"search\" data-advanced-query aria-label=\"Search entities, ships, items and locations\" autocomplete=\"off\" placeholder=\"Search for pilots, corporations, alliances, ships, items, systems, regions...\" class=\"flex-1 min-w-0 bg-transparent text-white text-sm outline-none placeholder-gray-600\"> <span data-advanced-search-spinner hidden class=\"text-base text-secondary animate-spin\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -141,7 +141,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "><span class=\"text-fine text-gray-600 font-medium uppercase tracking-wider mr-0.5\">Applied</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "><span class=\"text-fine text-secondary font-medium uppercase tracking-wider mr-0.5\">Applied</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -151,7 +151,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><div class=\"flex items-center justify-between gap-3 mb-2\"><button type=\"button\" data-advanced-collapse aria-expanded=\"true\" class=\"flex items-center gap-1.5 text-fine font-bold uppercase tracking-wider text-gray-500 hover:text-blue-400 transition-colors cursor-pointer\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><div class=\"flex items-center justify-between gap-3 mb-2\"><button type=\"button\" data-advanced-collapse aria-expanded=\"true\" class=\"flex items-center gap-1.5 text-fine font-bold uppercase tracking-wider text-secondary hover:text-link transition-colors cursor-pointer\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -159,7 +159,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span>Filters</span><span data-advanced-collapse-count hidden class=\"text-blue-400/70 normal-case tracking-normal\"></span></button><button type=\"button\" data-advanced-clear")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<span>Filters</span><span data-advanced-collapse-count hidden class=\"text-link normal-case tracking-normal\"></span></button><button type=\"button\" data-advanced-clear")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -169,7 +169,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, " class=\"px-2.5 py-1 text-fine font-medium rounded border transition-colors bg-white/[0.04] text-gray-500 border-white/[0.08] hover:bg-blue-500/[0.08] cursor-pointer\">Clear All</button></div><div data-advanced-panels class=\"grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4\"><div class=\"glass-panel p-3\"><label for=\"label-filter\" class=\"block text-fine font-bold uppercase tracking-wider text-gray-600 mb-2\">Killmail Label</label> <select id=\"label-filter\" data-advanced-label class=\"w-full px-2 py-1.5 text-xs bg-[#181818] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none\"><option value=\"\">Any label</option> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, " class=\"px-2.5 py-1 text-fine font-medium rounded border transition-colors bg-white/[0.04] text-secondary border-white/[0.08] hover:bg-blue-500/[0.08] cursor-pointer\">Clear All</button></div><div data-advanced-panels class=\"grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4\"><div class=\"glass-panel p-3\"><label for=\"label-filter\" class=\"block text-fine font-bold uppercase tracking-wider text-secondary mb-2\">Killmail Label</label> <select id=\"label-filter\" data-advanced-label class=\"w-full px-2 py-1.5 text-xs bg-[#181818] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none\"><option value=\"\">Any label</option> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -245,7 +245,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, group := range advancedOptionGroups {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"glass-panel p-3\"><div class=\"text-fine font-bold uppercase tracking-wider text-gray-600 mb-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"glass-panel p-3\"><div class=\"text-fine font-bold uppercase tracking-wider text-secondary mb-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -295,27 +295,27 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if group.Key == "iskValue" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<div class=\"grid grid-cols-2 gap-2\"><div><label for=\"advanced-isk-min\" class=\"block text-fine text-gray-500 mb-1\">Min</label><input id=\"advanced-isk-min\" data-advanced-isk=\"iskMin\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<div class=\"grid grid-cols-2 gap-2\"><div><label for=\"advanced-isk-min\" class=\"block text-fine text-secondary mb-1\">Min</label><input id=\"advanced-isk-min\" data-advanced-isk=\"iskMin\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(view.State.Filters.ISKMin))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `advanced_search.templ`, Line: 97, Col: 228}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `advanced_search.templ`, Line: 97, Col: 229}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" type=\"text\" placeholder=\"e.g. 500m\" class=\"w-full px-2 py-1 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none\"></div><div><label for=\"advanced-isk-max\" class=\"block text-fine text-gray-500 mb-1\">Max</label><input id=\"advanced-isk-max\" data-advanced-isk=\"iskMax\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" type=\"text\" placeholder=\"e.g. 500m\" class=\"w-full px-2 py-1 text-xs bg-white/[0.04] border border-white/[0.08] rounded text-gray-300 focus:border-blue-500/40 focus:outline-none\"></div><div><label for=\"advanced-isk-max\" class=\"block text-fine text-secondary mb-1\">Max</label><input id=\"advanced-isk-max\" data-advanced-isk=\"iskMax\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(view.State.Filters.ISKMax))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `advanced_search.templ`, Line: 97, Col: 602}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `advanced_search.templ`, Line: 97, Col: 604}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
@@ -327,7 +327,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 				}
 			}
 			if group.Key == "shipCategory" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"text-fine font-bold uppercase tracking-wider text-gray-600 mt-3 mb-2\">Tech Level</div><div class=\"flex flex-wrap gap-1\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"text-fine font-bold uppercase tracking-wider text-secondary mt-3 mb-2\">Tech Level</div><div class=\"flex flex-wrap gap-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -347,7 +347,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"glass-panel p-3\"><div class=\"text-fine font-bold uppercase tracking-wider text-gray-600 mb-2\">Time Range</div><div class=\"flex flex-wrap gap-1 mb-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<div class=\"glass-panel p-3\"><div class=\"text-fine font-bold uppercase tracking-wider text-secondary mb-2\">Time Range</div><div class=\"flex flex-wrap gap-1 mb-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -357,7 +357,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div><div class=\"grid grid-cols-2 gap-2\"><div><label class=\"block text-fine text-gray-500 mb-1\">From <span class=\"text-gray-700\">(EVE)</span></label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</div><div class=\"grid grid-cols-2 gap-2\"><div><label class=\"block text-fine text-secondary mb-1\">From <span class=\"text-gray-700\">(EVE)</span></label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -365,7 +365,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div><div><label class=\"block text-fine text-gray-500 mb-1\">To <span class=\"text-gray-700\">(EVE)</span></label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</div><div><label class=\"block text-fine text-secondary mb-1\">To <span class=\"text-gray-700\">(EVE)</span></label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -373,7 +373,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</div></div></div></div><div data-advanced-sort class=\"flex flex-wrap items-center gap-3 mb-4\"><div class=\"flex flex-wrap items-center gap-1\"><span class=\"text-fine text-gray-500 mr-1\">Sort:</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</div></div></div></div><div data-advanced-sort class=\"flex flex-wrap items-center gap-3 mb-4\"><div class=\"flex flex-wrap items-center gap-1\"><span class=\"text-fine text-secondary mr-1\">Sort:</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -463,7 +463,7 @@ func advancedSearchPage(view advancedSearchView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, option := range []advancedOption{{"kills", "Killmails"}, {"fits", "Fits"}} {
-			var templ_7745c5c3_Var15 = []any{"px-3 py-1 text-xs font-medium border transition-colors " + killBoolClass(option.Value == "kills", "rounded-l-lg", "rounded-r-lg border-l-0") + " " + killBoolClass(view.State.View == option.Value, "bg-blue-500/20 text-blue-400 border-blue-400/40", "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:text-blue-400")}
+			var templ_7745c5c3_Var15 = []any{"px-3 py-1 text-xs font-medium border transition-colors " + killBoolClass(option.Value == "kills", "rounded-l-lg", "rounded-r-lg border-l-0") + " " + killBoolClass(view.State.View == option.Value, "bg-blue-500/20 text-link border-blue-400/40", "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:text-link")}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var15...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -1146,7 +1146,7 @@ func advancedAppliedChip(chip advancedChip) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"group inline-flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-md border border-blue-500/30 bg-blue-500/[0.12] text-xs text-blue-300 hover:bg-blue-500/20 transition-colors cursor-pointer\"><span data-chip-group class=\"text-blue-400/60 text-fine uppercase tracking-wider\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 104, "\" class=\"group inline-flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-md border border-blue-500/30 bg-blue-500/[0.12] text-xs text-blue-300 hover:bg-blue-500/20 transition-colors cursor-pointer\"><span data-chip-group class=\"text-link text-fine uppercase tracking-wider\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1172,7 +1172,7 @@ func advancedAppliedChip(chip advancedChip) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "</span> <span class=\"text-fine text-blue-400/50 group-hover:text-blue-300 transition-colors\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "</span> <span class=\"text-fine text-link/50 group-hover:text-blue-300 transition-colors\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1269,7 +1269,7 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !view.State.ShowResults {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<div class=\"glass-panel py-16 text-center\"><span class=\"text-3xl text-gray-600 mb-3\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<div class=\"glass-panel py-16 text-center\"><span class=\"text-3xl text-secondary mb-3\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1277,13 +1277,13 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "</span><div class=\"text-sm text-gray-500\">Add filters above to find killmails</div><div class=\"text-xs text-gray-600 mt-1\">Use the search bar to add pilots, corps, alliances, ships, or items</div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 113, "</span><div class=\"text-sm text-secondary\">Add filters above to find killmails</div><div class=\"text-xs text-secondary mt-1\">Use the search bar to add pilots, corps, alliances, ships, or items</div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if view.State.View == "kills" {
 			if view.State.Hash != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<div class=\"flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20\"><button type=\"button\" data-advanced-clear-drilldown class=\"inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<div class=\"flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20\"><button type=\"button\" data-advanced-clear-drilldown class=\"inline-flex items-center gap-1 text-xs font-medium text-link hover:text-blue-300 transition-colors\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1319,7 +1319,7 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 			}
 		} else {
 			if view.State.Hash != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "<div class=\"mb-3 flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2\"><button type=\"button\" data-advanced-clear-drilldown class=\"inline-flex items-center gap-1 text-xs font-medium text-blue-400 transition-colors hover:text-blue-300\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 118, "<div class=\"mb-3 flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2\"><button type=\"button\" data-advanced-clear-drilldown class=\"inline-flex items-center gap-1 text-xs font-medium text-link transition-colors hover:text-blue-300\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1345,7 +1345,7 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, " <div class=\"flex items-center gap-1 mb-3\"><span class=\"text-fine text-gray-500 mr-1\">Group:</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 121, " <div class=\"flex items-center gap-1 mb-3\"><span class=\"text-fine text-secondary mr-1\">Group:</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1412,7 +1412,7 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "<span class=\"text-fine text-gray-600 ml-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 127, "<span class=\"text-fine text-secondary ml-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1430,7 +1430,7 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(view.Result.Fits) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "<div class=\"glass-panel py-12 text-center\"><span class=\"text-2xl text-gray-600 mb-2\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 129, "<div class=\"glass-panel py-12 text-center\"><span class=\"text-2xl text-secondary mb-2\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1438,7 +1438,7 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "</span><div class=\"text-sm text-gray-500\">No matching fits found</div></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "</span><div class=\"text-sm text-secondary\">No matching fits found</div></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1471,7 +1471,7 @@ func advancedSearchResults(view advancedSearchView) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "\" class=\"px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-blue-400 transition-colors\">Load more fits</button></div>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "\" class=\"px-4 py-2 text-sm font-medium rounded-lg bg-white/[0.04] text-gray-400 border border-white/[0.08] hover:bg-blue-500/[0.08] hover:text-link transition-colors\">Load more fits</button></div>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1539,7 +1539,7 @@ func advancedSearchTemplates() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "</template><template id=\"advanced-suggestion-template\"><div class=\"border-b border-white/[0.04] last:border-b-0\"><div class=\"px-3 py-2.5\"><div class=\"flex items-center justify-between gap-3\"><div class=\"flex items-center gap-2.5 min-w-0\"><img data-hit-image alt=\"\" width=\"28\" height=\"28\" class=\"w-7 h-7 rounded flex-shrink-0\" loading=\"lazy\" hidden><div data-hit-icon class=\"w-7 h-7 rounded bg-white/[0.06] flex items-center justify-center flex-shrink-0\"><span data-hit-symbol class=\"text-xs text-gray-500\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 140, "</template><template id=\"advanced-suggestion-template\"><div class=\"border-b border-white/[0.04] last:border-b-0\"><div class=\"px-3 py-2.5\"><div class=\"flex items-center justify-between gap-3\"><div class=\"flex items-center gap-2.5 min-w-0\"><img data-hit-image alt=\"\" width=\"28\" height=\"28\" class=\"w-7 h-7 rounded flex-shrink-0\" loading=\"lazy\" hidden><div data-hit-icon class=\"w-7 h-7 rounded bg-white/[0.06] flex items-center justify-center flex-shrink-0\"><span data-hit-symbol class=\"text-xs text-secondary\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1547,7 +1547,7 @@ func advancedSearchTemplates() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "</span></div><div class=\"min-w-0\"><div data-hit-name class=\"text-sm text-gray-200 truncate\"></div><div class=\"text-fine text-gray-500 capitalize\"><span data-hit-type></span><span data-hit-ticker class=\"text-gray-600 font-mono ml-1\" hidden></span></div></div></div><div data-hit-actions class=\"flex gap-1 flex-shrink-0\"></div></div></div></div></template>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 141, "</span></div><div class=\"min-w-0\"><div data-hit-name class=\"text-sm text-gray-200 truncate\"></div><div class=\"text-fine text-secondary capitalize\"><span data-hit-type></span><span data-hit-ticker class=\"text-secondary font-mono ml-1\" hidden></span></div></div></div><div data-hit-actions class=\"flex gap-1 flex-shrink-0\"></div></div></div></div></template>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

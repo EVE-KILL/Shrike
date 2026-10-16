@@ -515,7 +515,7 @@ func killDetailPage(view killDetailView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = killHeroTile("Fitted", compactNumber(view.Data.FittedValue), "wrench", "fitted").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = killHeroTile("Hull & fit", compactNumber(view.Data.FittedValue), "wrench", "fitted").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2144,7 +2144,7 @@ func killInfoStats(view killDetailView, interactive bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.FittedValue > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<div><span>Fitted</span> <strong>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 195, "<div><span>Modules</span> <strong>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2409,7 +2409,7 @@ func killItemsTable(view killDetailView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if view.FittedValue > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, "<div><span>Fitted</span> <strong>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 217, "<div><span>Modules</span> <strong>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2465,7 +2465,7 @@ func killItemsTable(view killDetailView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 223, "<div class=\"total\"><span>Total</span> <strong>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 223, "<div class=\"total\"><span>Breakdown subtotal</span> <strong>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2478,7 +2478,7 @@ func killItemsTable(view killDetailView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 224, "</strong></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 224, "</strong></div></div><p class=\"kill-items-valuation-note\">Prices in the breakdown can differ from the recorded kill value.</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2532,7 +2532,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 		var templ_7745c5c3_Var136 templ.SafeURL
 		templ_7745c5c3_Var136, templ_7745c5c3_Err = templ.JoinURLErrs(idPath("item", item.TypeID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 659, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 660, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var136))
 		if templ_7745c5c3_Err != nil {
@@ -2545,7 +2545,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 		var templ_7745c5c3_Var137 string
 		templ_7745c5c3_Var137, templ_7745c5c3_Err = templ.ResolveAttributeValue(item.TypeName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 660, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 661, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var137)
 		if templ_7745c5c3_Err != nil {
@@ -2558,7 +2558,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 		var templ_7745c5c3_Var138 string
 		templ_7745c5c3_Var138, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(item.QuantityDropped, 10))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 661, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 662, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var138)
 		if templ_7745c5c3_Err != nil {
@@ -2571,7 +2571,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 		var templ_7745c5c3_Var139 string
 		templ_7745c5c3_Var139, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.FormatInt(item.QuantityDestroyed, 10))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 662, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 663, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var139)
 		if templ_7745c5c3_Err != nil {
@@ -2584,7 +2584,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 		var templ_7745c5c3_Var140 string
 		templ_7745c5c3_Var140, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("%.2f", value))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 663, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 664, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var140)
 		if templ_7745c5c3_Err != nil {
@@ -2597,7 +2597,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 		var templ_7745c5c3_Var141 string
 		templ_7745c5c3_Var141, templ_7745c5c3_Err = templ.ResolveAttributeValue(killTypeIcon(item.TypeID, 64))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 666, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 667, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var141)
 		if templ_7745c5c3_Err != nil {
@@ -2610,7 +2610,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 		var templ_7745c5c3_Var142 string
 		templ_7745c5c3_Var142, templ_7745c5c3_Err = templ.JoinStringErrs(item.TypeName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 671, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 672, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var142))
 		if templ_7745c5c3_Err != nil {
@@ -2628,7 +2628,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 			var templ_7745c5c3_Var143 string
 			templ_7745c5c3_Var143, templ_7745c5c3_Err = templ.JoinStringErrs(killNumber(item.QuantityDropped))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 675, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 676, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var143))
 			if templ_7745c5c3_Err != nil {
@@ -2651,7 +2651,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 			var templ_7745c5c3_Var144 string
 			templ_7745c5c3_Var144, templ_7745c5c3_Err = templ.JoinStringErrs(killNumber(item.QuantityDestroyed))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 682, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 683, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var144))
 			if templ_7745c5c3_Err != nil {
@@ -2670,7 +2670,7 @@ func killItemRow(item api.KillmailItem, value float64, child bool) templ.Compone
 			var templ_7745c5c3_Var145 string
 			templ_7745c5c3_Var145, templ_7745c5c3_Err = templ.JoinStringErrs(compactNumber(value))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 688, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 689, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var145))
 			if templ_7745c5c3_Err != nil {
@@ -2736,7 +2736,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 			var templ_7745c5c3_Var149 string
 			templ_7745c5c3_Var149, templ_7745c5c3_Err = templ.ResolveAttributeValue(killAttackerImage(attacker, 512))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 699, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 700, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var149)
 			if templ_7745c5c3_Err != nil {
@@ -2749,7 +2749,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 			var templ_7745c5c3_Var150 string
 			templ_7745c5c3_Var150, templ_7745c5c3_Err = templ.ResolveAttributeValue(killTypeIcon(*attacker.ShipTypeID, 512))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 700, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 701, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var150)
 			if templ_7745c5c3_Err != nil {
@@ -2762,7 +2762,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 			var templ_7745c5c3_Var151 string
 			templ_7745c5c3_Var151, templ_7745c5c3_Err = templ.ResolveAttributeValue(attacker.ShipName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 701, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 702, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var151)
 			if templ_7745c5c3_Err != nil {
@@ -2780,7 +2780,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 		var templ_7745c5c3_Var152 string
 		templ_7745c5c3_Var152, templ_7745c5c3_Err = templ.JoinStringErrs(badge)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 705, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 706, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var152))
 		if templ_7745c5c3_Err != nil {
@@ -2798,7 +2798,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 			var templ_7745c5c3_Var153 templ.SafeURL
 			templ_7745c5c3_Var153, templ_7745c5c3_Err = templ.JoinURLErrs(idPath("character", *attacker.CharacterID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 709, Col: 53}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 710, Col: 53}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var153))
 			if templ_7745c5c3_Err != nil {
@@ -2811,7 +2811,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 			var templ_7745c5c3_Var154 string
 			templ_7745c5c3_Var154, templ_7745c5c3_Err = templ.ResolveAttributeValue(eveEntityImage("character", *attacker.CharacterID, 128))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 712, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 713, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var154)
 			if templ_7745c5c3_Err != nil {
@@ -2824,7 +2824,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 			var templ_7745c5c3_Var155 string
 			templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.ResolveAttributeValue(attacker.CharacterName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 713, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 714, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var155)
 			if templ_7745c5c3_Err != nil {
@@ -2868,7 +2868,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 		var templ_7745c5c3_Var156 string
 		templ_7745c5c3_Var156, templ_7745c5c3_Err = templ.JoinStringErrs(killNumber(attacker.DamageDone))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 731, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 732, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var156))
 		if templ_7745c5c3_Err != nil {
@@ -2881,7 +2881,7 @@ func killFeaturedAttacker(attacker api.KillmailAttacker, badge, class string, to
 		var templ_7745c5c3_Var157 string
 		templ_7745c5c3_Var157, templ_7745c5c3_Err = templ.JoinStringErrs(killPercent(attacker.DamageDone, total))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 731, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 732, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var157))
 		if templ_7745c5c3_Err != nil {
@@ -2953,7 +2953,7 @@ func killEntityName(kind string, id *int64, name string) templ.Component {
 			var templ_7745c5c3_Var160 templ.SafeURL
 			templ_7745c5c3_Var160, templ_7745c5c3_Err = templ.JoinURLErrs(idPath(kind, *id))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 743, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 744, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var160))
 			if templ_7745c5c3_Err != nil {
@@ -2966,7 +2966,7 @@ func killEntityName(kind string, id *int64, name string) templ.Component {
 			var templ_7745c5c3_Var161 string
 			templ_7745c5c3_Var161, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 743, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 744, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var161))
 			if templ_7745c5c3_Err != nil {
@@ -2980,7 +2980,7 @@ func killEntityName(kind string, id *int64, name string) templ.Component {
 			var templ_7745c5c3_Var162 string
 			templ_7745c5c3_Var162, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 745, Col: 8}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 746, Col: 8}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var162))
 			if templ_7745c5c3_Err != nil {
@@ -3037,7 +3037,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 		var templ_7745c5c3_Var166 string
 		templ_7745c5c3_Var166, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(index))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 752, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 753, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var166)
 		if templ_7745c5c3_Err != nil {
@@ -3050,7 +3050,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 		var templ_7745c5c3_Var167 string
 		templ_7745c5c3_Var167, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(fmt.Sprintf("width:%.2f%%", killDamageWidth(attacker.DamageDone, highest)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 756, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 757, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var167))
 		if templ_7745c5c3_Err != nil {
@@ -3068,7 +3068,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var168 templ.SafeURL
 			templ_7745c5c3_Var168, templ_7745c5c3_Err = templ.JoinURLErrs(idPath("character", *attacker.CharacterID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 761, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 762, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var168))
 			if templ_7745c5c3_Err != nil {
@@ -3081,7 +3081,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var169 string
 			templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.ResolveAttributeValue(eveEntityImage("character", *attacker.CharacterID, 64))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 764, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 765, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var169)
 			if templ_7745c5c3_Err != nil {
@@ -3094,7 +3094,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var170 string
 			templ_7745c5c3_Var170, templ_7745c5c3_Err = templ.ResolveAttributeValue(attacker.CharacterName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 765, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 766, Col: 34}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var170)
 			if templ_7745c5c3_Err != nil {
@@ -3112,7 +3112,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var171 string
 			templ_7745c5c3_Var171, templ_7745c5c3_Err = templ.ResolveAttributeValue(killTypeIcon(*attacker.ShipTypeID, 64))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 773, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 774, Col: 49}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var171)
 			if templ_7745c5c3_Err != nil {
@@ -3125,7 +3125,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var172 string
 			templ_7745c5c3_Var172, templ_7745c5c3_Err = templ.ResolveAttributeValue(attacker.ShipName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 774, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 775, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var172)
 			if templ_7745c5c3_Err != nil {
@@ -3144,7 +3144,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var173 templ.SafeURL
 			templ_7745c5c3_Var173, templ_7745c5c3_Err = templ.JoinURLErrs(idPath("item", *attacker.ShipTypeID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 782, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 783, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var173))
 			if templ_7745c5c3_Err != nil {
@@ -3157,7 +3157,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var174 string
 			templ_7745c5c3_Var174, templ_7745c5c3_Err = templ.ResolveAttributeValue(attacker.WeaponName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 783, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 784, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var174)
 			if templ_7745c5c3_Err != nil {
@@ -3170,7 +3170,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var175 string
 			templ_7745c5c3_Var175, templ_7745c5c3_Err = templ.ResolveAttributeValue(killTypeIcon(*attacker.ShipTypeID, 64))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 786, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 787, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var175)
 			if templ_7745c5c3_Err != nil {
@@ -3183,7 +3183,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var176 string
 			templ_7745c5c3_Var176, templ_7745c5c3_Err = templ.ResolveAttributeValue(attacker.ShipName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 787, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 788, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var176)
 			if templ_7745c5c3_Err != nil {
@@ -3215,7 +3215,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 		var templ_7745c5c3_Var177 string
 		templ_7745c5c3_Var177, templ_7745c5c3_Err = templ.JoinStringErrs(attacker.ShipName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 802, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 803, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var177))
 		if templ_7745c5c3_Err != nil {
@@ -3233,7 +3233,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var178 templ.SafeURL
 			templ_7745c5c3_Var178, templ_7745c5c3_Err = templ.JoinURLErrs(idPath("corporation", *attacker.CorporationID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 805, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 806, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var178))
 			if templ_7745c5c3_Err != nil {
@@ -3246,7 +3246,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var179 string
 			templ_7745c5c3_Var179, templ_7745c5c3_Err = templ.JoinStringErrs(attacker.CorporationName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 806, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 807, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var179))
 			if templ_7745c5c3_Err != nil {
@@ -3269,7 +3269,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var180 templ.SafeURL
 			templ_7745c5c3_Var180, templ_7745c5c3_Err = templ.JoinURLErrs(idPath("alliance", *attacker.AllianceID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 812, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 813, Col: 54}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var180))
 			if templ_7745c5c3_Err != nil {
@@ -3282,7 +3282,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 			var templ_7745c5c3_Var181 string
 			templ_7745c5c3_Var181, templ_7745c5c3_Err = templ.JoinStringErrs(attacker.AllianceName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 813, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 814, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var181))
 			if templ_7745c5c3_Err != nil {
@@ -3300,7 +3300,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 		var templ_7745c5c3_Var182 string
 		templ_7745c5c3_Var182, templ_7745c5c3_Err = templ.JoinStringErrs(killNumber(attacker.DamageDone))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 819, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 820, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var182))
 		if templ_7745c5c3_Err != nil {
@@ -3313,7 +3313,7 @@ func killAttackerRow(attacker api.KillmailAttacker, index int, total, highest in
 		var templ_7745c5c3_Var183 string
 		templ_7745c5c3_Var183, templ_7745c5c3_Err = templ.JoinStringErrs(killPercent(attacker.DamageDone, total))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 822, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kill_detail.templ`, Line: 823, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var183))
 		if templ_7745c5c3_Err != nil {

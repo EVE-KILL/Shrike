@@ -94,12 +94,6 @@ func marketTreeLinkClass(active, path string) string {
 	}
 	return ""
 }
-func marketIntroEyebrow(view marketPageView) string {
-	if view.Active == nil {
-		return "Regional market"
-	}
-	return "Market group"
-}
 func marketIntroTitle(view marketPageView) string {
 	if view.Active == nil {
 		return "Market Explorer"

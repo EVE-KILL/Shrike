@@ -162,7 +162,7 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
       applied = q<HTMLElement>("[data-advanced-applied]");
     const label = node(
       "span",
-      "text-fine text-gray-600 font-medium uppercase tracking-wider mr-0.5",
+      "text-fine text-secondary font-medium uppercase tracking-wider mr-0.5",
       "Applied",
     );
     applied.replaceChildren(
@@ -209,8 +209,8 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
           : "rounded-r-lg border-l-0") +
         " " +
         (active
-          ? "bg-blue-500/20 text-blue-400 border-blue-400/40"
-          : "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:text-blue-400");
+          ? "bg-blue-500/20 text-link border-blue-400/40"
+          : "bg-white/[0.04] text-gray-400 border-white/[0.08] hover:text-link");
     }
     q<HTMLElement>("[data-advanced-copy]").hidden = q("[data-advanced-clear]").hidden = !hasAdvancedFilters(f);
     q<HTMLElement>("[data-advanced-panels]").hidden = q("[data-advanced-sort]").hidden = collapsed;
@@ -437,7 +437,7 @@ function createAdvancedSearch(root:HTMLElement,io:AdvancedSearchController) {
             [
               "attacker",
               "Attacker",
-              "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30",
+              "bg-blue-500/20 text-link hover:bg-blue-500/30",
             ],
           ] as const)
             actions.append(

@@ -10,7 +10,7 @@ import (
 templ homepage(view homeView) {
 	<h1 class="sr-only">EVE-KILL — EVE Online Killboard</h1>
 	<h2 class="sr-only">The EVE Killboard: real-time killmail feed, top pilots, corporations, alliances, battle reports, and ship fitting analysis for EVE Online.</h2>
-	<div class="homepage" data-controller="home" data-action="click->home#click input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show">
+	<div class="homepage" data-controller="home" data-action="click->home#click keydown->home#keydown input->home#input focusin->home#focus focusout->home#focus error->home#imageError:capture popstate@window->home#syncTab hashchange@window->home#syncTab visibilitychange@document->home#visibility pagehide@window->home#hide pageshow@window->home#show">
 		@mostValuable(view.Valuable, "kills", false)
 		<div class="home-grid">
 			<div class="home-kills">
@@ -28,7 +28,7 @@ templ homepage(view homeView) {
 templ topBox(box topBoxView) {
 	if len(box.Entries) > 0 {
 		<section class="top-box glass-panel" data-top-type={ box.DataType }>
-			<h3>{ box.Title }</h3>
+			<h2>{ box.Title }</h2>
 			<div class="top-box-entries">
 				for index, entry := range box.Entries {
 					<a class="top-box-entry" href={ topEntryPath(box.DataType, entry.ID) }>
@@ -58,20 +58,21 @@ templ topBox(box topBoxView) {
 templ mostValuable(kills []api.ValuableKill, kind string, compact bool) {
 	<section class="valuable glass-panel" id="most-valuable" data-kind={ kind }>
 		<div class="valuable-tabs" role="tablist" aria-label="Most valuable kills">
-			<button type="button" class={ valuableTabClass(kind, "kills") } role="tab" aria-selected={ strconv.FormatBool(kind == "kills") } data-valuable-tab="kills" data-focus-key="valuable-tab:kills"><span class="tab-long">Most Valuable Kills</span><span class="tab-short">Kills</span></button>
-			<button type="button" class={ valuableTabClass(kind, "ships") } role="tab" aria-selected={ strconv.FormatBool(kind == "ships") } data-valuable-tab="ships" data-focus-key="valuable-tab:ships"><span class="tab-long">Most Valuable Ships</span><span class="tab-short">Ships</span></button>
-			<button type="button" class={ valuableTabClass(kind, "structures") } role="tab" aria-selected={ strconv.FormatBool(kind == "structures") } data-valuable-tab="structures" data-focus-key="valuable-tab:structures"><span class="tab-long">Most Valuable Structures</span><span class="tab-short">Structures</span></button>
+			<button type="button" class={ valuableTabClass(kind, "kills") } role="tab" aria-selected={ strconv.FormatBool(kind == "kills") } id="valuable-tab-kills" aria-controls="valuable-panel" tabindex={ killBoolClass(kind == "kills", "0", "-1") } data-valuable-tab="kills" data-focus-key="valuable-tab:kills"><span class="tab-long">Most Valuable Kills</span><span class="tab-short">Kills</span></button>
+			<button type="button" class={ valuableTabClass(kind, "ships") } role="tab" aria-selected={ strconv.FormatBool(kind == "ships") } id="valuable-tab-ships" aria-controls="valuable-panel" tabindex={ killBoolClass(kind == "ships", "0", "-1") } data-valuable-tab="ships" data-focus-key="valuable-tab:ships"><span class="tab-long">Most Valuable Ships</span><span class="tab-short">Ships</span></button>
+			<button type="button" class={ valuableTabClass(kind, "structures") } role="tab" aria-selected={ strconv.FormatBool(kind == "structures") } id="valuable-tab-structures" aria-controls="valuable-panel" tabindex={ killBoolClass(kind == "structures", "0", "-1") } data-valuable-tab="structures" data-focus-key="valuable-tab:structures"><span class="tab-long">Most Valuable Structures</span><span class="tab-short">Structures</span></button>
 		</div>
-		if len(kills) == 0 {
-			<p class="valuable-empty">Nothing in the last 7d</p>
-		}
-		if len(kills) > 0 {
-			<div class={ valuableGridClass(compact) } role="tabpanel">
-				for index, kill := range kills {
-					@valuableCard(kill, index, compact)
-				}
-			</div>
-		}
+		<div id="valuable-panel" role="tabpanel" aria-labelledby={ "valuable-tab-" + kind } tabindex="0">
+			if len(kills) == 0 {
+				<p class="valuable-empty">Nothing in the last 7d</p>
+			} else {
+				<div class={ valuableGridClass(compact) }>
+					for index, kill := range kills {
+						@valuableCard(kill, index, compact)
+					}
+				</div>
+			}
+		</div>
 	</section>
 }
 
@@ -102,7 +103,7 @@ templ killList(page api.KilllistPage, options killListOptions) {
 				}
 				<div class="kill-limits" aria-label="Kills per page">
 					for _, limit := range []int{10, 25, 50, 100} {
-						<button type="button" class={ killLimitClass(limit, options.Limit) } data-kill-limit={ strconv.Itoa(limit) } data-focus-key={ "kill-limit:" + strconv.Itoa(limit) }>{ strconv.Itoa(limit) }</button>
+						<button type="button" class={ killLimitClass(limit, options.Limit) } aria-pressed={ strconv.FormatBool(limit == options.Limit) } data-kill-limit={ strconv.Itoa(limit) } data-focus-key={ "kill-limit:" + strconv.Itoa(limit) }>{ strconv.Itoa(limit) }</button>
 					}
 				</div>
 				if options.QuickFilter {

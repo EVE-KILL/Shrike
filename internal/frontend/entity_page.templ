@@ -10,14 +10,22 @@ templ entityPage(view entityPageView) {
 	<div class="entity-page" style={ entityHeaderStyle(view) } data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-old-portrait={ strconv.FormatBool(view.HasOldPortrait) } data-entity-ready="false" data-controller="entity-navigation" data-action="click->entity-navigation#click error->entity-navigation#imageError:capture resize@window->entity-navigation#reveal popstate@window->entity-navigation#history pagehide@window->entity-navigation#hide pageshow@window->entity-navigation#show">
 		<link rel="stylesheet" href={ assetURL("entity.css") }/>
 		@entityHeader(view)
+		<nav class="entity-tabs" aria-label={ view.Name + " pages" }>
+			for _, tab := range view.Tabs {
+				<a href={ entityTabURL(view, tab) } class={ entityTabClass(view.Tab, tab.ID) } aria-current={ entityTabCurrent(view.Tab, tab.ID) } aria-label={ tab.Label }>
+					@icon(tab.Icon)
+					<span>{ tab.Label }</span>
+				</a>
+			}
+		</nav>
 		if view.Kind != "faction" {
-			<section class="valuable glass-panel entity-valuable" data-kind="kills" data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-controller="entity-valuable" data-action="click->entity-valuable#click pagehide@window->entity-valuable#hide pageshow@window->entity-valuable#show">
+			<section class="valuable glass-panel entity-valuable" data-kind="kills" data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-controller="entity-valuable" data-action="click->entity-valuable#click keydown->entity-valuable#keydown pagehide@window->entity-valuable#hide pageshow@window->entity-valuable#show">
 				<div class="valuable-tabs" role="tablist" aria-label="Most valuable kills">
-					<button type="button" class="valuable-tab active" data-entity-valuable="kills"><span class="tab-long">Most Valuable Kills</span><span class="tab-short">Kills</span></button>
-					<button type="button" class="valuable-tab" data-entity-valuable="ships"><span class="tab-long">Most Valuable Ships</span><span class="tab-short">Ships</span></button>
-					<button type="button" class="valuable-tab" data-entity-valuable="structures"><span class="tab-long">Most Valuable Structures</span><span class="tab-short">Structures</span></button>
+					<button type="button" class="valuable-tab active" data-entity-valuable="kills" role="tab" aria-selected="true" tabindex="0" id="entity-valuable-tab-kills" aria-controls="entity-valuable-panel"><span class="tab-long">Most Valuable Kills</span><span class="tab-short">Kills</span></button>
+					<button type="button" class="valuable-tab" data-entity-valuable="ships" role="tab" aria-selected="false" tabindex="-1" id="entity-valuable-tab-ships" aria-controls="entity-valuable-panel"><span class="tab-long">Most Valuable Ships</span><span class="tab-short">Ships</span></button>
+					<button type="button" class="valuable-tab" data-entity-valuable="structures" role="tab" aria-selected="false" tabindex="-1" id="entity-valuable-tab-structures" aria-controls="entity-valuable-panel"><span class="tab-long">Most Valuable Structures</span><span class="tab-short">Structures</span></button>
 				</div>
-				<div class="entity-valuable-content" data-entity-valuable-content><p>Loading valuable kills…</p></div>
+				<div class="entity-valuable-content" data-entity-valuable-content id="entity-valuable-panel" role="tabpanel" aria-labelledby="entity-valuable-tab-kills" tabindex="0"><p>Loading valuable kills…</p></div>
 			</section>
 			<details class="glass-panel entity-ship-classes" data-entity-ship-classes data-entity-kind={ view.Kind } data-entity-id={ strconv.FormatInt(view.ID, 10) } data-controller="entity-classes" data-action="pagehide@window->entity-classes#hide pageshow@window->entity-classes#show">
 				<summary>
@@ -27,14 +35,6 @@ templ entityPage(view entityPageView) {
 				<div data-entity-ship-content></div>
 			</details>
 		}
-		<nav class="entity-tabs" aria-label={ view.Name + " pages" }>
-			for _, tab := range view.Tabs {
-				<a href={ entityTabURL(view, tab) } class={ entityTabClass(view.Tab, tab.ID) } aria-current={ entityTabCurrent(view.Tab, tab.ID) } aria-label={ tab.Label }>
-					@icon(tab.Icon)
-					<span>{ tab.Label }</span>
-				</a>
-			}
-		</nav>
 		@entityMain(view)
 		<script type="module" src={ assetURL("entity.js") }></script>
 	</div>
