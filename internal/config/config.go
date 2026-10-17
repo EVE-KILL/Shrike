@@ -77,6 +77,8 @@ type Config struct {
 
 	// HTTP listener for whatever `serve` subcommand is running.
 	Port int
+	// LegacyDomain owns the historical API/image/WebSocket/MCP subdomains.
+	LegacyDomain string
 
 	// DataDir holds writable runtime state: ingress certificates and import caches.
 	DataDir string
@@ -204,6 +206,7 @@ func Load(explicitPath string) (*Config, error) {
 		256<<20,
 	)
 	c.Port = getInt("Port", "PORT", 4000)
+	c.LegacyDomain = get("LegacyDomain", "LEGACY_DOMAIN", "eve-kill.com")
 
 	c.DataDir = get("DataDir", "DATA_DIR", "./data")
 	c.NodeEnv = get("NodeEnv", "NODE_ENV", "development")

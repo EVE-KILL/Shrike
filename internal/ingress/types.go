@@ -39,6 +39,10 @@ type Config struct {
 	// Address is the listener, as host:port.
 	Address string
 
+	// LegacyDomain enables the api, images, ws and mcp subdomain aliases of
+	// this domain. Empty disables aliases; tenant hosts keep normal routing.
+	LegacyDomain string
+
 	// DataDir is where Caddy keeps its own state, including the development CA
 	// and localhost certificates when LocalHTTPS is enabled.
 	DataDir string

@@ -298,9 +298,10 @@ func (m *Manager) Status() Status {
 //  1. /health and /ready go through the same-origin API adapter.
 //     Kubernetes probes by pod IP with no useful Host header, so this route
 //     matches on path alone rather than relying on DNS.
-//  2. /ws bypasses page rendering and reaches the WebSocket relay.
-//  3. /api, /auth, and /images share the site's API registry.
-//  4. Everything else goes to the Go frontend. Unmatched is the frontend by
+//  2. Legacy subdomains select their surface and add its canonical path prefix.
+//  3. /ws bypasses page rendering and reaches the WebSocket relay.
+//  4. /api, /auth, and /images share the site's API registry.
+//  5. Everything else goes to the Go frontend. Unmatched is the frontend by
 //     definition, which is what lets tenant custom domains work without ever
 //     being enumerated here.
 //
@@ -322,15 +323,19 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 		}
 	}
 
-	surfaceRoute := func(match map[string]any, describe, surface string) error {
+	surfaceRoute := func(match map[string]any, describe, surface, prefix, root string) error {
 		if _, ok := m.surfaces[surface]; !ok {
 			return fmt.Errorf("surface %q is routed but not registered", surface)
 		}
+		handler := map[string]any{"handler": "shrike", "surface": surface}
+		if prefix != "" {
+			handler["path_prefix"] = prefix
+		}
+		if root != "" {
+			handler["root_path"] = root
+		}
 		route := map[string]any{
-			"handle": loggedHandlers(map[string]any{
-				"handler": "shrike",
-				"surface": surface,
-			}),
+			"handle":   loggedHandlers(handler),
 			"terminal": true,
 		}
 		if match != nil {
@@ -344,9 +349,28 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	// Path-only probes keep Kubernetes independent of DNS and Host.
 	if err := surfaceRoute(
 		map[string]any{"path": []string{"/health", "/ready"}},
-		"path /health, /ready", SurfaceSameOrigin,
+		"path /health, /ready", SurfaceSameOrigin, "", "",
 	); err != nil {
 		return nil, nil, nil, err
+	}
+
+	// Legacy subdomains now reach Caddy directly from cloudflared. Match only
+	// the configured domain, preserving arbitrary custom-board hostnames.
+	if domain := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(cfg.LegacyDomain), ".")); domain != "" {
+		if strings.ContainsAny(domain, "/\\:* \t\r\n") {
+			return nil, nil, nil, errors.New("ingress: legacy domain must be a hostname without a port")
+		}
+		for _, alias := range []struct{ name, surface, prefix, root string }{
+			{"api", SurfaceSameOrigin, "/api", ""},
+			{"images", SurfaceSameOrigin, "/images", ""},
+			{"ws", SurfaceWS, "/ws", ""},
+			{"mcp", SurfaceSameOrigin, "/api", "/api/mcp"},
+		} {
+			host := alias.name + "." + domain
+			if err := surfaceRoute(map[string]any{"host": []string{host}}, "host "+host, alias.surface, alias.prefix, alias.root); err != nil {
+				return nil, nil, nil, err
+			}
+		}
 	}
 
 	// WebSockets share the frontend origin but use a dedicated handler. A
@@ -354,19 +378,19 @@ func (m *Manager) buildConfig() (map[string]any, []ListenerStatus, []RouteStatus
 	// while still letting custom domains use their own origin for live data.
 	if err := surfaceRoute(
 		map[string]any{"path": []string{"/ws", "/ws/*"}},
-		"path /ws, /ws/*", SurfaceWS,
+		"path /ws, /ws/*", SurfaceWS, "", "",
 	); err != nil {
 		return nil, nil, nil, err
 	}
 
 	if err := surfaceRoute(
 		map[string]any{"path": []string{"/api", "/api/*", "/auth", "/auth/*", "/images", "/images/*"}},
-		"path /api, /api/*, /auth, /auth/*, /images, /images/*", SurfaceSameOrigin,
+		"path /api, /api/*, /auth, /auth/*, /images, /images/*", SurfaceSameOrigin, "", "",
 	); err != nil {
 		return nil, nil, nil, err
 	}
 	// A registered frontend is required; missing wiring must fail startup.
-	if err := surfaceRoute(nil, "(default)", SurfaceFrontend); err != nil {
+	if err := surfaceRoute(nil, "(default)", SurfaceFrontend, "", ""); err != nil {
 		return nil, nil, nil, err
 	}
 

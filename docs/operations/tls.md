@@ -1,19 +1,27 @@
 # TLS
 
-This document describes local HTTPS and the planned Cloudflare origin TLS
-configuration.
+This document describes local HTTPS and the production Cloudflare Tunnel.
 
 ## Current behavior
 
 | Environment | Client connection | Origin connection | Certificate |
 | --- | --- | --- | --- |
 | Development | HTTPS | Direct to Caddy | Caddy internal CA |
-| Production | HTTPS to Cloudflare | HTTP to Caddy | Cloudflare edge certificate |
+| Production | HTTPS to Cloudflare | HTTP over pod loopback to Caddy | Cloudflare edge certificate |
 
 Development Caddy supports HTTP/1.1, HTTP/2, and HTTP/3.
 
-Production Cloudflare currently uses HTTP/2 or HTTP/1.1 for origin connections.
-Cloudflare enables HTTP/2 origin connections by default.
+Production runs a Cloudflared container beside Shrike in each serve pod. The
+tunnel is encrypted between Cloudflare and Cloudflared; only the final
+`http://127.0.0.1:4000` connection is plain HTTP/1.1. Browser-facing HTTP/2 and
+HTTP/3 terminate at Cloudflare independently of that loopback connection.
+
+No Nginx proxy or Bun-era render-concurrency limiter is required. Caddy invokes
+the Go handlers directly, including the legacy `api`, `images`, `ws`, and `mcp`
+subdomain routes. `LEGACY_DOMAIN` defaults to `eve-kill.com`; other tenant hosts
+keep the normal page/API/WebSocket path routing. The original Host, query,
+request body, cookies, Cloudflare client IP and HTTPS forwarding header survive
+the path adaptation. Caddy replaces `X-Forwarded-Host` with the actual Host.
 
 ## Start local HTTPS
 
@@ -77,21 +85,25 @@ Run `make dev-trust` if the local root certificate is not trusted on macOS.
 
 Do not commit or copy `${DATA_DIR}/caddy`. This directory contains private keys.
 
-## Add production origin TLS
+## Optional production origin TLS
 
-Status: Planned.
+Status: Not enabled. Plain HTTP over pod loopback is the chosen production
+transport. The following is an optional future change, not a deployment gate.
 
 Use this connection path:
 
 ```text
-Browser -- HTTPS and HTTP/3 --> Cloudflare -- HTTPS and HTTP/2 --> Caddy
+Browser -- HTTPS --> Cloudflare -- encrypted tunnel --> Cloudflared -- HTTPS/HTTP2 --> Caddy
 ```
 
-TLS protects the Cloudflare-to-origin connection. HTTP/2 multiplexing reduces
-the number of origin connections.
+TLS would encrypt the final loopback connection and permit HTTP/2 multiplexing
+there. Measure an actual benefit before adding certificate management.
 
-Use a Cloudflare Origin CA certificate for the origin. Cloudflare accepts this
-certificate with `Full (strict)` mode.
+Use a Cloudflare Origin CA certificate for the origin. Cloudflared must validate
+its issuer and expected server name. Configure `caPool` with the issuing root,
+keep `noTLSVerify` false, and set `http2Origin` true. The tunnel's origin TLS
+settings are separate from the zone's encryption mode for conventional proxied
+origins.
 
 Store the certificate and private key in a Kubernetes TLS secret. Mount the
 secret read-only in the `serve` container.

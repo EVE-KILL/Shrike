@@ -167,10 +167,11 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 		localHTTPS := mode.Name != "dev" && !cfg.IsProduction()
 
 		if err := manager.Start(ctx, ingress.Config{
-			Address:    fmt.Sprintf(":%d", port),
-			DataDir:    cfg.DataDir,
-			LogLevel:   cfg.LogLevel,
-			LocalHTTPS: localHTTPS,
+			Address:      fmt.Sprintf(":%d", port),
+			LegacyDomain: cfg.LegacyDomain,
+			DataDir:      cfg.DataDir,
+			LogLevel:     cfg.LogLevel,
+			LocalHTTPS:   localHTTPS,
 		}); err != nil {
 			return fmt.Errorf("starting embedded Caddy ingress: %w", err)
 		}

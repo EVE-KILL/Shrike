@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
@@ -38,6 +39,10 @@ func init() {
 type shrikeHandler struct {
 	// Surface selects which of Manager's handlers serves the request.
 	Surface string `json:"surface,omitempty"`
+	// PathPrefix adapts legacy subdomain URLs before invoking the surface.
+	PathPrefix string `json:"path_prefix,omitempty"`
+	// RootPath is the legacy MCP root alias, whose canonical URL is /api/mcp.
+	RootPath string `json:"root_path,omitempty"`
 
 	handler http.Handler
 }
@@ -72,6 +77,37 @@ func (h *shrikeHandler) Provision(caddy.Context) error {
 }
 
 func (h *shrikeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, _ caddyhttp.Handler) error {
+	// cloudflared preserves the public Host. Do not let a client-supplied
+	// forwarding header override it now that Nginx no longer replaces it.
+	r.Header.Set("X-Forwarded-Host", r.Host)
+	if h.PathPrefix != "" {
+		path := r.URL.Path
+		if path == "" || path == "/" {
+			if h.RootPath != "" {
+				path = h.RootPath
+			} else {
+				path = h.PathPrefix + "/"
+			}
+		} else if path != h.PathPrefix && !strings.HasPrefix(path, h.PathPrefix+"/") {
+			path = h.PathPrefix + path
+		}
+		if path != r.URL.Path {
+			// Preserve Host, query, body and context. Clone the URL so the access
+			// logger still records the client's public path. Already-prefixed
+			// requests keep working during the rollout behind the old proxy.
+			originalPath := r.URL.Path
+			r = r.Clone(r.Context())
+			r.URL.Path = path
+			if r.URL.RawPath != "" {
+				if originalPath == "" || originalPath == "/" {
+					r.URL.RawPath = ""
+				} else {
+					r.URL.RawPath = h.PathPrefix + r.URL.RawPath
+				}
+			}
+			r.RequestURI = r.URL.RequestURI()
+		}
+	}
 	h.handler.ServeHTTP(w, r)
 	return nil
 }

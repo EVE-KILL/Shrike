@@ -134,6 +134,12 @@ func Handler(
 	streamable := sdkmcp.NewStreamableHTTPHandler(
 		func(*http.Request) *sdkmcp.Server { return server },
 		&sdkmcp.StreamableHTTPOptions{
+			// This is the public, stateless HTTP API, not a machine-local MCP
+			// service. cloudflared connects over pod loopback while preserving
+			// the public Host, which the SDK's local-service rebinding guard
+			// would reject. Keep the same public transport behavior as when the
+			// connector reached Shrike through its ClusterIP.
+			DisableLocalhostProtection:   true,
 			Stateless:                    true,
 			JSONResponse:                 true,
 			Logger:                       logger,

@@ -22,6 +22,7 @@ func TestWebSocketUpgradeThroughCaddy(t *testing.T) {
 	port := freePort(t)
 	cfg := testConfig()
 	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
+	cfg.LegacyDomain = "example.test"
 
 	wsServer := shrikewebsocket.New(nil, zerolog.Nop())
 	surfaces := testSurfaces()
@@ -71,6 +72,23 @@ func TestWebSocketUpgradeThroughCaddy(t *testing.T) {
 	writeCancel()
 	if pong := readWSObject(t, conn); pong["type"] != "pong" {
 		t.Fatalf("pong = %#v", pong)
+	}
+
+	legacy, _, err := coderws.Dial(ctx, "ws"+strings.TrimPrefix(base, "http")+"/status", &coderws.DialOptions{Host: "ws.example.test"})
+	if err != nil {
+		t.Fatalf("legacy websocket dial through Caddy: %v", err)
+	}
+	t.Cleanup(func() { _ = legacy.CloseNow() })
+	if welcome := readWSObject(t, legacy); welcome["endpoint"] != "/ws/status" {
+		t.Fatalf("legacy welcome = %#v", welcome)
+	}
+	legacyCtx, legacyCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer legacyCancel()
+	if err := legacy.Write(legacyCtx, coderws.MessageText, []byte(`{"action":"ping"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if pong := readWSObject(t, legacy); pong["type"] != "pong" {
+		t.Fatalf("legacy pong = %#v", pong)
 	}
 }
 
