@@ -20,7 +20,7 @@
     "flatbuffers": "25.2.10"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.142",
+    "@iconify-json/lucide": "1.2.145",
     "@iconify/utils": "3.1.7",
     "@tailwindcss/node": "4.3.3",
     "@tailwindcss/oxide": "4.3.3",
@@ -32,6 +32,6 @@
     "happy-dom": "21.0.3",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "5.0.3"
+    "vitest": "5.0.5"
   }
 }
