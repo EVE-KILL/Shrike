@@ -15,23 +15,23 @@
   "dependencies": {
     "@evekill/dogma": "file:dogma",
     "@hotwired/stimulus": "3.2.2",
-    "d3-contour": "4.0.2",
-    "d3-delaunay": "6.0.4",
+    "d3-contour": "4.0.3",
+    "d3-delaunay": "6.0.6",
     "flatbuffers": "25.2.10"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "1.2.145",
+    "@iconify-json/lucide": "1.2.151",
     "@iconify/utils": "3.1.7",
-    "@tailwindcss/node": "4.3.3",
-    "@tailwindcss/oxide": "4.3.3",
+    "@tailwindcss/node": "4.3.4",
+    "@tailwindcss/oxide": "4.3.4",
     "@types/d3-contour": "3.0.6",
     "@types/d3-delaunay": "6.0.4",
-    "@types/node": "26.6.5",
+    "@types/node": "26.6.6",
     "@typescript/typescript6": "6.0.2",
     "esbuild": "0.28.2",
-    "happy-dom": "21.0.3",
+    "happy-dom": "21.0.4",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   }
 }
