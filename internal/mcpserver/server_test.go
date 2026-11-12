@@ -11,6 +11,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -165,6 +166,115 @@ func TestStreamableHTTPListsToolsWithoutSessionState(t *testing.T) {
 	for _, tool := range payload.Result.Tools {
 		if tool["inputSchema"] == nil || tool["outputSchema"] == nil {
 			t.Errorf("%v is missing an input or output schema", tool["name"])
+		}
+	}
+}
+
+// listedInputSchemas returns the input schema each tool publishes to clients.
+func listedInputSchemas(t *testing.T) map[string]*jsonschema.Schema {
+	t.Helper()
+	server, err := NewServer(Dependencies{}, "test", nil)
+	if err != nil {
+		t.Fatalf("NewServer: %v", err)
+	}
+	serverTransport, clientTransport := sdkmcp.NewInMemoryTransports()
+	serverSession, err := server.Connect(t.Context(), serverTransport, nil)
+	if err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	t.Cleanup(func() { _ = serverSession.Close() })
+	client := sdkmcp.NewClient(&sdkmcp.Implementation{
+		Name: "shrike-test", Version: "test",
+	}, nil)
+	clientSession, err := client.Connect(t.Context(), clientTransport, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = clientSession.Close() })
+	result, err := clientSession.ListTools(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("list tools: %v", err)
+	}
+	schemas := make(map[string]*jsonschema.Schema, len(result.Tools))
+	for _, tool := range result.Tools {
+		data, err := json.Marshal(tool.InputSchema)
+		if err != nil {
+			t.Fatalf("%s: encode input schema: %v", tool.Name, err)
+		}
+		schema := &jsonschema.Schema{}
+		if err := json.Unmarshal(data, schema); err != nil {
+			t.Fatalf("%s: decode input schema: %v", tool.Name, err)
+		}
+		schemas[tool.Name] = schema
+	}
+	return schemas
+}
+
+// A client validates arguments against the published schema before it calls a
+// tool. An input that only null satisfies cannot be used at all.
+func TestToolInputsAcceptAValue(t *testing.T) {
+	t.Parallel()
+	for name, schema := range listedInputSchemas(t) {
+		for property, propertySchema := range schema.Properties {
+			candidates := []any{"x", 1, 1.5, true, []any{}, map[string]any{}}
+			candidates = append(candidates, propertySchema.Enum...)
+			resolved, err := propertySchema.Resolve(nil)
+			if err != nil {
+				t.Errorf("%s.%s: resolve schema: %v", name, property, err)
+				continue
+			}
+			accepted := false
+			for _, candidate := range candidates {
+				if resolved.Validate(candidate) == nil {
+					accepted = true
+					break
+				}
+			}
+			if !accepted {
+				data, _ := json.Marshal(propertySchema)
+				t.Errorf("%s.%s accepts no value, so clients cannot set it: %s",
+					name, property, data)
+			}
+		}
+	}
+}
+
+func TestOptionalNameOrIDFiltersAcceptNamesAndIDs(t *testing.T) {
+	t.Parallel()
+	schemas := listedInputSchemas(t)
+	cases := map[string][]map[string]any{
+		"ships_used": {
+			{"entity": 99015392, "system": 30003731, "region": 10000047, "ship": 622},
+			{"entity": "Forced Euthanasia.", "system": "XHQ-7V", "region": "Providence", "ship": "Stabber"},
+			{"entity": 99015392},
+		},
+		"me_ships_used": {
+			{"me": "Karbowiak", "system": 30003731},
+			{"me": "Karbowiak", "ship": "Drake"},
+		},
+		"kills_with": {
+			{"entity": 1, "partner": 2, "victim_ship": 670, "system": "Jita"},
+		},
+		"coalition_graph": {
+			{"focus_alliance": 1354830081},
+			{"focus_alliance": "Goonswarm Federation"},
+		},
+	}
+	for name, inputs := range cases {
+		schema := schemas[name]
+		if schema == nil {
+			t.Errorf("%s is not listed", name)
+			continue
+		}
+		resolved, err := schema.Resolve(nil)
+		if err != nil {
+			t.Errorf("%s: resolve schema: %v", name, err)
+			continue
+		}
+		for _, input := range inputs {
+			if err := resolved.Validate(input); err != nil {
+				t.Errorf("%s rejects %v: %v", name, input, err)
+			}
 		}
 	}
 }
