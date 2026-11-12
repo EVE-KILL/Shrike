@@ -133,11 +133,11 @@ func (StringOrInt64) Schema(_ huma.Registry) *huma.Schema {
 func mcpSchemaOptions() *jsonschema.ForOptions {
 	return &jsonschema.ForOptions{
 		TypeSchemas: map[reflect.Type]*jsonschema.Schema{
+			// A type list, not oneOf: for a pointer field the generator adds
+			// "null" to this list. Beside oneOf it emitted a null-only type
+			// that no name or identifier could satisfy.
 			reflect.TypeFor[StringOrInt64](): {
-				OneOf: []*jsonschema.Schema{
-					{Type: "string"},
-					{Type: "integer"},
-				},
+				Types: []string{"string", "integer"},
 			},
 			reflect.TypeFor[StatsWindow](): statsWindowJSONSchema(),
 		},
