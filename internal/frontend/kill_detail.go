@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -55,6 +56,8 @@ type killToolGroup struct {
 }
 
 func killToolIcon(icon string) string { return assetURL(strings.TrimPrefix(icon, "/")) }
+
+var eveShipFitKillmailHash = regexp.MustCompile(`^[0-9a-f]+$`)
 
 var killSlotOrder = []struct{ slot, label string }{
 	{"high", "High Slots"}, {"mid", "Mid Slots"}, {"low", "Low Slots"},
@@ -226,8 +229,9 @@ func killToolGroups(view killDetailView) []killToolGroup {
 		mission = append(mission, link("Region", k.RegionName, "https://evemissioneer.com/r/"+region))
 	}
 	add("Missioneer", "/remotes/evemissioneer.png", mission...)
-	if ship != "" {
-		add("EveShip.fit", "/remotes/eveship-fit.png", link("Fitting", k.Victim.ShipName, "https://eveship.fit/fit/"+killID))
+	if hash := strings.ToLower(k.KillmailHash); ship != "" && k.KillmailID > 0 && eveShipFitKillmailHash.MatchString(hash) {
+		// EVE Ship Fit imports the original killmail from ESI using this reference.
+		add("EveShip.fit", "/remotes/eveship-fit.png", link("Fitting", k.Victim.ShipName, "https://eveship.fit/?fit=killmail:"+killID+"/"+hash))
 	}
 	everef := []killToolLink{}
 	if group != "" {

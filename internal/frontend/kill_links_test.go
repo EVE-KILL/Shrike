@@ -10,6 +10,36 @@ import (
 	"golang.org/x/net/html"
 )
 
+func TestKillToolLinks(t *testing.T) {
+	const hash = "ec5b2b155071bcd2980281307cf24916f88cdaad"
+	data := api.KillmailPageData{
+		KillmailID:   140072252,
+		KillmailHash: strings.ToUpper(hash),
+		Victim:       api.KillmailVictim{ShipTypeID: ptrKill[int64](17713), ShipName: "Stabber Fleet Issue"},
+	}
+	var body strings.Builder
+	if err := killToolsMenu(killBuildView(data)).Render(context.Background(), &body); err != nil {
+		t.Fatal(err)
+	}
+	rendered := body.String()
+	want := `href="https://eveship.fit/?fit=killmail:140072252/` + hash + `"`
+	if !strings.Contains(rendered, want) {
+		t.Errorf("menu missing the EVE Ship Fit killmail import link %s", want)
+	}
+	if links, nofollow := strings.Count(rendered, "<a "), strings.Count(rendered, `rel="noopener noreferrer nofollow"`); links == 0 || nofollow != links {
+		t.Errorf("%d of %d tool links have nofollow", nofollow, links)
+	}
+
+	for _, invalid := range []string{"", "invalid-hash"} {
+		data.KillmailHash = invalid
+		for _, tool := range killBuildView(data).Tools {
+			if tool.Name == "EveShip.fit" {
+				t.Errorf("EVE Ship Fit link was offered for hash %q", invalid)
+			}
+		}
+	}
+}
+
 func TestKillIdentityNamesLinkToEntities(t *testing.T) {
 	victim := api.KillmailVictim{
 		CharacterID: ptrKill[int64](42), CharacterName: "Pilot",

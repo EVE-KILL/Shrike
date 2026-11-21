@@ -257,7 +257,7 @@ templ killToolLinks(view killDetailView) {
 					{ tool.Name }
 				</h3>
 				for _,link:=range tool.Links {
-					<a href={ link.URL } target="_blank" rel="noopener noreferrer">
+					<a href={ link.URL } target="_blank" rel="noopener noreferrer nofollow">
 						<span>{ link.Label }</span>
 						if link.Description!="" {
 							<small>{ link.Description }</small>

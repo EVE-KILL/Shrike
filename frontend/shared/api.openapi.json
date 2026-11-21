@@ -306,6 +306,8 @@
               3
             ],
             "format": "int32",
+            "maximum": 32767,
+            "minimum": -32768,
             "type": "integer"
           },
           "title": {
@@ -8641,6 +8643,8 @@
               1
             ],
             "format": "int32",
+            "maximum": 32767,
+            "minimum": -32768,
             "type": "integer"
           },
           "customHostname": {

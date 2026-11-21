@@ -1,6 +1,6 @@
 module github.com/eve-kill/shrike
 
-go 1.27.2
+go 1.27.4
 
 replace github.com/eve-kill/shrike/frontend => ./frontend
 
