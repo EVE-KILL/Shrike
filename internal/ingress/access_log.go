@@ -1,7 +1,6 @@
 package ingress
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -10,90 +9,41 @@ import (
 	"strings"
 	"time"
 
-	"github.com/caddyserver/caddy/v2"
-	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
+	"github.com/felixge/httpsnoop"
 	"github.com/rs/zerolog"
 )
 
-// accessLogHandler emits one nginx-style access line for every completed
-// request. It wraps the origin handler inside each route, so it covers the Go
-// surfaces, including frontend pages and WebSocket upgrades.
-type accessLogHandler struct {
-	log zerolog.Logger
-}
-
-func (accessLogHandler) CaddyModule() caddy.ModuleInfo {
-	return caddy.ModuleInfo{
-		ID:  "http.handlers.shrike_access_log",
-		New: func() caddy.Module { return new(accessLogHandler) },
-	}
-}
-
-func (h *accessLogHandler) Provision(caddy.Context) error {
-	m := activeManager.Load()
-	if m == nil {
-		return errors.New("ingress: no active manager; the access logger cannot be used outside a running Manager")
-	}
-	h.log = m.log
-	return nil
-}
-
-func (h *accessLogHandler) ServeHTTP(
-	w http.ResponseWriter,
-	r *http.Request,
-	next caddyhttp.Handler,
-) error {
-	started := time.Now()
-	if isWebSocketUpgrade(r) {
-		err := next.ServeHTTP(w, r)
-		status := http.StatusSwitchingProtocols
-		if err != nil {
-			var handlerErr caddyhttp.HandlerError
-			if errors.As(err, &handlerErr) && handlerErr.StatusCode != 0 {
-				status = handlerErr.StatusCode
-			} else {
-				status = http.StatusInternalServerError
-			}
+func accessLog(log zerolog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		started := time.Now()
+		upgraded := false
+		if isWebSocketUpgrade(r) {
+			// CaptureMetrics skips informational statuses, including a successful
+			// WebSocket handshake. Observe it while preserving Hijacker.
+			w = httpsnoop.Wrap(w, httpsnoop.Hooks{
+				WriteHeader: func(write httpsnoop.WriteHeaderFunc) httpsnoop.WriteHeaderFunc {
+					return func(status int) {
+						upgraded = upgraded || status == http.StatusSwitchingProtocols
+						write(status)
+					}
+				},
+			})
 		}
-		line := nginxAccessLine(r, status, 0, started, time.Since(started))
-		if err != nil {
-			h.log.Error().Err(err).Msg(line)
-		} else {
-			h.log.Info().Msg(line)
+		metrics := httpsnoop.CaptureMetrics(next, w, r)
+		if upgraded {
+			metrics.Code = http.StatusSwitchingProtocols
 		}
-		return err
-	}
-
-	recorder := caddyhttp.NewResponseRecorder(w, nil, nil)
-	err := next.ServeHTTP(recorder, r)
-
-	status := recorder.Status()
-	if status == 0 {
-		var handlerErr caddyhttp.HandlerError
-		if errors.As(err, &handlerErr) && handlerErr.StatusCode != 0 {
-			status = handlerErr.StatusCode
-		} else {
-			status = http.StatusOK
+		// Healthy Kubernetes probes are frequent enough to bury useful traffic.
+		if r.URL.Path == "/health" && metrics.Code >= 200 && metrics.Code < 400 {
+			return
 		}
-	}
-
-	// Kubernetes probes run frequently enough to bury useful traffic. A
-	// healthy probe stays quiet, while any unhealthy response is still logged.
-	if r.URL.Path == "/health" && err == nil && status >= 200 && status < 400 {
-		return nil
-	}
-
-	line := nginxAccessLine(r, status, recorder.Size(), started, time.Since(started))
-	if err != nil || status >= http.StatusInternalServerError {
-		event := h.log.Error()
-		if err != nil {
-			event.Err(err)
+		line := nginxAccessLine(r, metrics.Code, metrics.Written, started, metrics.Duration)
+		if metrics.Code >= http.StatusInternalServerError {
+			log.Error().Msg(line)
+			return
 		}
-		event.Msg(line)
-	} else {
-		h.log.Info().Msg(line)
-	}
-	return err
+		log.Info().Msg(line)
+	})
 }
 
 func isWebSocketUpgrade(r *http.Request) bool {
@@ -115,7 +65,7 @@ func headerContainsToken(values []string, want string) bool {
 func nginxAccessLine(
 	r *http.Request,
 	status int,
-	size int,
+	size int64,
 	started time.Time,
 	elapsed time.Duration,
 ) string {
@@ -200,8 +150,3 @@ func sensitiveQueryKey(key string) bool {
 		return false
 	}
 }
-
-var (
-	_ caddy.Provisioner           = (*accessLogHandler)(nil)
-	_ caddyhttp.MiddlewareHandler = (*accessLogHandler)(nil)
-)

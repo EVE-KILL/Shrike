@@ -14,3 +14,4 @@
 {"id":14,"fit":{"ship_type_id":626,"modules":[],"drones":[{"type_id":2456,"state":"Active"},{"type_id":2456,"state":"Active"},{"type_id":2456,"state":"Active"},{"type_id":2456,"state":"Active"},{"type_id":2456,"state":"Active"}]},"skills":{}}
 {"id":15,"fit":{"ship_type_id":587,"modules":[{"type_id":438,"slot":{"type":"Medium","index":1},"state":"Active"},{"type_id":440,"slot":{"type":"Medium","index":2},"state":"Active"},{"type_id":11370,"slot":{"type":"High","index":1},"state":"Active"}],"drones":[]}}
 {"id":16,"fit":{"ship_type_id":587,"modules":[{"type_id":438,"slot":{"type":"Medium","index":1},"state":"Active"},{"type_id":440,"slot":{"type":"Medium","index":2},"state":"Active"},{"type_id":11370,"slot":{"type":"High","index":1},"state":"Active"}],"drones":[]},"skills":{}}
+{"id":17,"fit":{"ship_type_id":95630,"modules":[],"drones":[]}}

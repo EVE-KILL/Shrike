@@ -1,13 +1,13 @@
 # SDE converter
 
-Vendored from EVEShipFit/sde-patched at v12.3579973.0,
-commit `2ee8ea5334ed5f90da800fddc90a6fab0d6c2178`.
+Vendored from EVEShipFit/sde-patched at v14.3720952.0,
+commit `d6b270f9b7121b25e0820ec9d4037f593beb7952`.
 https://github.com/EVEShipFit/sde-patched
 
 The sde, patch and fbs implementations and regression tests are retained.
-Go import paths are rewritten under Shrike's internal package, and three generated
-Go files are normalized with gofmt. The schema, patch rules and conversion logic
-are unchanged. The CLI/web editor is omitted.
+Go import paths use Shrike's internal package. The generated Go files are
+formatted with gofmt. The vendor includes the schema, patch rules and conversion
+logic.
 The license, schemas and patches are retained. Root dogmadata wraps the existing
 cached CCP archive loader and stages a complete replacement bundle before rename.
 

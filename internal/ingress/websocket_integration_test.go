@@ -3,7 +3,6 @@ package ingress
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -15,29 +14,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Exercise a real WebSocket upgrade through embedded Caddy. Marker handlers
-// prove ordinary route ownership, but only an actual handshake proves Caddy's
-// response-writer wrappers preserve Hijacker all the way to Shrike's handler.
-func TestWebSocketUpgradeThroughCaddy(t *testing.T) {
-	port := freePort(t)
+// Upgrade a real connection to verify that the access logger preserves Hijacker.
+func TestWebSocketUpgradeThroughIngress(t *testing.T) {
 	cfg := testConfig()
-	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
 	cfg.LegacyDomain = "example.test"
 
 	wsServer := shrikewebsocket.New(nil, zerolog.Nop())
 	surfaces := testSurfaces()
 	surfaces[SurfaceWS] = wsServer
 	surfaces[SurfaceFrontend] = http.NotFoundHandler()
-	manager := New(surfaces, zerolog.Nop())
-	if err := manager.Start(context.Background(), cfg); err != nil {
-		t.Fatalf("Start: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = manager.Close()
-		wsServer.Close()
-	})
-
-	base := fmt.Sprintf("http://127.0.0.1:%d", port)
+	t.Cleanup(wsServer.Close)
+	base := startTestServer(t, cfg, surfaces)
 	for _, path := range []string{"/comments", "/status"} {
 		res, err := http.Get(base + path)
 		if err != nil {
@@ -55,7 +42,7 @@ func TestWebSocketUpgradeThroughCaddy(t *testing.T) {
 	conn, _, err := coderws.Dial(ctx,
 		"ws"+strings.TrimPrefix(base, "http")+"/ws/status", nil)
 	if err != nil {
-		t.Fatalf("websocket dial through Caddy: %v", err)
+		t.Fatalf("websocket dial through ingress: %v", err)
 	}
 	t.Cleanup(func() { _ = conn.CloseNow() })
 
@@ -76,7 +63,7 @@ func TestWebSocketUpgradeThroughCaddy(t *testing.T) {
 
 	legacy, _, err := coderws.Dial(ctx, "ws"+strings.TrimPrefix(base, "http")+"/status", &coderws.DialOptions{Host: "ws.example.test"})
 	if err != nil {
-		t.Fatalf("legacy websocket dial through Caddy: %v", err)
+		t.Fatalf("legacy websocket dial through ingress: %v", err)
 	}
 	t.Cleanup(func() { _ = legacy.CloseNow() })
 	if welcome := readWSObject(t, legacy); welcome["endpoint"] != "/ws/status" {

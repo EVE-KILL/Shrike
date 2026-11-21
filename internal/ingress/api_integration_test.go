@@ -3,7 +3,6 @@ package ingress
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/eve-kill/shrike/internal/api"
 	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog"
 )
 
 type healthyDB struct{}
@@ -29,26 +27,17 @@ func (healthyDB) QueryRow(context.Context, string, ...any) pgx.Row {
 	panic("unexpected QueryRow")
 }
 
-// Exercise the shared Huma API through Caddy. API schemas stay below /api
+// Exercise the shared Huma API through the HTTP listener. API schemas stay below /api
 // while image operations are served directly below /images.
-func TestSameOriginAPIAndImagesRouteThroughCaddy(t *testing.T) {
-	port := freePort(t)
-	cfg := testConfig()
-	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
-
+func TestSameOriginAPIAndImagesRouteThroughIngress(t *testing.T) {
 	opts := api.Options{Version: "test-version", Commit: "test-commit", DB: healthyDB{}}
 	apiService := api.New(opts)
-	m := New(map[string]http.Handler{
+	t.Cleanup(apiService.Close)
+	base := startTestServer(t, testConfig(), map[string]http.Handler{
 		SurfaceSameOrigin: apiService.Site(),
 		SurfaceWS:         api.WS(opts),
 		SurfaceFrontend:   http.NotFoundHandler(),
-	}, zerolog.Nop())
-	if err := m.Start(context.Background(), cfg); err != nil {
-		t.Fatalf("Start: %v", err)
-	}
-	t.Cleanup(func() { _ = m.Close() })
-
-	base := fmt.Sprintf("http://127.0.0.1:%d", port)
+	})
 	const host = "tenant.example.com"
 	res := requestWithHost(t, base+"/health", host)
 	body, _ := io.ReadAll(res.Body)

@@ -14,7 +14,7 @@ import {renderWheel,type WheelProps} from '../src/browser/fit-wheel'
 import {rankFitSuggestions,renderFitSuggestions,renderFitComparison,fitModuleDifference,type SuggestionsProps} from '../src/browser/fit-variants'
 
 // These results were captured from the four original pure JS renderers using
-// the same pinned 13.6.0 engine/SDE inputs below. Normal tests need no private
+// the same pinned engine and SDE inputs below. Normal tests need no private
 // archive and never regenerate expected output from the implementation.
 const decoded:unknown = JSON.parse(readFileSync(resolve(import.meta.dirname,'fixtures/fitting/render-source.json'),'utf8'))
 if(!isRecord(decoded)) throw new Error('Invalid fitting source captures')

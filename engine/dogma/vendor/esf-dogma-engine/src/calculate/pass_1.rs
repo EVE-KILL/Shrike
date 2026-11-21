@@ -5,7 +5,7 @@ use super::attribute_ids::{
     ATTRIBUTE_RADIUS_ID, ATTRIBUTE_SKILL_LEVEL_ID, ATTRIBUTE_VOLUME_ID,
 };
 use super::item::{Attribute, Item};
-use super::{Info, Objects, Projected};
+use super::{Info, Objects, Projected, is_mode, is_skill};
 use crate::fit::{DamageProfile, Fit, Mutation, ReactiveArmor, Security, Spool};
 use crate::projection::ProjectedBuff;
 
@@ -23,7 +23,7 @@ impl Item {
         })
     }
 
-    fn set_type_ids(&mut self, info: &impl Info) {
+    pub(super) fn set_type_ids(&mut self, info: &impl Info) {
         if let Some(r#type) = info.get_type(self.type_id) {
             self.group_id = r#type.group_id();
             self.category_id = r#type.category_id();
@@ -112,7 +112,8 @@ fn normalized(profile: DamageProfile) -> [f64; 4] {
 
 impl PassOne {
     pub fn pass(info: &impl Info, fit: &Fit) -> Objects {
-        let mut objects = Objects::new(fit.ship.type_id, fit.ship.mode);
+        let mode = fit.ship.mode.filter(|mode| is_mode(info, *mode));
+        let mut objects = Objects::new(fit.ship.type_id, mode);
 
         objects.ship.set_attributes(info);
         /* Only ships with a bonus that scales with it carry the attribute. */
@@ -138,13 +139,13 @@ impl PassOne {
             mode.set_attributes(info);
         }
 
-        /* This carries no attributes, but pass 2 still wants its category. */
-        objects.char.set_type_ids(info);
+        objects.char.set_attributes(info);
 
         /* What is aimed at the fit brings its own values; the type behind it
          * is only read for the category the stacking penalty needs. */
         for projected in &fit.incoming.effects {
             let mut item = Item::new_projected(projected.type_id);
+            item.quantity = projected.quantity;
 
             item.set_type_ids(info);
             for (attribute_id, value) in &projected.attributes {
@@ -160,6 +161,9 @@ impl PassOne {
         objects.buffs = resolve(info, &fit.incoming.buffs);
 
         for (skill_id, skill_level) in &fit.character.skills {
+            if !is_skill(info, *skill_id) {
+                continue;
+            }
             let mut skill = Item::new_fake(*skill_id);
 
             skill.set_attributes(info);
@@ -177,7 +181,7 @@ impl PassOne {
         });
 
         for fit_item in &fit.items {
-            let mut item = Item::new_fit(fit_item);
+            let mut item = Item::new_fit(info, fit_item);
 
             if item.is_calculated() {
                 match &fit_item.mutation {

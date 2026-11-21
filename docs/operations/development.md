@@ -98,8 +98,9 @@ Do not baseline an empty database: it needs the initial schema migration.
 
 If port 4000 is occupied, stop its existing server or choose another `DEV_PORT`.
 
-`dev` uses HTTP. To test HTTPS, stop it and run `./bin/shrike serve --port 4000` instead.
-Outside production, `serve` uses Caddy's local certificate authority. On macOS, `make dev-trust` installs its certificate.
+`dev` uses HTTP. To test HTTPS, stop it and run
+`./bin/shrike serve --port 4000 --tls-cert cert.pem --tls-key key.pem`
+with a trusted development certificate. See [local HTTPS](tls.md#local-https).
 
 Images use the local Go image service. The previous Nuxt remote-image proxy is removed.
 Configure `IMAGE_STORAGE_PATH` or the image object-store settings when image testing is needed.

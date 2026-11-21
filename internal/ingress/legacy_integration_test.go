@@ -1,19 +1,16 @@
 package ingress
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/eve-kill/shrike/internal/api"
-	"github.com/rs/zerolog"
 )
 
-func TestLegacySubdomainsThroughCaddy(t *testing.T) {
+func TestLegacySubdomainsThroughIngress(t *testing.T) {
 	type received struct {
 		Surface, Host, URI, Body, Method, ForwardedHost, Scheme, Cookie string
 	}
@@ -30,13 +27,8 @@ func TestLegacySubdomainsThroughCaddy(t *testing.T) {
 		})
 	}
 	cfg := testConfig()
-	cfg.Address = fmt.Sprintf("127.0.0.1:%d", freePort(t))
 	cfg.LegacyDomain = "example.test"
-	m := New(surfaces, zerolog.Nop())
-	if err := m.Start(context.Background(), cfg); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = m.Close() })
+	base := startTestServer(t, cfg, surfaces)
 
 	for _, tc := range []struct{ host, path, surface, want string }{
 		{"api.example.test", "/characters/123?x=a%2Fb&x=c", SurfaceSameOrigin, "/api/characters/123?x=a%2Fb&x=c"},
@@ -56,7 +48,7 @@ func TestLegacySubdomainsThroughCaddy(t *testing.T) {
 		{"api.other.test", "/characters/123", SurfaceFrontend, "/characters/123"},
 	} {
 		t.Run(tc.host+tc.path, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodPost, "http://"+cfg.Address+tc.path, strings.NewReader("original body"))
+			req, err := http.NewRequest(http.MethodPost, base+tc.path, strings.NewReader("original body"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -83,22 +75,17 @@ func TestLegacySubdomainsThroughCaddy(t *testing.T) {
 	}
 }
 
-func TestLegacyMCPInitializesThroughCaddy(t *testing.T) {
+func TestLegacyMCPInitializesThroughIngress(t *testing.T) {
 	service := api.New(api.Options{Version: "test", RequestGuard: api.NewRequestGuard()})
 	t.Cleanup(service.Close)
 	surfaces := testSurfaces()
 	surfaces[SurfaceSameOrigin] = service.Site()
 	cfg := testConfig()
-	cfg.Address = fmt.Sprintf("127.0.0.1:%d", freePort(t))
 	cfg.LegacyDomain = "eve-kill.com"
-	m := New(surfaces, zerolog.Nop())
-	if err := m.Start(context.Background(), cfg); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = m.Close() })
+	base := startTestServer(t, cfg, surfaces)
 	for _, path := range []string{"/", "/mcp", "/api/mcp"} {
 		body := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ingress-test","version":"1"}}}`
-		req, err := http.NewRequest(http.MethodPost, "http://"+cfg.Address+path, strings.NewReader(body))
+		req, err := http.NewRequest(http.MethodPost, base+path, strings.NewReader(body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -121,7 +108,7 @@ func TestLegacyDomainRejectsURLAndWildcard(t *testing.T) {
 	for _, domain := range []string{"https://example.test", "*.example.test", "example.test:4000"} {
 		cfg := testConfig()
 		cfg.LegacyDomain = domain
-		_, _, _, err := newTestManager(t, cfg).buildConfig()
+		_, err := newHandler(cfg.LegacyDomain, testSurfaces())
 		if err == nil {
 			t.Errorf("accepted invalid legacy domain %q", domain)
 		}

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DogmaEngineVersion = "13.6.0+ek.1"
+	DogmaEngineVersion = "15.2.0+ek.1"
 )
 
 // CalculateAndStoreStats evaluates the representative payload stored for a fit

@@ -1,141 +1,42 @@
 # TLS
 
-This document describes local HTTPS and the production Cloudflare Tunnel.
+## Production
 
-## Current behavior
+Cloudflare handles public HTTPS, HTTP/2 and HTTP/3. The tunnel from Cloudflare
+to Cloudflared is encrypted. In each serve pod, Cloudflared forwards requests
+over plain HTTP to Shrike on `127.0.0.1:4000`.
 
-| Environment | Client connection | Origin connection | Certificate |
-| --- | --- | --- | --- |
-| Development | HTTPS | Direct to Caddy | Caddy internal CA |
-| Production | HTTPS to Cloudflare | HTTP over pod loopback to Caddy | Cloudflare edge certificate |
+Shrike routes requests by host and path. It adapts the legacy `api`, `images`,
+`ws` and `mcp` subdomain paths and keeps normal routing for tenant hosts.
+`LEGACY_DOMAIN` defaults to `eve-kill.com`. Shrike sets `X-Forwarded-Host` from
+the request's Host and preserves the forwarding scheme and client address
+provided by Cloudflared.
 
-Development Caddy supports HTTP/1.1, HTTP/2, and HTTP/3.
+## Local HTTPS
 
-Production runs a Cloudflared container beside Shrike in each serve pod. The
-tunnel is encrypted between Cloudflare and Cloudflared; only the final
-`http://127.0.0.1:4000` connection is plain HTTP/1.1. Browser-facing HTTP/2 and
-HTTP/3 terminate at Cloudflare independently of that loopback connection.
-
-No Nginx proxy or Bun-era render-concurrency limiter is required. Caddy invokes
-the Go handlers directly, including the legacy `api`, `images`, `ws`, and `mcp`
-subdomain routes. `LEGACY_DOMAIN` defaults to `eve-kill.com`; other tenant hosts
-keep the normal page/API/WebSocket path routing. The original Host, query,
-request body, cookies, Cloudflare client IP and HTTPS forwarding header survive
-the path adaptation. Caddy replaces `X-Forwarded-Host` with the actual Host.
-
-## Start local HTTPS
-
-### Prerequisites
-
-- Set `NODE_ENV=development`.
-- Set `DATA_DIR` to a writable directory.
-- Build Shrike and its native fitting worker with `make build`.
-
-### Procedure
-
-1. Start Shrike.
-
-   ```sh
-   go run ./cmd/shrike serve
-   ```
-
-2. When using `make dev` on macOS, install the generated authority from a
-   separate foreground terminal:
-
-   ```sh
-   make dev-trust
-   ```
-
-   This command invokes `sudo` directly, so the password prompt remains attached
-   to the terminal. The embedded Caddy process does not attempt to read a
-   password through Air.
-
-3. Open `https://localhost:4001`.
-
-Use `localhost`. The certificate does not contain loopback IP addresses.
-
-A custom killboard uses `https://<subdomain>.localhost:4001`. Caddy signs a
-certificate for that name at the first request, from the same local authority.
-The board names are database rows, so the configuration cannot list them.
-
-A single `*.localhost` certificate would replace this, but Chromium and curl
-reject a wildcard whose parent is one label.
-
-The listener accepts HTTPS only. `http://localhost:4001` cannot use this
-listener.
-
-### Verification
-
-Run this command after Shrike reports `site listening`:
+Local development uses HTTP by default. For HTTPS, provision a certificate
+from a development CA trusted by the browser. Include `localhost` and the
+specific tenant names you intend to test in the certificate's SANs.
 
 ```sh
-curl --fail --show-error https://localhost:4001/health
+go run ./cmd/shrike serve --port 4000 --tls-cert cert.pem --tls-key key.pem
+curl --fail --show-error https://localhost:4000/health
 ```
 
-The command must return a successful health response.
-
-Caddy stores the local certificate authority under
-`${DATA_DIR}/caddy/pki/authorities/local`.
-
-### Recovery
-
-Read the Caddy startup error when the browser rejects the certificate.
-
-Run `make dev-trust` if the local root certificate is not trusted on macOS.
-
-Do not commit or copy `${DATA_DIR}/caddy`. This directory contains private keys.
+Pass both PEM files to start the HTTPS listener. The listener supports HTTP/1.1
+and HTTP/2. Keep the private key outside version control.
 
 ## Optional production origin TLS
 
-Status: Not enabled. Plain HTTP over pod loopback is the chosen production
-transport. The following is an optional future change, not a deployment gate.
+To enable HTTPS on the pod loopback connection, mount a certificate and key
+read-only and pass both file paths to `shrike serve`. Set the origin service
+URL to HTTPS in Cloudflared, configure the trusted CA and origin server name,
+and enable `http2Origin` if the origin should use HTTP/2. Configure Kubernetes
+probes for HTTPS on the same port.
 
-Use this connection path:
+The Cloudflare zone's encryption mode controls conventional proxied origins.
+The tunnel uses its own origin connection settings.
 
-```text
-Browser -- HTTPS --> Cloudflare -- encrypted tunnel --> Cloudflared -- HTTPS/HTTP2 --> Caddy
-```
-
-TLS would encrypt the final loopback connection and permit HTTP/2 multiplexing
-there. Measure an actual benefit before adding certificate management.
-
-Use a Cloudflare Origin CA certificate for the origin. Cloudflared must validate
-its issuer and expected server name. Configure `caPool` with the issuing root,
-keep `noTLSVerify` false, and set `http2Origin` true. The tunnel's origin TLS
-settings are separate from the zone's encryption mode for conventional proxied
-origins.
-
-Store the certificate and private key in a Kubernetes TLS secret. Mount the
-secret read-only in the `serve` container.
-
-Do not give Shrike a Cloudflare certificate-management token. The running
-service does not need certificate creation rights.
-
-Cloudflare Origin CA certificates are not public browser certificates. Direct
-browser access to the origin will show a trust error.
-
-### Implementation tasks
-
-1. Add configuration fields for the certificate and key file paths.
-2. Make Caddy load both files when production origin TLS is enabled.
-3. Reject incomplete certificate configuration during startup.
-4. Expose the TLS listener to Cloudflare.
-5. Confirm the origin Server Name Indication contract for tenant domains.
-6. Enable Cloudflare `Full (strict)` after the origin test succeeds.
-
-The [Kubernetes deployment guide](../deployment/kubernetes.md) defines the
-manifest gate and verification sequence.
-
-### Verification
-
-Confirm that Cloudflare can load the health endpoint without error `526`.
-
-Confirm that Caddy negotiates HTTP/2 for Cloudflare origin requests.
-
-Confirm that tenant custom domains use the expected origin certificate name.
-
-### References
-
-- [Cloudflare Full (strict)](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/)
+- [Kubernetes deployment](../deployment/kubernetes.md)
 - [Cloudflare Origin CA](https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/)
-- [Cloudflare HTTP/2 to Origin](https://developers.cloudflare.com/speed/optimization/protocol/http2-to-origin/)
+- [Cloudflare tunnel origin parameters](https://developers.cloudflare.com/tunnel/reference/origin-parameters/)

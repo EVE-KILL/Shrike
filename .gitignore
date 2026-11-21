@@ -13,7 +13,7 @@ bin/
 # `docker compose up` plus the SDE importer, so it is never committed.
 .data/
 
-# Embedded Caddy state, including the private key for the local development CA.
+# Local runtime state and development certificate files.
 /data/
 
 # Local notes, rollout runbooks (including the deferred Cloudflare image

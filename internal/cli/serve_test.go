@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,7 +24,7 @@ func TestRequestDeadlineExemptsSSE(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {
 			var gotDeadline bool
-			handler := withRequestDeadline(http.HandlerFunc(func(
+			handler := withRequestDeadline(t.Context(), http.HandlerFunc(func(
 				_ http.ResponseWriter, r *http.Request,
 			) {
 				_, gotDeadline = r.Context().Deadline()
@@ -35,6 +36,21 @@ func TestRequestDeadlineExemptsSSE(t *testing.T) {
 				t.Fatalf("deadline = %t, want %t", gotDeadline, test.wantDeadline)
 			}
 		})
+	}
+}
+
+func TestShutdownCancelsSSE(t *testing.T) {
+	shutdown, cancel := context.WithCancel(t.Context())
+	cancel()
+	handler := withRequestDeadline(shutdown, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-time.After(time.Second):
+			t.Error("shutdown did not cancel the stream")
+		}
+	}), time.Second)
+	for _, path := range []string{"/api/feed/stream", "/__dev/reload"} {
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
 	}
 }
 

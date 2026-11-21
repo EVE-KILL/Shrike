@@ -1,9 +1,20 @@
 # Dogma engine
 
-Shrike uses upstream Rust v13.6.0 for server and browser fitting calculations.
+Shrike uses upstream Rust v15.2.0 and SDE 14.3720952.0 for server and browser fitting calculations.
 The server executes persistent native workers; the browser executes the same
 adapter compiled to WASM. Go's HTTP/API behavior and existing fit document URLs
 remain unchanged. Node is build/test tooling only.
+
+## Upgrade to 15.2.0
+
+Upstream now reads the character's base targeting attributes from the SDE.
+Across the 16 existing reference fits, the affected no-skill pilots gain their
+two base targets and the all-V Archon goes from 10 to 12 effective targets.
+The other hull values agree within the existing parity tolerance. The suite also
+includes the Naga Navy Issue from the newer SDE.
+
+The Go converter rebuilt SDE build 3720952 from the CCP archive. The resulting
+`sde.dat` matches the published EVEShipFit FlatBuffer byte for byte.
 
 ## Upgrade analysis: 7.1.0 to 13.6.0
 
@@ -29,7 +40,7 @@ v13.5.0, and requires SDE major version 12. The pin is recorded in
 Sources: https://github.com/EVEShipFit/dogma-engine/releases/tag/v13.6.0 and
 https://github.com/EVEShipFit/sde-patched/releases/tag/v12.3579973.0.
 
-## Changed reference results
+## 7.1.0 to 13.6.0 reference results
 
 All 49 fields were compared for the original 16 reference fits. Remote totals,
 weapons, resistance fields and most hull values remain equivalent. Retained
@@ -62,8 +73,7 @@ Node, or a server request.
 The app embeds `sde.dat`; the optional name/text datasets remain available for
 future multilingual imports and descriptions without enlarging normal downloads.
 
-Stored catalogue statistics are tagged **13.6.0+ek.1 / 3579973**. Existing rows
-from 7.1.0+ek.3 are not relabeled. Metric filters and histograms intentionally
-require the current engine/data pair, so deploying this upgrade includes a
-fitting-stat backfill and distribution rebuild. This development task does not
-modify production statistics or run production jobs.
+Stored fitting statistics use **15.2.0+ek.1 / 3720952**. Metric filters and
+histograms require that engine and data pair. After upgrading the workers, run
+`shrike backfill fitting-stats` to enqueue recalculation for stale fits. Run
+`shrike rebuild fitting-distributions` once the fitting-stat jobs have finished.

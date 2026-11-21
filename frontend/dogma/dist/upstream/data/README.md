@@ -1,8 +1,8 @@
 # Pinned fitting data
 
-This directory contains the EVEShipFit SDE **12.3579973.0** FlatBuffer paired
-with dogma-engine **13.6.0**. Version and source pins are recorded in
-`../VERSION.json`; `specs/eve.fbs` is the matching schema.
+This directory contains the EVEShipFit SDE **14.3720952.0** FlatBuffer paired
+with dogma-engine **15.2.0**. Version and source pins are recorded in
+`../VERSION.json`. The matching schema is in `specs/eve.fbs`.
 
 The browser and native worker both read `dist/sde.dat`. There are no Protobuf
 files or JavaScript data lookup callbacks in the current engine.

@@ -1,11 +1,11 @@
 //! Compatibility adapter shared by Shrike's native worker and browser WASM.
 //! Calculation rules are supplied by the unmodified upstream engine.
-use esf_data::{InfoSde, Sde};
+use esf_data::Sde;
 use esf_dogma_engine::{self as engine, FitItem, Slot, Source, State};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::OnceLock};
 
-pub const ENGINE_VERSION: &str = "13.6.0";
+pub const ENGINE_VERSION: &str = "15.2.0";
 pub const COMPAT: &str = include_str!("../compat.json");
 #[derive(Deserialize)]
 struct Compatibility {
@@ -79,7 +79,7 @@ pub struct Stats {
     pub damage_profile: BTreeMap<&'static str, f64>,
 }
 
-pub fn attribute_id(sde: &Sde<'_>, name: &str) -> Option<i32> {
+pub fn attribute_id(sde: &Sde, name: &str) -> Option<i32> {
     static SPEC: OnceLock<Compatibility> = OnceLock::new();
     let spec =
         SPEC.get_or_init(|| serde_json::from_str(COMPAT).expect("valid compatibility metadata"));
@@ -141,7 +141,7 @@ fn item(type_id: i32, slot: Slot, state: State, charge: Option<i32>) -> FitItem 
         spool: None,
     }
 }
-fn canonicalize(sde: &Sde<'_>, fit: &mut LegacyFit) {
+fn canonicalize(sde: &Sde, fit: &mut LegacyFit) {
     let mut propulsion_active = false;
     for module in &mut fit.modules {
         if module.slot.kind == "Rig" {
@@ -219,7 +219,7 @@ fn convert(
         effects: Vec::new(),
     }
 }
-fn has_effect(sde: &Sde<'_>, type_id: i32, name: &str) -> bool {
+fn has_effect(sde: &Sde, type_id: i32, name: &str) -> bool {
     sde.get_type(type_id)
         .and_then(|t| t.dogma_effects())
         .into_iter()
@@ -229,7 +229,7 @@ fn has_effect(sde: &Sde<'_>, type_id: i32, name: &str) -> bool {
                 .is_some_and(|effect| effect.name() == name)
         })
 }
-fn outgoing_totals(sde: &Sde<'_>, stats: &mut Stats) {
+fn outgoing_totals(sde: &Sde, stats: &mut Stats) {
     // Upstream now calculates the per-module rates, including fuel, paste,
     // skill/ship bonuses and spool. Shrike only sums the displayed outgoing rates.
     let specs = [
@@ -296,8 +296,8 @@ fn outgoing_totals(sde: &Sde<'_>, stats: &mut Stats) {
     }
 }
 
-pub fn calculate<'a>(
-    sde: &'a Sde<'a>,
+pub fn calculate(
+    sde: &Sde,
     mut fit: LegacyFit,
     skills: Option<BTreeMap<i32, u8>>,
     canonical: bool,
@@ -345,7 +345,7 @@ pub fn calculate<'a>(
         environment: Default::default(),
         incoming: Default::default(),
     };
-    let calculation = engine::calculate(&InfoSde::new(sde), &native, &engine::Options::default());
+    let calculation = engine::calculate(sde, &native, &engine::Options::default());
     let mut results = Vec::with_capacity(calculation.items.len());
     for (index, result) in calculation.items.into_iter().enumerate() {
         if let Some(m) = fit.modules.get(index) {
@@ -382,8 +382,7 @@ mod browser {
     use super::*;
     use std::sync::OnceLock;
     use wasm_bindgen::prelude::*;
-    static BYTES: OnceLock<Vec<u8>> = OnceLock::new();
-    static DATA: OnceLock<Sde<'static>> = OnceLock::new();
+    static DATA: OnceLock<Sde> = OnceLock::new();
     #[wasm_bindgen]
     pub fn init() {
         console_error_panic_hook::set_once()
@@ -393,7 +392,6 @@ mod browser {
         if DATA.get().is_some() {
             return Err(JsError::new("SDE already loaded"));
         }
-        let bytes = BYTES.get_or_init(|| bytes);
         let data = Sde::new(bytes)?;
         let build = data.build_number();
         let _ = DATA.set(data);

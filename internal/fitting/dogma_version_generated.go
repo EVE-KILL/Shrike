@@ -2,4 +2,4 @@
 
 package fitting
 
-const DogmaSDEVersion = "3579973"
+const DogmaSDEVersion = "3720952"

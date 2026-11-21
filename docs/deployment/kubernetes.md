@@ -79,12 +79,12 @@ configuration names trigger rolling updates when routing changes.
 Both containers have independent probes. Keep two replicas with
 `maxUnavailable: 0` and `maxSurge: 1`. Verify page, legacy API/image/MCP,
 WebSocket and custom-board routes before retiring the old connector Deployment.
-Caddy owns legacy subdomain adaptation; there is no Nginx proxy or Nuxt render
-limit in this path.
+Shrike’s HTTP server adapts legacy subdomain paths and serves the Go handlers
+directly.
 
 Production origin TLS is optional and is not a deployment prerequisite. Adding
-it requires explicit certificate/key file configuration in Shrike and verified
-trust/server-name configuration in Cloudflared. `http2Origin` requires HTTPS;
+it requires passing certificate and key files to `shrike serve` and configuring
+trust and server name in Cloudflared. `http2Origin` requires HTTPS;
 the Cloudflare zone's conventional `Full (strict)` setting does not configure
 the connector's local service URL. See [TLS](../operations/tls.md).
 

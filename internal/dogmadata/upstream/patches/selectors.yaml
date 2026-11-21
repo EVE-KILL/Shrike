@@ -61,6 +61,12 @@ selectors:
     description: a ship or a structure; what modules are fitted to
     match: isShip or isStructure
 
+  - name: rechargesShield
+    match: isHull and attribute("shieldRechargeRate")
+
+  - name: rechargesCapacitor
+    match: isHull and attribute("rechargeRate")
+
   - name: isModule
     match: category("Module", "Structure Module")
 
@@ -112,7 +118,9 @@ selectors:
   # Modulated Deep Core Miner II does too and holds a crystal.
   - name: holdsCharge
     description: a module that holds a charge, and so reloads
-    match: isModule and attribute("chargeGroup1", "chargeGroup2", "chargeGroup3", "chargeGroup4", "chargeGroup5")
+    match: >-
+      isModule and attribute("capacity")
+      and attribute("chargeGroup1", "chargeGroup2", "chargeGroup3", "chargeGroup4", "chargeGroup5")
 
   - name: cyclingDamageDealer
     description: anything that deals damage in cycles

@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         path
     })?;
-    let data = Sde::new(&bytes)?;
+    let data = Sde::new(bytes)?;
     let fields: Vec<_> = fields::FIELDS
         .iter()
         .map(|(key, name, resist)| (*key, attribute_id(&data, name), *resist))

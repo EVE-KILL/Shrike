@@ -3,7 +3,6 @@ package ingress
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/rs/zerolog"
 )
 
@@ -56,11 +54,10 @@ func TestNginxAccessLineUsesForwardedIPAndRedactsSecrets(t *testing.T) {
 
 func TestAccessLogHandlerEmitsInfoAndErrorLevels(t *testing.T) {
 	for _, tc := range []struct {
-		name       string
-		status     int
-		handlerErr error
-		wantLevel  string
-		wantCode   string
+		name      string
+		status    int
+		wantLevel string
+		wantCode  string
 	}{
 		{
 			name:      "successful request",
@@ -74,32 +71,14 @@ func TestAccessLogHandlerEmitsInfoAndErrorLevels(t *testing.T) {
 			wantLevel: "error",
 			wantCode:  " 503 ",
 		},
-		{
-			name:       "caddy handler error",
-			handlerErr: caddyhttp.Error(http.StatusBadGateway, errors.New("renderer unavailable")),
-			wantLevel:  "error",
-			wantCode:   " 502 ",
-		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var output bytes.Buffer
-			handler := &accessLogHandler{log: zerolog.New(&output)}
-			next := caddyhttp.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) error {
-				if tc.status != 0 {
-					w.WriteHeader(tc.status)
-				}
-				return tc.handlerErr
-			})
+			handler := accessLog(zerolog.New(&output), http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+			}))
 			request := httptest.NewRequest(http.MethodGet, "http://eve-kill.test/api/test", nil)
-			response := httptest.NewRecorder()
-
-			err := handler.ServeHTTP(response, request, next)
-			if tc.handlerErr == nil && err != nil {
-				t.Fatalf("ServeHTTP: %v", err)
-			}
-			if tc.handlerErr != nil && err == nil {
-				t.Fatal("ServeHTTP swallowed the handler error")
-			}
+			handler.ServeHTTP(httptest.NewRecorder(), request)
 
 			var record map[string]any
 			if decodeErr := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); decodeErr != nil {
@@ -127,18 +106,11 @@ func TestAccessLogHandlerSuppressesOnlyHealthyProbe(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var output bytes.Buffer
-			handler := &accessLogHandler{log: zerolog.New(&output)}
+			handler := accessLog(zerolog.New(&output), http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+			}))
 			request := httptest.NewRequest(http.MethodGet, "http://eve-kill.test/health", nil)
-			response := httptest.NewRecorder()
-			err := handler.ServeHTTP(response, request, caddyhttp.HandlerFunc(
-				func(w http.ResponseWriter, _ *http.Request) error {
-					w.WriteHeader(tc.status)
-					return nil
-				},
-			))
-			if err != nil {
-				t.Fatal(err)
-			}
+			handler.ServeHTTP(httptest.NewRecorder(), request)
 			if got := output.Len() > 0; got != tc.wantOutput {
 				t.Errorf("logged = %v, want %v: %s", got, tc.wantOutput, output.String())
 			}
@@ -146,32 +118,30 @@ func TestAccessLogHandlerSuppressesOnlyHealthyProbe(t *testing.T) {
 	}
 }
 
-func TestAccessLogHandlerDoesNotWrapWebSocketUpgrade(t *testing.T) {
-	var output bytes.Buffer
-	handler := &accessLogHandler{log: zerolog.New(&output)}
-	request := httptest.NewRequest(http.MethodGet, "http://eve-kill.test/ws/status", nil)
-	request.Header.Set("Connection", "keep-alive, Upgrade")
-	request.Header.Set("Upgrade", "websocket")
-	response := httptest.NewRecorder()
+func TestAccessLogRecordsSuccessfulAndRejectedWebSocketUpgrades(t *testing.T) {
+	for _, tc := range []struct {
+		status int
+		want   string
+	}{
+		{http.StatusSwitchingProtocols, " 101 0 "},
+		{http.StatusBadRequest, " 400 0 "},
+	} {
+		var output bytes.Buffer
+		handler := accessLog(zerolog.New(&output), http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(tc.status)
+		}))
+		request := httptest.NewRequest(http.MethodGet, "http://eve-kill.test/ws/status", nil)
+		request.Header.Set("Connection", "keep-alive, Upgrade")
+		request.Header.Set("Upgrade", "websocket")
+		handler.ServeHTTP(httptest.NewRecorder(), request)
 
-	err := handler.ServeHTTP(response, request, caddyhttp.HandlerFunc(
-		func(w http.ResponseWriter, _ *http.Request) error {
-			if w != response {
-				t.Fatalf("websocket response writer was wrapped as %T", w)
-			}
-			return nil
-		},
-	))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var record map[string]any
-	if decodeErr := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); decodeErr != nil {
-		t.Fatalf("decode log %q: %v", output.String(), decodeErr)
-	}
-	message, _ := record["message"].(string)
-	if !strings.Contains(message, " 101 0 ") {
-		t.Errorf("message %q does not contain websocket handshake status", message)
+		var record map[string]any
+		if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &record); err != nil {
+			t.Fatalf("decode log %q: %v", output.String(), err)
+		}
+		message, _ := record["message"].(string)
+		if !strings.Contains(message, tc.want) {
+			t.Errorf("message %q does not contain status %q", message, tc.want)
+		}
 	}
 }

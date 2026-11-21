@@ -3,30 +3,21 @@ package ingress
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/frontend"
-	"github.com/rs/zerolog"
 )
 
-func TestDevelopmentReloadStreamThroughCaddy(t *testing.T) {
-	port := freePort(t)
-	cfg := testConfig()
-	cfg.Address = fmt.Sprintf("127.0.0.1:%d", port)
+func TestDevelopmentReloadStreamThroughIngress(t *testing.T) {
 	surfaces := testSurfaces()
 	surfaces[SurfaceFrontend] = frontend.New(frontend.Options{})
-	manager := New(surfaces, zerolog.Nop())
-	if err := manager.Start(context.Background(), cfg); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = manager.Close() })
+	base := startTestServer(t, testConfig(), surfaces)
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d/__dev/reload", port), nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/__dev/reload", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

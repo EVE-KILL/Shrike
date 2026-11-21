@@ -284,6 +284,11 @@
       "sha256": "e8bbddb1756f01396a65d7cf4a3c229dbee3d9279e4ade203c4a2e4d05ef454c"
     },
     {
+      "path": "chunks/chunk-2FWW3QZV.js",
+      "bytes": 50572,
+      "sha256": "0c9c69979f88c424c960acd1125562d4e7177bc06bf6531bbaf0a373a94e7983"
+    },
+    {
       "path": "chunks/chunk-2LV337LW.js",
       "bytes": 7816,
       "sha256": "f2abc91b5b281cca5a4798614b8944bf8de3aa20420171b97a9308000c82ce27"
@@ -477,11 +482,6 @@
       "path": "chunks/chunk-FBDJJZ2Q.js",
       "bytes": 584,
       "sha256": "5b2f818001d29f659e7562f2ff3fccdc00396c840713bce32952df21e0292638"
-    },
-    {
-      "path": "chunks/chunk-FVPC55DE.js",
-      "bytes": 50368,
-      "sha256": "d7b642db3ea6869af2be13d29f3ad384a4e48469a833b9df34c4ad20d8159ccb"
     },
     {
       "path": "chunks/chunk-GALHCM7L.js",
@@ -876,7 +876,7 @@
     {
       "path": "dogma.js",
       "bytes": 234,
-      "sha256": "bc8ea3e5b143fe87712dde43d0ff2416e634d420ac1db7b86450ee9f9b54dd4a"
+      "sha256": "663ac7e0d7a89963136ba293e8b8ccc63929bad156e47ae9096edd9c584a7336"
     },
     {
       "path": "domain-page.js",
@@ -946,7 +946,7 @@
     {
       "path": "fit-editor.js",
       "bytes": 69067,
-      "sha256": "0898cf5378b96c0f3a0b146b45ce3a5cf13b2d1215df5fb38a45aee0e0fc902f"
+      "sha256": "005b73ba8303b1db3f1800916cea14544c5e16711b8597b760c85706fb4d4400"
     },
     {
       "path": "fit-eft.js",

@@ -1,10 +1,10 @@
 {
-  "data": "12.3579973.0",
-  "data_converter_commit": "2ee8ea5334ed5f90da800fddc90a6fab0d6c2178",
-  "dogma_engine": "13.6.0",
-  "dogma_engine_commit": "08ae0ac9ebdd4d69390770181d4e291cf92a0cce",
+  "data": "14.3720952.0",
+  "data_converter_commit": "d6b270f9b7121b25e0820ec9d4037f593beb7952",
+  "dogma_engine": "15.2.0",
+  "dogma_engine_commit": "6a475690544d2f6d761299159880fcd62c6e348b",
   "shrike_adapter": "ek.1",
-  "sde_build": 3579973,
-  "data_major": 12,
+  "sde_build": 3720952,
+  "data_major": 14,
   "wasm_bindgen": "0.2.128"
 }

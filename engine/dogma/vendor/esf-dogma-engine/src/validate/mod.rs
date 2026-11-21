@@ -7,7 +7,11 @@ use tsify::Tsify;
 
 use esf_data::{Info, eve};
 
-use crate::calculate::{Calculation, ItemResult};
+use crate::calculate::{
+    CATEGORY_DRONE, CATEGORY_FIGHTER, CATEGORY_IMPLANT, CATEGORY_STRUCTURE,
+    CATEGORY_STRUCTURE_MODULE, Calculation, ItemResult, is_hull, is_mode, is_module_category,
+    is_skill,
+};
 use crate::fit::{Fit, FitItem, Slot};
 
 mod charge;
@@ -77,6 +81,14 @@ pub enum Rule {
         /// The rack the item asks for.
         expected: SlotKind,
     },
+    /// Something other than a module in a slot of the ship.
+    NotAModule,
+    /// Something other than a drone in the drone bay.
+    NotADrone,
+    /// Something other than a fighter in a fighter tube or the fighter bay.
+    NotAFighter,
+    /// Something other than an implant or booster in an implant or booster slot.
+    NotAnImplant,
     /// Another item of the fit is in this slot too.
     SlotTaken,
     /// An implant or booster in a slot other than the one it occupies. The
@@ -130,6 +142,15 @@ pub enum Rule {
         used: u32,
         /// How many may be.
         allowed: u32,
+    },
+    /// The hull is not a ship, structure or container.
+    NotAHull,
+    /// The mode is not a tactical mode.
+    NotAMode,
+    /// A type among the character's skills that is not a skill.
+    NotASkill {
+        /// The type id given as skill.
+        type_id: i32,
     },
     /// A charge of a group the module does not take.
     ChargeGroup,
@@ -220,15 +241,41 @@ pub enum GroupLimit {
 /// Violations come out grouped by the kind of rule, and within a kind in the
 /// order of `Fit::items`. An empty result means the fit breaks nothing.
 pub(crate) fn validate(info: &impl Info, fit: &Fit, calculation: &Calculation) -> Vec<Violation> {
+    if !is_hull(info, fit.ship.type_id) {
+        return vec![Violation {
+            target: Target::Ship,
+            rule: Rule::NotAHull,
+        }];
+    }
+
     let context = Context::new(info, fit, calculation);
 
     let mut found = Vec::new();
+    kind(info, fit, &mut found);
     resource::validate(&context, &mut found);
     slot::validate(&context, &mut found);
     item::validate(&context, &mut found);
     charge::validate(&context, &mut found);
     skill::validate(&context, &mut found);
     found
+}
+
+fn kind(info: &impl Info, fit: &Fit, found: &mut Vec<Violation>) {
+    if fit.ship.mode.is_some_and(|mode| !is_mode(info, mode)) {
+        found.push(Violation {
+            target: Target::Ship,
+            rule: Rule::NotAMode,
+        });
+    }
+
+    for type_id in fit.character.skills.keys() {
+        if !is_skill(info, *type_id) {
+            found.push(Violation {
+                target: Target::Ship,
+                rule: Rule::NotASkill { type_id: *type_id },
+            });
+        }
+    }
 }
 
 /// The fit and its calculation side by side, with what the SDE says about

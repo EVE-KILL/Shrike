@@ -36,7 +36,7 @@ The small Go module boundary exposes only embedded dogma assets and prevents
 Go tooling from discovering installed package copies under `node_modules`.
 Server fitting calculations use `engine/dogma`, not the filesystem JS test adapter.
 The native and browser targets share the Rust compatibility adapter at version
-13.6.0, using the matching 12.3579973.0 FlatBuffer. Upgrade native Rust, browser
+15.2.0, using the matching 14.3720952.0 FlatBuffer. Upgrade native Rust, browser
 WASM, schema and SDE together. See [the engine audit](../docs/architecture/dogma-engine.md)
 for retained extensions, changed results and the deployment backfill step.
 

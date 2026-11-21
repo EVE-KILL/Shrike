@@ -28,7 +28,7 @@ docker run evekill work:cron
 docker run evekill work:zkb
 ```
 
-`serve` runs the site inside one Go process behind embedded Caddy. Pages,
+`serve` runs the site on Go’s HTTP server. Pages,
 API, authentication, images, and WebSockets share the same origin. There is no
 separate page renderer or private SSR API listener. Native fitting workers start
 on demand and load the pinned SDE once.
@@ -57,8 +57,8 @@ with the pinned `go tool templ`; `make build` and Air run this automatically.
 Generated Go files are checked in. Template, Go, CSS, and TypeScript edits rebuild
 the relevant assets and Go, then automatically reload open development pages.
 
-`dev` uses plain HTTP. `serve` retains local HTTPS outside production; use
-`make dev-trust` after running `serve` to trust its local certificate if needed.
+Both commands use HTTP by default. Use `serve --tls-cert cert.pem --tls-key key.pem`
+when testing with a trusted local certificate.
 
 ## Documentation
 

@@ -1,13 +1,13 @@
 # Shared fitting adapter
 
-The calculation code is EVEShipFit dogma-engine **v13.6.0**, commit
-`08ae0ac9ebdd4d69390770181d4e291cf92a0cce`:
-https://github.com/EVEShipFit/dogma-engine/tree/v13.6.0
+The calculation code is EVEShipFit dogma-engine **v15.2.0**, commit
+`6a475690544d2f6d761299159880fcd62c6e348b`.
+https://github.com/EVEShipFit/dogma-engine/tree/v15.2.0
 
 `vendor/esf-data` and `vendor/esf-dogma-engine` contain the unmodified upstream
 crates. Their MIT licenses are retained. The root Cargo workspace supplies the
-same inherited dependency definitions. The matching SDE is **12.3579973.0**;
-its source/schema/patches are pinned in `internal/dogmadata/upstream`.
+same inherited dependency definitions. The matching SDE is **14.3720952.0**.
+Its source, schema and patches are pinned in `internal/dogmadata/upstream`.
 
 `src/lib.rs` is Shrike's adapter, compiled once for the native worker and again
 for browser WASM. It translates existing fit documents, module states, rack
@@ -36,7 +36,7 @@ checksums. The builder clears bindgen memory-view caches when switching instance
 so independent editor factories cannot read each other's WASM memory.
 
 `testdata/expected-7.1.0.jsonl` preserves the previous results. Current snapshots
-and native/browser parity checks cover the same 16 fits. Focused regressions
+and native/browser parity checks cover the same 17 fits. Focused regressions
 cover ammo optimal/falloff/tracking, EWAR scripts, ancillary repairs, remote totals,
 rigs, subsystems, and independent WASM factories. See the upgrade analysis in
 `docs/architecture/dogma-engine.md` for the retained additions and changed results.

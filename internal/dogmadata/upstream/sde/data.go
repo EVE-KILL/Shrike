@@ -48,18 +48,19 @@ type FighterAbility struct {
 }
 
 type Type struct {
-	Key           int32     `json:"_key"`
-	Name          Localized `json:"name"`
-	GroupID       int32     `json:"groupID"`
-	Published     bool      `json:"published"`
-	FactionID     int32     `json:"factionID"`
-	MarketGroupID int32     `json:"marketGroupID"`
-	MetaGroupID   int32     `json:"metaGroupID"`
-	RaceID        int32     `json:"raceID"`
-	Capacity      *float64  `json:"capacity"`
-	Mass          *float64  `json:"mass"`
-	Radius        *float64  `json:"radius"`
-	Volume        *float64  `json:"volume"`
+	Key                   int32     `json:"_key"`
+	Name                  Localized `json:"name"`
+	GroupID               int32     `json:"groupID"`
+	Published             bool      `json:"published"`
+	FactionID             int32     `json:"factionID"`
+	MarketGroupID         int32     `json:"marketGroupID"`
+	MetaGroupID           int32     `json:"metaGroupID"`
+	RaceID                int32     `json:"raceID"`
+	VariationParentTypeID int32     `json:"variationParentTypeID"`
+	Capacity              *float64  `json:"capacity"`
+	Mass                  *float64  `json:"mass"`
+	Radius                *float64  `json:"radius"`
+	Volume                *float64  `json:"volume"`
 
 	// Merged in from typeDogma.jsonl; patches treat this as part of the type.
 	DogmaAttributes []TypeDogmaAttribute `json:"-"`
@@ -70,6 +71,24 @@ type Type struct {
 
 	// CategoryID is resolved via the group after loading.
 	CategoryID int32 `json:"-"`
+}
+
+// Fields are the attributes the SDE keeps on the type and not in its dogma.
+func (t *Type) Fields() map[int32]float64 {
+	result := map[int32]float64{}
+	if t.Mass != nil {
+		result[4] = *t.Mass
+	}
+	if t.Capacity != nil {
+		result[38] = *t.Capacity
+	}
+	if t.Volume != nil {
+		result[161] = *t.Volume
+	}
+	if t.Radius != nil {
+		result[162] = *t.Radius
+	}
+	return result
 }
 
 type Group struct {
@@ -337,6 +356,26 @@ type Mutaplasmid struct {
 	Mappings   []MutaplasmidMapping   `json:"inputOutputMapping"`
 }
 
+type TypeBonus struct {
+	Bonus      *float64  `json:"bonus"`
+	Text       Localized `json:"bonusText"`
+	Importance int32     `json:"importance"`
+	UnitID     int32     `json:"unitID"`
+}
+
+type TypeBonusSkill struct {
+	SkillTypeID int32       `json:"_key"`
+	Bonuses     []TypeBonus `json:"_value"`
+}
+
+// TypeBonuses is the bonus text EVE shows for a ship.
+type TypeBonuses struct {
+	Key         int32            `json:"_key"`
+	Skills      []TypeBonusSkill `json:"types"`
+	RoleBonuses []TypeBonus      `json:"roleBonuses"`
+	MiscBonuses []TypeBonus      `json:"miscBonuses"`
+}
+
 // Data is the part of the SDE this tool uses.
 type Data struct {
 	BuildNumber      int32
@@ -354,4 +393,5 @@ type Data struct {
 	DbuffCollections map[int32]*DbuffCollection
 	Mutaplasmids     map[int32]*Mutaplasmid
 	FighterAbilities map[int32]*FighterAbility
+	TypeBonuses      map[int32]*TypeBonuses
 }

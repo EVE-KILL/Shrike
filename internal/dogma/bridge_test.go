@@ -105,9 +105,9 @@ func TestWorkerPaths(t *testing.T) {
 	}
 }
 
-// These snapshots were captured from the previous engine before removing its
-// runtime. They cover weapons, resistances, skills, propulsion, Bastion, drones
-// and Shrike's remote repair/capacitor additions on the same pinned SDE.
+// The snapshots cover weapons, resistances, targeting, skills, propulsion,
+// Bastion, drones and Shrike's remote repair and capacitor totals. The newest
+// hull in the fixture also checks that the worker can read the upgraded SDE.
 func TestNativeEngineParity(t *testing.T) {
 	if _, err := workerPath(); err != nil {
 		if os.Getenv("DOGMA_WORKER_PATH") != "" {

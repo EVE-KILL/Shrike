@@ -8,6 +8,7 @@ use strum_macros::EnumIter;
 use tsify::Tsify;
 
 use super::output::Source;
+use super::{CATEGORY_DRONE, CATEGORY_FIGHTER, CATEGORY_IMPLANT, Info, is_module_category};
 use crate::fit::{FitItem, Slot, State};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -209,27 +210,35 @@ impl Item {
             Some(
                 Slot::High(_) | Slot::Medium(_) | Slot::Low(_) | Slot::Rig(_) | Slot::Subsystem(_)
             )
-        )
+        ) && is_module_category(self.category_id)
     }
 
     /* Drones are owned by the character, but not located in the ship. */
     pub fn is_in_ship(&self) -> bool {
-        self.is_module() || matches!(self.slot, Some(Slot::Service(_)))
+        self.is_module()
+            || (matches!(self.slot, Some(Slot::Service(_))) && is_module_category(self.category_id))
+    }
+
+    pub fn is_drone(&self) -> bool {
+        self.slot == Some(Slot::DroneBay) && self.category_id == CATEGORY_DRONE
     }
 
     pub fn is_fighter(&self) -> bool {
         matches!(self.slot, Some(Slot::FighterTube(_) | Slot::FighterBay))
+            && self.category_id == CATEGORY_FIGHTER
     }
 
     pub fn is_on_char(&self) -> bool {
         matches!(self.slot, Some(Slot::Implant(_) | Slot::Booster(_)))
+            && self.category_id == CATEGORY_IMPLANT
+    }
+
+    pub fn is_owner_modifiable(&self) -> bool {
+        self.is_fighter() || self.is_drone()
     }
 
     pub fn is_calculated(&self) -> bool {
-        self.is_in_ship()
-            || self.is_fighter()
-            || self.is_on_char()
-            || self.slot == Some(Slot::DroneBay)
+        self.is_in_ship() || self.is_fighter() || self.is_on_char() || self.is_drone()
     }
 
     pub fn new_charge(type_id: i32) -> Item {
@@ -250,7 +259,7 @@ impl Item {
         }
     }
 
-    pub fn new_fit(fit_item: &FitItem) -> Item {
+    pub fn new_fit(info: &impl Info, fit_item: &FitItem) -> Item {
         let mut item = Item {
             type_id: fit_item.type_id,
             group_id: 0,
@@ -269,9 +278,10 @@ impl Item {
             booster_side_effects: fit_item.booster_side_effects.clone(),
             mutation_base: fit_item.mutation.as_ref().map(|mutation| mutation.base),
         };
+        item.set_type_ids(info);
 
         match item.slot {
-            Some(Slot::DroneBay | Slot::FighterTube(_)) => {
+            Some(Slot::DroneBay | Slot::FighterTube(_)) if item.is_calculated() => {
                 if item.state != ItemState::Passive {
                     item.state = ItemState::Active;
                 }

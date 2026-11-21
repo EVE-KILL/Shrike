@@ -147,7 +147,6 @@ run:
 
 # Development is one Go process. Air regenerates templates and rebuilds it.
 DEV_PORT ?= 4000
-DATA_DIR ?= data
 
 .PHONY: dev
 dev: build-dogma
@@ -155,20 +154,6 @@ dev: build-dogma
 		echo "air is required: go install github.com/air-verse/air@latest" >&2; exit 1; }
 	@echo "dev: http://localhost:$(DEV_PORT) (Go frontend)"
 	PORT=$(DEV_PORT) ./scripts/dev.sh
-
-.PHONY: dev-trust
-dev-trust:
-	@case "$$(uname -s)" in \
-		Darwin) ;; \
-		*) echo "dev-trust currently supports macOS only" >&2; exit 1 ;; \
-	esac
-	@cert_path="$(DATA_DIR)/caddy/pki/authorities/local/root.crt"; \
-	case "$$cert_path" in /*) ;; *) cert_path="$(CURDIR)/$$cert_path" ;; esac; \
-	test -f "$$cert_path" || { \
-		echo "local CA not found; start shrike serve once to generate it" >&2; exit 1; }; \
-	echo "Installing Shrike's local development CA into the macOS system keychain."; \
-	sudo security add-trusted-cert -d -r trustRoot \
-		-k /Library/Keychains/System.keychain "$$cert_path"
 
 .PHONY: test
 test:

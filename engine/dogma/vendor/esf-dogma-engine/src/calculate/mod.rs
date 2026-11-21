@@ -13,7 +13,7 @@ use serde::Deserialize;
 use tsify::Tsify;
 
 use crate::fit::Fit;
-use crate::projection::ProjectedBuff;
+use crate::projection::{ProjectedBuff, Projection};
 use crate::validate::validate;
 use esf_data::Info;
 use item::{Item, Object};
@@ -97,9 +97,57 @@ trait Pass {
     fn pass(info: &impl Info, objects: &mut Objects);
 }
 
+const CATEGORY_SHIP: i32 = 6;
+const CATEGORY_MODULE: i32 = 7;
+const CATEGORY_SKILL: i32 = 16;
+pub(crate) const CATEGORY_DRONE: i32 = 18;
+pub(crate) const CATEGORY_IMPLANT: i32 = 20;
+const CATEGORY_SUBSYSTEM: i32 = 32;
+pub(crate) const CATEGORY_FIGHTER: i32 = 87;
+pub(crate) const CATEGORY_STRUCTURE: i32 = 65;
+pub(crate) const CATEGORY_STRUCTURE_MODULE: i32 = 66;
+const GROUP_CONTAINERS: [i32; 4] = [12, 340, 448, 649];
+const GROUP_SHIP_MODIFIERS: i32 = 1306;
+
+/// Whether the type can be the hull of a fit: a ship, structure or container.
+pub(crate) fn is_hull(info: &impl Info, type_id: i32) -> bool {
+    info.get_type(type_id).is_some_and(|r#type| {
+        matches!(r#type.category_id(), CATEGORY_SHIP | CATEGORY_STRUCTURE)
+            || GROUP_CONTAINERS.contains(&r#type.group_id())
+    })
+}
+
+/// Whether the category is one of modules, subsystems or structure modules.
+pub(crate) fn is_module_category(category_id: i32) -> bool {
+    matches!(
+        category_id,
+        CATEGORY_MODULE | CATEGORY_SUBSYSTEM | CATEGORY_STRUCTURE_MODULE
+    )
+}
+
+/// Whether the type is a tactical mode.
+pub(crate) fn is_mode(info: &impl Info, type_id: i32) -> bool {
+    info.get_type(type_id)
+        .is_some_and(|r#type| r#type.group_id() == GROUP_SHIP_MODIFIERS)
+}
+
+/// Whether the type is a skill.
+pub(crate) fn is_skill(info: &impl Info, type_id: i32) -> bool {
+    info.get_type(type_id)
+        .is_some_and(|r#type| r#type.category_id() == CATEGORY_SKILL)
+}
+
 /// Calculate every attribute of the ship, its items and the character.
 pub fn calculate(info: &impl Info, fit: &Fit, options: &Options) -> Calculation {
-    let mut calculation = calculate_with_bursts(info, fit, options);
+    let mut calculation = if is_hull(info, fit.ship.type_id) {
+        calculate_with_bursts(info, fit, options)
+    } else {
+        let objects = pass_1::PassOne::pass(info, fit);
+        Calculation {
+            outgoing: Projection::default(),
+            ..Calculation::new(info, &objects)
+        }
+    };
 
     if options.validate {
         calculation.violations = Some(validate(info, fit, &calculation));

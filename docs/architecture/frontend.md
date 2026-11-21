@@ -349,7 +349,8 @@ default states, while `engine/dogma/vendor` retains the original Rust math.
 builds it with Rust for the target architecture; the runtime image contains only
 Go, the native worker and data. Browser WASM is served directly by Go. Node/npm
 are only used to build checked-in assets and run browser/WASM regression tests.
-See `engine/dogma/UPSTREAM.md` for the pin and coordinated upgrade policy. The current engine is 13.6.0 with SDE 12.3579973.0; `docs/architecture/dogma-engine.md` records the retained additions and upgrade differences.
+See `engine/dogma/UPSTREAM.md` for the engine and SDE pins. The upgrade history
+and deployment steps are in `docs/architecture/dogma-engine.md`.
 
 
 Browser controllers now live in `frontend/src/browser` and are compiled into

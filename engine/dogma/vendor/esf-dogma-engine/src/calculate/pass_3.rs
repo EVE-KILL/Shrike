@@ -6,6 +6,8 @@ use super::{Info, Objects, Pass};
 
 /* Penalty factor: 1 / math.exp((1 / 2.67) ** 2) */
 const PENALTY_FACTOR: f64 = 0.8691199808003974;
+/* How many bonuses, and separately maluses, count; the rest is dropped. */
+const PENALTY_MAX_STACK: usize = 8;
 
 const OPERATOR_HAS_PENALTY: [EffectOperator; 5] = [
     EffectOperator::PreMul,
@@ -21,7 +23,7 @@ pub struct PassThree {}
 
 #[derive(Default)]
 struct Values {
-    unpenalized: Vec<f64>,
+    unpenalized: Vec<(f64, u32)>,
     /* Paired with the index into the recorded sources, to fill in the penalty once sorted. */
     positive: Vec<(f64, Option<usize>)>,
     negative: Vec<(f64, Option<usize>)>,
@@ -36,7 +38,11 @@ fn apply_penalized(
     values.sort_by(|x, y| y.0.abs().partial_cmp(&x.0.abs()).unwrap());
 
     for (position, (value, source_index)) in values.iter().enumerate() {
-        let penalty = PENALTY_FACTOR.powi(position.pow(2) as i32);
+        let penalty = if position < PENALTY_MAX_STACK {
+            PENALTY_FACTOR.powi((position * position) as i32)
+        } else {
+            0.0
+        };
         current_value *= 1.0 + value * penalty;
 
         if let Some(source_index) = source_index {
@@ -58,6 +64,8 @@ impl Attribute {
         if let Some(value) = self.value.get() {
             return value;
         }
+        /* A modifier that reads the attribute it changes gets its base value. */
+        self.value.set(Some(self.base_value));
 
         let mut current_value = self.base_value;
         let mut sources = Vec::new();
@@ -134,9 +142,9 @@ impl Attribute {
                 };
 
                 if !effect.penalty || !OPERATOR_HAS_PENALTY.contains(&effect.operator) {
-                    values
-                        .unpenalized
-                        .extend(std::iter::repeat_n(source_value, effect.quantity as usize));
+                    if effect.quantity > 0 {
+                        values.unpenalized.push((source_value, effect.quantity));
+                    }
                     if objects.sources {
                         sources.push(to_source(effect.quantity, None));
                     }
@@ -149,12 +157,17 @@ impl Attribute {
                 } else {
                     &mut values.positive
                 };
-                for _ in 0..effect.quantity {
+                let kept = effect.quantity.min(PENALTY_MAX_STACK as u32);
+                for _ in 0..kept {
                     let source_index = objects.sources.then(|| {
                         sources.push(to_source(1, None));
                         sources.len() - 1
                     });
                     bucket.push((source_value, source_index));
+                }
+                let dropped = effect.quantity - kept;
+                if dropped > 0 && objects.sources {
+                    sources.push(to_source(dropped, Some(0.0)));
                 }
             }
 
@@ -173,15 +186,17 @@ impl Attribute {
                         .is_some_and(|dogma_attribute| dogma_attribute.high_is_good());
 
                     current_value = if high_is_good {
-                        *values
+                        values
                             .unpenalized
                             .iter()
+                            .map(|(value, _)| *value)
                             .max_by(|x, y| x.partial_cmp(y).unwrap())
                             .unwrap()
                     } else {
-                        *values
+                        values
                             .unpenalized
                             .iter()
+                            .map(|(value, _)| *value)
                             .min_by(|x, y| x.partial_cmp(y).unwrap())
                             .unwrap()
                     };
@@ -195,8 +210,8 @@ impl Attribute {
                 | EffectOperator::PostMul
                 | EffectOperator::PostDiv
                 | EffectOperator::PostPercent => {
-                    for value in values.unpenalized {
-                        current_value *= 1.0 + value;
+                    for (value, quantity) in values.unpenalized {
+                        current_value *= (1.0 + value).powf(f64::from(quantity));
                     }
 
                     current_value =
@@ -206,8 +221,8 @@ impl Attribute {
                 }
 
                 EffectOperator::ModAdd | EffectOperator::ModSub => {
-                    for value in values.unpenalized {
-                        current_value += value;
+                    for (value, quantity) in values.unpenalized {
+                        current_value += value * f64::from(quantity);
                     }
 
                     assert!(values.positive.is_empty());
@@ -279,5 +294,22 @@ impl Pass for PassThree {
         for skill in &objects.skills {
             skill.calculate_values(info, objects);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn stack(count: usize) -> f64 {
+        let mut values = vec![(0.1, None); count];
+        apply_penalized(1.0, &mut values, &mut [])
+    }
+
+    #[test]
+    fn penalized_stack_counts_eight() {
+        assert!(stack(8) > stack(7));
+        assert_eq!(stack(9), stack(8));
+        assert_eq!(stack(1_000_000), stack(8));
     }
 }

@@ -6,8 +6,8 @@ import (
 	"io/fs"
 )
 
-const ConverterCommit = "2ee8ea5334ed5f90da800fddc90a6fab0d6c2178"
-const DataMajorVersion = 12
+const ConverterCommit = "d6b270f9b7121b25e0820ec9d4037f593beb7952"
+const DataMajorVersion = 14
 
 //go:embed upstream/patches
 var patchFiles embed.FS

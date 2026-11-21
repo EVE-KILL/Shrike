@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -25,11 +26,13 @@ import (
 
 // serve and dev route all HTTP surfaces directly to Go handlers.
 var (
-	flagServePort int
-	flagDevPort   int
+	flagServePort    int
+	flagDevPort      int
+	flagServeTLSCert string
+	flagServeTLSKey  string
 )
 
-type siteMode struct{ Name string }
+type siteMode struct{ Name, TLSCertFile, TLSKeyFile string }
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -45,11 +48,10 @@ Requests are routed by hostname and path to one of Shrike's surfaces:
   /ws, /ws/*                             live event streams
   everything else                        the Go frontend
 
-All surfaces run in process. No frontend runtime or private SSR listener is
-started. In development, serve uses local HTTPS; dev uses plain HTTP.
+All surfaces run in process. Provide --tls-cert and --tls-key for HTTPS.
 SIGINT and SIGTERM gracefully stop the listener.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runSite(cmd, siteMode{Name: "serve"}, flagServePort)
+		return runSite(cmd, siteMode{Name: "serve", TLSCertFile: flagServeTLSCert, TLSKeyFile: flagServeTLSKey}, flagServePort)
 	},
 }
 
@@ -150,56 +152,57 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 		// Published posts should be visible on the Go page as soon as the
 		// existing blog API (which also reads primary) can return them.
 		blogReader := api.NewHomepageReader(primaryPool)
-		siteHandler := withRequestDeadline(apiService.Site(), 30*time.Second)
+		siteHandler := withRequestDeadline(ctx, apiService.Site(), 30*time.Second)
 		if !cfg.IsProduction() {
 			siteHandler = requeststats.Middleware(siteHandler)
 		}
 		surfaces := map[string]http.Handler{
 			ingress.SurfaceSameOrigin: siteHandler,
 			ingress.SurfaceWS:         wsServer,
-			ingress.SurfaceFrontend:   withRequestDeadline(frontend.New(frontend.Options{Production: cfg.IsProduction(), Homepage: apiService.Homepage(), Entities: apiService.Homepage(), Universe: apiService.Homepage(), Wallet: apiService.Homepage(), Legacy: apiService.Homepage(), Rankings: apiService.Homepage(), Statistics: apiService.Homepage(), Scans: apiService.Homepage(), Coalitions: apiService.Homepage(), Wars: apiService.Homepage(), FactionWars: apiService.Homepage(), BattleGenerator: apiService.Homepage(), Killmail: apiService.Homepage(), Blog: blogReader, BlogPreviewAPI: apiService.Site(), CommentsAPI: apiService.Site(), SitemapAPI: apiService.Site(), CampaignsAPI: apiService.Site(), Sessions: apiService.Session(), AccountAPI: apiService.Site(), ConflictsAPI: apiService.Site(), FittingsAPI: apiService.Site(), RoamReports: blogReader, AdvancedSearch: apiService.Homepage()}), 30*time.Second),
+			ingress.SurfaceFrontend:   withRequestDeadline(ctx, frontend.New(frontend.Options{Production: cfg.IsProduction(), Homepage: apiService.Homepage(), Entities: apiService.Homepage(), Universe: apiService.Homepage(), Wallet: apiService.Homepage(), Legacy: apiService.Homepage(), Rankings: apiService.Homepage(), Statistics: apiService.Homepage(), Scans: apiService.Homepage(), Coalitions: apiService.Homepage(), Wars: apiService.Homepage(), FactionWars: apiService.Homepage(), BattleGenerator: apiService.Homepage(), Killmail: apiService.Homepage(), Blog: blogReader, BlogPreviewAPI: apiService.Site(), CommentsAPI: apiService.Site(), SitemapAPI: apiService.Site(), CampaignsAPI: apiService.Site(), Sessions: apiService.Session(), AccountAPI: apiService.Site(), ConflictsAPI: apiService.Site(), FittingsAPI: apiService.Site(), RoamReports: blogReader, AdvancedSearch: apiService.Homepage()}), 30*time.Second),
 		}
 
 		for name, handler := range surfaces {
 			surfaces[name] = telemetry.HTTP(name, handler)
 		}
-		manager := ingress.New(surfaces, log.With().Str("subsystem", "ingress").Logger())
-		localHTTPS := mode.Name != "dev" && !cfg.IsProduction()
-
-		if err := manager.Start(ctx, ingress.Config{
+		ingressLog := log.With().Str("subsystem", "ingress").Logger()
+		server, err := ingress.NewServer(ingress.Config{
 			Address:      fmt.Sprintf(":%d", port),
 			LegacyDomain: cfg.LegacyDomain,
-			DataDir:      cfg.DataDir,
-			LogLevel:     cfg.LogLevel,
-			LocalHTTPS:   localHTTPS,
-		}); err != nil {
-			return fmt.Errorf("starting embedded Caddy ingress: %w", err)
+			TLSCertFile:  mode.TLSCertFile,
+			TLSKeyFile:   mode.TLSKeyFile,
+		}, surfaces, ingressLog)
+		if err != nil {
+			return err
 		}
-		defer func() { _ = manager.Close() }()
-
-		for _, r := range manager.Status().Routes {
-			log.Info().Str("match", r.Match).Str("surface", r.Surface).Msg("route")
+		var listenConfig net.ListenConfig
+		listener, err := listenConfig.Listen(ctx, "tcp", server.Addr)
+		if err != nil {
+			return fmt.Errorf("listen for HTTP on %s: %w", server.Addr, err)
 		}
 		scheme := "http"
-		if localHTTPS {
+		if server.TLSConfig != nil {
 			scheme = "https"
 		}
 		log.Info().
-			Str("url", fmt.Sprintf("%s://localhost:%d", scheme, port)).
+			Str("url", fmt.Sprintf("%s://localhost:%d", scheme, listener.Addr().(*net.TCPAddr).Port)).
 			Msg("site listening")
 
-		<-ctx.Done()
-		return nil
+		return ingress.Serve(ctx, server, listener, ingressLog)
 	})
 }
 
 // withRequestDeadline ensures a slow or abandoned HTTP request cannot hold a
-// database connection indefinitely. The SSE feed is intentionally long-lived
-// and manages its own cancellation through the client connection.
-func withRequestDeadline(next http.Handler, timeout time.Duration) http.Handler {
+// database connection indefinitely. SSE streams run until the client
+// disconnects or the service shuts down.
+func withRequestDeadline(shutdown context.Context, next http.Handler, timeout time.Duration) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/feed/stream" || r.URL.Path == "/__dev/reload" {
-			next.ServeHTTP(w, r)
+			ctx, cancel := context.WithCancel(r.Context())
+			stop := context.AfterFunc(shutdown, cancel)
+			defer stop()
+			defer cancel()
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), timeout)
@@ -265,5 +268,7 @@ func newDomainAssetStorage(cfg *config.Config) (api.DomainAssetStorage, error) {
 
 func init() {
 	serveCmd.Flags().IntVar(&flagServePort, "port", 0, "Port to listen on (overrides PORT)")
+	serveCmd.Flags().StringVar(&flagServeTLSCert, "tls-cert", "", "PEM certificate file for HTTPS")
+	serveCmd.Flags().StringVar(&flagServeTLSKey, "tls-key", "", "PEM private key file for HTTPS")
 	devCmd.Flags().IntVar(&flagDevPort, "port", 0, "Port to listen on (overrides PORT)")
 }
