@@ -61,9 +61,12 @@ func (homepageReaderStub) TopKills(ctx context.Context, _, dataType string, days
 	return homepageReaderStub{}.Top(ctx, dataType, days, limit)
 }
 
-func (homepageReaderStub) TopKillsCached(ctx context.Context, kind, dataType string, days, limit int) ([]api.TopEntry, bool) {
-	entries, _ := homepageReaderStub{}.TopKills(ctx, kind, dataType, days, limit)
-	return entries, true
+func (homepageReaderStub) KillCategoryTopCached(ctx context.Context, kind string) map[string][]api.TopEntry {
+	boards := map[string][]api.TopEntry{}
+	for _, dataType := range []string{"characters", "corporations", "alliances"} {
+		boards[dataType], _ = homepageReaderStub{}.TopKills(ctx, kind, dataType, api.KillCategoryTopDays, api.KillCategoryTopLimit)
+	}
+	return boards
 }
 
 func (homepageReaderStub) MostValuableKills(ctx context.Context, kind string, days, limit int) ([]api.ValuableKill, error) {

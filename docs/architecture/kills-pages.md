@@ -4,7 +4,9 @@ The Go frontend serves every type in `internal/killtype.Types` at `/kills/{type}
 
 The page loader calls the same SQL helpers as `/api/killlist`, `/api/kills/most-valuable`, and `/api/kills/top`. It does not make loopback HTTP requests. The killlist uses the existing daily-count rollup for numbered pages. A one-minute cached list and five-minute cached statistics retain the API's freshness windows.
 
-Cold top-list queries can be much slower than the killlist. The page checks the typed top-list cache without running those queries. Fresh cached lists render in the initial HTML. Missing lists render same-size placeholders; the browser requests three Go-rendered HTML fragments in parallel and replaces each placeholder as its query finishes. On mobile, those requests wait until the Top Lists tab is selected. An error leaves a retry control in the affected box. This keeps the killlist and valuable cards in the first response without forcing its first byte to wait for the slowest leaderboard.
+The `kill_category_top` cron rotates through one category per minute. All three seven-day top lists share a cutoff and publish together to Valkey for two hours. Categories use the same ranking queries as the public API. The first page reads all three boards in one lookup and includes them in the initial HTML.
+
+If a prepared board is unavailable, the page can still use fresh fragment results. Missing lists render same-size placeholders and the browser requests their Go-rendered fragments. On mobile, those requests wait until the Top Lists tab is selected. An error leaves a retry control in the affected box.
 
 Mobile Kills, Top Lists, and Valuable tabs use a URL fragment and `pushState`. A back navigation restores the selected tab. Typed killlists subscribe to their own WebSocket topic and keep the homepage's page-one insertion and later-page badge behavior. Pagination requests preserve the selected type.
 

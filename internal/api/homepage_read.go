@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/killtype"
+	"github.com/redis/go-redis/v9"
 )
 
 // HomepageReader exposes the existing public read paths to HTML pages. API
@@ -17,6 +18,7 @@ type HomepageReader struct {
 	db     Database
 	graph  GraphDatabase
 	cache  *ResponseCache
+	redis  *redis.Client
 	commit string
 }
 

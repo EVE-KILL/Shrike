@@ -145,11 +145,13 @@ func New(opts Options) *Service {
 	if opts.RequestGuard != nil {
 		site = opts.RequestGuard.Wrap(site)
 	}
+	homepage := newCachedHomepageReader(opts.DB, opts.Graph, opts.responseCache, opts.Commit)
+	homepage.redis = opts.Cache
 	return &Service{
 		cache:   opts.responseCache,
 		session: &SessionPageReader{auth: newAuthService(opts)},
 		site:    site, document: a.OpenAPI(),
-		homepage: newCachedHomepageReader(opts.DB, opts.Graph, opts.responseCache, opts.Commit),
+		homepage: homepage,
 	}
 }
 

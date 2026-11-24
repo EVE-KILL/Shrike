@@ -13,8 +13,8 @@ import (
 
 type coldTopReaderStub struct{ homepageReaderStub }
 
-func (coldTopReaderStub) TopKillsCached(context.Context, string, string, int, int) ([]api.TopEntry, bool) {
-	return nil, false
+func (coldTopReaderStub) KillCategoryTopCached(context.Context, string) map[string][]api.TopEntry {
+	return nil
 }
 
 func TestKillsPagesShareValidatedTypesAndWidgets(t *testing.T) {
@@ -31,6 +31,9 @@ func TestKillsPagesShareValidatedTypesAndWidgets(t *testing.T) {
 			continue
 		}
 		body := response.Body.String()
+		if strings.Contains(body, "data-top-pending=") {
+			t.Errorf("%s deferred an available top box", kind)
+		}
 		for _, want := range []string{
 			"data-kind=\"" + kind + "\"", "data-kills-page", "id=\"kill-list\"",
 			"id=\"top-panel\"", "id=\"valuable-panel\"",

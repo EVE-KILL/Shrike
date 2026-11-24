@@ -1,6 +1,10 @@
 package frontend
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/eve-kill/shrike/internal/api"
+)
 
 func (s *site) killsTopFragment(w http.ResponseWriter, r *http.Request) {
 	kind := r.URL.Query().Get("type")
@@ -10,12 +14,12 @@ func (s *site) killsTopFragment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid top list", http.StatusBadRequest)
 		return
 	}
-	entries, err := s.options.Homepage.TopKills(r.Context(), kind, dataType, 7, 10)
+	entries, err := s.options.Homepage.TopKills(r.Context(), kind, dataType, api.KillCategoryTopDays, api.KillCategoryTopLimit)
 	if err != nil {
 		http.Error(w, "Could not load top list", http.StatusServiceUnavailable)
 		return
 	}
 	s.renderFragment(w, r, topBox(topBoxView{
-		Title: title, DataType: dataType, Limit: 10, Entries: entries, ShowFooter: true,
+		Title: title, DataType: dataType, Limit: api.KillCategoryTopLimit, Entries: entries, ShowFooter: true,
 	}))
 }

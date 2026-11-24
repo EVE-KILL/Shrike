@@ -34,11 +34,11 @@ func TestCachedKillsTopListIsScopedByType(t *testing.T) {
 	}
 	cache.StoreStale(context.Background(), reader.cacheKey(killsTopCacheName("big", "corporations", 7, 10)),
 		cachedResponse{Body: body}, 5*time.Minute, 5*time.Minute)
-	if entries, ok := reader.TopKillsCached(context.Background(), "big", "corporations", 7, 10); !ok ||
+	if entries, ok := reader.KillCategoryTopCached(context.Background(), "big")["corporations"]; !ok ||
 		len(entries) != 1 || entries[0].Name != "Example" {
 		t.Fatalf("cached big corporations = %#v, %t", entries, ok)
 	}
-	if _, ok := reader.TopKillsCached(context.Background(), "solo", "corporations", 7, 10); ok {
+	if _, ok := reader.KillCategoryTopCached(context.Background(), "solo")["corporations"]; ok {
 		t.Fatal("solo top list reused big-kills cache entry")
 	}
 }

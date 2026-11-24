@@ -95,9 +95,9 @@ func loadKillsPage(ctx context.Context, reader HomepageReader, kind string) (kil
 	view := killsPageView{
 		Kind: kind, Title: killsPageTitle(kind),
 		TopBoxes: []topBoxView{
-			{Title: topKillsTitle(kind, "characters"), DataType: "characters", Limit: 10, ShowFooter: true},
-			{Title: topKillsTitle(kind, "corporations"), DataType: "corporations", Limit: 10, ShowFooter: true},
-			{Title: topKillsTitle(kind, "alliances"), DataType: "alliances", Limit: 10, ShowFooter: true},
+			{Title: topKillsTitle(kind, "characters"), DataType: "characters", Limit: api.KillCategoryTopLimit, ShowFooter: true},
+			{Title: topKillsTitle(kind, "corporations"), DataType: "corporations", Limit: api.KillCategoryTopLimit, ShowFooter: true},
+			{Title: topKillsTitle(kind, "alliances"), DataType: "alliances", Limit: api.KillCategoryTopLimit, ShowFooter: true},
 		},
 	}
 	group, ctx := errgroup.WithContext(ctx)
@@ -118,15 +118,16 @@ func loadKillsPage(ctx context.Context, reader HomepageReader, kind string) (kil
 		}
 		return nil
 	})
-	for index := range view.TopBoxes {
-		group.Go(func() error {
+	group.Go(func() error {
+		boards := reader.KillCategoryTopCached(ctx, kind)
+		for index := range view.TopBoxes {
 			box := &view.TopBoxes[index]
 			var cached bool
-			box.Entries, cached = reader.TopKillsCached(ctx, kind, box.DataType, 7, box.Limit)
+			box.Entries, cached = boards[box.DataType]
 			box.Pending = !cached
-			return nil
-		})
-	}
+		}
+		return nil
+	})
 	if err := group.Wait(); err != nil {
 		return killsPageView{}, err
 	}

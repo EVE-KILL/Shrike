@@ -133,7 +133,7 @@ type HomepageReader interface {
 	Killlist(context.Context, string, int, int) (api.KilllistPage, error)
 	KilllistFresh(context.Context, string, int, int) (api.KilllistPage, error)
 	TopKills(context.Context, string, string, int, int) ([]api.TopEntry, error)
-	TopKillsCached(context.Context, string, string, int, int) ([]api.TopEntry, bool)
+	KillCategoryTopCached(context.Context, string) map[string][]api.TopEntry
 	MostValuableKills(context.Context, string, int, int) ([]api.ValuableKill, error)
 	FilteredKills(context.Context, string, *int64, int) (api.KilllistPage, error)
 	Labels(context.Context) ([]api.LabelEntry, error)

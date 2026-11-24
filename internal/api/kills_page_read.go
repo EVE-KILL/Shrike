@@ -9,27 +9,39 @@ import (
 	"github.com/eve-kill/shrike/internal/killtype"
 )
 
+const (
+	KillCategoryTopDays  = 7
+	KillCategoryTopLimit = 10
+)
+
 func killsTopCacheName(kind, dataType string, days, limit int) string {
 	return fmt.Sprintf("kills-top:%s:%s:%d:%d", kind, dataType, days, limit)
 }
 
-// TopKillsCached is a nonblocking read for page assembly. Cold or expired
-// leaderboards are fetched through their HTML fragments after the main page
-// has rendered; a warm one remains part of the initial HTML.
-func (r *HomepageReader) TopKillsCached(ctx context.Context, kind, dataType string, days, limit int) ([]TopEntry, bool) {
-	if r == nil || r.cache == nil {
-		return nil, false
+// KillCategoryTopCached returns the prepared boards for the initial page. On
+// a miss it can reuse recently read fragment results without running queries.
+func (r *HomepageReader) KillCategoryTopCached(ctx context.Context, kind string) map[string][]TopEntry {
+	if r == nil {
+		return nil
 	}
-	key := r.cacheKey(killsTopCacheName(kind, dataType, days, limit))
-	entry, fresh, ok := r.cache.LoadState(ctx, key)
-	if !ok || !fresh {
-		return nil, false
+	if boards := r.preparedKillCategoryTop(ctx, kind); boards != nil {
+		return boards
 	}
-	var result []TopEntry
-	if err := json.Unmarshal(entry.Body, &result); err != nil {
-		return nil, false
+	keys := make([]string, len(killCategoryTopTypes))
+	for i, dataType := range killCategoryTopTypes {
+		keys[i] = r.cacheKey(killsTopCacheName(kind, dataType, KillCategoryTopDays, KillCategoryTopLimit))
 	}
-	return result, true
+	warm := r.cache.LoadMany(ctx, keys)
+	result := make(map[string][]TopEntry, len(warm))
+	for i, key := range keys {
+		if entry, ok := warm[key]; ok {
+			var rows []TopEntry
+			if json.Unmarshal(entry.Body, &rows) == nil {
+				result[killCategoryTopTypes[i]] = rows
+			}
+		}
+	}
+	return result
 }
 
 // TopKills and MostValuableKills are the typed reads for /kills/{type} pages.
@@ -44,17 +56,27 @@ func (r *HomepageReader) TopKills(ctx context.Context, kind, dataType string, da
 		days < 1 || days > 365 || limit < 1 || limit > 50 {
 		return nil, fmt.Errorf("invalid killboard top list options")
 	}
+	if days == KillCategoryTopDays && limit == KillCategoryTopLimit {
+		if entries, ok := r.preparedKillCategoryTop(ctx, kind)[dataType]; ok {
+			return entries, nil
+		}
+	}
 	key := killsTopCacheName(kind, dataType, days, limit)
 	return cachedHomepage(ctx, r, key, 5*time.Minute, func(ctx context.Context) ([]TopEntry, error) {
-		rows, err := loadTopKills(ctx, r.db, kind, dataType, limit, time.Now().UTC().AddDate(0, 0, -days))
-		if err == nil {
-			rows, err = attachGlobalStatsPalettes(ctx, r.db, rows)
-		}
-		if err != nil {
-			return nil, err
-		}
-		return decodeHomepageRows[TopEntry](rows)
+		return loadTopKillEntries(ctx, r.db, kind, dataType, limit, time.Now().UTC().AddDate(0, 0, -days))
 	})
+}
+
+func loadTopKillEntries(ctx context.Context, db Database, kind, dataType string, limit int, since time.Time) ([]TopEntry, error) {
+	rows, err := loadTopKills(ctx, db, kind, dataType, limit, since)
+	if err != nil {
+		return nil, err
+	}
+	rows, err = attachGlobalStatsPalettes(ctx, db, rows)
+	if err != nil {
+		return nil, err
+	}
+	return decodeHomepageRows[TopEntry](nonNilUniverseRows(rows))
 }
 
 func (r *HomepageReader) MostValuableKills(ctx context.Context, kind string, days, limit int) ([]ValuableKill, error) {
