@@ -16,7 +16,7 @@ import (
 // than a new function, which keeps the 14 straightforward imports readable side
 // by side and makes them diffable against the TypeScript they came from.
 type Table struct {
-	// Member is the archive member without its .jsonl suffix.
+	// Member is the source table name.
 	Member string
 
 	// Name is the destination table.
@@ -94,7 +94,7 @@ func Load(ctx context.Context, pool *pgxpool.Pool, t Table, src *Source) (LoadRe
 			res.Elapsed = time.Since(start).Round(time.Millisecond).String()
 			return res, nil
 		}
-		return res, fmt.Errorf("archive is missing required member %s.jsonl", t.Member)
+		return res, fmt.Errorf("SDE source is missing required table %s", t.Member)
 	}
 
 	conn, err := pool.Acquire(ctx)

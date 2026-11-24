@@ -20,14 +20,17 @@ type Result struct {
 	SyntheticAttributes, SyntheticEffects int
 }
 
+func InputTables() []string { return data.Tables }
+
 func Build(ctx context.Context, source *sde.Source, patches map[string][]byte, destination string) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
-	if source.Build < 1 || source.Build > math.MaxInt32 {
-		return Result{}, fmt.Errorf("SDE build out of range: %d", source.Build)
+	manifest := source.Manifest
+	if manifest.BuildNumber < 1 || manifest.BuildNumber > math.MaxInt32 {
+		return Result{}, fmt.Errorf("SDE build out of range: %d", manifest.BuildNumber)
 	}
-	raw, err := data.Load(source.Path, int32(source.Build))
+	raw, err := data.Load(ctx, source.Scan, int32(manifest.BuildNumber), manifest.ReleaseDate)
 	if err != nil {
 		return Result{}, fmt.Errorf("load dogma SDE: %w", err)
 	}

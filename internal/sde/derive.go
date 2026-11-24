@@ -2,7 +2,6 @@ package sde
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -125,43 +124,4 @@ func Derive(ctx context.Context, pool *pgxpool.Pool) ([]DeriveResult, error) {
 		})
 	}
 	return out, nil
-}
-
-// RecordBuild stores the imported build number in the config table so
-// sde:status can report what is loaded and the cron can skip an unchanged build.
-func RecordBuild(ctx context.Context, pool *pgxpool.Pool, build int64, release string) error {
-	// config is (key text, value text) with no timestamp column, so the build
-	// number is stored as text. The key matches what the TypeScript importer
-	// already writes in production ('sde:buildNumber'), so both implementations
-	// read and write the same row rather than tracking the build separately.
-	_, err := pool.Exec(ctx, `
-        INSERT INTO config (key, value) VALUES
-            ('sde:buildNumber', $1),
-            ('sde:releaseDate', $2)
-        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
-    `, strconv.FormatInt(build, 10), release)
-	return err
-}
-
-// LoadedBuild reads back what RecordBuild stored. Returns 0 when nothing has
-// been imported yet.
-func LoadedBuild(ctx context.Context, pool *pgxpool.Pool) (int64, string, error) {
-	var buildText, release string
-	err := pool.QueryRow(ctx, `
-        SELECT
-            COALESCE(MAX(value) FILTER (WHERE key = 'sde:buildNumber'), '0'),
-            COALESCE(MAX(value) FILTER (WHERE key = 'sde:releaseDate'), '')
-        FROM config
-        WHERE key IN ('sde:buildNumber', 'sde:releaseDate')
-    `).Scan(&buildText, &release)
-	if err != nil {
-		return 0, "", err
-	}
-	// Stored as text, and a non-numeric value should read as "nothing imported"
-	// rather than failing the whole status command.
-	build, convErr := strconv.ParseInt(buildText, 10, 64)
-	if convErr != nil {
-		return 0, release, nil
-	}
-	return build, release, nil
 }

@@ -15,7 +15,7 @@ import "strconv"
 // arithmetic silently treats unknown as free.
 type Row map[string]any
 
-// Key returns the row's primary identifier. Every SDE record carries "_key".
+// Key returns the identifier normalized by Source.Stream from the table schema.
 //
 // Zero is rejected. The archive ships placeholder records at _key 0 — a
 // "#System" entry appears in types, groups and categories — and importing them

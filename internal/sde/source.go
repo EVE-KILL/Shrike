@@ -1,50 +1,60 @@
 // Package sde imports CCP's Static Data Export into Postgres.
-//
-// The archive is ~99 MB compressed and ~575 MB across 79 JSONL members once
-// expanded (mapMoons alone is 224 MB), so nothing here materialises a whole
-// member. Members are read line by line with one decoded row in flight, and the
-// zip is streamed to disk rather than held in memory because archive/zip needs
-// random access.
 package sde
 
 import (
-	"archive/zip"
 	"bufio"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/telemetry"
 )
 
 const (
-	baseURL = "https://developers.eveonline.com/static-data/tranquility"
-
-	// Some type descriptions run to several kilobytes, well past
-	// bufio.Scanner's 64 KB default. 4 MB is far more than any observed line
-	// and still bounded, so a corrupt file cannot exhaust memory.
-	maxLineBytes = 4 << 20
-
-	// The manifest is tiny; the archive is ~99 MB and gets its own generous
-	// budget rather than sharing a single timeout with the metadata request.
-	manifestTimeout = 30 * time.Second
-	archiveTimeout  = 15 * time.Minute
+	latestURL       = "https://sde.evetech.net/tranquility/latest/"
+	releaseIDLayout = "20060102T150405Z"
+	documentTimeout = 30 * time.Second
+	tableTimeout    = 15 * time.Minute
+	maxDocumentSize = 1 << 20
+	maxLineBytes    = 4 << 20
 )
 
-// Manifest is the content of latest.jsonl.
 type Manifest struct {
-	Key         string `json:"_key"`
-	BuildNumber int64  `json:"buildNumber"`
-	ReleaseDate string `json:"releaseDate"`
+	Release     string                `json:"release"`
+	BuildNumber int64                 `json:"buildNumber"`
+	ReleaseDate time.Time             `json:"releaseDate"`
+	Tables      map[string]TableFiles `json:"tables"`
 }
 
-// CacheDir keeps imports under the application's writable runtime state.
-// A non-root container cannot create a cache beside /app's installed assets.
+type TableFiles struct {
+	Version string `json:"version"`
+	JSONL   struct {
+		URL       string `json:"url"`
+		SchemaURL string `json:"recordSchemaUrl"`
+	} `json:"jsonl"`
+}
+
+type cachedTable struct {
+	path string
+	key  string
+}
+
+// Source contains the locally cached inputs of one release.
+type Source struct {
+	Manifest *Manifest
+	tables   map[string]cachedTable
+}
+
 func CacheDir(dataDir string) string {
 	if dataDir == "" {
 		dataDir = "data"
@@ -52,238 +62,270 @@ func CacheDir(dataDir string) string {
 	return filepath.Join(dataDir, "sde")
 }
 
-// Source is an opened SDE archive.
-type Source struct {
-	Build    int64
-	Release  string
-	Path     string
-	reader   *zip.ReadCloser
-	byMember map[string]*zip.File
+var sdeHTTP = &http.Client{Transport: telemetry.Transport("ccp.sde", http.DefaultTransport)}
+
+func FetchManifest(ctx context.Context, userAgent string) (*Manifest, error) {
+	return fetchManifest(ctx, sdeHTTP, latestURL, userAgent)
 }
 
-// FetchManifest reports the currently published build without downloading it.
-func FetchManifest(ctx context.Context, userAgent string) (*Manifest, error) {
-	ctx, cancel := context.WithTimeout(ctx, manifestTimeout)
+func fetchManifest(ctx context.Context, client *http.Client, url, userAgent string) (*Manifest, error) {
+	ctx, cancel := context.WithTimeout(ctx, documentTimeout)
 	defer cancel()
-
-	body, err := get(ctx, baseURL+"/latest.jsonl", userAgent)
+	resp, err := get(ctx, client, url, userAgent, false)
 	if err != nil {
 		return nil, err
 	}
-	defer body.Close()
+	defer resp.Body.Close() //nolint:errcheck // read-only response
 
-	raw, err := io.ReadAll(io.LimitReader(body, 64<<10))
-	if err != nil {
-		return nil, fmt.Errorf("read manifest: %w", err)
+	var manifest Manifest
+	if err := readDocument(resp.Body, &manifest); err != nil {
+		return nil, fmt.Errorf("read SDE manifest: %w", err)
 	}
-
-	var m Manifest
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return nil, fmt.Errorf("parse manifest: %w", err)
+	if _, err := time.Parse(releaseIDLayout, manifest.Release); err != nil {
+		return nil, fmt.Errorf("invalid SDE release ID %q: %w", manifest.Release, err)
 	}
-	if m.BuildNumber == 0 {
-		return nil, fmt.Errorf("manifest has no buildNumber: %s", string(raw))
+	if manifest.BuildNumber <= 0 || manifest.ReleaseDate.IsZero() || len(manifest.Tables) == 0 {
+		return nil, fmt.Errorf("incomplete SDE manifest for %s", manifest.Release)
 	}
-	return &m, nil
+	return &manifest, nil
 }
 
-// Open returns the archive for a build, downloading it into cacheDir only when
-// not already present. Caching by build number matters during development: a
-// re-import otherwise re-fetches 99 MB every run, and the archive for a given
-// build is immutable.
-func Open(ctx context.Context, cacheDir string, m *Manifest, userAgent string, progress func(string)) (*Source, error) {
-	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
-		return nil, fmt.Errorf("create cache dir: %w", err)
-	}
-	path := filepath.Join(cacheDir, fmt.Sprintf("sde-%d-jsonl.zip", m.BuildNumber))
+// Open stages every selected table before the caller can write anything. All
+// URLs come from a single release manifest. If that release expires during
+// staging, start over with the new latest release and reuse matching blobs.
+func Open(ctx context.Context, cacheDir string, manifest *Manifest, members []string, userAgent string, progress func(string)) (*Source, error) {
+	return open(ctx, sdeHTTP, latestURL, cacheDir, manifest, members, userAgent, progress)
+}
 
-	if _, err := os.Stat(path); err != nil {
-		if progress != nil {
-			progress(fmt.Sprintf("downloading build %d", m.BuildNumber))
+func open(ctx context.Context, client *http.Client, latest, cacheDir string, manifest *Manifest, members []string, userAgent string, progress func(string)) (*Source, error) {
+	src, err := stage(ctx, client, cacheDir, manifest, members, userAgent, progress)
+	var status *httpStatusError
+	if !errors.As(err, &status) || (status.code != http.StatusNotFound && status.code != http.StatusGone) {
+		return src, err
+	}
+	newest, fetchErr := fetchManifest(ctx, client, latest, userAgent)
+	if fetchErr != nil {
+		return nil, errors.Join(err, fetchErr)
+	}
+	if newest.Release <= manifest.Release {
+		return nil, err
+	}
+	return stage(ctx, client, cacheDir, newest, members, userAgent, progress)
+}
+
+func stage(ctx context.Context, client *http.Client, cacheDir string, manifest *Manifest, members []string, userAgent string, progress func(string)) (*Source, error) {
+	for _, name := range members {
+		table := manifest.Tables[name]
+		if table.Version == "" || table.JSONL.URL == "" || table.JSONL.SchemaURL == "" {
+			return nil, fmt.Errorf("SDE release %s is missing required table %s or its download links", manifest.Release, name)
 		}
-		if err := download(ctx, archiveURL(m.BuildNumber), path, userAgent); err != nil {
-			return nil, err
+	}
+	if err := os.MkdirAll(cacheDir, 0o750); err != nil {
+		return nil, fmt.Errorf("create SDE cache: %w", err)
+	}
+
+	src := &Source{Manifest: manifest, tables: make(map[string]cachedTable, len(members))}
+	for _, name := range members {
+		table := manifest.Tables[name]
+		// Hash the opaque version for a safe, stable file name.
+		base := filepath.Join(cacheDir, fmt.Sprintf("%s-%x", name, sha256.Sum256([]byte(table.Version))))
+		key, err := cacheKey(ctx, client, table.JSONL.SchemaURL, base+".schema.json", userAgent)
+		if err != nil {
+			return nil, fmt.Errorf("SDE %s schema: %w", name, err)
 		}
-	} else if progress != nil {
-		progress(fmt.Sprintf("using cached build %d", m.BuildNumber))
-	}
-
-	rc, err := zip.OpenReader(path)
-	if err != nil {
-		// A truncated cache file from an interrupted download would fail here
-		// forever, so remove it and let the next run re-fetch.
-		_ = os.Remove(path)
-		return nil, fmt.Errorf("open archive (removed, retry): %w", err)
-	}
-
-	src := &Source{
-		Build:    m.BuildNumber,
-		Release:  m.ReleaseDate,
-		Path:     path,
-		reader:   rc,
-		byMember: make(map[string]*zip.File, len(rc.File)),
-	}
-	for _, f := range rc.File {
-		src.byMember[filepath.Base(f.Name)] = f
+		path := base + ".jsonl.gz"
+		if err := cacheFile(path, func(f *os.File) error {
+			if progress != nil {
+				progress("downloading " + name)
+			}
+			return downloadTable(ctx, client, table.JSONL.URL, userAgent, f)
+		}); err != nil {
+			return nil, fmt.Errorf("SDE %s: %w", name, err)
+		}
+		src.tables[name] = cachedTable{path: path, key: key}
 	}
 	return src, nil
 }
 
-func (s *Source) Close() error {
-	if s.reader != nil {
-		return s.reader.Close()
-	}
-	return nil
-}
-
-// Has reports whether a member exists. CCP adds and removes members between
-// builds, so a caller may legitimately skip a missing one.
 func (s *Source) Has(member string) bool {
-	_, ok := s.byMember[member+".jsonl"]
+	_, ok := s.tables[member]
 	return ok
 }
 
-// Members lists every JSONL member, for diagnostics.
-func (s *Source) Members() []string {
-	out := make([]string, 0, len(s.byMember))
-	for name := range s.byMember {
-		out = append(out, name)
-	}
-	return out
-}
-
-// Stream decodes each line of a member and hands it to fn. Iteration stops at
-// the first error fn returns, and at ctx cancellation.
-//
-// fn must not retain the Row: it is reused between lines to avoid an allocation
-// per record, which matters across the ~1.5 M rows of a full import.
-func (s *Source) Stream(ctx context.Context, member string, fn func(Row) error) error {
-	f, ok := s.byMember[member+".jsonl"]
+// Scan reads a cached table one JSONL record at a time. The callback's bytes
+// are only valid until it returns.
+func (s *Source) Scan(ctx context.Context, member string, fn func([]byte) error) error {
+	table, ok := s.tables[member]
 	if !ok {
-		return fmt.Errorf("member %s.jsonl not found in archive", member)
+		return fmt.Errorf("SDE table %s was not staged", member)
 	}
-
-	rc, err := f.Open()
+	// #nosec G304 -- the path was constructed from a configured cache directory and a version hash.
+	file, err := os.Open(table.path)
 	if err != nil {
-		return fmt.Errorf("open %s: %w", member, err)
+		return err
 	}
-	defer rc.Close()
-
-	scanner := bufio.NewScanner(rc)
+	defer file.Close() //nolint:errcheck // read-only file
+	body, err := gzip.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("decompress SDE %s: %w", member, err)
+	}
+	defer body.Close() //nolint:errcheck // checksum is checked by reading to EOF
+	scanner := bufio.NewScanner(body)
 	scanner.Buffer(make([]byte, 0, 256<<10), maxLineBytes)
-
-	line := 0
-	for scanner.Scan() {
-		line++
-		// Checking every 1000 lines rather than every line: the context read is
-		// cheap but not free, and 1000 lines is a sub-millisecond window.
-		if line%1000 == 0 {
-			if err := ctx.Err(); err != nil {
-				return err
+	for line := 1; scanner.Scan(); line++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if len(scanner.Bytes()) != 0 {
+			if err := fn(scanner.Bytes()); err != nil {
+				return fmt.Errorf("SDE %s line %d: %w", member, line, err)
 			}
 		}
-
-		raw := scanner.Bytes()
-		if len(raw) == 0 {
-			continue
-		}
-
-		row := Row{}
-		if err := json.Unmarshal(raw, &row); err != nil {
-			return fmt.Errorf("%s line %d: %w", member, line, err)
-		}
-		if err := fn(row); err != nil {
-			return fmt.Errorf("%s line %d: %w", member, line, err)
-		}
 	}
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("read %s: %w", member, err)
-	}
-	return nil
+	return scanner.Err()
 }
 
-// Collect reads a complete member into a map keyed by its SDE identifier.
-// Most import paths must use Stream; this exists for bounded reference-data
-// transformations such as the Dogma bundle, whose patch rules need cross-file
-// name and relationship lookups before they can emit output.
-func (s *Source) Collect(ctx context.Context, member string) (map[int32]map[string]any, error) {
-	rows := make(map[int32]map[string]any)
-	err := s.Stream(ctx, member, func(row Row) error {
-		// Unlike the relational importer, the upstream Dogma bundle retains
-		// CCP's ID-zero placeholder records: some unpublished visual types refer
-		// to group 0 and EVEShipFit's converter preserves that relationship.
-		keyValue := toInt64(row["_key"])
-		if keyValue == nil || *keyValue > 2147483647 || *keyValue < -2147483648 {
-			return nil
+func (s *Source) Stream(ctx context.Context, member string, fn func(Row) error) error {
+	key := s.tables[member].key
+	return s.Scan(ctx, member, func(raw []byte) error {
+		var row Row
+		if err := json.Unmarshal(raw, &row); err != nil {
+			return err
 		}
-		key := *keyValue
-		copy := make(map[string]any, len(row)-1)
-		for field, value := range row {
-			if field != "_key" {
-				copy[field] = value
-			}
+		id, ok := row[key].(float64)
+		if !ok || id != math.Trunc(id) || id < math.MinInt32 || id > math.MaxInt32 {
+			return fmt.Errorf("missing or invalid record ID %q", key)
 		}
-		rows[int32(key)] = copy
-		return nil
+		// The database mappings use a common key across all source tables.
+		row["_key"] = id
+		return fn(row)
+	})
+}
+
+type recordSchema struct {
+	Key      string   `json:"x-sde-key"`
+	Required []string `json:"required"`
+}
+
+func schemaKey(r io.Reader) (string, error) {
+	var schema recordSchema
+	if err := readDocument(r, &schema); err != nil {
+		return "", err
+	}
+	if schema.Key == "" || !slices.Contains(schema.Required, schema.Key) {
+		return "", fmt.Errorf("invalid x-sde-key %q", schema.Key)
+	}
+	return schema.Key, nil
+}
+
+func cacheKey(ctx context.Context, client *http.Client, url, path, userAgent string) (string, error) {
+	err := cacheFile(path, func(f *os.File) error {
+		ctx, cancel := context.WithTimeout(ctx, documentTimeout)
+		defer cancel()
+		resp, err := get(ctx, client, url, userAgent, false)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close() //nolint:errcheck // read-only response
+		_, err = schemaKey(io.TeeReader(resp.Body, f))
+		return err
 	})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return rows, nil
+	// #nosec G304 -- the path was constructed in stage.
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close() //nolint:errcheck // read-only file
+	return schemaKey(file)
 }
 
-func archiveURL(build int64) string {
-	return fmt.Sprintf("%s/eve-online-static-data-%d-jsonl.zip", baseURL, build)
+func readDocument(r io.Reader, dest any) error {
+	raw, err := io.ReadAll(io.LimitReader(r, maxDocumentSize+1))
+	if err != nil {
+		return err
+	}
+	if len(raw) > maxDocumentSize {
+		return fmt.Errorf("SDE JSON document exceeds %d bytes", maxDocumentSize)
+	}
+	return json.Unmarshal(raw, dest)
 }
 
-func get(ctx context.Context, url, userAgent string) (io.ReadCloser, error) {
+type httpStatusError struct {
+	url  string
+	code int
+}
+
+func (err *httpStatusError) Error() string {
+	return fmt.Sprintf("GET %s: HTTP %d", err.url, err.code)
+}
+
+func get(ctx context.Context, client *http.Client, url, userAgent string, keepGzip bool) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	// CCP asks for an identifying User-Agent on their static-data endpoints and
-	// may throttle requests without one.
 	req.Header.Set("User-Agent", userAgent)
-
-	client := &http.Client{Transport: telemetry.Transport("ccp.sde", http.DefaultTransport)}
+	if keepGzip {
+		// Setting the header explicitly disables Go's transparent decompression.
+		req.Header.Set("Accept-Encoding", "gzip")
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, fmt.Errorf("GET %s: HTTP %d", url, resp.StatusCode)
+		_ = resp.Body.Close()
+		return nil, &httpStatusError{url: url, code: resp.StatusCode}
 	}
-	return resp.Body, nil
+	return resp, nil
 }
 
-// download writes to a temp file and renames on success, so an interrupted run
-// can never leave a partial archive that looks like a valid cache entry.
-func download(ctx context.Context, url, dest, userAgent string) error {
-	ctx, cancel := context.WithTimeout(ctx, archiveTimeout)
+func downloadTable(ctx context.Context, client *http.Client, url, userAgent string, file *os.File) error {
+	ctx, cancel := context.WithTimeout(ctx, tableTimeout)
 	defer cancel()
-
-	body, err := get(ctx, url, userAgent)
+	resp, err := get(ctx, client, url, userAgent, true)
 	if err != nil {
 		return err
 	}
-	defer body.Close()
+	defer resp.Body.Close() //nolint:errcheck // read-only response
+	if resp.Header.Get("Content-Encoding") != "gzip" {
+		return fmt.Errorf("GET %s: expected gzip, got %q", url, resp.Header.Get("Content-Encoding"))
+	}
 
-	tmp, err := os.CreateTemp(filepath.Dir(dest), ".sde-download-*")
+	// Validate the gzip stream and checksum as it is written, so a truncated
+	// response never becomes a reusable cache entry.
+	body, err := gzip.NewReader(io.TeeReader(resp.Body, file))
 	if err != nil {
 		return err
 	}
-	tmpName := tmp.Name()
+	defer body.Close() //nolint:errcheck // checksum is checked by reading to EOF
+	// #nosec G110 -- the official SDE stream is discarded without retaining decompressed bytes.
+	_, err = io.Copy(io.Discard, body)
+	return err
+}
+
+func cacheFile(path string, fetch func(*os.File) error) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".sde-download-*")
+	if err != nil {
+		return err
+	}
 	defer func() {
-		tmp.Close()
-		_ = os.Remove(tmpName) // no-op once renamed
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name())
 	}()
-
-	if _, err := io.Copy(tmp, body); err != nil {
-		return fmt.Errorf("download: %w", err)
+	if err := fetch(tmp); err != nil {
+		return err
 	}
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	return os.Rename(tmpName, dest)
+	return os.Rename(tmp.Name(), path)
 }

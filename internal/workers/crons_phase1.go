@@ -435,25 +435,9 @@ func errNeedsQueue(name string) error {
 	return fmt.Errorf("%s needs a queue to dispatch into", name)
 }
 
-// cronSDEUpdate checks whether CCP has published a newer static data export and
-// imports it. The River cron worker has a two-hour timeout for long maintenance
-// jobs; the build marker is only written after the full import succeeds.
+// cronSDEUpdate checks the published release and imports changed static data.
 func (d *Deps) cronSDEUpdate(ctx context.Context) (string, error) {
-	manifest, err := sde.FetchManifest(ctx, d.UserAgent)
-	if err != nil {
-		return "", err
-	}
-
-	loaded, _, err := sde.LoadedBuild(ctx, d.Pool)
-	if err != nil {
-		return "", err
-	}
-
-	if loaded == manifest.BuildNumber {
-		return "", nil
-	}
-
-	result, err := sde.ImportBuild(ctx, d.Pool, manifest, sde.ImportOptions{
+	result, err := sde.ImportLatest(ctx, d.Pool, sde.ImportOptions{
 		CacheDir:  sde.CacheDir(d.DataDir),
 		UserAgent: d.UserAgent,
 		Progress: func(message string) {
@@ -463,11 +447,16 @@ func (d *Deps) cronSDEUpdate(ctx context.Context) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("import SDE build %d: %w", manifest.BuildNumber, err)
+		return "", err
 	}
-
+	if result.Skipped {
+		if result.PreviousRelease != result.Release {
+			return fmt.Sprintf("SDE release %s (build %d) has unchanged import tables", result.Release, result.BuildNumber), nil
+		}
+		return "", nil
+	}
 	return fmt.Sprintf(
-		"SDE build %d imported (%d rows read, %d written, %d stale rows pruned in %s; previous build %d)",
-		result.BuildNumber, result.Read, result.Written, result.Pruned, result.Elapsed, loaded,
+		"SDE release %s (build %d) imported (%d rows read, %d written, %d stale rows pruned in %s)",
+		result.Release, result.BuildNumber, result.Read, result.Written, result.Pruned, result.Elapsed,
 	), nil
 }

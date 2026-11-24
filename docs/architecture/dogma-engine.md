@@ -69,7 +69,10 @@ regressions and native/browser equality. No browser calculation requires Bun,
 Node, or a server request.
 
 `sde:build-dogma` uses the pinned upstream Go converter and patches to generate
-`sde.dat`, `names.dat` and `texts.dat` from the cached official CCP archive.
+`sde.dat`, `names.dat` and `texts.dat` from release-pinned JSONL tables on CCP's
+SDE server. The command caches tables by version in `data/sde` or the directory
+passed with `--cache-dir`. It records the CCP release ID alongside the game
+build in generated bundle metadata.
 The app embeds `sde.dat`; the optional name/text datasets remain available for
 future multilingual imports and descriptions without enlarging normal downloads.
 

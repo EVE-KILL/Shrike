@@ -29,10 +29,7 @@ var (
 	flagDogmaOutput     string
 )
 
-// cacheDir resolves where archives are kept. Defaults under DATA_DIR so the
-// production container's non-root user can create the cache — the
-// archive is ~99 MB and immutable per build, so re-downloading it every run is
-// pure waste.
+// cacheDir defaults to the application's writable runtime state.
 func cacheDir() string {
 	if flagSDECacheDir != "" {
 		return flagSDECacheDir
@@ -54,7 +51,7 @@ func userAgent() string {
 
 var sdeStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Compare the loaded SDE build against the published one",
+	Short: "Compare the loaded SDE release against the published one",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := requireConfig(); err != nil {
 			return err
@@ -71,36 +68,42 @@ var sdeStatusCmd = &cobra.Command{
 		}
 		defer pool.Close()
 
-		loaded, loadedRelease, err := sde.LoadedBuild(cmd.Context(), pool)
+		loaded, err := sde.LoadedSnapshot(cmd.Context(), pool)
 		if err != nil {
 			return err
 		}
 
-		current := loaded == manifest.BuildNumber
+		current := loaded.Current(manifest)
 
 		if ui.JSONMode {
 			return ui.JSON(map[string]any{
-				"published":      manifest.BuildNumber,
-				"published_date": manifest.ReleaseDate,
-				"loaded":         loaded,
-				"loaded_date":    loadedRelease,
-				"up_to_date":     current,
-				"never_imported": loaded == 0,
+				"published":         manifest.BuildNumber,
+				"published_date":    manifest.ReleaseDate.Format(time.RFC3339Nano),
+				"published_release": manifest.Release,
+				"loaded":            loaded.BuildNumber,
+				"loaded_date":       loaded.ReleaseDate,
+				"loaded_release":    loaded.Release,
+				"up_to_date":        current,
+				"never_imported":    loaded.BuildNumber == 0,
 			})
 		}
 
 		ui.Section("SDE")
-		ui.KV("Published", fmt.Sprintf("%d  %s", manifest.BuildNumber, ui.Dim(manifest.ReleaseDate)))
-		if loaded == 0 {
+		ui.KV("Published", fmt.Sprintf("%s (build %d)", manifest.Release, manifest.BuildNumber))
+		if loaded.BuildNumber == 0 {
 			ui.KV("Loaded", ui.Dim("never imported"))
 		} else {
-			ui.KV("Loaded", fmt.Sprintf("%d  %s", loaded, ui.Dim(loadedRelease)))
+			release := loaded.Release
+			if release == "" {
+				release = loaded.ReleaseDate
+			}
+			ui.KV("Loaded", fmt.Sprintf("%s (build %d)", release, loaded.BuildNumber))
 		}
 		ui.Newline()
 		if current {
 			ui.Success("Up to date.")
 		} else {
-			ui.Warn("A newer build is available — run %s", "shrike sde:import")
+			ui.Warn("The loaded SDE needs an import. Run %s", "shrike sde:import")
 		}
 		ui.Newline()
 		return nil
@@ -110,27 +113,27 @@ var sdeStatusCmd = &cobra.Command{
 var sdeImportCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import the Static Data Export into Postgres",
-	Long: `Downloads the published SDE archive and loads it into Postgres.
+	Long: `Downloads the published SDE tables over HTTP and loads them into Postgres.
 
-The archive is cached per build under DATA_DIR/sde, so re-running is cheap. Import
-is idempotent: each table is staged with COPY and merged with ON CONFLICT DO
-UPDATE, so a partial or repeated run converges rather than duplicating.
+Tables are cached by version under DATA_DIR/sde. Imports stage rows with COPY
+and merge them with ON CONFLICT DO UPDATE, so retries converge.
 
-Skips work entirely when the published build is already loaded, unless --force.
+Skips importing when the published table versions are already loaded, unless --force.
 
---only restricts to named tables or archive members, which is what you want when
-iterating on one mapping:
+--only restricts the import to selected destination tables or SDE table names:
 
     shrike sde:import --only inv_types --only regions`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if err := requireConfig(); err != nil {
 			return err
 		}
-		start := time.Now()
-
-		manifest, err := sde.FetchManifest(cmd.Context(), userAgent())
-		if err != nil {
-			return err
+		var only []sde.Table
+		for _, name := range flagSDEOnly {
+			table := sde.TableByName(name)
+			if table == nil {
+				return fmt.Errorf("unknown table or member %q", name)
+			}
+			only = append(only, *table)
 		}
 
 		pool, err := db.New(cmd.Context(), cfg)
@@ -139,194 +142,94 @@ iterating on one mapping:
 		}
 		defer pool.Close()
 
-		loaded, _, err := sde.LoadedBuild(cmd.Context(), pool)
+		start := time.Now()
+		res, err := sde.ImportLatest(cmd.Context(), pool, sde.ImportOptions{
+			CacheDir: cacheDir(), UserAgent: userAgent(), Force: flagSDEForce,
+			SkipExternal: flagSDESkipExternal, Only: only,
+			Progress: func(message string) {
+				ui.Printf("  %s %s\n", ui.Dim("·"), message)
+			},
+		})
+		if len(res.Tables) > 0 {
+			renderSDEImport(res)
+		}
 		if err != nil {
 			return err
 		}
-		if loaded == manifest.BuildNumber && !flagSDEForce && len(flagSDEOnly) == 0 {
-			ui.Success("Build %d is already loaded. Use --force to re-import.", loaded)
+		if res.Skipped {
+			ui.Success("SDE tables in release %s are already loaded. Use --force to re-import.", res.Release)
 			ui.Newline()
 			return nil
 		}
 
-		// Resolve which tables to run before downloading, so a typo in --only
-		// fails immediately rather than after a 99 MB transfer.
-		// Simple mappings first, then the nested ones — blueprint activities
-		// reference types, so types must already be present.
-		tables := append(append([]sde.Table{}, sde.Tables...), sde.NestedTables...)
-		if len(flagSDEOnly) > 0 {
-			tables = nil
-			for _, name := range flagSDEOnly {
-				t := sde.TableByName(name)
-				if t == nil {
-					return fmt.Errorf("unknown table or member %q", name)
-				}
-				tables = append(tables, *t)
-			}
-		}
-
-		src, err := sde.Open(cmd.Context(), cacheDir(), manifest, userAgent(), func(msg string) {
-			ui.Printf("  %s %s\n", ui.Dim("·"), msg)
-		})
-		if err != nil {
-			return err
-		}
-		defer func() { _ = src.Close() }()
-
-		ui.Section("Importing")
-		table := ui.NewTable("TABLE", "MEMBER", "READ", "WRITTEN", "SKIPPED", "PRUNED", "TIME")
-		var results []sde.LoadResult
-		for _, t := range tables {
-			res, err := sde.Load(cmd.Context(), pool, t, src)
-			if err != nil {
-				// Report what already succeeded before failing — a mid-import
-				// error is much easier to place with the preceding rows visible.
-				fmt.Println(table.Render())
-				ui.Newline()
-				return fmt.Errorf("import %s: %w", t.Name, err)
-			}
-			results = append(results, res)
-			status := res.Elapsed
-			if res.Missing {
-				status = ui.Dim("absent")
-			}
-			table.Row(ui.Command(res.Table), res.Member,
-				fmtCount(res.Read), fmtCount(res.Written), fmtCount(res.Skipped),
-				fmtCount(res.Pruned), status)
-		}
-		fmt.Println(table.Render())
-
-		// Celestials draw on regions, constellations, systems, types,
-		// corporations and operations, so they run once those are all in place.
-		if len(flagSDEOnly) == 0 {
-			cel, err := sde.ImportCelestials(cmd.Context(), pool, src)
-			if err != nil {
-				return fmt.Errorf("import celestials: %w", err)
-			}
-			jumps, err := sde.ImportSystemJumps(cmd.Context(), pool, src)
-			if err != nil {
-				return fmt.Errorf("import system jumps: %w", err)
-			}
-			flagCount, flagTime, err := sde.SeedInvFlags(cmd.Context(), pool)
-			if err != nil {
-				return fmt.Errorf("seed inv_flags: %w", err)
-			}
-
-			ui.Section("Derived from the map")
-			ct := ui.NewTable("TABLE", "SOURCE", "ROWS", "PRUNED", "TIME")
-			ct.Row(ui.Command("celestials"), "9 members",
-				fmtCount(cel.Written), fmtCount(cel.Pruned), cel.Elapsed)
-			ct.Row(ui.Command("solar_system_jumps"), "mapStargates",
-				fmtCount(jumps.Written), fmtCount(jumps.Pruned), jumps.Elapsed)
-			ct.Row(ui.Command("inv_flags"), ui.Dim("bundled"),
-				fmtCount(flagCount), "0", flagTime)
-			fmt.Println(ct.Render())
-		}
-
-		// Seeded before the derivations, so Dust groups get their category_id
-		// denormalised along with everything else.
-		if len(flagSDEOnly) == 0 {
-			seed, err := sde.SeedDust514(cmd.Context(), pool)
-			if err != nil {
-				return fmt.Errorf("seed dust514: %w", err)
-			}
-			ui.Section("Dust 514 (bundled, removed from the SDE in 2017)")
-			st := ui.NewTable("CATEGORIES", "GROUPS", "MARKET GROUPS", "TYPES", "TIME")
-			st.Row(fmtCount(seed.Categories), fmtCount(seed.Groups),
-				fmtCount(seed.MarketGroups), fmtCount(seed.Types), seed.Elapsed)
-			fmt.Println(st.Render())
-		}
-
-		// EVE Ref feeds and the bundled price lists. Network-dependent, so
-		// --skip-external exists for working offline or iterating on the archive.
-		if len(flagSDEOnly) == 0 && !flagSDESkipExternal {
-			ui.Section("External sources")
-			et := ui.NewTable("SOURCE", "ROWS", "TIME")
-			ins, err := sde.ImportInsurancePrices(cmd.Context(), pool, userAgent())
-			if err != nil {
-				return err
-			}
-			et.Row(ui.Command(ins.Name), fmtCount(ins.Rows), ins.Elapsed)
-
-			str, err := sde.ImportStructures(cmd.Context(), pool, userAgent())
-			if err != nil {
-				return err
-			}
-			et.Row(ui.Command(str.Name), fmtCount(str.Rows), str.Elapsed)
-
-			// Generated first so the hand-set list below can override it: a few
-			// hulls are both supercapitals and manually priced, and the manual
-			// value is the deliberate one. Matches the TypeScript ordering.
-			//
-			// Needs the prices table, which a different importer fills; writes
-			// nothing rather than failing when it is empty.
-			sup, err := sde.GenerateSupercapPrices(cmd.Context(), pool)
-			if err != nil {
-				return err
-			}
-			rows := fmtCount(sup.Rows)
-			if sup.Rows == 0 {
-				rows = ui.Dim("0 (no market prices loaded)")
-			}
-			et.Row(ui.Command(sup.Name), rows, sup.Elapsed)
-
-			man, err := sde.SeedManualCustomPrices(cmd.Context(), pool)
-			if err != nil {
-				return err
-			}
-			et.Row(ui.Command(man.Name), fmtCount(man.Rows), man.Elapsed)
-			fmt.Println(et.Render())
-		}
-
-		ui.Section("Derived")
-		dt := ui.NewTable("DERIVATION", "ROWS", "TIME")
-		derived, err := sde.Derive(cmd.Context(), pool)
-		for _, d := range derived {
-			dt.Row(d.Name, fmtCount(d.Rows), d.Elapsed)
-		}
-		// Depends on celestials, so it cannot live in the ordered list above.
-		if err == nil && len(flagSDEOnly) == 0 {
-			var sn sde.DeriveResult
-			sn, err = sde.DeriveOne(cmd.Context(), pool, sde.StationNameDerivation)
-			dt.Row(sn.Name, fmtCount(sn.Rows), sn.Elapsed)
-		}
-		fmt.Println(dt.Render())
-		if err != nil {
-			ui.Newline()
-			return fmt.Errorf("derive: %w", err)
-		}
-
-		// Only stamp the build once everything has succeeded, so an interrupted
-		// import does not look complete to the next run.
-		if len(flagSDEOnly) == 0 {
-			if err := sde.RecordBuild(cmd.Context(), pool, manifest.BuildNumber, manifest.ReleaseDate); err != nil {
-				return err
-			}
-		}
-
-		var read, written int64
-		for _, r := range results {
-			read += r.Read
-			written += r.Written
-		}
 		ui.Newline()
-		ui.KV("Build", strconv.FormatInt(manifest.BuildNumber, 10))
-		ui.KV("Rows read", fmtCount(read))
-		ui.KV("Rows written", fmtCount(written))
+		ui.KV("Release", res.Release)
+		ui.KV("Build", strconv.FormatInt(res.BuildNumber, 10))
+		ui.KV("Rows read", fmtCount(res.Read))
+		ui.KV("Rows written", fmtCount(res.Written))
 		ui.KV("Total", time.Since(start).Round(time.Millisecond).String())
 		ui.Newline()
-		if len(flagSDEOnly) > 0 {
-			ui.Warn("Partial import (--only): the loaded build was not stamped.")
+		if len(only) > 0 {
+			ui.Warn("Partial import (--only): the loaded release was not stamped.")
 			ui.Newline()
 		}
 		return nil
 	},
 }
 
+func renderSDEImport(res sde.ImportResult) {
+	ui.Section("Imported tables")
+	t := ui.NewTable("TABLE", "SOURCE", "READ", "WRITTEN", "SKIPPED", "PRUNED", "TIME")
+	for _, row := range res.Tables {
+		t.Row(ui.Command(row.Table), row.Member, fmtCount(row.Read), fmtCount(row.Written),
+			fmtCount(row.Skipped), fmtCount(row.Pruned), row.Elapsed)
+	}
+	fmt.Println(t.Render())
+
+	if res.Celestials.Table != "" {
+		ui.Section("Map and bundled data")
+		t := ui.NewTable("TABLE", "WRITTEN", "PRUNED", "TIME")
+		t.Row(ui.Command(res.Celestials.Table), fmtCount(res.Celestials.Written), fmtCount(res.Celestials.Pruned), res.Celestials.Elapsed)
+		if res.SystemJumps.Table != "" {
+			t.Row(ui.Command(res.SystemJumps.Table), fmtCount(res.SystemJumps.Written), fmtCount(res.SystemJumps.Pruned), res.SystemJumps.Elapsed)
+		}
+		if res.InvFlagsElapsed != "" {
+			t.Row(ui.Command("inv_flags"), fmtCount(res.InvFlags), "0", res.InvFlagsElapsed)
+		}
+		fmt.Println(t.Render())
+	}
+
+	if res.Dust514.Elapsed != "" {
+		ui.Section("Bundled Dust 514 data")
+		t := ui.NewTable("CATEGORIES", "GROUPS", "MARKET GROUPS", "TYPES", "TIME")
+		t.Row(fmtCount(res.Dust514.Categories), fmtCount(res.Dust514.Groups),
+			fmtCount(res.Dust514.MarketGroups), fmtCount(res.Dust514.Types), res.Dust514.Elapsed)
+		fmt.Println(t.Render())
+	}
+
+	if len(res.External) > 0 {
+		ui.Section("External sources")
+		t := ui.NewTable("SOURCE", "ROWS", "TIME")
+		for _, row := range res.External {
+			t.Row(ui.Command(row.Name), fmtCount(row.Rows), row.Elapsed)
+		}
+		fmt.Println(t.Render())
+	}
+
+	if len(res.Derived) > 0 {
+		ui.Section("Derived")
+		t := ui.NewTable("DERIVATION", "ROWS", "TIME")
+		for _, row := range res.Derived {
+			t.Row(row.Name, fmtCount(row.Rows), row.Elapsed)
+		}
+		fmt.Println(t.Render())
+	}
+}
+
 var sdeVerifyCmd = &cobra.Command{
 	Use:   "verify",
 	Short: "Compare local SDE row counts against a reference database",
-	Long: `Counts rows in every archive-owned and derived SDE table.
+	Long: `Counts rows in every SDE-owned and derived table.
 
 Run it once locally and once with --config .env.prod. Matching counts are the
 first parity check; primary-key and value comparisons remain the stronger
@@ -392,13 +295,13 @@ patch set. Output is validated before the existing bundle is replaced.`,
 		if err != nil {
 			return err
 		}
-		source, err := sde.Open(cmd.Context(), cacheDir(), manifest, userAgent(), func(message string) {
+		source, err := sde.Open(cmd.Context(), cacheDir(), manifest, dogmadata.InputTables(), userAgent(), func(message string) {
 			ui.Printf("  %s %s\n", ui.Dim("·"), message)
 		})
 		if err != nil {
 			return err
 		}
-		defer source.Close() //nolint:errcheck
+		manifest = source.Manifest
 
 		patches, err := dogmadata.FetchPatches(cmd.Context(), filepath.Join(cacheDir(), "dogma"), userAgent())
 		if err != nil {
@@ -417,12 +320,13 @@ patch set. Output is validated before the existing bundle is replaced.`,
 			return err
 		}
 		if outputPath == defaultPath {
-			if err := updateDogmaMetadata(manifest.BuildNumber); err != nil {
+			if err := updateDogmaMetadata(manifest.BuildNumber, manifest.Release); err != nil {
 				return err
 			}
 		}
 
 		ui.Section("Dogma data")
+		ui.KV("SDE release", manifest.Release)
 		ui.KV("SDE build", strconv.FormatInt(manifest.BuildNumber, 10))
 		ui.KV("Converter", dogmadata.ConverterCommit)
 		ui.KV("Types", fmtCount(int64(result.Types)))
@@ -436,7 +340,7 @@ patch set. Output is validated before the existing bundle is replaced.`,
 	},
 }
 
-func updateDogmaMetadata(build int64) error {
+func updateDogmaMetadata(build int64, release string) error {
 	path := filepath.Join("frontend", "dogma", "dist", "upstream", "VERSION.json")
 	// #nosec G304 -- this is the fixed repository metadata path for an operator-only generator.
 	raw, err := os.ReadFile(path)
@@ -448,6 +352,7 @@ func updateDogmaMetadata(build int64) error {
 		return fmt.Errorf("parse Dogma version: %w", err)
 	}
 	version["sde_build"] = build
+	version["sde_release"] = release
 	version["data_major"] = dogmadata.DataMajorVersion
 	version["data"] = fmt.Sprintf("%d.%d.0", dogmadata.DataMajorVersion, build)
 	version["data_converter_commit"] = dogmadata.ConverterCommit
@@ -466,7 +371,7 @@ func updateDogmaMetadata(build int64) error {
 	}
 
 	goPath := filepath.Join("internal", "fitting", "dogma_version_generated.go")
-	source := fmt.Sprintf("// Code generated by `shrike sde:build-dogma`; DO NOT EDIT.\n\npackage fitting\n\nconst DogmaSDEVersion = %q\n", strconv.FormatInt(build, 10))
+	source := fmt.Sprintf("// Code generated by `shrike sde:build-dogma`; DO NOT EDIT.\n\npackage fitting\n\nconst DogmaSDEVersion = %q\n", fmt.Sprintf("%d@%s", build, release))
 	formatted, err := format.Source([]byte(source))
 	if err != nil {
 		return err
@@ -496,19 +401,19 @@ func fmtCount(n int64) string {
 
 func init() {
 	sdeImportCmd.Flags().StringArrayVar(&flagSDEOnly, "only", nil,
-		"Restrict to named tables or archive members (repeatable)")
+		"Restrict to named destination tables or SDE tables (repeatable)")
 	sdeImportCmd.Flags().BoolVar(&flagSDESkipExternal, "skip-external", false,
 		"Skip the EVE Ref feeds (insurance prices, structures)")
 	sdeImportCmd.Flags().BoolVar(&flagSDEForce, "force", false,
-		"Re-import even when the published build is already loaded")
+		"Re-import even when the published table versions are already loaded")
 	for _, c := range []*cobra.Command{sdeImportCmd, sdeStatusCmd} {
 		c.Flags().StringVar(&flagSDECacheDir, "cache-dir", "",
-			"Where to keep downloaded archives (default DATA_DIR/sde)")
+			"Where to keep downloaded tables (default DATA_DIR/sde)")
 	}
 	sdeBuildDogmaCmd.Flags().StringVar(&flagDogmaOutput, "output",
 		filepath.Join("frontend", "dogma", "dist", "upstream", "data", "dist"),
 		"Destination directory for generated FlatBuffer files")
 	sdeBuildDogmaCmd.Flags().StringVar(&flagSDECacheDir, "cache-dir", "",
-		"Where to keep downloaded archives (default DATA_DIR/sde)")
+		"Where to keep downloaded tables (default DATA_DIR/sde)")
 	sdeCmd.AddCommand(sdeStatusCmd, sdeImportCmd, sdeVerifyCmd, sdeBuildDogmaCmd)
 }

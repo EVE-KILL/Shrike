@@ -8,8 +8,9 @@ The sde, patch and fbs implementations and regression tests are retained.
 Go import paths use Shrike's internal package. The generated Go files are
 formatted with gofmt. The vendor includes the schema, patch rules and conversion
 logic.
-The license, schemas and patches are retained. Root dogmadata wraps the existing
-cached CCP archive loader and stages a complete replacement bundle before rename.
+The license, schemas and patches are retained. The loader reads Shrike's cached
+CCP HTTP tables and decodes their named record keys. Root dogmadata applies the
+patches and stages a complete replacement bundle before rename.
 
 Shrike's lint configuration excludes upstream style/unused findings and reviewed
 public-data permission/file-path warnings in this vendored directory. Other

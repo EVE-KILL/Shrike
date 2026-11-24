@@ -199,23 +199,12 @@ func ImportCelestials(ctx context.Context, pool *pgxpool.Pool, src *Source) (Loa
 
 	w := &stagingWriter{ctx: ctx, conn: conn.Conn(), table: staging, columns: celestialColumns}
 
-	// Passes run in dependency order: planets before moons before stations.
-	passes := []struct {
-		name string
-		run  func() error
-	}{
-		{"map hierarchy", func() error { return celestialsFromDatabase(ctx, pool, w) }},
-		{"stars", func() error { return celestialsFromMember(ctx, src, w, lookups, "mapStars", groupStar) }},
-		{"planets", func() error { return celestialsFromMember(ctx, src, w, lookups, "mapPlanets", groupPlanet) }},
-		{"moons", func() error { return celestialsFromMember(ctx, src, w, lookups, "mapMoons", groupMoon) }},
-		{"belts", func() error { return celestialsFromMember(ctx, src, w, lookups, "mapAsteroidBelts", groupAsteroidBelt) }},
-		{"stargates", func() error { return celestialsFromMember(ctx, src, w, lookups, "mapStargates", groupStargate) }},
-		{"secondary suns", func() error { return celestialsFromMember(ctx, src, w, lookups, "mapSecondarySuns", groupSecondarySun) }},
-		{"stations", func() error { return celestialsFromMember(ctx, src, w, lookups, "npcStations", groupStation) }},
+	if err := celestialsFromDatabase(ctx, pool, w); err != nil {
+		return res, fmt.Errorf("celestials/map hierarchy: %w", err)
 	}
-	for _, p := range passes {
-		if err := p.run(); err != nil {
-			return res, fmt.Errorf("celestials/%s: %w", p.name, err)
+	for _, table := range celestialTables {
+		if err := celestialsFromMember(ctx, src, w, lookups, table.member, table.group); err != nil {
+			return res, fmt.Errorf("celestials/%s: %w", table.member, err)
 		}
 	}
 	if err := w.flush(); err != nil {
@@ -306,6 +295,20 @@ func celestialsFromDatabase(ctx context.Context, pool *pgxpool.Pool, w *stagingW
 		}
 	}
 	return nil
+}
+
+// Planets must be loaded before moons, and moons before stations.
+var celestialTables = []struct {
+	member string
+	group  int32
+}{
+	{"mapStars", groupStar},
+	{"mapPlanets", groupPlanet},
+	{"mapMoons", groupMoon},
+	{"mapAsteroidBelts", groupAsteroidBelt},
+	{"mapStargates", groupStargate},
+	{"mapSecondarySuns", groupSecondarySun},
+	{"npcStations", groupStation},
 }
 
 // celestialsFromMember handles the archive-sourced passes. The naming rule is
