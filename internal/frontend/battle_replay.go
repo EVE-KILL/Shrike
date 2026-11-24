@@ -33,7 +33,7 @@ func battleInitialReplay(v battleDetailView) battleReplayState {
 	for _, k := range v.Filtered {
 		if !seen[k.SystemID] {
 			seen[k.SystemID] = true
-			s.Systems = append(s.Systems, battleShipGroup{k.SystemID, k.SystemName})
+			s.Systems = append(s.Systems, battleShipGroup{ID: k.SystemID, Name: k.SystemName})
 		}
 	}
 	if len(s.Systems) > 0 {

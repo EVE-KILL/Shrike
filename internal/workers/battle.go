@@ -2,11 +2,14 @@ package workers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/api"
 	"github.com/eve-kill/shrike/internal/battle"
 	"github.com/eve-kill/shrike/internal/queue"
+	"github.com/jackc/pgx/v5"
 	"github.com/riverqueue/river"
 )
 
@@ -22,17 +25,18 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 		return river.JobCancel(fmt.Errorf("window %s..%s is empty", from, to))
 	}
 
-	// Clear before detecting. Re-detection is the normal case — late killmails
-	// keep changing a fight's shape for days — and without this a battle whose
-	// boundaries moved would be stored alongside its previous self.
-	cleared, err := battle.ClearWindow(ctx, w.Deps.Pool, from, to)
-	if err != nil {
-		return err
-	}
-	for _, id := range cleared {
-		// Whatever those battles were, they no longer exist under those ids, so
-		// any ticker entry pointing at one is now a dead link.
-		w.Deps.Ticker.BattleExpired(ctx, id)
+	systemID := job.Args.SystemID
+	var dirtyAt time.Time
+	if systemID > 0 {
+		err := w.Deps.Pool.QueryRow(ctx, `
+			SELECT dirtied_at FROM battle_dirty_days WHERE solar_system_id = $1 AND activity_date = $2::date`,
+			systemID, from.Format(time.DateOnly)).Scan(&dirtyAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	candidates, err := battle.FindHotspotWindows(
@@ -41,6 +45,7 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 		from,
 		to,
 		battleHotspotMinimum,
+		systemID,
 	)
 	if err != nil {
 		return err
@@ -52,12 +57,15 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 		// boundaries before doing the detailed five-minute segmentation so a
 		// fight beginning just before a hot hour or ending just after it is not
 		// clipped.
+		start, end, err := battle.ExtendWindow(ctx, w.Deps.Pool, c.SolarSystemID, c.Start.Add(-battleEdgeExtension), c.End.Add(battleEdgeExtension))
+		if err != nil {
+			return err
+		}
 		kms, atts, err := battle.LoadSystem(
 			ctx,
 			w.Deps.Pool,
 			c.SolarSystemID,
-			c.Start.Add(-battleEdgeExtension),
-			c.End.Add(battleEdgeExtension),
+			start, end,
 		)
 		if err != nil {
 			return err
@@ -74,11 +82,27 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 			// Only the big ones reach the ticker. Every detected battle would be a
 			// second killfeed; a hundred and fifty ships is the scale at which the
 			// fight is news to people who were not in it.
-			if b.KillCount >= battleTickerThreshold {
+			if b.KillCount >= battleTickerThreshold && time.Since(b.End) < battleRecentWindow && w.Deps.Ticker != nil {
 				w.Deps.Ticker.BattleStarted(ctx, id,
 					w.systemName(b.SolarSystemID), w.regionName(b.RegionID),
 					b.KillCount, b.IskDestroyed)
 			}
+		}
+	}
+
+	if systemID > 0 {
+		// A recent arrival can change the report inside an existing battle
+		// even if it contributes nothing to the detector's side totals.
+		if _, err := w.Deps.Pool.Exec(ctx, `
+			UPDATE battles SET updated_at = clock_timestamp(), report_pending = true
+			WHERE solar_system_id = $1 AND start_time < $3 AND end_time >= $2`,
+			systemID, from, to); err != nil {
+			return err
+		}
+		if _, err := w.Deps.Pool.Exec(ctx, `
+			DELETE FROM battle_dirty_days WHERE solar_system_id = $1 AND activity_date = $2::date
+			  AND dirtied_at = $3`, systemID, from.Format(time.DateOnly), dirtyAt); err != nil {
+			return err
 		}
 	}
 
@@ -87,6 +111,38 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 		Int("candidates", len(candidates)).Int("battles", found).
 		Msg("battle detection")
 	return nil
+}
+
+func (d *Deps) cronDirtyBattles(ctx context.Context) (string, error) {
+	if d.Queue == nil {
+		return "", errNeedsQueue("battle_dirty_refresh")
+	}
+	rows, err := d.Pool.Query(ctx, `
+		SELECT solar_system_id, activity_date FROM battle_dirty_days
+		ORDER BY dirtied_at LIMIT 40`)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+	var args []river.JobArgs
+	for rows.Next() {
+		var systemID int32
+		var day time.Time
+		if err := rows.Scan(&systemID, &day); err != nil {
+			return "", err
+		}
+		args = append(args, queue.BattleDetectionArgs{From: day, To: day.AddDate(0, 0, 1), SystemID: systemID})
+	}
+	if err := rows.Err(); err != nil {
+		return "", err
+	}
+	n, err := queue.DispatchMany(ctx, d.Queue, args, queue.RecentBackfill)
+	return fmt.Sprintf("%d dirty battle windows queued", n), err
+}
+
+func (d *Deps) cronPrepareBattleReports(ctx context.Context) (string, error) {
+	n, err := api.PrepareBattleReports(ctx, d.Pool, 48)
+	return fmt.Sprintf("%d battle reports prepared", n), err
 }
 
 // battleTickerThreshold is how many ships have to die before a battle is worth

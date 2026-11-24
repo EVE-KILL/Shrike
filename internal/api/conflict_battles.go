@@ -67,6 +67,10 @@ func registerConflictBattleRoutes(a huma.API, opts Options) {
 }
 
 func conflictBattlesHandler(opts Options) legacyHandler {
+	return readConflictBattles(opts, true)
+}
+
+func readConflictBattles(opts Options, includeYears bool) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		page := parseConflictBoundedInt(
 			req.Query, "page", conflictDefaultPage, 1, conflictMaximumPage,
@@ -204,11 +208,11 @@ func conflictBattlesHandler(opts Options) legacyHandler {
 				return legacyPayload{}, queryErr
 			}
 			if row == nil {
-				return emptyConflictBattleList(ctx, opts.DB, domainWhere, domainArgs, page, limit)
+				return emptyConflictBattleList(ctx, opts, domainWhere, domainArgs, page, limit, includeYears)
 			}
 			resolved, ok := int64Value(row["corporation_id"])
 			if !ok || resolved <= 0 || resolved > pgInt4Max {
-				return emptyConflictBattleList(ctx, opts.DB, domainWhere, domainArgs, page, limit)
+				return emptyConflictBattleList(ctx, opts, domainWhere, domainArgs, page, limit, includeYears)
 			}
 			value := int32(resolved)
 			corporationID = &value
@@ -290,9 +294,12 @@ func conflictBattlesHandler(opts Options) legacyHandler {
 			return legacyPayload{}, err
 		}
 
-		years, err := loadConflictBattleYears(ctx, opts.DB, domainWhere, domainArgs)
-		if err != nil {
-			return legacyPayload{}, err
+		years := []map[string]any{}
+		if includeYears {
+			years, err = conflictBattleYears(ctx, opts, domainWhere, domainArgs)
+			if err != nil {
+				return legacyPayload{}, err
+			}
 		}
 		if err := attachConflictBattleListTeams(ctx, opts.DB, rows); err != nil {
 			return legacyPayload{}, err
@@ -320,19 +327,34 @@ func parseConflictOptionalPositiveInt64(
 
 func emptyConflictBattleList(
 	ctx context.Context,
-	db Database,
+	opts Options,
 	where []string,
 	args []any,
 	page, limit int,
+	includeYears bool,
 ) (legacyPayload, error) {
-	years, err := loadConflictBattleYears(ctx, db, where, args)
-	if err != nil {
-		return legacyPayload{}, err
+	years := []map[string]any{}
+	if includeYears {
+		var err error
+		years, err = conflictBattleYears(ctx, opts, where, args)
+		if err != nil {
+			return legacyPayload{}, err
+		}
 	}
 	return jsonPayload(map[string]any{
 		"battles": []map[string]any{}, "years": years,
 		"page": page, "limit": limit,
 	}), nil
+}
+
+func conflictBattleYears(ctx context.Context, opts Options, where []string, args []any) ([]map[string]any, error) {
+	if len(args) != 0 {
+		return loadConflictBattleYears(ctx, opts.DB, where, args)
+	}
+	reader := newCachedHomepageReader(opts.DB, nil, opts.responseCache, opts.Commit)
+	return cachedHomepage(ctx, reader, "battle-years", 15*time.Minute, func(ctx context.Context) ([]map[string]any, error) {
+		return loadConflictBattleYears(ctx, opts.DB, where, args)
+	})
 }
 
 func loadConflictBattleYears(
@@ -431,6 +453,7 @@ func attachConflictBattleListTeams(
 				"total_losses":        conflictInt(row, "total_losses"),
 				"total_isk_destroyed": conflictFloat(row, "total_isk_destroyed"),
 				"total_isk_lost":      conflictFloat(row, "total_isk_lost"),
+				"corp_count":          0,
 			}
 			allianceMap[battleID][teamIndex] = map[int64]*aggregate{}
 		}
@@ -438,6 +461,8 @@ func attachConflictBattleListTeams(
 		if corpID == 0 {
 			continue
 		}
+		team := teamMap[battleID][teamIndex]
+		team["corp_count"] = team["corp_count"].(int) + 1
 		allianceID, hasAlliance := int64Value(row["alliance_id"])
 		key := allianceID
 		if !hasAlliance {
@@ -496,7 +521,6 @@ func attachConflictBattleListTeams(
 				top = append(top, item)
 			}
 			team["alliance_count"] = len(allianceMap[battleID][teamIndex])
-			team["corp_count"] = countConflictBattleTeamCorps(rows, battleID, teamIndex)
 			team["top_alliances"] = top
 		}
 	}
@@ -517,26 +541,18 @@ func attachConflictBattleListTeams(
 	return nil
 }
 
-func countConflictBattleTeamCorps(
-	rows []map[string]any,
-	battleID, teamIndex int64,
-) int {
-	count := 0
-	for _, row := range rows {
-		if conflictInt(row, "battle_id") == battleID &&
-			conflictInt(row, "team_index") == teamIndex &&
-			conflictInt(row, "corporation_id") != 0 {
-			count++
-		}
-	}
-	return count
-}
-
 func battleDetailHandler(opts Options) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		id, err := parseConflictID(req)
 		if err != nil {
 			return legacyPayload{}, err
+		}
+		prepared, err := loadPreparedBattleReport(ctx, opts.DB, int64(id), false)
+		if err != nil {
+			return legacyPayload{}, err
+		}
+		if prepared.Detail != nil {
+			return legacyPayload{ContentType: "application/json", RawBody: prepared.Detail}, nil
 		}
 		window, battleRow, err := loadSavedConflictBattleWindow(ctx, opts.DB, id)
 		if err != nil {
@@ -679,12 +695,15 @@ func loadSavedConflictBattleWindow(
 		           AS total_isk_destroyed,
 		       COALESCE(is_multi_party, false) AS is_multi_party,
 		       COALESCE(is_custom, false) AS is_custom
-		FROM battles WHERE battle_id = $1 LIMIT 1`,
+		FROM battles WHERE battle_id = COALESCE(
+			(SELECT canonical_battle_id FROM battle_aliases WHERE battle_id = $1), $1
+		) LIMIT 1`,
 		id,
 	)
 	if err != nil || row == nil {
 		return nil, row, err
 	}
+	id = int32(conflictInt(row, "battle_id"))
 	start, startOK := row["start_time"].(time.Time)
 	end, endOK := row["end_time"].(time.Time)
 	if !startOK || !endOK {

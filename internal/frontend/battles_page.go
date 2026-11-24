@@ -220,12 +220,17 @@ func (s *site) battlesPage(r *http.Request) (Page, error) {
 	if err != nil {
 		return Page{}, err
 	}
+	var ttl time.Duration
+	if r.URL.RawQuery == "" {
+		ttl = time.Minute
+	}
 	return Page{Metadata: Metadata{
 		Title: "EVE Online Battles & Battle Reports", CanonicalPath: "/battles", Indexable: true,
 		Description: "Browse major battles in EVE Online — fleet engagements, battle reports, timelines, and ISK destroyed across New Eden on EVE-KILL.",
 		Stylesheets: []string{"utilities.css", "utility-page.css", "battles.css", "map-canvas.css"}, ModuleScripts: []string{"battles.js"},
 		StructuredData: map[string]any{"@context": "https://schema.org", "@type": "CollectionPage", "name": "EVE Online Battles", "url": canonicalOrigin + "/battles"},
-	}, Content: battlesDirectoryPage(battleDirectoryView{Filters: filters, Data: data, DomainMode: s.battleDirectoryDomainMode(r)})}, nil
+	}, Content: battlesDirectoryPage(battleDirectoryView{Filters: filters, Data: data, DomainMode: s.battleDirectoryDomainMode(r)}),
+		SharedCacheTTL: ttl}, nil
 }
 
 func (s *site) battleDirectoryDomainMode(r *http.Request) bool {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
+	"github.com/jackc/pgx/v5"
 )
 
 // EntityDetail gives Go-rendered pages the same consolidated data as the
@@ -547,10 +548,27 @@ func (r *HomepageReader) EntityBattles(ctx context.Context, kind string, id int6
 	if r == nil || r.db == nil || (kind != entityPageCharacter && kind != entityPageCorporation && kind != entityPageAlliance && kind != "system" && kind != "region" && kind != "constellation") || id < 1 || id > 2_147_483_647 || page < 1 || page > 1_000_000 {
 		return EntityBattlesData{}, fmt.Errorf("invalid entity battle options")
 	}
+	if kind == entityPageCharacter {
+		corporation, err := cachedHomepage(ctx, r, fmt.Sprintf("entity-battle-corp:%d", id), time.Minute, func(ctx context.Context) (int64, error) {
+			var corporation int64
+			err := r.db.QueryRow(ctx, "SELECT COALESCE(corporation_id, 0) FROM characters WHERE character_id = $1", id).Scan(&corporation)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return 0, nil
+			}
+			return corporation, err
+		})
+		if err != nil {
+			return EntityBattlesData{}, err
+		}
+		if corporation <= 0 {
+			return EntityBattlesData{Battles: []EntityBattleEntry{}, Page: page}, nil
+		}
+		kind, id = entityPageCorporation, corporation
+	}
 	key := fmt.Sprintf("entity-battles:%s:%d:%d", kind, id, page)
 	return cachedHomepage(ctx, r, key, time.Minute, func(ctx context.Context) (EntityBattlesData, error) {
 		query := url.Values{"page": {strconv.Itoa(page)}, "limit": {"50"}, kind + "Id": {strconv.FormatInt(id, 10)}}
-		payload, err := conflictBattlesHandler(Options{DB: r.db})(ctx, entityConflictRequest(query))
+		payload, err := readConflictBattles(Options{DB: r.db}, false)(ctx, entityConflictRequest(query))
 		if err != nil {
 			return EntityBattlesData{}, err
 		}

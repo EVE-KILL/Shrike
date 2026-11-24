@@ -29,7 +29,7 @@ func registerKillmailDetailRoutes(a huma.API, opts Options) {
 		"killmail-detail-legacy",
 		"/killmail/{id}",
 		"Full killmail detail",
-	), cache(killmailDetailHandler(opts)))
+	), killmailDetailHandler(opts))
 
 	exists := killmailExistsHandler(opts)
 	registerLegacy(a, killmailIDOperation(
@@ -69,19 +69,27 @@ func registerKillmailDetailRoutes(a huma.API, opts Options) {
 }
 
 func killmailDetailHandler(opts Options) legacyHandler {
+	reader := newCachedHomepageReader(opts.DB, nil, opts.responseCache, opts.Commit)
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		id, err := parseID(req.Param("id"))
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		body, found, err := loadKillmailDetail(ctx, opts.DB, id)
+		if opts.DB == nil {
+			return legacyPayload{}, apiError(http.StatusServiceUnavailable, "Database not configured")
+		}
+		body, err := reader.killmailDetail(ctx, id)
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		if !found {
+		if body == nil {
 			return legacyPayload{}, apiError(http.StatusNotFound, "Killmail not found")
 		}
-		return jsonPayload(body), nil
+		return legacyPayload{
+			ContentType: "application/json",
+			RawBody:     body,
+			Headers:     http.Header{"Cache-Control": {"public, max-age=60, s-maxage=300, stale-while-revalidate=60"}},
+		}, nil
 	}
 }
 

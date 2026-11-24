@@ -91,3 +91,29 @@ func TestBattleDirectoryBadgeRequiresConfiguredDomain(t *testing.T) {
 		}
 	}
 }
+
+func TestBattleDirectoryOnlySharesDefaultPublicPage(t *testing.T) {
+	handler := New(Options{Production: true, ConflictsAPI: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/site" {
+			_, _ = w.Write([]byte(`{"domain":null}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"battles":[],"years":[]}`))
+	})})
+	for _, tc := range []struct{ url, cookie, authorization, want string }{
+		{canonicalOrigin + "/battles", "", "", "s-maxage=60"},
+		{canonicalOrigin + "/battles?hours=24", "", "", "private, no-store"},
+		{canonicalOrigin + "/battles", "evelogin=example", "", "private, no-store"},
+		{canonicalOrigin + "/battles", "", "Bearer example", "private, no-store"},
+		{"https://board.example/battles", "", "", "private, no-store"},
+	} {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, tc.url, nil)
+		r.Header.Set("Cookie", tc.cookie)
+		r.Header.Set("Authorization", tc.authorization)
+		handler.ServeHTTP(w, r)
+		if w.Code != http.StatusOK || !strings.Contains(w.Header().Get("Cache-Control"), tc.want) {
+			t.Fatalf("%s rendered %d with cache policy %q", tc.url, w.Code, w.Header().Get("Cache-Control"))
+		}
+	}
+}

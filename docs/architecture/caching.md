@@ -42,11 +42,29 @@ The origin and Cloudflare then expire together. A shared cache that outlives
 the stored entry serves a body the origin has already replaced.
 
 Three route groups set their own directives instead. Killmail details, battle
-reports, and the static data export (SDE) do not change after the origin writes
-them, so they use a longer shared lifetime than their storage lifetime.
+reports, and the static data export (SDE) use route-specific freshness policies.
 
 `sharedCacheControl` in `internal/api/cache.go` builds the derived value.
 `routeJSONCache` in `internal/api/route_cache.go` takes the value per route.
+
+## Prepared battle reports
+
+Postgres stores prepared report details, chart summaries, and replay losses by
+battle ID. The cron worker builds these in batches and publishes each completed
+report in a single statement. Replay landmarks are cached by solar system.
+Reports without a prepared version use the existing reader during the backfill.
+
+The detector retains the existing ID when it updates a fight. When two fights
+merge, the retired ID resolves to the surviving battle. Recent killmail inserts
+mark their system and UTC day for refresh. The scheduled fourteen-day repair
+continues to run. A completed refresh replaces the prior report once the new
+data is ready.
+
+Apply migrations 31 and 32 before deploying code that reads prepared reports.
+The report job processes up to 48 pending battles per minute, with recently
+changed rows first. Keep the Cloudflare challenge during the initial backfill
+and check cache hits and origin work before narrowing it. Anonymous, unfiltered
+battle pages on the apex opt in through the normal HTML cache policy.
 
 ## Defaults
 

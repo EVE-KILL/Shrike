@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/api"
+	"github.com/eve-kill/shrike/internal/battle"
 )
 
 type battleCorporation struct {
@@ -52,13 +53,10 @@ type battleUnsided struct {
 	CorpCount     int              `json:"corp_count"`
 	Alliances     []battleAlliance `json:"alliances"`
 }
-type battleSide struct {
-	Corps     []int64 `json:"corps"`
-	Alliances []int64 `json:"alliances"`
-}
+type battleSide = battle.ReportSide
 type battleDetailData struct {
 	BattleID     int64          `json:"battle_id"`
-	Redirect     bool           `json:"redirect"`
+	Redirect     any            `json:"redirect"`
 	SystemID     int64          `json:"solar_system_id"`
 	SystemName   string         `json:"solar_system_name"`
 	Security     *float64       `json:"solar_system_security"`
@@ -79,23 +77,19 @@ type battleDetailData struct {
 	Sides        []battleSide   `json:"team_entities"`
 	Unsided      *battleUnsided `json:"unsided"`
 }
-type battleReplayKill struct {
-	ID         int64    `json:"killmail_id"`
-	Time       string   `json:"killmail_time"`
-	SystemID   int64    `json:"solar_system_id"`
-	SystemName string   `json:"solar_system_name"`
-	X          *float64 `json:"position_x"`
-	Y          *float64 `json:"position_y"`
-	Z          *float64 `json:"position_z"`
-	VictimName string   `json:"victim_character_name"`
-	CorpID     int64    `json:"victim_corporation_id"`
-	AllianceID int64    `json:"victim_alliance_id"`
-	ShipName   string   `json:"ship_name"`
-	ShipID     int64    `json:"ship_type_id"`
-	GroupID    int64    `json:"ship_group_id"`
-	GroupName  string   `json:"ship_group_name"`
-	Value      float64  `json:"total_value"`
+
+func (d battleDetailData) hasRedirect() bool {
+	switch redirect := d.Redirect.(type) {
+	case bool:
+		return redirect
+	case string:
+		return redirect != ""
+	default:
+		return false
+	}
 }
+
+type battleReplayKill = battle.ReportLoss
 type battleLandmark struct {
 	ID       int64   `json:"id"`
 	Name     string  `json:"name"`
@@ -109,51 +103,26 @@ type battleReplayData struct {
 	Kills     []battleReplayKill `json:"kills"`
 	Landmarks []battleLandmark   `json:"landmarks"`
 }
-type battleLossFilter struct {
-	Side   *int64
-	Group  *int64
-	MinISK float64
-	From   *int64
-	To     *int64
-}
-type battleLossTotal struct {
-	Count int
-	ISK   float64
-}
-type battleLossBin struct {
-	Start, End int64
-	Count      int
-	ISK        float64
-	Big        int
-	Sides      []battleLossTotal
-}
-type battleShipGroup struct {
-	ID   int64
-	Name string
-}
+type battleLossFilter = battle.LossFilter
+type battleLossTotal = battle.LossTotal
+type battleShipGroup = battle.LossShipGroup
 type battleDetailView struct {
-	ID                 int64
-	KillmailID         int64
-	Tab                string
-	Query              url.Values
-	Data               battleDetailData
-	Failed             bool
-	Error              string
-	Filter             battleLossFilter
-	Replay             battleReplayData
-	Filtered           []battleReplayKill
-	Biggest            []battleReplayKill
-	Supers             []battleReplayKill
-	Groups             []battleShipGroup
-	Bins               []battleLossBin
-	PeakCount, PeakISK float64
-	Busiest            battleLossBin
-	LossISK            float64
-	Killlist           api.KilllistPage
-	Composition        battleCompositionData
-	CompositionRows    [][]battlePilot
-	Intel              battleIntelData
-	Page, Limit        int
+	ID         int64
+	KillmailID int64
+	Tab        string
+	Query      url.Values
+	Data       battleDetailData
+	Failed     bool
+	Error      string
+	Filter     battleLossFilter
+	Replay     battleReplayData
+	battle.LossSummary
+	PreparedLosses  bool
+	Killlist        api.KilllistPage
+	Composition     battleCompositionData
+	CompositionRows [][]battlePilot
+	Intel           battleIntelData
+	Page, Limit     int
 }
 
 var battleTabs = []struct{ ID, Label, Icon string }{
@@ -272,99 +241,21 @@ func battleSideColor(side int) string {
 	return colors[side]
 }
 func battleVictimSide(k battleReplayKill, sides []battleSide) int {
-	for i, side := range sides {
-		for _, id := range side.Corps {
-			if id > 0 && id == k.CorpID {
-				return i
-			}
-		}
-	}
-	for i, side := range sides {
-		for _, id := range side.Alliances {
-			if id > 0 && id == k.AllianceID {
-				return i
-			}
-		}
-	}
-	return -1
+	return battle.VictimSide(k, sides)
 }
 func battleFilterActive(f battleLossFilter) bool {
 	return f.Side != nil || f.Group != nil || f.MinISK > 0 || f.From != nil || f.To != nil
+}
+
+func battleTabShowsLossSummary(tab string) bool {
+	return tab == "summary" || tab == "kills" || tab == "timeline"
 }
 
 func battleClearFilters() url.Values {
 	return url.Values{"side": nil, "group": nil, "minIsk": nil, "from": nil, "to": nil}
 }
 func buildBattleLosses(v *battleDetailView) {
-	start, end := battleTimeMS(v.Data.Start), battleTimeMS(v.Data.End)
-	step := int64(180 * 60000)
-	for _, minutes := range []int64{1, 5, 15, 30, 60, 180} {
-		if float64(end-start)/60000/float64(minutes) <= 60 {
-			step = minutes * 60000
-			break
-		}
-	}
-	count := max(1, int(math.Ceil(float64(end-start)/float64(step))))
-	v.Bins = make([]battleLossBin, count)
-	for i := range v.Bins {
-		binEnd := start + int64(i+1)*step
-		if i == count-1 {
-			binEnd = end + 1
-		}
-		v.Bins[i] = battleLossBin{Start: start + int64(i)*step, End: binEnd, Sides: make([]battleLossTotal, len(v.Data.Sides)+1)}
-	}
-	groups := map[int64]string{}
-	for _, k := range v.Replay.Kills {
-		if k.GroupID > 0 {
-			name := k.GroupName
-			if name == "" {
-				name = fmt.Sprintf("Class %d", k.GroupID)
-			}
-			groups[k.GroupID] = name
-		}
-		t := battleTimeMS(k.Time)
-		side := battleVictimSide(k, v.Data.Sides)
-		f := v.Filter
-		if t == 0 || f.Side != nil && int64(side) != *f.Side || f.Group != nil && k.GroupID != *f.Group || k.Value < f.MinISK || f.From != nil && t < *f.From || f.To != nil && t >= *f.To {
-			continue
-		}
-		v.Filtered = append(v.Filtered, k)
-		v.LossISK += k.Value
-		if k.GroupID == 30 || k.GroupID == 659 {
-			v.Supers = append(v.Supers, k)
-		}
-		if t < start || t > end {
-			continue
-		}
-		index := min(count-1, int((t-start)/step))
-		bin := &v.Bins[index]
-		bin.Count++
-		bin.ISK += k.Value
-		if side < 0 {
-			side = len(v.Data.Sides)
-		}
-		bin.Sides[side].Count++
-		bin.Sides[side].ISK += k.Value
-		if k.GroupID == 30 || k.GroupID == 659 {
-			bin.Big++
-		}
-	}
-	for id, name := range groups {
-		v.Groups = append(v.Groups, battleShipGroup{id, name})
-	}
-	sort.Slice(v.Groups, func(i, j int) bool { return v.Groups[i].Name < v.Groups[j].Name })
-	v.Biggest = append([]battleReplayKill{}, v.Filtered...)
-	sort.SliceStable(v.Biggest, func(i, j int) bool { return v.Biggest[i].Value > v.Biggest[j].Value })
-	v.Biggest = v.Biggest[:min(6, len(v.Biggest))]
-	v.Busiest = v.Bins[0]
-	v.PeakCount, v.PeakISK = 1, 1
-	for _, bin := range v.Bins {
-		v.PeakCount = max(v.PeakCount, float64(bin.Count))
-		v.PeakISK = max(v.PeakISK, bin.ISK)
-		if bin.Count > v.Busiest.Count {
-			v.Busiest = bin
-		}
-	}
+	v.LossSummary = battle.SummarizeLosses(v.Data.Start, v.Data.End, v.Data.Sides, v.Replay.Kills, v.Filter)
 }
 func (s *site) battleAPI(r *http.Request, path string, query url.Values, out any) (int, error) {
 	request := r.Clone(r.Context())
@@ -390,8 +281,22 @@ func (s *site) readBattleDetail(r *http.Request) (battleDetailView, error) {
 	if err != nil {
 		return v, err
 	}
+	if s.options.BattleReports != nil && v.KillmailID == 0 && (battleTabShowsLossSummary(v.Tab) || v.Tab == "replay") && !battleFilterActive(v.Filter) {
+		report, err := s.options.BattleReports.BattleReport(r.Context(), v.ID)
+		if err != nil {
+			return v, err
+		}
+		if report.Detail != nil {
+			if err := json.Unmarshal(report.Detail, &v.Data); err != nil {
+				return v, err
+			}
+			v.LossSummary = report.Losses
+			v.PreparedLosses = true
+			return v, nil
+		}
+	}
 	status, err := s.battleAPI(r, v.endpoint(), nil, &v.Data)
-	if v.KillmailID > 0 && (err != nil || v.Data.Teams == nil && !v.Data.Redirect) {
+	if v.KillmailID > 0 && (err != nil || v.Data.Teams == nil && !v.Data.hasRedirect()) {
 		v.Failed = true
 		return v, nil
 	}
@@ -419,7 +324,7 @@ func (s *site) loadBattleTab(r *http.Request, v *battleDetailView) {
 		}
 		return
 	}
-	if v.Tab == "summary" || v.Tab == "kills" || v.Tab == "timeline" || v.Tab == "replay" {
+	if v.Tab == "replay" || battleTabShowsLossSummary(v.Tab) && !v.PreparedLosses {
 		_, err := s.battleAPI(r, v.endpoint()+"/replay", nil, &v.Replay)
 		if err != nil {
 			v.Error = "Unable to load battle losses."
@@ -635,11 +540,20 @@ func (s *site) battlePage(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return Page{}, err
 		}
-		if v.KillmailID > 0 && v.Data.Redirect && v.Data.BattleID > 0 {
-			return Page{RedirectPath: fmt.Sprintf("/battle/%d", v.Data.BattleID)}, nil
+		if v.Data.BattleID > 0 && (v.KillmailID == 0 && v.Data.BattleID != v.ID || v.KillmailID > 0 && v.Data.hasRedirect()) {
+			v.ID = v.Data.BattleID
+			return Page{RedirectPath: v.path(v.Tab, url.Values{"killmail": nil})}, nil
 		}
 		s.loadBattleTab(r, &v)
-		return Page{Metadata: battleMetadata(v), Content: battleDetailPage(v)}, nil
+		var ttl time.Duration
+		if r.URL.RawQuery == "" && (v.Tab == "summary" || v.PreparedLosses) && !v.Failed && v.Error == "" {
+			ttl = time.Minute
+			if end, err := time.Parse(time.RFC3339Nano, v.Data.End); err == nil &&
+				v.PreparedLosses && !v.Data.Custom && time.Since(end) > 14*24*time.Hour {
+				ttl = 15 * time.Minute
+			}
+		}
+		return Page{Metadata: battleMetadata(v), Content: battleDetailPage(v), SharedCacheTTL: ttl}, nil
 	}).ServeHTTP(w, r)
 }
 func (s *site) battleTabFragment(w http.ResponseWriter, r *http.Request) {

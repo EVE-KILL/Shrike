@@ -74,6 +74,26 @@ type Battle struct {
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 	CreatedByCharacterID *int32             `json:"created_by_character_id"`
+	ReportPending        bool               `json:"report_pending"`
+	DetectorFingerprint  []byte             `json:"detector_fingerprint"`
+}
+
+type BattleAlias struct {
+	BattleID          int32 `json:"battle_id"`
+	CanonicalBattleID int32 `json:"canonical_battle_id"`
+}
+
+type BattleDirtyDay struct {
+	SolarSystemID int32              `json:"solar_system_id"`
+	ActivityDate  pgtype.Date        `json:"activity_date"`
+	DirtiedAt     pgtype.Timestamptz `json:"dirtied_at"`
+}
+
+type BattleReportSnapshot struct {
+	BattleID    int32  `json:"battle_id"`
+	Report      []byte `json:"report"`
+	LossSummary []byte `json:"loss_summary"`
+	LossEvents  []byte `json:"loss_events"`
 }
 
 type BattleTeam struct {

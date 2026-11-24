@@ -558,7 +558,8 @@ func battleGeneratorSaveHandler(opts Options) legacyHandler {
 				    start_time = $4, end_time = $5,
 				    duration_minutes = $6, kill_count = $7,
 				    total_isk_destroyed = $8, is_multi_party = $9,
-				    updated_at = NOW()
+				    updated_at = clock_timestamp(), report_pending = true,
+				    detector_fingerprint = NULL
 				WHERE battle_id = $1`,
 				battleID, body.SolarSystemID, body.RegionID,
 				start, end, body.DurationMinutes, body.KillCount,

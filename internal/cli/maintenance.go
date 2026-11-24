@@ -222,7 +222,7 @@ earliest killmail. The end defaults to yesterday and is inclusive.`,
 		for day := from; !day.After(to); day = day.AddDate(0, 0, 1) {
 			next := day.AddDate(0, 0, 1)
 			windows, err := battle.FindHotspotWindows(
-				cmd.Context(), pool, day, next, flagBattleBackfillMinKills,
+				cmd.Context(), pool, day, next, flagBattleBackfillMinKills, 0,
 			)
 			if err != nil {
 				return err

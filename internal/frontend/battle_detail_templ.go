@@ -1798,9 +1798,9 @@ func battleLossExplorer(v battleDetailView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var89 string
-		templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(fullNumber(float64(len(v.Filtered))))
+		templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(fullNumber(float64(v.LossCount)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `battle_detail.templ`, Line: 322, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `battle_detail.templ`, Line: 322, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 		if templ_7745c5c3_Err != nil {
@@ -2000,7 +2000,7 @@ func battleLossExplorer(v battleDetailView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		if len(v.Filtered) == 0 {
+		if v.LossCount == 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 186, "<p class=\"glass-panel p-6 text-center text-sm text-gray-500\">No losses match these filters.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

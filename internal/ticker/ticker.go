@@ -333,10 +333,6 @@ func (e *Emitter) BattleStarted(ctx context.Context, battleID int64, systemName,
 }
 
 // BattleExpired retracts a battle announcement.
-//
-// The hourly re-detection deletes and re-inserts auto-detected battles, giving
-// the same real fight a new id each time. Without this the ticker accumulates
-// one entry per re-detection of a battle that has not changed.
 func (e *Emitter) BattleExpired(ctx context.Context, battleID int64) {
 	e.Expire(ctx, BattleIDBase-battleID)
 }

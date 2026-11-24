@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -112,12 +113,8 @@ func (r *HomepageReader) KillmailPage(ctx context.Context, id int64) (KillmailPa
 	if id <= 0 {
 		return KillmailPageData{}, false, nil
 	}
-	body, found, err := loadKillmailDetail(ctx, r.db, id)
-	if err != nil || !found {
-		return KillmailPageData{}, found, err
-	}
-	raw, err := json.Marshal(body)
-	if err != nil {
+	raw, err := r.killmailDetail(ctx, id)
+	if err != nil || raw == nil {
 		return KillmailPageData{}, false, err
 	}
 	var data KillmailPageData
@@ -125,4 +122,24 @@ func (r *HomepageReader) KillmailPage(ctx context.Context, id int64) (KillmailPa
 		return KillmailPageData{}, false, err
 	}
 	return data, true, nil
+}
+
+var errKillmailDetailMissing = errors.New("killmail not found")
+
+// Pages and both public API paths share one document per killmail ID.
+func (r *HomepageReader) killmailDetail(ctx context.Context, id int64) (json.RawMessage, error) {
+	raw, err := cachedHomepage(ctx, r, fmt.Sprintf("killmail-detail:%d", id), killmailCacheTTL, func(ctx context.Context) (json.RawMessage, error) {
+		body, found, err := loadKillmailDetail(ctx, r.db, id)
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			return nil, errKillmailDetailMissing
+		}
+		return json.Marshal(normalizeJSON(body))
+	})
+	if errors.Is(err, errKillmailDetailMissing) {
+		return nil, nil
+	}
+	return raw, err
 }

@@ -177,8 +177,9 @@ func (CharacterIntelRollupArgs) Kind() string { return "character_intel_rollup" 
 // Both bounds are in the uniqueness key: two windows are the same job only when
 // they cover the same span, and the hourly and daily scans deliberately overlap.
 type BattleDetectionArgs struct {
-	From time.Time `json:"from" river:"unique"`
-	To   time.Time `json:"to" river:"unique"`
+	From     time.Time `json:"from" river:"unique"`
+	To       time.Time `json:"to" river:"unique"`
+	SystemID int32     `json:"system_id,omitempty" river:"unique"`
 }
 
 func (BattleDetectionArgs) Kind() string { return "battle_detection" }

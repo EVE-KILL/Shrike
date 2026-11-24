@@ -151,11 +151,10 @@ func filteredBattleKilllist(ctx context.Context, opts Options, query url.Values,
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid minIsk")
 		}
 	}
-	replay, err := loadBattleReplay(ctx, opts, window)
+	rows, err := loadBattleLossRows(ctx, opts, window, false)
 	if err != nil {
 		return legacyPayload{}, err
 	}
-	rows := replay.Body.(map[string]any)["kills"].([]map[string]any)
 	ids := make([]int64, 0, len(rows))
 	prices := map[int64]float64{}
 	allianceTeams := battleAllianceTeams(window.Assignment)
@@ -209,6 +208,23 @@ func filteredBattleKilllist(ctx context.Context, opts Options, query url.Values,
 // Positions are the victim's location at destruction, not ship trajectories.
 func battleReplayHandler(opts Options, killmailMode bool) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		if !killmailMode {
+			id, err := parseConflictID(req)
+			if err != nil {
+				return legacyPayload{}, err
+			}
+			events, system, err := loadPreparedBattleEvents(ctx, opts.DB, id)
+			if err != nil {
+				return legacyPayload{}, err
+			}
+			if events != nil {
+				landmarks, err := battleSystemLandmarks(ctx, opts, system)
+				if err != nil {
+					return legacyPayload{}, err
+				}
+				return jsonPayload(map[string]any{"kills": events, "landmarks": landmarks}), nil
+			}
+		}
 		window, err := resolveConflictBattleWindow(ctx, opts.DB, req, killmailMode)
 		if err != nil {
 			return legacyPayload{}, err
@@ -218,10 +234,52 @@ func battleReplayHandler(opts Options, killmailMode bool) legacyHandler {
 }
 
 func loadBattleReplay(ctx context.Context, opts Options, window *conflictBattleWindow) (legacyPayload, error) {
+	rows, err := loadBattleLossRows(ctx, opts, window, true)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	landmarks, err := loadBattleLandmarks(ctx, opts.DB, window.SystemIDs)
+	if err != nil {
+		return legacyPayload{}, err
+	}
+	return jsonPayload(map[string]any{"kills": rows, "landmarks": landmarks}), nil
+}
+
+func battleSystemLandmarks(ctx context.Context, opts Options, system int32) ([]map[string]any, error) {
+	reader := newCachedHomepageReader(opts.DB, nil, opts.responseCache, opts.Commit)
+	return cachedHomepage(ctx, reader, fmt.Sprintf("battle-landmarks:%d", system), time.Hour, func(ctx context.Context) ([]map[string]any, error) {
+		return loadBattleLandmarks(ctx, opts.DB, []int32{system})
+	})
+}
+
+func loadBattleLandmarks(ctx context.Context, db Database, systems []int32) ([]map[string]any, error) {
+	landmarks, err := queryMaps(ctx, db, `
+            SELECT item_id AS id, item_name AS name, solar_system_id, group_id, x, y, z
+            FROM celestials
+            WHERE solar_system_id = ANY($1::int[]) AND group_id IN (6, 7, 8, 9, 10)
+              AND x IS NOT NULL AND y IS NOT NULL AND z IS NOT NULL
+            UNION ALL
+            SELECT station_id AS id, station_name AS name, solar_system_id, 15 AS group_id, x, y, z
+            FROM stations
+            WHERE solar_system_id = ANY($1::int[])
+              AND x IS NOT NULL AND y IS NOT NULL AND z IS NOT NULL
+            ORDER BY solar_system_id, group_id, id`, systems)
+	if err != nil {
+		return nil, err
+	}
+	if landmarks == nil {
+		landmarks = []map[string]any{}
+	}
+	return landmarks, nil
+}
+
+func loadBattleLossRows(ctx context.Context, opts Options, window *conflictBattleWindow, spatial bool) ([]map[string]any, error) {
+	spatialColumns := ""
+	if spatial {
+		spatialColumns = "system.system_name AS solar_system_name, k.position_x, k.position_y, k.position_z,"
+	}
 	rows, err := queryMaps(ctx, opts.DB, `
-            SELECT k.killmail_id, k.killmail_time, k.solar_system_id,
-                   system.system_name AS solar_system_name,
-                   k.position_x, k.position_y, k.position_z,
+            SELECT k.killmail_id, k.killmail_time, k.solar_system_id, `+spatialColumns+`
                    k.victim_character_id, character.name AS victim_character_name,
                    k.victim_corporation_id, k.victim_alliance_id,
                    k.victim_ship_type_id AS ship_type_id, ship.name AS ship_name, ship.group_id AS ship_group_id, ship_group.name AS ship_group_name,
@@ -235,7 +293,7 @@ func loadBattleReplay(ctx context.Context, opts Options, window *conflictBattleW
               AND k.killmail_time >= $2 AND k.killmail_time <= $3
             ORDER BY k.killmail_time, k.killmail_id`, window.SystemIDs, window.Start, window.End)
 	if err != nil {
-		return legacyPayload{}, err
+		return nil, err
 	}
 	// Saved reports apply configured historical ship-price adjustments.
 	// Use the same values in every loss explorer and in replay totals.
@@ -246,7 +304,7 @@ func loadBattleReplay(ctx context.Context, opts Options, window *conflictBattleW
 		}
 		deltas, priceErr := loadConflictPriceDeltas(ctx, opts.DB, typeIDs, window.End)
 		if priceErr != nil {
-			return legacyPayload{}, priceErr
+			return nil, priceErr
 		}
 		for _, row := range rows {
 			row["total_value"] = conflictFloat(row, "total_value") + deltas[int32(conflictInt(row, "ship_type_id"))]
@@ -255,24 +313,7 @@ func loadBattleReplay(ctx context.Context, opts Options, window *conflictBattleW
 	if rows == nil {
 		rows = []map[string]any{}
 	}
-	landmarks, err := queryMaps(ctx, opts.DB, `
-            SELECT item_id AS id, item_name AS name, solar_system_id, group_id, x, y, z
-            FROM celestials
-            WHERE solar_system_id = ANY($1::int[]) AND group_id IN (6, 7, 8, 9, 10)
-              AND x IS NOT NULL AND y IS NOT NULL AND z IS NOT NULL
-            UNION ALL
-            SELECT station_id AS id, station_name AS name, solar_system_id, 15 AS group_id, x, y, z
-            FROM stations
-            WHERE solar_system_id = ANY($1::int[])
-              AND x IS NOT NULL AND y IS NOT NULL AND z IS NOT NULL
-            ORDER BY solar_system_id, group_id, id`, window.SystemIDs)
-	if err != nil {
-		return legacyPayload{}, err
-	}
-	if landmarks == nil {
-		landmarks = []map[string]any{}
-	}
-	return jsonPayload(map[string]any{"kills": rows, "landmarks": landmarks}), nil
+	return rows, nil
 }
 
 func battleTimelineHandler(opts Options, killmailMode bool) legacyHandler {

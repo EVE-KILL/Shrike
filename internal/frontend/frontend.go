@@ -29,6 +29,7 @@ type Options struct {
 	Wars            WarReader
 	FactionWars     FactionWarReader
 	BattleGenerator BattleGeneratorReader
+	BattleReports   BattleReportReader
 	Blog            BlogReader
 	Killmail        KillmailReader
 	// BlogPreviewAPI is the existing authenticated API handler. The admin-only
@@ -43,6 +44,10 @@ type Options struct {
 	FittingsAPI    http.Handler
 	RoamReports    RoamReportReader
 	AdvancedSearch AdvancedSearchReader
+}
+
+type BattleReportReader interface {
+	BattleReport(context.Context, int64) (api.PreparedBattleReport, error)
 }
 
 type AdvancedSearchReader interface {

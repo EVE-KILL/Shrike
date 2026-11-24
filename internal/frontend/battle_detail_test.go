@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,7 +11,39 @@ import (
 	"testing"
 
 	"github.com/eve-kill/shrike/internal/api"
+	"github.com/eve-kill/shrike/internal/battle"
 )
+
+type battleReportFixture struct{ report api.PreparedBattleReport }
+
+func (f battleReportFixture) BattleReport(context.Context, int64) (api.PreparedBattleReport, error) {
+	return f.report, nil
+}
+
+func TestPreparedBattleSummarySkipsReplayAndRespectsCacheScope(t *testing.T) {
+	data := json.RawMessage(`{"battle_id":42,"solar_system_id":30000142,"solar_system_name":"Jita","start_time":"2026-04-06T16:00:00Z","end_time":"2026-04-06T16:03:00Z","teams":[{"team_index":0},{"team_index":1}]}`)
+	handler := New(Options{
+		Production:    true,
+		BattleReports: battleReportFixture{api.PreparedBattleReport{Detail: data, Losses: battle.LossSummary{LossCount: 5}}},
+		ConflictsAPI: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("a prepared battle summary fetched the API")
+		}),
+	})
+	for _, tc := range []struct{ url, cookie, want string }{
+		{canonicalOrigin + "/battle/42", "", "s-maxage=900"},
+		{canonicalOrigin + "/battle/42", "evelogin=example", "private, no-store"},
+		{canonicalOrigin + "/battle/42?utm_source=share", "", "private, no-store"},
+		{"https://board.example/battle/42", "", "private, no-store"},
+	} {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, tc.url, nil)
+		r.Header.Set("Cookie", tc.cookie)
+		handler.ServeHTTP(w, r)
+		if w.Code != http.StatusOK || !strings.Contains(w.Header().Get("Cache-Control"), tc.want) {
+			t.Fatalf("%s rendered %d with cache policy %q", tc.url, w.Code, w.Header().Get("Cache-Control"))
+		}
+	}
+}
 
 func TestBattleDetailRoutesFragmentsAndKillmailRedirect(t *testing.T) {
 	data := battleDetailData{BattleID: 42, SystemID: 30000142, SystemName: "Jita", Start: "2026-04-06T16:00:00Z", End: "2026-04-06T16:03:00Z", Minutes: 3, Teams: []battleTeam{{Index: 0}, {Index: 1}}, Sides: []battleSide{{Corps: []int64{1}}, {Corps: []int64{2}}}}
@@ -32,7 +65,7 @@ func TestBattleDetailRoutesFragmentsAndKillmailRedirect(t *testing.T) {
 		case "/api/battle/42/intel":
 			json.NewEncoder(w).Encode(battleIntelData{Teams: []battleIntelTeam{{Index: 0}, {Index: 1}}})
 		case "/api/battle/killmail/99":
-			json.NewEncoder(w).Encode(map[string]any{"redirect": true, "battle_id": 42})
+			json.NewEncoder(w).Encode(map[string]any{"redirect": "/api/battle/42", "battle_id": 42})
 		default:
 			http.NotFound(w, r)
 		}

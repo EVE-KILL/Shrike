@@ -1,7 +1,10 @@
 package battle
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -33,19 +36,26 @@ func FindHotspotWindows(
 	pool *pgxpool.Pool,
 	from, to time.Time,
 	minKills int,
+	systemID int32,
 ) ([]HotspotWindow, error) {
-	rows, err := pool.Query(ctx, `
+	query := `
 		SELECT solar_system_id,
 		       date_trunc('hour', killmail_time) AS hour_bucket,
 		       count(*)::int
 		FROM killmails
 		WHERE killmail_time >= $1 AND killmail_time < $2
 		  AND is_npc = false
-		  AND solar_system_id IS NOT NULL
+		  AND solar_system_id IS NOT NULL`
+	args := []any{from, to, minKills}
+	if systemID > 0 {
+		query += " AND solar_system_id = $4"
+		args = append(args, systemID)
+	}
+	rows, err := pool.Query(ctx, query+`
 		GROUP BY solar_system_id, date_trunc('hour', killmail_time)
 		HAVING count(*) >= $3
 		ORDER BY solar_system_id, hour_bucket`,
-		from, to, minKills)
+		args...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +74,16 @@ func FindHotspotWindows(
 		return nil, err
 	}
 	return mergeHotspotWindows(hours), nil
+}
+
+// ExtendWindow keeps an overlapping saved fight whole when a scan starts or
+// ends in the middle of it.
+func ExtendWindow(ctx context.Context, pool *pgxpool.Pool, systemID int32, from, to time.Time) (time.Time, time.Time, error) {
+	err := pool.QueryRow(ctx, `
+		SELECT LEAST($2, MIN(start_time)), GREATEST($3, MAX(end_time))
+		FROM battles WHERE solar_system_id = $1 AND is_custom IS NOT TRUE
+		  AND start_time < $3 AND end_time > $2`, systemID, from, to).Scan(&from, &to)
+	return from, to, err
 }
 
 func mergeHotspotWindows(hours []HotspotWindow) []HotspotWindow {
@@ -287,29 +307,33 @@ func HasOverlap(
 	return exists, err
 }
 
-// Store writes a detected battle and its two sides.
-//
-// Replaces any existing battle for the same system and start time, so storing
-// the same battle twice corrects it rather than duplicating it. That covers a
-// re-store within one run; a re-detection whose boundaries have moved is
-// handled by ClearWindow, which runs first.
+// Store updates a detected battle and its sides without changing its public ID.
+// If new killmails join previously separate fights, their IDs become aliases.
 func Store(ctx context.Context, pool *pgxpool.Pool, b *Detected) (int64, error) {
+	encoded, err := json.Marshal(b)
+	if err != nil {
+		return 0, err
+	}
+	fingerprint := sha256.Sum256(encoded)
 	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // no-op after commit
 
-	// Replace any overlapping auto-detected shape for this system. Boundaries
-	// move when late killmails arrive, so equality on start_time leaves the old
-	// battle and stores a second copy beside it.
+	// Serialize readers preparing changes for the same system, including an
+	// empty window where there is no existing row to lock.
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1, $2)", 73117, b.SolarSystemID); err != nil {
+		return 0, err
+	}
 	rows, err := tx.Query(ctx, `
-        SELECT battle_id
+        SELECT battle_id, detector_fingerprint
         FROM battles
         WHERE solar_system_id = $1
           AND start_time < $3
           AND end_time > $2
           AND is_custom IS NOT TRUE
+        ORDER BY battle_id
         FOR UPDATE`,
 		b.SolarSystemID,
 		b.Start,
@@ -319,9 +343,10 @@ func Store(ctx context.Context, pool *pgxpool.Pool, b *Detected) (int64, error) 
 		return 0, fmt.Errorf("find previous battle: %w", err)
 	}
 	var previous []int64
+	var previousFingerprint []byte
 	for rows.Next() {
 		var id int64
-		if err := rows.Scan(&id); err != nil {
+		if err := rows.Scan(&id, &previousFingerprint); err != nil {
 			rows.Close()
 			return 0, err
 		}
@@ -331,19 +356,25 @@ func Store(ctx context.Context, pool *pgxpool.Pool, b *Detected) (int64, error) 
 	if err := rows.Err(); err != nil {
 		return 0, err
 	}
-	if err := deleteBattles(ctx, tx, previous); err != nil {
-		return 0, fmt.Errorf("clear previous battle: %w", err)
+	if len(previous) == 1 && bytes.Equal(previousFingerprint, fingerprint[:]) {
+		return previous[0], tx.Commit(ctx)
 	}
-
 	var battleID int64
-	if err := tx.QueryRow(ctx, `
+	if len(previous) == 0 {
+		err = tx.QueryRow(ctx, `
         INSERT INTO battles (
             solar_system_id, region_id, start_time, end_time, duration_minutes,
-            kill_count, total_isk_destroyed, is_multi_party, is_custom, created_at, updated_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,now(),now())
+            kill_count, total_isk_destroyed, is_multi_party, is_custom, created_at, updated_at,
+            detector_fingerprint
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,now(),now(),$9)
         RETURNING battle_id`,
-		b.SolarSystemID, nullID(b.RegionID), b.Start, b.End, b.DurationMinutes,
-		b.KillCount, b.IskDestroyed, b.MultiParty).Scan(&battleID); err != nil {
+			b.SolarSystemID, nullID(b.RegionID), b.Start, b.End, b.DurationMinutes,
+			b.KillCount, b.IskDestroyed, b.MultiParty, fingerprint[:]).Scan(&battleID)
+	} else {
+		battleID = previous[0]
+		err = updateDetectedBattle(ctx, tx, battleID, previous[1:], b, fingerprint[:])
+	}
+	if err != nil {
 		return 0, fmt.Errorf("store battle: %w", err)
 	}
 
@@ -375,10 +406,50 @@ func Store(ctx context.Context, pool *pgxpool.Pool, b *Detected) (int64, error) 
 	return battleID, tx.Commit(ctx)
 }
 
+func updateDetectedBattle(ctx context.Context, tx pgx.Tx, id int64, merged []int64, b *Detected, fingerprint []byte) error {
+	if _, err := tx.Exec(ctx, `
+        UPDATE battles
+        SET region_id = $2, start_time = $3, end_time = $4,
+            duration_minutes = $5, kill_count = $6, total_isk_destroyed = $7,
+            is_multi_party = $8, detector_fingerprint = $9,
+            updated_at = clock_timestamp(), report_pending = true
+        WHERE battle_id = $1`, id, nullID(b.RegionID), b.Start, b.End,
+		b.DurationMinutes, b.KillCount, b.IskDestroyed, b.MultiParty, fingerprint); err != nil {
+		return err
+	}
+	if err := deleteBattleTeams(ctx, tx, []int64{id}); err != nil {
+		return err
+	}
+	if len(merged) == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `
+        UPDATE battle_aliases SET canonical_battle_id = $1
+        WHERE canonical_battle_id = ANY($2::bigint[])`, id, merged); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+        INSERT INTO battle_aliases (battle_id, canonical_battle_id)
+        SELECT alias, $1 FROM unnest($2::bigint[]) AS alias`, id, merged); err != nil {
+		return err
+	}
+	return deleteBattles(ctx, tx, merged)
+}
+
 func deleteBattles(ctx context.Context, tx pgx.Tx, ids []int64) error {
 	if len(ids) == 0 {
 		return nil
 	}
+	if err := deleteBattleTeams(ctx, tx, ids); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, "DELETE FROM battles WHERE battle_id = ANY($1::bigint[])", ids); err != nil {
+		return fmt.Errorf("delete battles: %w", err)
+	}
+	return nil
+}
+
+func deleteBattleTeams(ctx context.Context, tx pgx.Tx, ids []int64) error {
 	if _, err := tx.Exec(ctx, `
         DELETE FROM battle_team_members
         WHERE battle_team_id IN (
@@ -393,12 +464,6 @@ func deleteBattles(ctx context.Context, tx pgx.Tx, ids []int64) error {
 		ids,
 	); err != nil {
 		return fmt.Errorf("delete battle teams: %w", err)
-	}
-	if _, err := tx.Exec(ctx,
-		`DELETE FROM battles WHERE battle_id = ANY($1::bigint[])`,
-		ids,
-	); err != nil {
-		return fmt.Errorf("delete battles: %w", err)
 	}
 	return nil
 }

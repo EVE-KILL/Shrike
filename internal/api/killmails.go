@@ -114,20 +114,7 @@ func registerKillmailRoutes(a huma.API, opts Options) {
 
 	registerLegacy(a, killmailIDOperation(
 		"killmail", "/killmails/{id}", "Full killmail detail",
-	), func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
-		id, err := parseID(req.Param("id"))
-		if err != nil {
-			return legacyPayload{}, err
-		}
-		body, found, err := loadKillmailDetail(ctx, opts.DB, id)
-		if err != nil {
-			return legacyPayload{}, err
-		}
-		if !found {
-			return legacyPayload{}, apiError(http.StatusNotFound, "Killmail not found")
-		}
-		return jsonPayload(body), nil
-	})
+	), killmailDetailHandler(opts))
 }
 
 func killmailIDOperation(id, path, summary string) huma.Operation {

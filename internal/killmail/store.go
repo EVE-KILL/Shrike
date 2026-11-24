@@ -133,6 +133,21 @@ func insert(ctx context.Context, pool *pgxpool.Pool, p *Parsed, tracked bool) (b
 			SELECT $1::timestamptz::date, now()
 			WHERE $1::timestamptz >= CURRENT_DATE - 364
 			ON CONFLICT (activity_date) DO UPDATE SET dirtied_at = EXCLUDED.dirtied_at`, km.KillmailTime)
+		// A kill less than five hours old will reach the next hourly scan's
+		// six-hour window. A known fight can refresh sooner.
+		batch.Queue(`
+			INSERT INTO battle_dirty_days (solar_system_id, activity_date)
+			SELECT $1::int, ($2::timestamptz AT TIME ZONE 'UTC')::date
+			WHERE $1::int > 0 AND $2::timestamptz >= statement_timestamp() - interval '7 days'
+			  AND (
+			    $2::timestamptz <= statement_timestamp() - interval '5 hours'
+			    OR EXISTS (
+			      SELECT 1 FROM battles
+			      WHERE solar_system_id = $1 AND start_time <= $2 AND end_time >= $2
+			    )
+			  )
+			ON CONFLICT (solar_system_id, activity_date)
+			DO UPDATE SET dirtied_at = clock_timestamp()`, km.SolarSystemID, km.KillmailTime)
 	}
 
 	if err := tx.SendBatch(ctx, batch).Close(); err != nil {

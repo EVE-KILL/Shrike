@@ -319,7 +319,7 @@ templ battleLossExplorer(v battleDetailView) {
 		<div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
 			<div class="glass-panel p-4">
 				<div class="text-[10px] uppercase tracking-wider text-gray-500">Recorded losses</div>
-				<div class="mt-1 font-mono text-xl text-gray-100">{ fullNumber(float64(len(v.Filtered))) }</div>
+				<div class="mt-1 font-mono text-xl text-gray-100">{ fullNumber(float64(v.LossCount)) }</div>
 			</div>
 			<div class="glass-panel p-4">
 				<div class="text-[10px] uppercase tracking-wider text-gray-500">ISK lost</div>
@@ -360,7 +360,7 @@ templ battleLossExplorer(v battleDetailView) {
 				@killList(v.Killlist, killListOptions{Kind: "battle", Page: v.Page, Limit: v.Limit})
 			</div>
 		}
-		if len(v.Filtered)==0 {
+		if v.LossCount==0 {
 			<p class="glass-panel p-6 text-center text-sm text-gray-500">No losses match these filters.</p>
 		}
 	</section>

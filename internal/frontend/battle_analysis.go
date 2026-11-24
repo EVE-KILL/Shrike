@@ -91,7 +91,7 @@ func battleCompositionGroups(data battleCompositionData) []battleShipGroup {
 	}
 	result := []battleShipGroup{}
 	for id, name := range groups {
-		result = append(result, battleShipGroup{id, name})
+		result = append(result, battleShipGroup{ID: id, Name: name})
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 	return result

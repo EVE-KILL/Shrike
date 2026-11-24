@@ -78,6 +78,8 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 	// Phase 5.
 	register("sde_update", d.cronSDEUpdate)
 	register("battle_detection", d.cronBattleDetection)
+	register("battle_dirty_refresh", d.cronDirtyBattles)
+	register("battle_report_prepare", d.cronPrepareBattleReports)
 	register("graph_purge", d.cronGraphPurge)
 	register("campaign_pending", d.cronCampaignPending)
 	register("campaign_processing", d.cronCampaignProcessing)
