@@ -130,6 +130,56 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	}
 }
 
+func TestKillmailBattleSharesLookupAcrossTabsAndResolvesSavedReport(t *testing.T) {
+	ctx, pool := localAPITestPool(t, "shrike_killmail_battle_")
+	if err := testfixtures.SeedBattleGenerator(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	const killID int64 = 2000000001
+	start := time.Date(2026, 9, 24, 12, 10, 0, 0, time.UTC)
+	for _, table := range []string{"killmails", "killmail_attackers"} {
+		if _, err := pool.Exec(ctx, "UPDATE "+table+" SET killmail_time = $1 WHERE killmail_id = 2000000002", start.Add(time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	shared := newFakeResponseCacheBackend()
+	opts := Options{DB: pool, responseCache: newResponseCache(shared, 1<<20)}
+	defer opts.responseCache.Close()
+	req := &legacyRequest{Params: map[string]string{"id": fmt.Sprint(killID)}}
+	if _, err := killmailBattleHandler(opts)(ctx, req); err != nil {
+		t.Fatalf("load killmail battle summary: %v", err)
+	}
+	// With only the shared cache available, another replica can resolve the
+	// same killmail for a tab without rerunning detection.
+	other := Options{responseCache: newResponseCache(shared, 1<<20)}
+	defer other.responseCache.Close()
+	window, err := resolveConflictBattleWindow(ctx, other, req, true)
+	if err != nil || window == nil {
+		t.Fatalf("load killmail battle from the shared cache: %v", err)
+	}
+	if len(window.Kills) != 2 || len(window.Attackers) != 2 || len(window.Attackers[killID]) != 3 {
+		t.Fatalf("killmail battle included attackers outside the refined fight: %+v", window.Attackers)
+	}
+	if _, _, err := readKillmailBattle(ctx, opts, 2000000004); err == nil {
+		t.Fatal("an isolated killmail unexpectedly resolved to a battle")
+	}
+
+	id, err := battle.Store(ctx, pool, &battle.Detected{
+		SolarSystemID: 30000142, RegionID: 10000002, Start: start,
+		End: start.Add(5 * time.Minute), DurationMinutes: 5,
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := newCachedHomepageReader(pool, nil, opts.responseCache, opts.Commit)
+	opts.responseCache.DeleteMatching(ctx, reader.cacheKey(fmt.Sprintf("killmail-battle:%d", killID)))
+	got, err := resolveConflictBattleWindow(ctx, opts, req, true)
+	if err != nil || got == nil || got.BattleID != int32(id) {
+		t.Fatalf("killmail battle after its cache expires = %+v, %v; want battle %d", got, err, id)
+	}
+}
+
 func TestKillmailPageAndPublicAPIShareDetailCache(t *testing.T) {
 	ctx, pool := localAPITestPool(t, "shrike_killmail_cache_")
 	if err := testfixtures.SeedBattleGenerator(ctx, pool); err != nil {

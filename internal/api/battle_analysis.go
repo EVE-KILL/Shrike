@@ -69,7 +69,7 @@ func registerBattleAnalysisRoutes(a huma.API, opts Options) {
 
 func resolveConflictBattleWindow(
 	ctx context.Context,
-	db Database,
+	opts Options,
 	req *legacyRequest,
 	killmailMode bool,
 ) (*conflictBattleWindow, error) {
@@ -81,7 +81,7 @@ func resolveConflictBattleWindow(
 		if id > pgInt4Max {
 			return nil, apiError(http.StatusBadRequest, "Invalid ID")
 		}
-		window, _, err := loadSavedConflictBattleWindow(ctx, db, int32(id))
+		window, _, err := loadSavedConflictBattleWindow(ctx, opts.DB, int32(id))
 		if err != nil {
 			return nil, err
 		}
@@ -90,12 +90,12 @@ func resolveConflictBattleWindow(
 		}
 		return window, nil
 	}
-	window, redirectID, err := detectConflictKillmailBattle(ctx, db, id)
+	window, redirectID, err := readKillmailBattle(ctx, opts, id)
 	if err != nil {
 		return nil, err
 	}
 	if redirectID != 0 {
-		saved, _, loadErr := loadSavedConflictBattleWindow(ctx, db, redirectID)
+		saved, _, loadErr := loadSavedConflictBattleWindow(ctx, opts.DB, redirectID)
 		if loadErr != nil {
 			return nil, loadErr
 		}
@@ -110,7 +110,7 @@ func resolveConflictBattleWindow(
 func battleKilllistHandler(opts Options, killmailMode bool) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		window, err := resolveConflictBattleWindow(
-			ctx, opts.DB, req, killmailMode,
+			ctx, opts, req, killmailMode,
 		)
 		if err != nil {
 			return legacyPayload{}, err
@@ -225,7 +225,7 @@ func battleReplayHandler(opts Options, killmailMode bool) legacyHandler {
 				return jsonPayload(map[string]any{"kills": events, "landmarks": landmarks}), nil
 			}
 		}
-		window, err := resolveConflictBattleWindow(ctx, opts.DB, req, killmailMode)
+		window, err := resolveConflictBattleWindow(ctx, opts, req, killmailMode)
 		if err != nil {
 			return legacyPayload{}, err
 		}
@@ -238,7 +238,12 @@ func loadBattleReplay(ctx context.Context, opts Options, window *conflictBattleW
 	if err != nil {
 		return legacyPayload{}, err
 	}
-	landmarks, err := loadBattleLandmarks(ctx, opts.DB, window.SystemIDs)
+	var landmarks []map[string]any
+	if len(window.SystemIDs) == 1 {
+		landmarks, err = battleSystemLandmarks(ctx, opts, window.SystemIDs[0])
+	} else {
+		landmarks, err = loadBattleLandmarks(ctx, opts.DB, window.SystemIDs)
+	}
 	if err != nil {
 		return legacyPayload{}, err
 	}
@@ -319,7 +324,7 @@ func loadBattleLossRows(ctx context.Context, opts Options, window *conflictBattl
 func battleTimelineHandler(opts Options, killmailMode bool) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		window, err := resolveConflictBattleWindow(
-			ctx, opts.DB, req, killmailMode,
+			ctx, opts, req, killmailMode,
 		)
 		if err != nil {
 			return legacyPayload{}, err
@@ -350,7 +355,7 @@ func battleMostValuableHandler(
 ) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		window, err := resolveConflictBattleWindow(
-			ctx, opts.DB, req, killmailMode,
+			ctx, opts, req, killmailMode,
 		)
 		if err != nil {
 			return legacyPayload{}, err
@@ -546,7 +551,7 @@ func battleCompositionHandler(
 ) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		window, err := resolveConflictBattleWindow(
-			ctx, opts.DB, req, killmailMode,
+			ctx, opts, req, killmailMode,
 		)
 		if err != nil {
 			return legacyPayload{}, err
@@ -790,7 +795,7 @@ func aggregateBattleComposition(
 func battleIntelHandler(opts Options, killmailMode bool) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		window, err := resolveConflictBattleWindow(
-			ctx, opts.DB, req, killmailMode,
+			ctx, opts, req, killmailMode,
 		)
 		if err != nil {
 			return legacyPayload{}, err

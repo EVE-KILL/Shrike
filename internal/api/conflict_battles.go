@@ -575,8 +575,8 @@ func killmailBattleHandler(opts Options) legacyHandler {
 		if err != nil || killmailID <= 0 {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid ID")
 		}
-		window, redirectID, err := detectConflictKillmailBattle(
-			ctx, opts.DB, killmailID,
+		window, redirectID, err := readKillmailBattle(
+			ctx, opts, killmailID,
 		)
 		if err != nil {
 			return legacyPayload{}, err
@@ -595,14 +595,39 @@ func killmailBattleHandler(opts Options) legacyHandler {
 	}
 }
 
+type killmailBattleResolution struct {
+	Window   *conflictBattleWindow
+	BattleID int32
+}
+
+// The detail, tabs and replay all start from the same public killmail.
+func readKillmailBattle(ctx context.Context, opts Options, killmailID int64) (*conflictBattleWindow, int32, error) {
+	reader := newCachedHomepageReader(opts.DB, nil, opts.responseCache, opts.Commit)
+	key := fmt.Sprintf("killmail-battle:%d", killmailID)
+	result, err := cachedHomepage(ctx, reader, key, 30*time.Second, func(ctx context.Context) (killmailBattleResolution, error) {
+		window, id, err := detectConflictKillmailBattle(ctx, opts.DB, killmailID)
+		return killmailBattleResolution{Window: window, BattleID: id}, err
+	})
+	return result.Window, result.BattleID, err
+}
+
 func detectConflictKillmailBattle(
 	ctx context.Context,
 	db Database,
 	killmailID int64,
 ) (*conflictBattleWindow, int32, error) {
 	seed, err := queryMap(ctx, db, `
-		SELECT killmail_id, solar_system_id, region_id, killmail_time
-		FROM killmails WHERE killmail_id = $1 LIMIT 1`,
+		SELECT seed.solar_system_id, seed.region_id, seed.killmail_time, saved.battle_id
+		FROM (
+			SELECT solar_system_id, region_id, killmail_time
+			FROM killmails WHERE killmail_id = $1 LIMIT 1
+		) seed
+		LEFT JOIN LATERAL (
+			SELECT battle_id FROM battles
+			WHERE solar_system_id = seed.solar_system_id
+			  AND start_time <= seed.killmail_time AND end_time >= seed.killmail_time
+			ORDER BY start_time DESC, battle_id DESC LIMIT 1
+		) saved ON true`,
 		killmailID,
 	)
 	if err != nil {
@@ -617,18 +642,7 @@ func detectConflictKillmailBattle(
 	if !ok {
 		return nil, 0, fmt.Errorf("killmail %d has an invalid timestamp", killmailID)
 	}
-	saved, err := queryMap(ctx, db, `
-			SELECT battle_id FROM battles
-			WHERE solar_system_id = $1
-			  AND start_time <= $2 AND end_time >= $2
-			ORDER BY start_time DESC, battle_id DESC LIMIT 1`,
-		systemID, seedTime,
-	)
-	if err != nil {
-		return nil, 0, err
-	}
-	if saved != nil {
-		id := conflictInt(saved, "battle_id")
+	if id := conflictInt(seed, "battle_id"); id != 0 {
 		return nil, int32(id), nil
 	}
 
@@ -646,12 +660,6 @@ func detectConflictKillmailBattle(
 			"Not enough kills in the area to form a battle",
 		)
 	}
-	attackers, err := loadConflictBattleAttackers(
-		ctx, db, []int32{systemID}, candidateStart, candidateEnd,
-	)
-	if err != nil {
-		return nil, 0, err
-	}
 	refined := battle.RefineBoundaries(
 		kills, conflictOnTheFlyMinimumKills, &seedTime,
 	)
@@ -664,6 +672,14 @@ func detectConflictKillmailBattle(
 	kills = conflictKillsWithin(kills, refined.Start, refined.End)
 	if len(kills) == 0 {
 		return nil, 0, apiError(http.StatusNotFound, "Battle is empty")
+	}
+	// The retained kills are ordered by time. Use their exact span so attackers
+	// from other fights in the candidate window cannot influence team assignment.
+	attackers, err := loadConflictBattleAttackers(
+		ctx, db, []int32{systemID}, kills[0].KillmailTime, kills[len(kills)-1].KillmailTime,
+	)
+	if err != nil {
+		return nil, 0, err
 	}
 	assignment := battle.AssignTeams(kills, attackers)
 	if len(assignment.CorpTeam) == 0 {
@@ -988,9 +1004,8 @@ func buildBattleDetail(
 	return result, nil
 }
 
-// Count the exact kills shown in the battle, not the wider candidate window
-// retained by on-the-fly detection. All attackers, including unsided/NPC
-// participants, contribute damage; missing entity IDs use the domain's zero sentinel.
+// Count the participants of the kills shown in the battle. All attackers,
+// including unsided/NPC participants, contribute damage.
 func battleParticipantCounts(kills []battle.Killmail, attackers map[int64][]battle.Attacker) map[string]any {
 	characters, corporations, alliances := map[int32]struct{}{}, map[int32]struct{}{}, map[int32]struct{}{}
 	seen := map[int64]struct{}{}

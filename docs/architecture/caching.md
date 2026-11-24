@@ -54,6 +54,10 @@ battle ID. River workers prepare the snapshots and publish each completed
 report in a single statement. Replay landmarks are cached by solar system.
 Reports without a prepared version use the existing reader during the backfill.
 
+When a visitor opens a battle from a killmail, the summary and tabs share the
+same short-lived lookup by killmail ID. The lookup checks for a saved battle
+first. On-demand detection loads attackers only for the selected fight.
+
 The detector retains the existing ID when it updates a fight. When two fights
 merge, the retired ID resolves to the surviving battle. Recent killmail inserts
 mark their system and UTC day for refresh. The scheduled fourteen-day repair
