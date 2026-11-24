@@ -18,6 +18,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/eve-kill/shrike/internal/images"
 	"github.com/eve-kill/shrike/internal/mcpserver"
+	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,11 +37,12 @@ type Options struct {
 	// Primary is used for mutations and reads that require read-after-write
 	// consistency. PrimaryPool is the same connection exposed concretely for
 	// River, whose client requires *pgxpool.Pool.
-	Primary     MutationDatabase
-	PrimaryPool *pgxpool.Pool
-	Graph       GraphDatabase
-	Feed        *FeedManager
-	Cache       *redis.Client
+	Primary           MutationDatabase
+	PrimaryPool       *pgxpool.Pool
+	BattleReportQueue *queue.Client
+	Graph             GraphDatabase
+	Feed              *FeedManager
+	Cache             *redis.Client
 	// ResponseCacheBytes bounds the process-local L1. Cache remains the shared
 	// Valkey client used as L2 and by non-response coordination features.
 	ResponseCacheBytes int64

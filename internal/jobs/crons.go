@@ -45,8 +45,6 @@ var Crons = []Cron{
 		Description: "Queue battle detection jobs (hourly + daily)"},
 	{Name: "battle_dirty_refresh", Schedule: "5m",
 		Description: "Queue refreshes for systems with late killmails"},
-	{Name: "battle_report_prepare", Schedule: "1m",
-		Description: "Publish a bounded batch of prepared battle reports"},
 	{Name: "campaign_pending", Schedule: "1m", RunOnStart: true,
 		Description: "Dispatch first-compute jobs for pending campaigns"},
 	{Name: "campaign_processing", Schedule: "1h",

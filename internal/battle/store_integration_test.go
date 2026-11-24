@@ -70,7 +70,7 @@ func TestClearWindowRemovesOverlapsAndTheirChildren(t *testing.T) {
 			{Entries: []TeamEntry{{CorporationID: 10_000_001}}},
 			{Entries: []TeamEntry{{CorporationID: 10_000_002}}},
 		},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

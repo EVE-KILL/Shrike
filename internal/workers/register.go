@@ -102,6 +102,10 @@ var registrations = []registration{
 		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &BattleDetectionWorker{Deps: d}) },
 	},
 	{
+		kind: queue.BattleReportArgs{}.Kind(),
+		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &BattleReportWorker{Deps: d}) },
+	},
+	{
 		kind: queue.GraphIngestArgs{}.Kind(),
 		add:  func(w *river.Workers, d *Deps) { river.AddWorker(w, &GraphIngestWorker{Deps: d}) },
 	},

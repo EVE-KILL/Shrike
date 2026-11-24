@@ -15,6 +15,7 @@ import (
 	"github.com/eve-kill/shrike/internal/images"
 	"github.com/eve-kill/shrike/internal/ingress"
 	"github.com/eve-kill/shrike/internal/objectstore"
+	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/redisx"
 	"github.com/eve-kill/shrike/internal/requeststats"
 	"github.com/eve-kill/shrike/internal/telemetry"
@@ -88,6 +89,10 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 			return fmt.Errorf("connect API primary database: %w", err)
 		}
 		defer primaryPool.Close()
+		battleReportQueue, err := queue.New(queue.Options{Pool: primaryPool})
+		if err != nil {
+			return fmt.Errorf("configure battle report queue: %w", err)
+		}
 
 		readPool := primaryPool
 		if cfg.DatabaseReadURL != cfg.DatabaseURL {
@@ -134,7 +139,8 @@ func runSite(cmd *cobra.Command, mode siteMode, portFlag int) error {
 		opts := api.Options{
 			Version: ui.Version, Commit: ui.Commit,
 			DB: readPool, Primary: primaryPool, PrimaryPool: primaryPool,
-			Graph: graphClient, Feed: feed, Cache: sharedRedis,
+			BattleReportQueue: battleReportQueue,
+			Graph:             graphClient, Feed: feed, Cache: sharedRedis,
 			ResponseCacheBytes: cfg.APICacheBytes,
 			DomainAssets:       domainAssets,
 			Images:             imageService,

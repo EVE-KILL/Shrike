@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/eve-kill/shrike/internal/migrate"
+	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/eve-kill/shrike/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -63,6 +64,13 @@ func TestBattleGeneratorSharedPreviewAndTransactionsAgainstPostgres(t *testing.T
 	if err = migrate.Apply(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := queue.Migrate(ctx, pool); err != nil {
+		t.Fatal(err)
+	}
+	reports, err := queue.New(queue.Options{Pool: pool})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err = testfixtures.SeedBattleGenerator(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +83,8 @@ func TestBattleGeneratorSharedPreviewAndTransactionsAgainstPostgres(t *testing.T
 			t.Fatal(err)
 		}
 	}
-	service := New(Options{DB: &campaignCreatorTestDB{pool}})
+	service := New(Options{DB: &campaignCreatorTestDB{pool}, BattleReportQueue: reports})
+	defer service.Close()
 	call := func(path string, body any, session string) *httptest.ResponseRecorder {
 		encoded, _ := json.Marshal(body)
 		r := httptest.NewRequest("POST", "https://eve-kill.com"+path, bytes.NewReader(encoded))
@@ -187,6 +196,11 @@ func TestBattleGeneratorSharedPreviewAndTransactionsAgainstPostgres(t *testing.T
 	}
 	if memberCount != 2 {
 		t.Fatal("rejected correction damaged stored participants")
+	}
+	var queued int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM river_job
+		WHERE kind='battle_report' AND args->>'first_id'=$1::int::text AND args->>'last_id'=$1::int::text`, id.ID).Scan(&queued); err != nil || queued != 2 {
+		t.Fatalf("got %d report jobs for the two successful saves: %v", queued, err)
 	}
 	if _, err = pool.Exec(ctx, `UPDATE user_sessions SET expires_at=now()-interval '1 minute' WHERE session_id=$1`, sessions[0]); err != nil {
 		t.Fatal(err)

@@ -60,6 +60,11 @@ var Queues = []Queue{
 		Concurrency: 1, Retries: 2, BackoffDelay: 10_000,
 	},
 	{
+		Name:        "battle_report",
+		Description: "Prepare snapshots for saved battles",
+		Concurrency: 4, Retries: 4, BackoffDelay: 10_000,
+	},
+	{
 		Name:        "campaign_processing",
 		Description: "Full recompute of a campaign's aggregates (backfill + refresh)",
 		Concurrency: 1, Retries: 2, BackoffDelay: 30_000,

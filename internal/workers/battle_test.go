@@ -26,6 +26,11 @@ func TestLateKillmailRefreshesPreparedBattle(t *testing.T) {
 	day := time.Date(now.Year(), now.Month(), now.Day()-2, 0, 0, 0, 0, time.UTC)
 	start := day.Add(12 * time.Hour)
 	detected := battle.Detected{SolarSystemID: systemID, Start: start, End: start.Add(time.Hour), DurationMinutes: 60}
+	client, err := queue.New(queue.Options{Pool: pool})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var id int64
 	t.Cleanup(func() {
 		clean, stop := context.WithTimeout(context.Background(), 10*time.Second)
 		defer stop()
@@ -44,13 +49,19 @@ func TestLateKillmailRefreshesPreparedBattle(t *testing.T) {
 		if _, err := pool.Exec(clean, "DELETE FROM battle_dirty_days WHERE solar_system_id = $1", systemID); err != nil {
 			t.Errorf("cleanup dirty day: %v", err)
 		}
+		if _, err := pool.Exec(clean, `DELETE FROM river_job WHERE kind='battle_report' AND args->>'first_id'=$1::bigint::text`, id); err != nil {
+			t.Errorf("cleanup report jobs: %v", err)
+		}
 	})
-	id, err := battle.Store(ctx, pool, &detected)
+	id, err = battle.Store(ctx, pool, &detected, client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n, err := api.PrepareBattleReports(ctx, pool, 10); n < 1 || err != nil {
-		t.Fatalf("prepare baseline report: count=%d err=%v", n, err)
+	deps := &Deps{Pool: pool, Queue: client, Log: zerolog.Nop()}
+	prepare := BattleReportWorker{Deps: deps}
+	args := queue.BattleReportArgs{FirstID: id, LastID: id}
+	if err := prepare.Work(ctx, &river.Job[queue.BattleReportArgs]{Args: args}); err != nil {
+		t.Fatalf("prepare baseline report: %v", err)
 	}
 	inserted, err := killmail.Insert(ctx, pool, &killmail.Parsed{Killmail: killmail.Killmail{
 		KillmailID: killID, KillmailTime: start.Add(10 * time.Minute), KillmailHash: "late-battle-fixture", SolarSystemID: systemID,
@@ -58,7 +69,7 @@ func TestLateKillmailRefreshesPreparedBattle(t *testing.T) {
 	if err != nil || !inserted {
 		t.Fatalf("insert late kill: inserted=%v err=%v", inserted, err)
 	}
-	worker := BattleDetectionWorker{Deps: &Deps{Pool: pool, Log: zerolog.Nop()}}
+	worker := BattleDetectionWorker{Deps: deps}
 	job := &river.Job[queue.BattleDetectionArgs]{
 		Args: queue.BattleDetectionArgs{SystemID: systemID, From: day, To: day.AddDate(0, 0, 1)},
 	}
@@ -72,8 +83,14 @@ func TestLateKillmailRefreshesPreparedBattle(t *testing.T) {
 	if err != nil || !pending || dirty {
 		t.Fatalf("late refresh left pending=%v dirty=%v err=%v", pending, dirty, err)
 	}
-	if n, err := api.PrepareBattleReports(ctx, pool, 10); n < 1 || err != nil {
-		t.Fatalf("publish refreshed report: count=%d err=%v", n, err)
+	var queued int
+	err = pool.QueryRow(ctx, `SELECT count(*) FROM river_job
+		WHERE kind='battle_report' AND priority=2 AND args->>'first_id'=$1::bigint::text AND args->>'last_id'=$1::bigint::text`, id).Scan(&queued)
+	if err != nil || queued != 2 {
+		t.Fatalf("got %d report jobs for the two revisions: %v", queued, err)
+	}
+	if err := prepare.Work(ctx, &river.Job[queue.BattleReportArgs]{Args: args}); err != nil {
+		t.Fatalf("publish refreshed report: %v", err)
 	}
 	reader := api.New(api.Options{DB: pool})
 	defer reader.Close()

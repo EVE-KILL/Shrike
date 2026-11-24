@@ -63,13 +63,14 @@ func loadPreparedBattleEvents(ctx context.Context, db Database, id int32) (json.
 	return events, system, err
 }
 
-// PrepareBattleReports builds a bounded batch, latest changes first. If detection or a
+// PrepareBattleReports builds the pending reports in a queued ID range. If detection or a
 // manual correction changes the source while a report is being prepared, the
 // previous snapshot stays readable and the new revision remains pending.
-func PrepareBattleReports(ctx context.Context, db MutationDatabase, limit int) (int, error) {
+func PrepareBattleReports(ctx context.Context, db MutationDatabase, first, last int64) (int, error) {
 	rows, err := db.Query(ctx, `
-		SELECT battle_id, updated_at FROM battles WHERE report_pending
-		ORDER BY updated_at DESC NULLS LAST, start_time DESC, battle_id DESC LIMIT $1`, limit)
+		SELECT battle_id, updated_at FROM battles
+		WHERE battle_id BETWEEN $1 AND $2 AND report_pending
+		ORDER BY battle_id`, first, last)
 	if err != nil {
 		return 0, err
 	}

@@ -27,7 +27,7 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 			{Entries: []battle.TeamEntry{{CorporationID: 70112, AllianceID: 70122}}},
 		},
 	}
-	firstID, err := battle.Store(ctx, pool, &detected)
+	firstID, err := battle.Store(ctx, pool, &detected, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	later.Start = start.Add(time.Hour)
 	later.End = later.Start.Add(30 * time.Minute)
 	later.DurationMinutes = 30
-	laterID, err := battle.Store(ctx, pool, &later)
+	laterID, err := battle.Store(ctx, pool, &later, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 		t.Fatal(err)
 	}
 
-	if count, err := PrepareBattleReports(ctx, pool, 10); err != nil || count != 2 {
+	if count, err := PrepareBattleReports(ctx, pool, firstID, laterID); err != nil || count != 2 {
 		t.Fatalf("prepared %d reports: %v", count, err)
 	}
 	reader := newCachedHomepageReader(pool, nil, nil, "")
@@ -95,16 +95,16 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	if err := json.Unmarshal(newReplayJSON, &newReplay); err != nil || !reflect.DeepEqual(oldReplay, newReplay) {
 		t.Fatalf("prepared replay changed the response: %v", err)
 	}
-	if id, err := battle.Store(ctx, pool, &detected); err != nil || id != firstID {
+	if id, err := battle.Store(ctx, pool, &detected, nil); err != nil || id != firstID {
 		t.Fatalf("identical re-detection returned ID %d, want %d, err = %v", id, firstID, err)
 	}
-	if count, err := PrepareBattleReports(ctx, pool, 10); err != nil || count != 0 {
+	if count, err := PrepareBattleReports(ctx, pool, firstID, laterID); err != nil || count != 0 {
 		t.Fatalf("identical re-detection queued %d reports: %v", count, err)
 	}
 
 	detected.End = later.End
 	detected.DurationMinutes = 90
-	reusedID, err := battle.Store(ctx, pool, &detected)
+	reusedID, err := battle.Store(ctx, pool, &detected, nil)
 	if err != nil || reusedID != firstID {
 		t.Fatalf("re-detection returned ID %d, want %d, err = %v", reusedID, firstID, err)
 	}
@@ -112,7 +112,7 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	if err != nil || stale.Losses.LossCount != 2 {
 		t.Fatalf("merged link could not read the existing snapshot: %+v, %v", stale.Losses, err)
 	}
-	if count, err := PrepareBattleReports(ctx, pool, 10); err != nil || count != 1 {
+	if count, err := PrepareBattleReports(ctx, pool, firstID, laterID); err != nil || count != 1 {
 		t.Fatalf("prepared %d revised reports: %v", count, err)
 	}
 	updated, err := reader.BattleReport(ctx, laterID)
@@ -125,7 +125,7 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	if err := json.Unmarshal(updated.Detail, &identity); err != nil || identity.ID != firstID {
 		t.Fatalf("merged report identity = %d, err = %v", identity.ID, err)
 	}
-	if count, err := PrepareBattleReports(ctx, pool, 10); err != nil || count != 0 {
+	if count, err := PrepareBattleReports(ctx, pool, firstID, laterID); err != nil || count != 0 {
 		t.Fatalf("already prepared reports still queued: %d, %v", count, err)
 	}
 }

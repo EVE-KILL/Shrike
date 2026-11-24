@@ -11,6 +11,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/eve-kill/shrike/internal/battle"
+	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -587,6 +588,9 @@ func battleGeneratorSaveHandler(opts Options) legacyHandler {
 		}
 		if err := writeConflictBattleTeams(ctx, tx, battleID, body.Teams); err != nil {
 			return legacyPayload{}, err
+		}
+		if err := queue.EnqueueBattleReportsTx(ctx, tx, opts.BattleReportQueue, []int64{int64(battleID)}); err != nil {
+			return legacyPayload{}, fmt.Errorf("queue battle report: %w", err)
 		}
 		if err := tx.Commit(ctx); err != nil {
 			return legacyPayload{}, err

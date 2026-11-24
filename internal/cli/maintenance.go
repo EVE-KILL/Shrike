@@ -217,6 +217,13 @@ earliest killmail. The end defaults to yesterday and is inclusive.`,
 		if flagBattleBackfillDryRun {
 			ui.Warn("Dry run — battles and progress are not stored")
 		}
+		var reportQueue *queue.Client
+		if !flagBattleBackfillDryRun {
+			reportQueue, err = queue.New(queue.Options{Pool: pool})
+			if err != nil {
+				return err
+			}
+		}
 
 		var detected, saved, skipped int
 		for day := from; !day.After(to); day = day.AddDate(0, 0, 1) {
@@ -254,7 +261,7 @@ earliest killmail. The end defaults to yesterday and is inclusive.`,
 					skipped++
 					continue
 				}
-				if _, err := battle.Store(cmd.Context(), pool, found); err != nil {
+				if _, err := battle.Store(cmd.Context(), pool, found, reportQueue); err != nil {
 					return err
 				}
 				saved++

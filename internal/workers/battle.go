@@ -73,7 +73,7 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 		// A day can contain several separate fights in one system. Exhaust the
 		// refined windows rather than keeping only the first active burst.
 		for _, b := range battle.DetectAll(kms, atts) {
-			id, err := battle.Store(ctx, w.Deps.Pool, b)
+			id, err := battle.Store(ctx, w.Deps.Pool, b, w.Deps.Queue)
 			if err != nil {
 				return err
 			}
@@ -91,17 +91,7 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 	}
 
 	if systemID > 0 {
-		// A recent arrival can change the report inside an existing battle
-		// even if it contributes nothing to the detector's side totals.
-		if _, err := w.Deps.Pool.Exec(ctx, `
-			UPDATE battles SET updated_at = clock_timestamp(), report_pending = true
-			WHERE solar_system_id = $1 AND start_time < $3 AND end_time >= $2`,
-			systemID, from, to); err != nil {
-			return err
-		}
-		if _, err := w.Deps.Pool.Exec(ctx, `
-			DELETE FROM battle_dirty_days WHERE solar_system_id = $1 AND activity_date = $2::date
-			  AND dirtied_at = $3`, systemID, from.Format(time.DateOnly), dirtyAt); err != nil {
+		if err := w.refreshBattleReports(ctx, systemID, from, to, dirtyAt); err != nil {
 			return err
 		}
 	}
@@ -111,6 +101,30 @@ func (w *BattleDetectionWorker) Work(ctx context.Context, job *river.Job[queue.B
 		Int("candidates", len(candidates)).Int("battles", found).
 		Msg("battle detection")
 	return nil
+}
+
+func (w *BattleDetectionWorker) refreshBattleReports(ctx context.Context, systemID int32, from, to, dirtyAt time.Time) error {
+	return pgx.BeginFunc(ctx, w.Deps.Pool, func(tx pgx.Tx) error {
+		// A late kill can change the report without changing the detector's totals.
+		rows, err := tx.Query(ctx, `
+			UPDATE battles SET updated_at = clock_timestamp(), report_pending = true
+			WHERE solar_system_id = $1 AND start_time < $3 AND end_time >= $2
+			RETURNING battle_id`, systemID, from, to)
+		if err != nil {
+			return err
+		}
+		ids, err := pgx.CollectRows(rows, pgx.RowTo[int64])
+		if err != nil {
+			return err
+		}
+		if err := queue.EnqueueBattleReportsTx(ctx, tx, w.Deps.Queue, ids); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			DELETE FROM battle_dirty_days WHERE solar_system_id = $1 AND activity_date = $2::date
+			  AND dirtied_at = $3`, systemID, from.Format(time.DateOnly), dirtyAt)
+		return err
+	})
 }
 
 func (d *Deps) cronDirtyBattles(ctx context.Context) (string, error) {
@@ -140,9 +154,18 @@ func (d *Deps) cronDirtyBattles(ctx context.Context) (string, error) {
 	return fmt.Sprintf("%d dirty battle windows queued", n), err
 }
 
-func (d *Deps) cronPrepareBattleReports(ctx context.Context) (string, error) {
-	n, err := api.PrepareBattleReports(ctx, d.Pool, 48)
-	return fmt.Sprintf("%d battle reports prepared", n), err
+type BattleReportWorker struct {
+	river.WorkerDefaults[queue.BattleReportArgs]
+	Deps *Deps
+}
+
+func (w *BattleReportWorker) Work(ctx context.Context, job *river.Job[queue.BattleReportArgs]) error {
+	first, last := job.Args.FirstID, job.Args.LastID
+	if first < 1 || last < first || last-first >= queue.BattleReportBatchSize {
+		return river.JobCancel(fmt.Errorf("invalid battle report range %d..%d", first, last))
+	}
+	_, err := api.PrepareBattleReports(ctx, w.Deps.Pool, first, last)
+	return err
 }
 
 // battleTickerThreshold is how many ships have to die before a battle is worth

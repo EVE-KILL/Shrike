@@ -50,7 +50,7 @@ reports, and the static data export (SDE) use route-specific freshness policies.
 ## Prepared battle reports
 
 Postgres stores prepared report details, chart summaries, and replay losses by
-battle ID. The cron worker builds these in batches and publishes each completed
+battle ID. River workers prepare the snapshots and publish each completed
 report in a single statement. Replay landmarks are cached by solar system.
 Reports without a prepared version use the existing reader during the backfill.
 
@@ -61,10 +61,11 @@ continues to run. A completed refresh replaces the prior report once the new
 data is ready.
 
 Apply migrations 31 and 32 before deploying code that reads prepared reports.
-The report job processes up to 48 pending battles per minute, with recently
-changed rows first. Keep the Cloudflare challenge during the initial backfill
-and check cache hits and origin work before narrowing it. Anonymous, unfiltered
-battle pages on the apex opt in through the normal HTML cache policy.
+Battle changes enqueue report jobs in the same Postgres transaction. Archive
+batches use lower queue priority so live updates can run ahead of them. Keep the
+Cloudflare challenge during the initial backfill and check cache hits and origin
+work before narrowing it. Anonymous, unfiltered battle pages on the apex opt in
+through the normal HTML cache policy.
 
 ## Defaults
 

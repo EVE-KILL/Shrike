@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -26,6 +27,25 @@ type InsertResult struct {
 	// insert collapsed into it. Not an error — it is the deduplication working
 	// — but callers counting dispatches need to tell the two apart.
 	Duplicate bool
+}
+
+// EnqueueBattleReportsTx commits the refresh jobs with the battle changes.
+func EnqueueBattleReportsTx(ctx context.Context, tx pgx.Tx, c *Client, ids []int64) error {
+	if c == nil || len(ids) == 0 {
+		return nil
+	}
+	opts := InsertOptsFor((BattleReportArgs{}).Kind(), Live)
+	// A running worker can have read the previous revision already. Give each
+	// change its own job so it cannot disappear into that worker's unique key.
+	opts.UniqueOpts = river.UniqueOpts{}
+	params := make([]river.InsertManyParams, 0, len(ids))
+	for _, id := range ids {
+		params = append(params, river.InsertManyParams{
+			Args: BattleReportArgs{FirstID: id, LastID: id}, InsertOpts: opts,
+		})
+	}
+	_, err := c.InsertManyTx(ctx, tx, params)
+	return err
 }
 
 // Dispatch enqueues one job.

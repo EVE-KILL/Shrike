@@ -184,6 +184,16 @@ type BattleDetectionArgs struct {
 
 func (BattleDetectionArgs) Kind() string { return "battle_detection" }
 
+const BattleReportBatchSize = 48
+
+// BattleReportArgs refreshes a single report or a bounded archive range.
+type BattleReportArgs struct {
+	FirstID int64 `json:"first_id"`
+	LastID  int64 `json:"last_id"`
+}
+
+func (BattleReportArgs) Kind() string { return "battle_report" }
+
 // FitExtractArgs records the fit a killmail's victim was flying.
 //
 // Only the id: the extractor re-reads the killmail's items, which keeps the

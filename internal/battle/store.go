@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/eve-kill/shrike/internal/queue"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -309,7 +310,7 @@ func HasOverlap(
 
 // Store updates a detected battle and its sides without changing its public ID.
 // If new killmails join previously separate fights, their IDs become aliases.
-func Store(ctx context.Context, pool *pgxpool.Pool, b *Detected) (int64, error) {
+func Store(ctx context.Context, pool *pgxpool.Pool, b *Detected, reports *queue.Client) (int64, error) {
 	encoded, err := json.Marshal(b)
 	if err != nil {
 		return 0, err
@@ -403,6 +404,9 @@ func Store(ctx context.Context, pool *pgxpool.Pool, b *Detected) (int64, error) 
 		}
 	}
 
+	if err := queue.EnqueueBattleReportsTx(ctx, tx, reports, []int64{battleID}); err != nil {
+		return 0, fmt.Errorf("queue battle report: %w", err)
+	}
 	return battleID, tx.Commit(ctx)
 }
 
