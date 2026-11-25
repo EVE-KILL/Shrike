@@ -602,6 +602,8 @@ func loadKillmailDetail(
 	if err != nil || killmail == nil {
 		return nil, false, err
 	}
+	// Keep enrichment on indexed lookups from the selected attackers. Broad
+	// joins can scan the alliance and ship-group tables for each killmail.
 	attackers, err := queryMaps(ctx, db, `
 		SELECT a.character_id, c.name AS character_name,
 		       a.corporation_id, co.name AS corporation_name,
@@ -612,12 +614,24 @@ func loadKillmailDetail(
 		       COALESCE(a.final_blow, false) AS final_blow,
 		       a.security_status
 		FROM killmail_attackers a
-		LEFT JOIN characters c ON c.character_id = a.character_id
-		LEFT JOIN corporations co ON co.corporation_id = a.corporation_id
-		LEFT JOIN alliances al ON al.alliance_id = a.alliance_id
-		LEFT JOIN inv_types ship ON ship.type_id = a.ship_type_id
-		LEFT JOIN inv_groups ship_group ON ship_group.group_id = ship.group_id
-		LEFT JOIN inv_types weapon ON weapon.type_id = a.weapon_type_id
+		LEFT JOIN LATERAL (
+			SELECT name FROM characters WHERE character_id = a.character_id LIMIT 1
+		) c ON true
+		LEFT JOIN LATERAL (
+			SELECT name FROM corporations WHERE corporation_id = a.corporation_id LIMIT 1
+		) co ON true
+		LEFT JOIN LATERAL (
+			SELECT name FROM alliances WHERE alliance_id = a.alliance_id LIMIT 1
+		) al ON true
+		LEFT JOIN LATERAL (
+			SELECT name, group_id FROM inv_types WHERE type_id = a.ship_type_id LIMIT 1
+		) ship ON true
+		LEFT JOIN LATERAL (
+			SELECT category_id FROM inv_groups WHERE group_id = ship.group_id LIMIT 1
+		) ship_group ON true
+		LEFT JOIN LATERAL (
+			SELECT name FROM inv_types WHERE type_id = a.weapon_type_id LIMIT 1
+		) weapon ON true
 		WHERE a.killmail_id = $1
 		ORDER BY COALESCE(a.damage_done, 0) DESC, a.attacker_index ASC`, id)
 	if err != nil {
@@ -645,17 +659,10 @@ func loadKillmailDetail(
 		return nil, false, err
 	}
 
-	typeValues := make([]any, 0, 1+len(attackers)*2+len(items))
-	addKnownType := func(typeValue any) {
-		typeValues = append(typeValues, typeValue)
-	}
-	addKnownType(killmail["victim_ship_type_id"])
-	for _, attacker := range attackers {
-		addKnownType(attacker["ship_type_id"])
-		addKnownType(attacker["weapon_type_id"])
-	}
+	typeValues := make([]any, 0, 1+len(items))
+	typeValues = append(typeValues, killmail["victim_ship_type_id"])
 	for _, item := range items {
-		addKnownType(item["type_id"])
+		typeValues = append(typeValues, item["type_id"])
 	}
 	typeIDs := int32Slice(typeValues...)
 	prices, err := loadTypePrices(ctx, db, typeIDs, killmail["killmail_time"])
@@ -809,20 +816,22 @@ func loadTypePrices(
 	if !ok {
 		return result, nil
 	}
-	rows, err := queryMaps(ctx, db, nearestTypePricesSQL("prices", "average", "AND region_id = 10000002"), typeIDs, killTime)
+	// Both price sources independently use their nearest date. An existing
+	// custom-price row takes precedence even when its price is NULL or zero.
+	rows, err := queryMaps(ctx, db, `
+		SELECT DISTINCT ON (type_id) type_id, price
+		FROM (
+			SELECT type_id, average::double precision AS price, 0 AS priority
+			FROM (`+nearestTypePricesSQL("prices", "average", "AND region_id = 10000002")+`) market
+			UNION ALL
+			SELECT type_id, price::double precision, 1
+			FROM (`+nearestTypePricesSQL("custom_prices", "price", "")+`) custom
+		) candidates
+		ORDER BY type_id, priority DESC`, typeIDs, killTime)
 	if err != nil {
 		return nil, err
 	}
 	for _, row := range rows {
-		typeID, _ := int64Value(row["type_id"])
-		price, _ := float64Value(row["average"])
-		result[typeID] = price
-	}
-	custom, err := queryMaps(ctx, db, nearestTypePricesSQL("custom_prices", "price", ""), typeIDs, killTime)
-	if err != nil {
-		return nil, err
-	}
-	for _, row := range custom {
 		typeID, _ := int64Value(row["type_id"])
 		price, _ := float64Value(row["price"])
 		result[typeID] = price

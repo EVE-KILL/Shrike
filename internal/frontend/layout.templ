@@ -8,7 +8,7 @@ templ layout(meta pageMetadata, content templ.Component, development bool) {
 			<div id="navigation-progress" class="navigation-progress" hidden aria-hidden="true"><span></span></div>
 			<div id="navigation-loading-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 			<a class="skip-link" href="#main">Skip to content</a>
-			@navbar(meta.Domain)
+			@layoutNavigation(meta.Domain)
 			<div class="content-blur" aria-hidden="true"></div>
 			<div class={ "content", templ.KV("domain-content-banner", domainBanner(meta.Domain)), templ.KV("domain-content-transparent", meta.Domain!=nil && domainString(meta.Domain.Theme.BannerURL)=="" && domainBanner(meta.Domain)) } style={ domainContentStyle(meta.Domain) } data-shell-target="content">
 				if domainBanner(meta.Domain) {
@@ -19,7 +19,7 @@ templ layout(meta pageMetadata, content templ.Component, development bool) {
 						@announcementBannerHost()
 						@content
 					</main>
-					@footer()
+					@footerHTML
 				</div>
 			</div>
 			<div class="background-controls">
@@ -31,10 +31,10 @@ templ layout(meta pageMetadata, content templ.Component, development bool) {
 				</button>
 			</div>
 			<a class="powered-badge" href="/" aria-label="Powered by EVE-KILL"><span class="powered-badge-icon">E</span><span class="powered-badge-text">Powered by EVE-KILL</span></a>
-			@searchDialog()
+			@searchDialogHTML
 			@announcementGlobalHosts()
 			if meta.CommentEditor {
-				@commentInputTemplates()
+				@commentTemplatesHTML
 			}
 			if development {
 				@diagnostics()

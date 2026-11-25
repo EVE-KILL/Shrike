@@ -100,7 +100,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = navbar(meta.Domain).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = layoutNavigation(meta.Domain).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -183,7 +183,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = footer().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = footerHTML.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -207,7 +207,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = searchDialog().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = searchDialogHTML.Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -216,7 +216,7 @@ func layout(meta pageMetadata, content templ.Component, development bool) templ.
 			return templ_7745c5c3_Err
 		}
 		if meta.CommentEditor {
-			templ_7745c5c3_Err = commentInputTemplates().Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = commentTemplatesHTML.Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

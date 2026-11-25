@@ -56,12 +56,12 @@ func TestNearestPricesPreserveHistoryAndOverrides(t *testing.T) {
         CREATE TEMP TABLE custom_prices(type_id int,date date,price double precision,PRIMARY KEY(type_id,date)) ON COMMIT DROP;
         INSERT INTO prices VALUES (1,10000002,'2026-09-04',40),(1,10000002,'2026-09-06',60),
         (1,9,'2026-09-05',999),(2,10000002,'2026-09-01',20), (3,10000002,'2026-09-10',30),
-        (4,10000002,'2026-09-05',NULL), (5,10000002,'2026-09-05',50);
-        INSERT INTO custom_prices VALUES (5,'2026-09-04',54),(5,'2026-09-06',56),(6,'2026-09-05',0);`)
+        (4,10000002,'2026-09-05',NULL), (5,10000002,'2026-09-05',50),(7,10000002,'2026-09-05',70);
+        INSERT INTO custom_prices VALUES (5,'2026-09-04',54),(5,'2026-09-06',56),(6,'2026-09-05',0),(7,'2026-09-05',NULL);`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ids := []int32{1, 2, 3, 4, 5, 6, 7, 1}
+	ids := []int32{1, 2, 3, 4, 5, 6, 7, 8, 1}
 	day := time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)
 	for _, spec := range []struct{ table, value, region string }{{"prices", "average", "AND region_id=10000002"}, {"custom_prices", "price", ""}} {
 		old, err := queryMaps(ctx, db, "SELECT DISTINCT ON(type_id) type_id,"+spec.value+" FROM "+spec.table+" WHERE type_id=ANY($1::int[]) "+spec.region+" ORDER BY type_id,ABS(date-$2::date),date DESC", ids, day)
@@ -80,7 +80,7 @@ func TestNearestPricesPreserveHistoryAndOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[int64]float64{1: 60, 2: 20, 3: 30, 4: 0, 5: 56, 6: 0}
+	want := map[int64]float64{1: 60, 2: 20, 3: 30, 4: 0, 5: 56, 6: 0, 7: 0}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v want %v", got, want)
 	}

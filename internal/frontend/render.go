@@ -1,19 +1,56 @@
 package frontend
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/a-h/templ"
+	"github.com/eve-kill/shrike/internal/api"
 	"github.com/eve-kill/shrike/internal/requeststats"
 	"github.com/eve-kill/shrike/internal/telemetry"
 	"github.com/rs/zerolog/log"
 )
 
 var ErrNotFound = errors.New("frontend: page not found")
+
+var (
+	mainNavigationHTML   = staticLayoutFragment(navbar(nil))
+	footerHTML           = staticLayoutFragment(footer())
+	searchDialogHTML     = staticLayoutFragment(searchDialog())
+	commentTemplatesHTML = staticLayoutFragment(commentInputTemplates())
+)
+
+func layoutNavigation(domain *api.SiteDomainConfiguration) templ.Component {
+	if domain == nil {
+		return mainNavigationHTML
+	}
+	return navbar(domain)
+}
+
+// These components depend only on the embedded assets and built-in links.
+// Render them once and replay their HTML into each page's render buffer.
+func staticLayoutFragment(component templ.Component) templ.Component {
+	render := sync.OnceValues(func() (string, error) {
+		var html strings.Builder
+		err := component.Render(context.Background(), &html)
+		return html.String(), err
+	})
+	return templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
+		html, err := render()
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(w, html)
+		return err
+	})
+}
 
 // Page separates fetching and presentation. Loaders call Go services directly;
 // templates receive finished view models and never perform database or HTTP IO.
