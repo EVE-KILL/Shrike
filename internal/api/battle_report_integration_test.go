@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -55,6 +57,29 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	filteredKills := func(id int64, query url.Values) []KilllistRow {
+		t.Helper()
+		payload, err := battleKilllistHandler(Options{DB: pool}, false)(ctx, &legacyRequest{
+			Params: map[string]string{"id": fmt.Sprint(id)}, Query: query,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		list, err := decodeKilllistPayload(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return list.Kills
+	}
+	query := url.Values{
+		"side": {"1"}, "group": {"25"}, "minIsk": {"150000000"},
+		"from": {strconv.FormatInt(start.Add(10*time.Minute).UnixMilli(), 10)},
+		"to":   {strconv.FormatInt(start.Add(40*time.Minute).UnixMilli(), 10)},
+	}
+	live := filteredKills(firstID, query)
+	if len(live) != 1 || live[0].KillmailID != 2000000001 {
+		t.Fatalf("live filtered losses = %+v", live)
+	}
 
 	if count, err := PrepareBattleReports(ctx, pool, firstID, laterID); err != nil || count != 2 {
 		t.Fatalf("prepared %d reports: %v", count, err)
@@ -95,6 +120,9 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	if err := json.Unmarshal(newReplayJSON, &newReplay); err != nil || !reflect.DeepEqual(oldReplay, newReplay) {
 		t.Fatalf("prepared replay changed the response: %v", err)
 	}
+	if prepared := filteredKills(firstID, query); !reflect.DeepEqual(live, prepared) {
+		t.Fatalf("prepared filtered losses changed the response: %+v", prepared)
+	}
 	if id, err := battle.Store(ctx, pool, &detected, nil); err != nil || id != firstID {
 		t.Fatalf("identical re-detection returned ID %d, want %d, err = %v", id, firstID, err)
 	}
@@ -112,12 +140,25 @@ func TestPreparedBattleReportKeepsCanonicalIDAndRefreshesAtomically(t *testing.T
 	if err != nil || stale.Losses.LossCount != 2 {
 		t.Fatalf("merged link could not read the existing snapshot: %+v, %v", stale.Losses, err)
 	}
+	if _, err := pool.Exec(ctx, `INSERT INTO killmails (killmail_id, killmail_hash, killmail_time,
+		solar_system_id, region_id, victim_corporation_id, victim_alliance_id,
+		victim_ship_type_id, victim_ship_group_id, total_value)
+		VALUES (2000000005, 'late-battle-loss', $1, 30000142, 10000002, 70112, 70122, 587, 25, 250000000)`,
+		start.Add(35*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if staleKills := filteredKills(laterID, query); !reflect.DeepEqual(staleKills, live) {
+		t.Fatalf("alias read unpublished battle losses: %+v", staleKills)
+	}
 	if count, err := PrepareBattleReports(ctx, pool, firstID, laterID); err != nil || count != 1 {
 		t.Fatalf("prepared %d revised reports: %v", count, err)
 	}
 	updated, err := reader.BattleReport(ctx, laterID)
-	if err != nil || updated.Losses.LossCount != 3 || len(updated.Losses.Biggest) != 3 {
+	if err != nil || updated.Losses.LossCount != 4 || len(updated.Losses.Biggest) != 4 {
 		t.Fatalf("merged report was not refreshed: %+v, %v", updated.Losses, err)
+	}
+	if newKills := filteredKills(laterID, query); len(newKills) != 2 || newKills[0].KillmailID != 2000000005 {
+		t.Fatalf("alias filtered losses did not pick up the late kill: %+v", newKills)
 	}
 	var identity struct {
 		ID int64 `json:"battle_id"`
@@ -161,6 +202,16 @@ func TestKillmailBattleSharesLookupAcrossTabsAndResolvesSavedReport(t *testing.T
 	if len(window.Kills) != 2 || len(window.Attackers) != 2 || len(window.Attackers[killID]) != 3 {
 		t.Fatalf("killmail battle included attackers outside the refined fight: %+v", window.Attackers)
 	}
+	reader := newCachedHomepageReader(pool, nil, opts.responseCache, opts.Commit)
+	losses, err := reader.BattleLosses(ctx, 1, killID)
+	if err != nil || len(losses) != 2 || losses[0].ID != killID || losses[0].GroupName != "Frigate" {
+		t.Fatalf("killmail battle losses = %+v, err = %v", losses, err)
+	}
+	otherReader := newCachedHomepageReader(nil, nil, other.responseCache, other.Commit)
+	cached, err := otherReader.BattleLosses(ctx, 1, killID)
+	if err != nil || !reflect.DeepEqual(losses, cached) {
+		t.Fatalf("other replica did not reuse the loss window: %+v, err = %v", cached, err)
+	}
 	if _, _, err := readKillmailBattle(ctx, opts, 2000000004); err == nil {
 		t.Fatal("an isolated killmail unexpectedly resolved to a battle")
 	}
@@ -172,7 +223,6 @@ func TestKillmailBattleSharesLookupAcrossTabsAndResolvesSavedReport(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	reader := newCachedHomepageReader(pool, nil, opts.responseCache, opts.Commit)
 	opts.responseCache.DeleteMatching(ctx, reader.cacheKey(fmt.Sprintf("killmail-battle:%d", killID)))
 	got, err := resolveConflictBattleWindow(ctx, opts, req, true)
 	if err != nil || got == nil || got.BattleID != int32(id) {

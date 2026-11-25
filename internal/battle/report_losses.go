@@ -89,6 +89,17 @@ func reportTimeMS(raw string) int64 {
 	}
 	return t.UnixMilli()
 }
+
+func (f LossFilter) Matches(k ReportLoss, side int) bool {
+	return f.matches(k, side, reportTimeMS(k.Time))
+}
+
+func (f LossFilter) matches(k ReportLoss, side int, at int64) bool {
+	return at != 0 && (f.Side == nil || int64(side) == *f.Side) &&
+		(f.Group == nil || k.GroupID == *f.Group) && k.Value >= f.MinISK &&
+		(f.From == nil || at >= *f.From) && (f.To == nil || at < *f.To)
+}
+
 func SummarizeLosses(startTime, endTime string, sides []ReportSide, kills []ReportLoss, filter LossFilter) LossSummary {
 	var v LossSummary
 	start, end := reportTimeMS(startTime), reportTimeMS(endTime)
@@ -119,8 +130,7 @@ func SummarizeLosses(startTime, endTime string, sides []ReportSide, kills []Repo
 		}
 		t := reportTimeMS(k.Time)
 		side := VictimSide(k, sides)
-		f := filter
-		if t == 0 || f.Side != nil && int64(side) != *f.Side || f.Group != nil && k.GroupID != *f.Group || k.Value < f.MinISK || f.From != nil && t < *f.From || f.To != nil && t >= *f.To {
+		if !filter.matches(k, side, t) {
 			continue
 		}
 		v.Filtered = append(v.Filtered, k)

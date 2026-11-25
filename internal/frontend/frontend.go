@@ -12,6 +12,7 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/eve-kill/shrike/internal/api"
+	"github.com/eve-kill/shrike/internal/battle"
 )
 
 // Options contains deployment policy, not request-derived site identity.
@@ -47,7 +48,9 @@ type Options struct {
 }
 
 type BattleReportReader interface {
-	BattleReport(context.Context, int64) (api.PreparedBattleReport, error)
+	BattleReport(ctx context.Context, id int64) (api.PreparedBattleReport, error)
+	BattleReportWithEvents(ctx context.Context, id int64) (api.PreparedBattleReport, error)
+	BattleLosses(ctx context.Context, id, killmailID int64) ([]battle.ReportLoss, error)
 }
 
 type AdvancedSearchReader interface {

@@ -14,17 +14,28 @@ import (
 	"github.com/eve-kill/shrike/internal/battle"
 )
 
-type battleReportFixture struct{ report api.PreparedBattleReport }
+type battleReportFixture struct {
+	report api.PreparedBattleReport
+	losses []battle.ReportLoss
+}
 
 func (f battleReportFixture) BattleReport(context.Context, int64) (api.PreparedBattleReport, error) {
 	return f.report, nil
+}
+
+func (f battleReportFixture) BattleReportWithEvents(context.Context, int64) (api.PreparedBattleReport, error) {
+	return f.report, nil
+}
+
+func (f battleReportFixture) BattleLosses(context.Context, int64, int64) ([]battle.ReportLoss, error) {
+	return f.losses, nil
 }
 
 func TestPreparedBattleSummarySkipsReplayAndRespectsCacheScope(t *testing.T) {
 	data := json.RawMessage(`{"battle_id":42,"solar_system_id":30000142,"solar_system_name":"Jita","start_time":"2026-04-06T16:00:00Z","end_time":"2026-04-06T16:03:00Z","teams":[{"team_index":0},{"team_index":1}]}`)
 	handler := New(Options{
 		Production:    true,
-		BattleReports: battleReportFixture{api.PreparedBattleReport{Detail: data, Losses: battle.LossSummary{LossCount: 5}}},
+		BattleReports: battleReportFixture{report: api.PreparedBattleReport{Detail: data, Losses: battle.LossSummary{LossCount: 5}}},
 		ConflictsAPI: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 			t.Fatal("a prepared battle summary fetched the API")
 		}),
@@ -41,6 +52,49 @@ func TestPreparedBattleSummarySkipsReplayAndRespectsCacheScope(t *testing.T) {
 		handler.ServeHTTP(w, r)
 		if w.Code != http.StatusOK || !strings.Contains(w.Header().Get("Cache-Control"), tc.want) {
 			t.Fatalf("%s rendered %d with cache policy %q", tc.url, w.Code, w.Header().Get("Cache-Control"))
+		}
+	}
+}
+
+func TestBattleTabsUseNonSpatialLosses(t *testing.T) {
+	detail := json.RawMessage(`{"solar_system_id":30000142,"solar_system_name":"Jita","start_time":"2026-04-06T16:00:00Z","end_time":"2026-04-06T16:03:00Z","teams":[{"team_index":0},{"team_index":1}],"team_entities":[{"corps":[1]},{"corps":[2]}]}`)
+	losses := []battle.ReportLoss{
+		{ID: 42, Time: "2026-04-06T16:01:00Z", CorpID: 1, GroupID: 30, ShipName: "Avatar", Value: 1e11},
+		{ID: 43, Time: "2026-04-06T16:02:00Z", CorpID: 2, GroupID: 659, ShipName: "Aeon", Value: 1e11},
+	}
+	handler := New(Options{
+		Production: true,
+		BattleReports: battleReportFixture{
+			report: api.PreparedBattleReport{Detail: detail, Events: losses},
+			losses: losses,
+		},
+		ConflictsAPI: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/api/battle/killmail/99":
+				_, _ = w.Write(detail)
+			case "/api/battle/killmail/99/killlist", "/api/battle/42/killlist":
+				if r.URL.Query().Get("side") != "0" {
+					t.Error("kill feed did not receive the side filter")
+				}
+				_ = json.NewEncoder(w).Encode(api.KilllistPage{})
+			default:
+				t.Errorf("unexpected API call %s", r.URL.Path)
+				http.NotFound(w, r)
+			}
+		}),
+	})
+	for _, path := range []string{
+		"/battle/42/kills?side=0", "/battle/42/kills?killmail=99&side=0",
+		"/battle/42/timeline?side=0", "/battle/42/timeline?killmail=99&side=0",
+	} {
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, canonicalOrigin+path, nil))
+		body := w.Body.String()
+		if w.Code != 200 || strings.Contains(body, "Unable to load battle losses") || strings.Contains(body, "Aeon") {
+			t.Errorf("%s did not render the filtered loss explorer, status %d", path, w.Code)
+		}
+		if strings.Contains(path, "/timeline") && !strings.Contains(body, "Avatar") {
+			t.Errorf("%s omitted the selected loss", path)
 		}
 	}
 }
@@ -125,7 +179,7 @@ func TestBattleLossWindowsIncludeFinalBoundaryAndKeepQuietIntervals(t *testing.T
 	start := "2026-04-06T16:00:00Z"
 	end := "2026-04-06T16:03:00Z"
 	v := battleDetailView{Data: battleDetailData{Start: start, End: end, Sides: []battleSide{{Corps: []int64{1}, Alliances: []int64{10}}, {Corps: []int64{2}, Alliances: []int64{20}}}}, Replay: battleReplayData{Kills: []battleReplayKill{{ID: 1, Time: start, CorpID: 1, AllianceID: 20, GroupID: 30, Value: 1e11}, {ID: 2, Time: "2026-04-06T16:01:00Z", CorpID: 3, GroupID: 29, Value: 10000}, {ID: 3, Time: end, CorpID: 2, GroupID: 659, Value: 1e11}}}}
-	buildBattleLosses(&v)
+	buildBattleLosses(&v, v.Replay.Kills)
 	if len(v.Bins) != 3 || v.Bins[1].Sides[2].Count != 1 || v.Bins[1].Sides[1].Count != 0 || v.Bins[2].Big != 1 || v.Bins[2].End != battleTimeMS(end)+1 {
 		t.Fatalf("unexpected boundary bins: %+v", v.Bins)
 	}
@@ -133,12 +187,12 @@ func TestBattleLossWindowsIncludeFinalBoundaryAndKeepQuietIntervals(t *testing.T
 		t.Error("explicit corporation must win over alliance side")
 	}
 	filtered := battleDetailView{Data: v.Data, Replay: v.Replay, Filter: battleLossFilter{From: &v.Bins[2].Start, To: &v.Bins[2].End}}
-	buildBattleLosses(&filtered)
+	buildBattleLosses(&filtered, filtered.Replay.Kills)
 	if len(filtered.Filtered) != 1 || filtered.Filtered[0].ID != 3 {
 		t.Fatalf("final interval losses %+v", filtered.Filtered)
 	}
 	quiet := battleDetailView{Data: v.Data, Replay: battleReplayData{Kills: v.Replay.Kills[:1]}}
-	buildBattleLosses(&quiet)
+	buildBattleLosses(&quiet, quiet.Replay.Kills)
 	if quiet.Bins[1].Count != 0 {
 		t.Error("quiet interval disappeared")
 	}

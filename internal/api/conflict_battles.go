@@ -547,7 +547,7 @@ func battleDetailHandler(opts Options) legacyHandler {
 		if err != nil {
 			return legacyPayload{}, err
 		}
-		prepared, err := loadPreparedBattleReport(ctx, opts.DB, int64(id), false)
+		prepared, err := loadPreparedBattleReport(ctx, opts.DB, int64(id), battleReportDetail)
 		if err != nil {
 			return legacyPayload{}, err
 		}

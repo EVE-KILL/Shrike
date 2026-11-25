@@ -2,11 +2,11 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"math"
 	"net/http"
-	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -74,7 +74,14 @@ func resolveConflictBattleWindow(
 	killmailMode bool,
 ) (*conflictBattleWindow, error) {
 	id, err := parseID(req.Param("id"))
-	if err != nil || id <= 0 {
+	if err != nil {
+		return nil, apiError(http.StatusBadRequest, "Invalid ID")
+	}
+	return resolveConflictBattleID(ctx, opts, id, killmailMode)
+}
+
+func resolveConflictBattleID(ctx context.Context, opts Options, id int64, killmailMode bool) (*conflictBattleWindow, error) {
+	if id <= 0 {
 		return nil, apiError(http.StatusBadRequest, "Invalid ID")
 	}
 	if !killmailMode {
@@ -109,14 +116,14 @@ func resolveConflictBattleWindow(
 
 func battleKilllistHandler(opts Options, killmailMode bool) legacyHandler {
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
+		if req.Query.Has("side") || req.Query.Has("group") || req.Query.Has("minIsk") || req.Query.Has("from") || req.Query.Has("to") {
+			return filteredBattleKilllist(ctx, opts, req, killmailMode)
+		}
 		window, err := resolveConflictBattleWindow(
 			ctx, opts, req, killmailMode,
 		)
 		if err != nil {
 			return legacyPayload{}, err
-		}
-		if req.Query.Has("side") || req.Query.Has("group") || req.Query.Has("minIsk") || req.Query.Has("from") || req.Query.Has("to") {
-			return filteredBattleKilllist(ctx, opts, req.Query, window)
 		}
 		return loadConflictKilllist(
 			ctx, opts.DB, req.Query,
@@ -132,65 +139,44 @@ func battleKilllistHandler(opts Options, killmailMode bool) legacyHandler {
 
 // Filter the complete adjusted loss set before regular killlist pagination.
 // This keeps timeline selections and price thresholds identical across tabs.
-func filteredBattleKilllist(ctx context.Context, opts Options, query url.Values, window *conflictBattleWindow) (legacyPayload, error) {
-	values := map[string]int64{}
-	for _, key := range []string{"side", "group", "from", "to"} {
+func filteredBattleKilllist(ctx context.Context, opts Options, req *legacyRequest, killmailMode bool) (legacyPayload, error) {
+	query := req.Query
+	var filter battle.LossFilter
+	for _, field := range []struct {
+		key string
+		out **int64
+	}{{"side", &filter.Side}, {"group", &filter.Group}, {"from", &filter.From}, {"to", &filter.To}} {
+		key := field.key
 		if raw := query.Get(key); raw != "" {
 			value, err := strconv.ParseInt(raw, 10, 64)
 			if err != nil || (key == "side" && (value < -1 || value > 1)) || (key != "side" && value <= 0) {
 				return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid "+key)
 			}
-			values[key] = value
+			*field.out = &value
 		}
 	}
-	minIsk := float64(0)
 	if raw := query.Get("minIsk"); raw != "" {
-		var err error
-		minIsk, err = strconv.ParseFloat(raw, 64)
-		if err != nil || minIsk < 0 || math.IsNaN(minIsk) || math.IsInf(minIsk, 0) {
+		minISK, err := strconv.ParseFloat(raw, 64)
+		if err != nil || minISK < 0 || math.IsNaN(minISK) || math.IsInf(minISK, 0) {
 			return legacyPayload{}, apiError(http.StatusBadRequest, "Invalid minIsk")
 		}
+		filter.MinISK = minISK
 	}
-	rows, err := loadBattleLossRows(ctx, opts, window, false)
+	window, losses, victimSide, err := readBattleKilllistLosses(ctx, opts, req, killmailMode)
 	if err != nil {
 		return legacyPayload{}, err
 	}
-	ids := make([]int64, 0, len(rows))
-	prices := map[int64]float64{}
-	allianceTeams := battleAllianceTeams(window.Assignment)
-	for _, row := range rows {
-		at, ok := row["killmail_time"].(time.Time)
-		if !ok {
-			continue
+	ids := make([]int64, 0, len(losses))
+	prices := make(map[int64]float64)
+	for _, loss := range losses {
+		side := -1
+		if filter.Side != nil {
+			side = victimSide(loss)
 		}
-		if from, ok := values["from"]; ok && at.UnixMilli() < from {
-			continue
+		if filter.Matches(loss, side) {
+			ids = append(ids, loss.ID)
+			prices[loss.ID] = loss.Value
 		}
-		if to, ok := values["to"]; ok && at.UnixMilli() >= to {
-			continue
-		}
-		if group, ok := values["group"]; ok && conflictInt(row, "ship_group_id") != group {
-			continue
-		}
-		price := conflictFloat(row, "total_value")
-		if price < minIsk {
-			continue
-		}
-		if wanted, ok := values["side"]; ok {
-			side, assigned := window.Assignment.CorpTeam[int32(conflictInt(row, "victim_corporation_id"))]
-			if !assigned {
-				side, assigned = allianceTeams[int32(conflictInt(row, "victim_alliance_id"))]
-			}
-			if !assigned {
-				side = -1
-			}
-			if int64(side) != wanted {
-				continue
-			}
-		}
-		id := conflictInt(row, "killmail_id")
-		ids = append(ids, id)
-		prices[id] = price
 	}
 	result, err := loadConflictKilllist(ctx, opts.DB, query,
 		[]string{"k.solar_system_id = ANY($1::int[])", "k.killmail_time >= $2", "k.killmail_time <= $3", "k.killmail_id = ANY($4::bigint[])"},
@@ -202,6 +188,52 @@ func filteredBattleKilllist(ctx context.Context, opts Options, query url.Values,
 		row["total_value"] = prices[conflictInt(row, "killmail_id")]
 	}
 	return result, nil
+}
+
+func readBattleKilllistLosses(ctx context.Context, opts Options, req *legacyRequest, killmailMode bool) (*conflictBattleWindow, []battle.ReportLoss, func(battle.ReportLoss) int, error) {
+	if !killmailMode {
+		id, err := parseConflictID(req)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		prepared, err := loadPreparedBattleReport(ctx, opts.DB, int64(id), battleReportEvents)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if prepared.Detail != nil {
+			var detail struct {
+				SystemID int32               `json:"solar_system_id"`
+				Start    time.Time           `json:"start_time"`
+				End      time.Time           `json:"end_time"`
+				Sides    []battle.ReportSide `json:"team_entities"`
+			}
+			if err := json.Unmarshal(prepared.Detail, &detail); err != nil {
+				return nil, nil, nil, err
+			}
+			window := &conflictBattleWindow{SystemIDs: []int32{detail.SystemID}, Start: detail.Start, End: detail.End}
+			return window, prepared.Events, func(loss battle.ReportLoss) int {
+				return battle.VictimSide(loss, detail.Sides)
+			}, nil
+		}
+	}
+	window, err := resolveConflictBattleWindow(ctx, opts, req, killmailMode)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	losses, err := readBattleLosses(ctx, opts, window)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	allianceTeams := battleAllianceTeams(window.Assignment)
+	return window, losses, func(loss battle.ReportLoss) int {
+		if side, assigned := window.Assignment.CorpTeam[int32(loss.CorpID)]; assigned {
+			return side
+		}
+		if side, assigned := allianceTeams[int32(loss.AllianceID)]; assigned {
+			return side
+		}
+		return -1
+	}, nil
 }
 
 // Replay uses the same system/time membership as the complete battle timeline.
@@ -278,20 +310,56 @@ func loadBattleLandmarks(ctx context.Context, db Database, systems []int32) ([]m
 	return landmarks, nil
 }
 
+func readBattleLosses(ctx context.Context, opts Options, window *conflictBattleWindow) ([]battle.ReportLoss, error) {
+	load := func(ctx context.Context) ([]battle.ReportLoss, error) {
+		rows, err := loadBattleLossRows(ctx, opts, window, false)
+		if err != nil {
+			return nil, err
+		}
+		losses := make([]battle.ReportLoss, 0, len(rows))
+		for _, row := range rows {
+			at, ok := row["killmail_time"].(time.Time)
+			if !ok {
+				continue
+			}
+			losses = append(losses, battle.ReportLoss{
+				ID:         conflictInt(row, "killmail_id"),
+				Time:       at.Format(time.RFC3339Nano),
+				CorpID:     conflictInt(row, "victim_corporation_id"),
+				AllianceID: conflictInt(row, "victim_alliance_id"),
+				ShipID:     conflictInt(row, "ship_type_id"),
+				ShipName:   conflictString(row, "ship_name"),
+				GroupID:    conflictInt(row, "ship_group_id"),
+				GroupName:  conflictString(row, "ship_group_name"),
+				Value:      conflictFloat(row, "total_value"),
+			})
+		}
+		return losses, nil
+	}
+	if window.BattleID != 0 {
+		return load(ctx)
+	}
+	// Different seed killmails can produce the same loss window.
+	reader := newCachedHomepageReader(opts.DB, nil, opts.responseCache, opts.Commit)
+	key := fmt.Sprintf("battle-losses:%d:%d:%d", window.SystemID, window.Start.UnixNano(), window.End.UnixNano())
+	return cachedHomepage(ctx, reader, key, 30*time.Second, load)
+}
+
 func loadBattleLossRows(ctx context.Context, opts Options, window *conflictBattleWindow, spatial bool) ([]map[string]any, error) {
-	spatialColumns := ""
+	replayColumns, replayJoins := "", ""
 	if spatial {
-		spatialColumns = "system.system_name AS solar_system_name, k.position_x, k.position_y, k.position_z,"
+		replayColumns = `k.solar_system_id, system.system_name AS solar_system_name,
+			k.position_x, k.position_y, k.position_z, k.victim_character_id, character.name AS victim_character_name,`
+		replayJoins = `LEFT JOIN solar_systems system ON system.solar_system_id = k.solar_system_id
+			LEFT JOIN characters character ON character.character_id = k.victim_character_id`
 	}
 	rows, err := queryMaps(ctx, opts.DB, `
-            SELECT k.killmail_id, k.killmail_time, k.solar_system_id, `+spatialColumns+`
-                   k.victim_character_id, character.name AS victim_character_name,
+            SELECT k.killmail_id, k.killmail_time, `+replayColumns+`
                    k.victim_corporation_id, k.victim_alliance_id,
                    k.victim_ship_type_id AS ship_type_id, ship.name AS ship_name, ship.group_id AS ship_group_id, ship_group.name AS ship_group_name,
                    COALESCE(k.total_value, 0)::double precision AS total_value
             FROM killmails k
-            LEFT JOIN solar_systems system ON system.solar_system_id = k.solar_system_id
-            LEFT JOIN characters character ON character.character_id = k.victim_character_id
+            `+replayJoins+`
             LEFT JOIN inv_types ship ON ship.type_id = k.victim_ship_type_id
             LEFT JOIN inv_groups ship_group ON ship_group.group_id = ship.group_id
             WHERE k.solar_system_id = ANY($1::int[])

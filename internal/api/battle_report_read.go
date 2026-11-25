@@ -14,32 +14,44 @@ import (
 type PreparedBattleReport struct {
 	Detail json.RawMessage
 	Losses battle.LossSummary
+	Events []battle.ReportLoss
 }
+
+type battleReportLossData string
+
+const (
+	battleReportDetail  battleReportLossData = "NULL::jsonb"
+	battleReportSummary battleReportLossData = "loss_summary"
+	battleReportEvents  battleReportLossData = "loss_events"
+)
 
 func (r *HomepageReader) BattleReport(ctx context.Context, id int64) (PreparedBattleReport, error) {
-	return loadPreparedBattleReport(ctx, r.db, id, true)
+	return loadPreparedBattleReport(ctx, r.db, id, battleReportSummary)
 }
 
-func loadPreparedBattleReport(ctx context.Context, db Database, id int64, withLosses bool) (PreparedBattleReport, error) {
+func (r *HomepageReader) BattleReportWithEvents(ctx context.Context, id int64) (PreparedBattleReport, error) {
+	return loadPreparedBattleReport(ctx, r.db, id, battleReportEvents)
+}
+
+func loadPreparedBattleReport(ctx context.Context, db Database, id int64, data battleReportLossData) (PreparedBattleReport, error) {
 	var result PreparedBattleReport
-	var summary []byte
-	columns := "report, NULL::jsonb"
-	if withLosses {
-		columns = "report, loss_summary"
-	}
+	var losses []byte
 	err := db.QueryRow(ctx, `
-		SELECT `+columns+` FROM battle_report_snapshots
+		SELECT report, `+string(data)+` FROM battle_report_snapshots
 		WHERE battle_id = COALESCE(
 			(SELECT canonical_battle_id FROM battle_aliases WHERE battle_id = $1), $1
-		)`, id).Scan(&result.Detail, &summary)
+		)`, id).Scan(&result.Detail, &losses)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PreparedBattleReport{}, nil
 	}
 	if err != nil {
 		return PreparedBattleReport{}, err
 	}
-	if withLosses {
-		err = json.Unmarshal(summary, &result.Losses)
+	switch data {
+	case battleReportSummary:
+		err = json.Unmarshal(losses, &result.Losses)
+	case battleReportEvents:
+		err = json.Unmarshal(losses, &result.Events)
 	}
 	return result, err
 }
@@ -61,6 +73,18 @@ func loadPreparedBattleEvents(ctx context.Context, db Database, id int32) (json.
 		return nil, 0, nil
 	}
 	return events, system, err
+}
+
+func (r *HomepageReader) BattleLosses(ctx context.Context, id, killmailID int64) ([]battle.ReportLoss, error) {
+	if killmailID != 0 {
+		id = killmailID
+	}
+	opts := Options{DB: r.db, responseCache: r.cache, Commit: r.commit}
+	window, err := resolveConflictBattleID(ctx, opts, id, killmailID != 0)
+	if err != nil {
+		return nil, err
+	}
+	return readBattleLosses(ctx, opts, window)
 }
 
 // PrepareBattleReports builds the pending reports in a queued ID range. If detection or a

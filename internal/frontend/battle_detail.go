@@ -254,8 +254,8 @@ func battleTabShowsLossSummary(tab string) bool {
 func battleClearFilters() url.Values {
 	return url.Values{"side": nil, "group": nil, "minIsk": nil, "from": nil, "to": nil}
 }
-func buildBattleLosses(v *battleDetailView) {
-	v.LossSummary = battle.SummarizeLosses(v.Data.Start, v.Data.End, v.Data.Sides, v.Replay.Kills, v.Filter)
+func buildBattleLosses(v *battleDetailView, losses []battle.ReportLoss) {
+	v.LossSummary = battle.SummarizeLosses(v.Data.Start, v.Data.End, v.Data.Sides, losses, v.Filter)
 }
 func (s *site) battleAPI(r *http.Request, path string, query url.Values, out any) (int, error) {
 	request := r.Clone(r.Context())
@@ -281,8 +281,13 @@ func (s *site) readBattleDetail(r *http.Request) (battleDetailView, error) {
 	if err != nil {
 		return v, err
 	}
-	if s.options.BattleReports != nil && v.KillmailID == 0 && (battleTabShowsLossSummary(v.Tab) || v.Tab == "replay") && !battleFilterActive(v.Filter) {
-		report, err := s.options.BattleReports.BattleReport(r.Context(), v.ID)
+	filtered := battleFilterActive(v.Filter)
+	if s.options.BattleReports != nil && v.KillmailID == 0 && (battleTabShowsLossSummary(v.Tab) || v.Tab == "replay" && !filtered) {
+		readReport := s.options.BattleReports.BattleReport
+		if filtered {
+			readReport = s.options.BattleReports.BattleReportWithEvents
+		}
+		report, err := readReport(r.Context(), v.ID)
 		if err != nil {
 			return v, err
 		}
@@ -290,7 +295,11 @@ func (s *site) readBattleDetail(r *http.Request) (battleDetailView, error) {
 			if err := json.Unmarshal(report.Detail, &v.Data); err != nil {
 				return v, err
 			}
-			v.LossSummary = report.Losses
+			if filtered {
+				buildBattleLosses(&v, report.Events)
+			} else {
+				v.LossSummary = report.Losses
+			}
 			v.PreparedLosses = true
 			return v, nil
 		}
@@ -325,12 +334,10 @@ func (s *site) loadBattleTab(r *http.Request, v *battleDetailView) {
 		return
 	}
 	if v.Tab == "replay" || battleTabShowsLossSummary(v.Tab) && !v.PreparedLosses {
-		_, err := s.battleAPI(r, v.endpoint()+"/replay", nil, &v.Replay)
-		if err != nil {
+		if err := s.readBattleTabLosses(r, v); err != nil {
 			v.Error = "Unable to load battle losses."
 			return
 		}
-		buildBattleLosses(v)
 	}
 	if v.Tab == "kills" {
 		if err := s.readBattleKillfeed(r, v); err != nil {
@@ -338,6 +345,23 @@ func (s *site) loadBattleTab(r *http.Request, v *battleDetailView) {
 		}
 	}
 }
+
+func (s *site) readBattleTabLosses(r *http.Request, v *battleDetailView) error {
+	if v.Tab == "replay" || s.options.BattleReports == nil {
+		if _, err := s.battleAPI(r, v.endpoint()+"/replay", nil, &v.Replay); err != nil {
+			return err
+		}
+		buildBattleLosses(v, v.Replay.Kills)
+		return nil
+	}
+	losses, err := s.options.BattleReports.BattleLosses(r.Context(), v.ID, v.KillmailID)
+	if err != nil {
+		return err
+	}
+	buildBattleLosses(v, losses)
+	return nil
+}
+
 func (s *site) readBattleKillfeed(r *http.Request, v *battleDetailView) error {
 	q := url.Values{"limit": {strconv.Itoa(v.Limit)}}
 	for key, value := range map[string]*int64{"side": v.Filter.Side, "group": v.Filter.Group, "from": v.Filter.From, "to": v.Filter.To} {
