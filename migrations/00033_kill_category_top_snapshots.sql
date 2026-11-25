@@ -1,5 +1,5 @@
 -- +goose Up
-CREATE TABLE kill_category_top_snapshots (
+CREATE TABLE IF NOT EXISTS kill_category_top_snapshots (
     kind text PRIMARY KEY,
     prepared_at timestamptz NOT NULL,
     boards jsonb NOT NULL
