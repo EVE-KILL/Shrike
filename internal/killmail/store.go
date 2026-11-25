@@ -120,6 +120,7 @@ func insert(ctx context.Context, pool *pgxpool.Pool, p *Parsed, tracked bool) (b
 			it.KillmailID, it.ItemIndex, it.TypeID, it.FlagID,
 			it.QuantityDropped, it.QuantityDestroyed, it.Singleton, nullIndex(it.ParentIndex))
 	}
+	batch.Queue(insertFleetAffiliationsSQL, []int32{int32(insertedID)})
 	if tracked {
 		// The ledger row that the derived-effect machinery reads.
 		batch.Queue(`

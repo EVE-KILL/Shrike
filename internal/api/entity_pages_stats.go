@@ -231,48 +231,7 @@ func loadEntityDashboardStats(
 				Args: []any{id, since},
 			},
 			databaseQuery{
-				SQL: `
-					WITH mine AS MATERIALIZED (
-						SELECT killmail_id
-						FROM killmail_attackers
-						WHERE character_id = $1 AND killmail_time >= $2
-					), together AS (
-						SELECT 0 AS target_type, a.corporation_id::bigint AS id,
-						       COUNT(DISTINCT a.killmail_id)::bigint AS count
-						FROM killmail_attackers a
-						JOIN mine m USING (killmail_id)
-						WHERE a.corporation_id IS NOT NULL
-						  AND a.character_id IS NOT NULL
-						  AND a.character_id <> $1
-						GROUP BY a.corporation_id
-						UNION ALL
-						SELECT 1 AS target_type, a.alliance_id::bigint AS id,
-						       COUNT(DISTINCT a.killmail_id)::bigint AS count
-						FROM killmail_attackers a
-						JOIN mine m USING (killmail_id)
-						WHERE a.alliance_id IS NOT NULL
-						  AND a.character_id IS NOT NULL
-						  AND a.character_id <> $1
-						GROUP BY a.alliance_id
-					), ranked AS (
-						SELECT together.*,
-						       ROW_NUMBER() OVER (
-						         PARTITION BY target_type
-						         ORDER BY count DESC, id
-						       ) AS rank
-						FROM together
-					)
-					SELECT r.target_type, r.id, r.count,
-					       CASE WHEN r.target_type = 0
-						         THEN COALESCE(c.name, 'Unknown')
-						         ELSE COALESCE(a.name, 'Unknown') END AS name
-					FROM ranked r
-					LEFT JOIN corporations c
-					  ON r.target_type = 0 AND c.corporation_id = r.id
-					LEFT JOIN alliances a
-					  ON r.target_type = 1 AND a.alliance_id = r.id
-					WHERE r.rank <= 10
-					ORDER BY r.target_type, r.rank`,
+				SQL:  characterFleetAffiliationsSQL,
 				Args: []any{id, since},
 			},
 		)
@@ -409,3 +368,42 @@ func loadEntityDashboardStats(
 	out["fliesWithAlliances"] = flownWithAlliances
 	return out, nil
 }
+
+// Archived kills outside the backfilled window and kills from older writers
+// use one indexed attacker read per missing projection.
+const characterFleetAffiliationsSQL = `
+	WITH mine AS MATERIALIZED (
+		SELECT DISTINCT killmail_id
+		FROM killmail_attackers
+		WHERE character_id = $1 AND killmail_time >= $2
+	), summaries AS MATERIALIZED (
+		SELECT m.killmail_id, f.kinds, f.entity_ids, f.sole_character_ids
+		FROM mine m LEFT JOIN killmail_fleet_affiliations f USING (killmail_id)
+	), affiliations AS (
+		SELECT f.kind, f.entity_id
+		FROM summaries s
+		CROSS JOIN LATERAL unnest(s.kinds, s.entity_ids, s.sole_character_ids) f(kind, entity_id, sole_character_id)
+		WHERE f.sole_character_id IS DISTINCT FROM $1
+		UNION ALL
+		SELECT f.kind, f.entity_id
+		FROM summaries s
+		CROSS JOIN LATERAL (
+			SELECT DISTINCT f.kind, f.entity_id
+			FROM killmail_attackers a
+			CROSS JOIN LATERAL (VALUES (0::smallint, a.corporation_id), (1::smallint, a.alliance_id)) f(kind, entity_id)
+			WHERE a.killmail_id = s.killmail_id AND a.character_id <> $1 AND f.entity_id IS NOT NULL
+		) f
+		WHERE s.kinds IS NULL
+	), ranked AS (
+		SELECT kind, entity_id, count(*) AS count,
+		       row_number() OVER (PARTITION BY kind ORDER BY count(*) DESC, entity_id) AS rank
+		FROM affiliations
+		GROUP BY kind, entity_id
+	)
+	SELECT r.kind::integer AS target_type, r.entity_id::bigint AS id, r.count,
+	       CASE WHEN r.kind = 0 THEN COALESCE(c.name, 'Unknown') ELSE COALESCE(a.name, 'Unknown') END AS name
+	FROM ranked r
+	LEFT JOIN corporations c ON r.kind = 0 AND c.corporation_id = r.entity_id
+	LEFT JOIN alliances a ON r.kind = 1 AND a.alliance_id = r.entity_id
+	WHERE r.rank <= 10
+	ORDER BY r.kind, r.rank`

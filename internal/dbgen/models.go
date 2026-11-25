@@ -1082,6 +1082,13 @@ type KillmailFitting struct {
 	VictimCorporationID *int32             `json:"victim_corporation_id"`
 }
 
+type KillmailFleetAffiliation struct {
+	KillmailID       int32   `json:"killmail_id"`
+	Kinds            []int16 `json:"kinds"`
+	EntityIds        []int32 `json:"entity_ids"`
+	SoleCharacterIds []int32 `json:"sole_character_ids"`
+}
+
 type KillmailItem struct {
 	KillmailID        int32  `json:"killmail_id"`
 	ItemIndex         int32  `json:"item_index"`
