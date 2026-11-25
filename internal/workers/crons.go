@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/eve-kill/shrike/internal/api"
 	"github.com/eve-kill/shrike/internal/cron"
 	"github.com/eve-kill/shrike/internal/esi"
 	"github.com/eve-kill/shrike/internal/everef"
@@ -88,16 +87,6 @@ func RegisterCrons(d *Deps) (*cron.Registry, error) {
 	register("image_type_sync", d.cronImageTypeSync)
 
 	return r, nil
-}
-
-func (d *Deps) cronKillCategoryTop(ctx context.Context) (string, error) {
-	if d.Redis == nil {
-		return "Valkey is unavailable", nil
-	}
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	kind, err := api.PrepareNextKillCategoryTop(ctx, d.Pool, d.Redis)
-	return fmt.Sprintf("prepared %s kill-category leaderboards", kind), err
 }
 
 // cronTQStatus checks whether Tranquility is up and records the answer.

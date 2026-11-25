@@ -1014,6 +1014,12 @@ type InvType struct {
 	VariationParentTypeID *int32   `json:"variation_parent_type_id"`
 }
 
+type KillCategoryTopSnapshot struct {
+	Kind       string             `json:"kind"`
+	PreparedAt pgtype.Timestamptz `json:"prepared_at"`
+	Boards     []byte             `json:"boards"`
+}
+
 type Killmail struct {
 	KillmailID          int32              `json:"killmail_id"`
 	KillmailTime        pgtype.Timestamptz `json:"killmail_time"`

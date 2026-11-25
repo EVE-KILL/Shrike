@@ -155,6 +155,11 @@ var Queues = []Queue{
 		Concurrency: 5, Retries: 3, BackoffDelay: 1000, RequiresTQ: true,
 	},
 	{
+		Name:        "kill_category_top_refresh",
+		Description: "Refresh a single kill-category leaderboard snapshot",
+		Concurrency: 1, Retries: 3, BackoffDelay: 30_000,
+	},
+	{
 		Name:        "stats_writer",
 		Description: "Write daily stats + breakdown rows for one killmail",
 		Concurrency: 8, Retries: 3, BackoffDelay: 2000,

@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 )
@@ -22,23 +21,5 @@ func TestHomepageDataCacheReusesTypedReads(t *testing.T) {
 	}
 	if loads != 1 {
 		t.Fatalf("source loads = %d, want one", loads)
-	}
-}
-
-func TestCachedKillsTopListIsScopedByType(t *testing.T) {
-	cache := newResponseCache(nil, 1<<20)
-	reader := newCachedHomepageReader(nil, nil, cache, "test")
-	body, err := json.Marshal([]TopEntry{{ID: 42, Name: "Example", Count: 7}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	cache.StoreStale(context.Background(), reader.cacheKey(killsTopCacheName("big", "corporations", 7, 10)),
-		cachedResponse{Body: body}, 5*time.Minute, 5*time.Minute)
-	if entries, ok := reader.KillCategoryTopCached(context.Background(), "big")["corporations"]; !ok ||
-		len(entries) != 1 || entries[0].Name != "Example" {
-		t.Fatalf("cached big corporations = %#v, %t", entries, ok)
-	}
-	if _, ok := reader.KillCategoryTopCached(context.Background(), "solo")["corporations"]; ok {
-		t.Fatal("solo top list reused big-kills cache entry")
 	}
 }

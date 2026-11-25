@@ -4,7 +4,14 @@ The Go frontend serves every type in `internal/killtype.Types` at `/kills/{type}
 
 The page loader calls the same SQL helpers as `/api/killlist`, `/api/kills/most-valuable`, and `/api/kills/top`. It does not make loopback HTTP requests. The killlist uses the existing daily-count rollup for numbered pages. A one-minute cached list and five-minute cached statistics retain the API's freshness windows.
 
-The `kill_category_top` cron rotates through one category per minute. All three seven-day top lists share a cutoff and publish together to Valkey for two hours. Categories use the same ranking queries as the public API. The first page reads all three boards in one lookup and includes them in the initial HTML.
+The `kill_category_top` cron queues missing snapshots and snapshots that are at
+least an hour old. Each River job carries its category, so a retry refreshes
+the same boards. The worker publishes the three seven-day lists together in
+Postgres and keeps the last successful snapshot available after a failure.
+Valkey serves the same snapshot from cache, with a primary-key read to refill
+it after a miss. The initial page, fragments, and standard seven-day top-10
+API reads use the saved result. Cron logs and metrics report missing snapshots
+and the oldest snapshot age.
 
 If a prepared board is unavailable, the page can still use fresh fragment results. Missing lists render same-size placeholders and the browser requests their Go-rendered fragments. On mobile, those requests wait until the Top Lists tab is selected. An error leaves a retry control in the affected box.
 

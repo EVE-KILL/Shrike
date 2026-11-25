@@ -194,6 +194,12 @@ type BattleReportArgs struct {
 
 func (BattleReportArgs) Kind() string { return "battle_report" }
 
+type KillCategoryTopArgs struct {
+	Category string `json:"category" river:"unique"`
+}
+
+func (KillCategoryTopArgs) Kind() string { return "kill_category_top_refresh" }
+
 // FitExtractArgs records the fit a killmail's victim was flying.
 //
 // Only the id: the extractor re-reads the killmail's items, which keeps the

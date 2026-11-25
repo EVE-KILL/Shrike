@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/eve-kill/shrike/internal/killtype"
@@ -18,30 +18,13 @@ func killsTopCacheName(kind, dataType string, days, limit int) string {
 	return fmt.Sprintf("kills-top:%s:%s:%d:%d", kind, dataType, days, limit)
 }
 
-// KillCategoryTopCached returns the prepared boards for the initial page. On
-// a miss it can reuse recently read fragment results without running queries.
+// KillCategoryTopCached returns the last successful boards for the initial page.
 func (r *HomepageReader) KillCategoryTopCached(ctx context.Context, kind string) map[string][]TopEntry {
 	if r == nil {
 		return nil
 	}
-	if boards := r.preparedKillCategoryTop(ctx, kind); boards != nil {
-		return boards
-	}
-	keys := make([]string, len(killCategoryTopTypes))
-	for i, dataType := range killCategoryTopTypes {
-		keys[i] = r.cacheKey(killsTopCacheName(kind, dataType, KillCategoryTopDays, KillCategoryTopLimit))
-	}
-	warm := r.cache.LoadMany(ctx, keys)
-	result := make(map[string][]TopEntry, len(warm))
-	for i, key := range keys {
-		if entry, ok := warm[key]; ok {
-			var rows []TopEntry
-			if json.Unmarshal(entry.Body, &rows) == nil {
-				result[killCategoryTopTypes[i]] = rows
-			}
-		}
-	}
-	return result
+	boards, _ := r.preparedKillCategoryTop(ctx, kind)
+	return boards
 }
 
 // TopKills and MostValuableKills are the typed reads for /kills/{type} pages.
@@ -57,9 +40,15 @@ func (r *HomepageReader) TopKills(ctx context.Context, kind, dataType string, da
 		return nil, fmt.Errorf("invalid killboard top list options")
 	}
 	if days == KillCategoryTopDays && limit == KillCategoryTopLimit {
-		if entries, ok := r.preparedKillCategoryTop(ctx, kind)[dataType]; ok {
-			return entries, nil
+		boards, err := r.preparedKillCategoryTop(ctx, kind)
+		if err != nil {
+			return nil, err
 		}
+		entries, ok := boards[dataType]
+		if !ok {
+			return nil, apiError(http.StatusServiceUnavailable, "Leaderboard is being prepared")
+		}
+		return entries, nil
 	}
 	key := killsTopCacheName(kind, dataType, days, limit)
 	return cachedHomepage(ctx, r, key, 5*time.Minute, func(ctx context.Context) ([]TopEntry, error) {

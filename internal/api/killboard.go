@@ -520,6 +520,8 @@ func parseKilllistFactionIDs(raw string) []int32 {
 }
 
 func topKillsHandler(opts Options) legacyHandler {
+	reader := newCachedHomepageReader(opts.DB, nil, opts.responseCache, opts.Commit)
+	reader.redis = opts.Cache
 	return func(ctx context.Context, req *legacyRequest) (legacyPayload, error) {
 		kind := strings.TrimSpace(req.Query.Get("type"))
 		if kind == "" {
@@ -531,6 +533,13 @@ func topKillsHandler(opts Options) legacyHandler {
 		}
 		limit := boundedQueryInt(req, "limit", 10, 1, 50)
 		days := boundedQueryInt(req, "days", 7, 1, 365)
+		if usesPreparedKillCategoryTop(kind, dataType, days, limit) {
+			entries, err := reader.TopKills(ctx, kind, dataType, days, limit)
+			if err != nil {
+				return legacyPayload{}, err
+			}
+			return jsonPayload(map[string]any{"entries": entries}), nil
+		}
 		since := time.Now().UTC().AddDate(0, 0, -days)
 
 		rows, err := loadTopKills(
